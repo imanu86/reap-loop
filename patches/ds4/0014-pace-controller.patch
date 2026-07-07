@@ -1,0 +1,460 @@
+From 3e7d8d7dca39968e405119aba73c3240e92df638 Mon Sep 17 00:00:00 2001
+From: REAP-LOOP contributors <noreply@users.noreply.github.com>
+Date: Tue, 7 Jul 2026 08:59:20 +0200
+Subject: [PATCH] pace: 0014 in-engine controller (PACE) - skeleton+law
+
+In-engine REAP controller replacing the external Python sidecar. Reads MoE
+routing IN MEMORY (gate-mass in metal_graph_spex_note_selected, hit-rate on
+the shared 0011 mask), applies the mask DIRECTLY via ds4_reap_mask_apply
+(0011 actuator), and drives WRAP page-in (0013). Reactive control law:
+WARMUP->DESCENT->HOLD<->BREATH, breath triggered by an in-memory token-id
+n-gram degeneration detector (EWMA + hysteresis + clock cap), keep-K
+tighten/widen with annealing gate, cadence auto-tune. Design: reap/PACE_DESIGN.md.
+
+Env: DS4_PACE=1 enable; DS4_PACE_* tunables; DS4_PACE_WRAP (alias DS4_REAP_WRAP,
+back-compat DS4_REAP_WRAP). No disk on the hot path.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ ds4.c | 411 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 411 insertions(+)
+
+diff --git a/ds4.c b/ds4.c
+index 7275234..36cb124 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -12607,6 +12607,412 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+ }
+ 
+ 
++/* ======================================================================== *
++ * PACE - Perceptive Adaptive Control Engine (patch 0014)
++ *
++ * In-engine, self-calibrating REAP controller.  Replaces the external Python
++ * sidecar (reap/reap_loop.py): reads MoE routing IN MEMORY (no trace CSV),
++ * applies the mask DIRECTLY (no mask-file polling), and ADAPTS keep-K and the
++ * breath cadence live.  Reuses the 0011 actuator (g_reap_mask_pruned +
++ * ds4_reap_mask_apply, ID-space-stable -1e9 bias) and 0013 WRAP page-in
++ * (ds4_reap_prefetch_working_set).  Design: reap/PACE_DESIGN.md.
++ *
++ * Control law (reactive, not predictive - the router sensor is measured dead):
++ *   WARMUP (learn gate-mass) -> DESCENT (apply keep-K) -> HOLD <-> BREATH.
++ *   Breath fires on textual n-gram degeneration (the only live signal) with
++ *   EWMA smoothing + hysteresis, or a clock cap.  keep-K tightens when the
++ *   n-gram floor is quiet AND hit-rate is high (annealing-gated), widens on
++ *   degeneration.  All signals in memory; no disk on the hot path.
++ * ======================================================================== */
++
++#define DS4_PACE_NGRAM_MAX 512   /* max sliding window in tokens */
++
++typedef enum {
++    PACE_OFF = 0, PACE_WARMUP, PACE_DESCENT, PACE_HOLD, PACE_BREATH
++} ds4_pace_phase;
++
++static struct {
++    int    enabled;            /* -1 = not yet checked */
++    int    debug;              /* DS4_PACE_DEBUG: stderr signal trace */
++    FILE  *evlog;              /* DS4_PACE_LOG: optional JSONL */
++
++    /* --- tunables (env) --- */
++    uint32_t warmup;
++    int      keep, keep_min, keep_max, keep_step;
++    int      ngram_n;
++    uint32_t ngram_window;
++    double   drift, release;
++    uint32_t hyst;
++    uint32_t breath_every, breath_every_min, breath_every_max;
++    uint32_t breath_len;
++    int      breath_keep;      /* 0 = full unmask */
++    int      relearn;
++    double   relearn_decay;
++    double   alpha_ngram, alpha_hit;
++    double   tighten_lo, hit_hi;
++    uint32_t stable, anneal_warm;
++    int      s1_on;
++    int      wrap_on;
++
++    /* --- runtime state --- */
++    ds4_pace_phase phase;
++    uint32_t tok;              /* decode tokens observed */
++    uint32_t phase_start_tok;
++    uint32_t last_breath_end_tok;
++    int      sensor_armed;
++    int      cur_keep;         /* keep-K currently applied (0 = no mask) */
++    uint32_t stable_since;     /* token of last keep change (tighten gate) */
++
++    /* n-gram ring of decode token-ids */
++    int      ring[DS4_PACE_NGRAM_MAX];
++    uint32_t ring_len, ring_head;
++    double   ema_ngram;
++
++    /* hit-rate (in-keep selections) */
++    uint64_t sel_checked, sel_inkeep;
++    double   ema_hit;
++
++    /* breath cadence auto-tune */
++    uint32_t breaths;
++
++    /* gate-mass accumulator (learn): mass[layer][expert] */
++    double  *mass;             /* [DS4_MAX_LAYER*DS4_MAX_EXPERT], lazy alloc */
++    uint32_t mass_rows;
++    /* breath re-learn window accumulator */
++    double  *bmass;
++    uint32_t bmass_rows;
++} g_pace;
++
++static int pace_env_i(const char *name, int dflt) {
++    const char *v = getenv(name);
++    if (!v || !*v) return dflt;
++    char *end = NULL; long x = strtol(v, &end, 10);
++    return (end != v && *end == '\0') ? (int)x : dflt;
++}
++static double pace_env_d(const char *name, double dflt) {
++    const char *v = getenv(name);
++    if (!v || !*v) return dflt;
++    char *end = NULL; double x = strtod(v, &end);
++    return (end != v && *end == '\0') ? x : dflt;
++}
++
++static void ds4_pace_init(void) {
++    if (g_pace.enabled != 0) return;   /* already inited (or explicitly off) */
++    memset(&g_pace, 0, sizeof(g_pace));
++    const char *e = getenv("DS4_PACE");
++    if (!e || !*e || !strcmp(e, "0")) { g_pace.enabled = -1; return; }
++    g_pace.enabled = 1;
++    g_pace.debug   = pace_env_i("DS4_PACE_DEBUG", 0);
++    const char *lg = getenv("DS4_PACE_LOG");
++    if (lg && *lg) { g_pace.evlog = fopen(lg, "w"); }
++
++    g_pace.warmup       = (uint32_t)pace_env_i("DS4_PACE_WARMUP", 150);
++    g_pace.keep         = pace_env_i("DS4_PACE_KEEP", 40);
++    g_pace.keep_min     = pace_env_i("DS4_PACE_KEEP_MIN", 24);
++    g_pace.keep_max     = pace_env_i("DS4_PACE_KEEP_MAX", 64);
++    g_pace.keep_step    = pace_env_i("DS4_PACE_KEEP_STEP", 4);
++    g_pace.ngram_n      = pace_env_i("DS4_PACE_NGRAM_N", 3);
++    g_pace.ngram_window = (uint32_t)pace_env_i("DS4_PACE_NGRAM_WINDOW", 120);
++    if (g_pace.ngram_window > DS4_PACE_NGRAM_MAX)
++        g_pace.ngram_window = DS4_PACE_NGRAM_MAX;
++    g_pace.drift        = pace_env_d("DS4_PACE_DRIFT", 0.35);
++    g_pace.release      = pace_env_d("DS4_PACE_RELEASE", 0.15);
++    g_pace.hyst         = (uint32_t)pace_env_i("DS4_PACE_HYST", 200);
++    g_pace.breath_every = (uint32_t)pace_env_i("DS4_PACE_BREATH_EVERY", 400);
++    g_pace.breath_every_min = (uint32_t)pace_env_i("DS4_PACE_BREATH_EVERY_MIN", 150);
++    g_pace.breath_every_max = (uint32_t)pace_env_i("DS4_PACE_BREATH_EVERY_MAX", 1200);
++    g_pace.breath_len   = (uint32_t)pace_env_i("DS4_PACE_BREATH_LEN", 80);
++    g_pace.breath_keep  = pace_env_i("DS4_PACE_BREATH_KEEP", 64);
++    g_pace.relearn      = pace_env_i("DS4_PACE_RELEARN", 1);
++    g_pace.relearn_decay= pace_env_d("DS4_PACE_RELEARN_DECAY", 0.3);
++    g_pace.alpha_ngram  = pace_env_d("DS4_PACE_ALPHA_NGRAM", 0.10);
++    g_pace.alpha_hit    = pace_env_d("DS4_PACE_ALPHA_HIT", 0.05);
++    g_pace.tighten_lo   = pace_env_d("DS4_PACE_TIGHTEN_LO", 0.10);
++    g_pace.hit_hi       = pace_env_d("DS4_PACE_HIT_HI", 0.90);
++    g_pace.stable       = (uint32_t)pace_env_i("DS4_PACE_STABLE", 120);
++    g_pace.anneal_warm  = (uint32_t)pace_env_i("DS4_PACE_ANNEAL_WARM", 300);
++    g_pace.s1_on        = pace_env_i("DS4_PACE_S1", 0);
++    /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_WRAP */
++    {
++        const char *w = getenv("DS4_PACE_WRAP");
++        if (!w) w = getenv("DS4_REAP_WRAP");
++        if (!w) w = getenv("DS4_REAP_WRAP");
++        g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1);
++    }
++
++    g_pace.phase = PACE_WARMUP;
++    g_pace.sensor_armed = 1;
++    g_pace.cur_keep = 0;
++    g_pace.last_breath_end_tok = 0;
++    g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++
++    fprintf(stderr,
++        "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
++        "drift=%.2f rel=%.2f hyst=%u breath(every=%u,len=%u,keep=%d,relearn=%d) "
++        "anneal_warm=%u wrap=%d s1=%d\n",
++        g_pace.warmup, g_pace.keep, g_pace.keep_min, g_pace.keep_max,
++        g_pace.keep_step, g_pace.ngram_n, g_pace.ngram_window,
++        g_pace.drift, g_pace.release, g_pace.hyst, g_pace.breath_every,
++        g_pace.breath_len, g_pace.breath_keep, g_pace.relearn,
++        g_pace.anneal_warm, g_pace.wrap_on, g_pace.s1_on);
++}
++
++static inline int ds4_pace_active(void) {
++    if (g_pace.enabled == 0) ds4_pace_init();
++    return g_pace.enabled == 1;
++}
++
++/* ---- gate-mass accumulation (called per layer, per decode token) ---- */
++static void ds4_pace_note_selected(uint32_t il, const int32_t *selected_ids,
++                                   uint32_t n_selected) {
++    if (!ds4_pace_active() || !selected_ids || il >= DS4_MAX_LAYER) return;
++    /* learn windows: WARMUP -> main mass; BREATH re-learn -> breath mass */
++    double *acc = NULL; uint32_t *rows = NULL;
++    if (g_pace.phase == PACE_WARMUP) { acc = g_pace.mass; rows = &g_pace.mass_rows; }
++    else if (g_pace.phase == PACE_BREATH && g_pace.relearn && g_pace.bmass) {
++        acc = g_pace.bmass; rows = &g_pace.bmass_rows;
++    }
++    if (acc) {
++        /* unit weight (fidelity: sidecar falls back to w=1.0 when router
++         * weights absent; taking g->router_weights here needs a GPU readback
++         * we deliberately avoid on the hot path). */
++        for (uint32_t i = 0; i < n_selected; i++) {
++            int32_t eid = selected_ids[i];
++            if (eid >= 0 && (uint32_t)eid < DS4_MAX_EXPERT)
++                acc[(size_t)il * DS4_MAX_EXPERT + eid] += 1.0;
++        }
++        (*rows)++;
++    }
++    /* hit-rate / violation check when a mask is active */
++    if (g_pace.cur_keep > 0 && g_reap_mask_on) {
++        for (uint32_t i = 0; i < n_selected; i++) {
++            int32_t eid = selected_ids[i];
++            if (eid < 0 || (uint32_t)eid >= DS4_MAX_EXPERT) continue;
++            g_pace.sel_checked++;
++            if (!g_reap_mask_pruned[il][eid]) g_pace.sel_inkeep++;
++        }
++    }
++}
++
++/* ---- learn keep-set from an accumulator into g_reap_mask_pruned ---- *
++ * top-keep experts per layer by accumulated mass are KEPT; rest pruned. */
++static void ds4_pace_learn_mask(const double *acc, int keep) {
++    memset(g_reap_mask_pruned, 0, sizeof(g_reap_mask_pruned));
++    if (keep <= 0 || keep >= (int)DS4_N_EXPERT) return;  /* keep all */
++    /* per-layer partial-selection of the top-keep by mass */
++    static float score[DS4_MAX_EXPERT];
++    static uint8_t keepflag[DS4_MAX_EXPERT];
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        const double *row = &acc[(size_t)il * DS4_MAX_EXPERT];
++        double any = 0.0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) { score[e] = (float)row[e]; any += row[e]; }
++        if (any <= 0.0) continue;   /* never routed this layer: keep all */
++        memset(keepflag, 0, sizeof(keepflag));
++        /* selection-of-top-keep: repeatedly take the argmax, keep times */
++        for (int k = 0; k < keep; k++) {
++            int best = -1; float bestv = -1.0f;
++            for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++                if (!keepflag[e] && score[e] > bestv) { bestv = score[e]; best = (int)e; }
++            }
++            if (best < 0) break;
++            keepflag[best] = 1;
++        }
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++)
++            if (!keepflag[e]) g_reap_mask_pruned[il][e] = 1;
++    }
++}
++
++static void ds4_pace_merge_decayed(double decay) {
++    if (!g_pace.bmass) return;
++    size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    for (size_t i = 0; i < n; i++)
++        g_pace.mass[i] = decay * g_pace.mass[i] + g_pace.bmass[i];
++    g_pace.mass_rows = (uint32_t)(g_pace.mass_rows * decay) + g_pace.bmass_rows;
++}
++
++static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weights,
++                                int keep) {
++    ds4_pace_learn_mask(g_pace.mass, keep);
++    ds4_reap_mask_apply(model, weights);           /* 0011 actuator */
++    g_pace.cur_keep = keep;
++    g_pace.stable_since = g_pace.tok;
++    /* reset hit-rate accounting for the new mask */
++    g_pace.sel_checked = g_pace.sel_inkeep = 0;
++    if (g_pace.wrap_on)
++        ds4_reap_prefetch_working_set(model, weights);   /* 0013 WRAP */
++}
++
++static void ds4_pace_unmask(const ds4_model *model, const ds4_weights *weights) {
++    memset(g_reap_mask_pruned, 0, sizeof(g_reap_mask_pruned));
++    ds4_reap_mask_apply(model, weights);
++    g_pace.cur_keep = 0;
++    g_pace.sel_checked = g_pace.sel_inkeep = 0;
++}
++
++/* ---- n-gram degeneration score over the token-id ring ---- */
++static double ds4_pace_ngram_score(void) {
++    uint32_t len = g_pace.ring_len;
++    int n = g_pace.ngram_n;
++    if (len < (uint32_t)(n * 4)) return 0.0;
++    uint32_t total = len - (uint32_t)n + 1;
++    /* uniqueness via O(total^2) compare - window is small (<=512), n small.
++     * Two n-grams equal iff all n token-ids match. */
++    uint32_t uniq = 0;
++    for (uint32_t i = 0; i < total; i++) {
++        int dup = 0;
++        for (uint32_t j = 0; j < i; j++) {
++            int same = 1;
++            for (int k = 0; k < n; k++) {
++                uint32_t ia = (g_pace.ring_head + i + k) % g_pace.ngram_window;
++                uint32_t ja = (g_pace.ring_head + j + k) % g_pace.ngram_window;
++                if (g_pace.ring[ia] != g_pace.ring[ja]) { same = 0; break; }
++            }
++            if (same) { dup = 1; break; }
++        }
++        if (!dup) uniq++;
++    }
++    return 1.0 - (double)uniq / (double)total;
++}
++
++static void ds4_pace_push_token(int token) {
++    uint32_t w = g_pace.ngram_window;
++    if (w == 0) return;
++    if (g_pace.ring_len < w) {
++        g_pace.ring[(g_pace.ring_head + g_pace.ring_len) % w] = token;
++        g_pace.ring_len++;
++    } else {
++        g_pace.ring[g_pace.ring_head] = token;
++        g_pace.ring_head = (g_pace.ring_head + 1) % w;
++    }
++}
++
++static void ds4_pace_emit(const char *ev, double score, double hit) {
++    if (g_pace.debug) {
++        fprintf(stderr, "ds4: PACE %-12s tok=%u phase=%d keep=%d "
++                "ngram=%.3f hit=%.3f breaths=%u\n",
++                ev, g_pace.tok, (int)g_pace.phase, g_pace.cur_keep,
++                score, hit, g_pace.breaths);
++    }
++    if (g_pace.evlog) {
++        fprintf(g_pace.evlog,
++                "{\"ev\":\"%s\",\"tok\":%u,\"phase\":%d,\"keep\":%d,"
++                "\"ngram\":%.4f,\"hit\":%.4f,\"breaths\":%u,\"be\":%u}\n",
++                ev, g_pace.tok, (int)g_pace.phase, g_pace.cur_keep,
++                score, hit, g_pace.breaths, g_pace.breath_every);
++        fflush(g_pace.evlog);
++    }
++}
++
++/* auto-tune the clock cap on the observed breath rate (breaths per 1k tok) */
++static void ds4_pace_tune_cadence(void) {
++    if (g_pace.tok < 200) return;
++    double per1k = (double)g_pace.breaths * 1000.0 / (double)g_pace.tok;
++    if (per1k > 3.0 && g_pace.breath_every > g_pace.breath_every_min)
++        g_pace.breath_every = g_pace.breath_every > g_pace.breath_every_min + 50
++            ? g_pace.breath_every - 50 : g_pace.breath_every_min;
++    else if (per1k < 0.5 && g_pace.breath_every < g_pace.breath_every_max)
++        g_pace.breath_every += 50;
++}
++
++/* ---- per-decode-token driver tick ---- */
++static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
++                          int token) {
++    if (!ds4_pace_active()) return;
++    ds4_pace_push_token(token);
++    g_pace.tok++;
++
++    /* update EWMA signals */
++    double raw_ng = ds4_pace_ngram_score();
++    g_pace.ema_ngram = (1.0 - g_pace.alpha_ngram) * g_pace.ema_ngram
++                     + g_pace.alpha_ngram * raw_ng;
++    double hit = g_pace.sel_checked
++        ? (double)g_pace.sel_inkeep / (double)g_pace.sel_checked : 1.0;
++    g_pace.ema_hit = (1.0 - g_pace.alpha_hit) * g_pace.ema_hit
++                   + g_pace.alpha_hit * hit;
++
++    switch (g_pace.phase) {
++    case PACE_WARMUP:
++        if (g_pace.tok >= g_pace.warmup && g_pace.mass_rows > 0) {
++            g_pace.phase = PACE_DESCENT;
++            g_pace.phase_start_tok = g_pace.tok;
++            ds4_pace_emit("learned", g_pace.ema_ngram, g_pace.ema_hit);
++        }
++        break;
++
++    case PACE_DESCENT:
++        ds4_pace_apply_keep(model, weights, g_pace.keep);   /* direct */
++        g_pace.phase = PACE_HOLD;
++        g_pace.phase_start_tok = g_pace.tok;
++        ds4_pace_emit("descent", g_pace.ema_ngram, g_pace.ema_hit);
++        break;
++
++    case PACE_HOLD: {
++        uint32_t since = g_pace.tok - (g_pace.phase_start_tok > g_pace.last_breath_end_tok
++                                       ? g_pace.phase_start_tok : g_pace.last_breath_end_tok);
++        int clock_due = g_pace.breath_every > 0 && since >= g_pace.breath_every;
++        /* hysteresis re-arm */
++        if (!g_pace.sensor_armed && g_pace.ema_ngram <= g_pace.release
++            && g_pace.tok - g_pace.last_breath_end_tok >= g_pace.hyst) {
++            g_pace.sensor_armed = 1;
++            ds4_pace_emit("rearm", g_pace.ema_ngram, g_pace.ema_hit);
++        }
++        int sensor_due = g_pace.sensor_armed && g_pace.ema_ngram >= g_pace.drift;
++
++        if (clock_due || sensor_due) {
++            g_pace.sensor_armed = 0;
++            g_pace.breaths++;
++            ds4_pace_tune_cadence();
++            if (g_pace.relearn) {
++                if (!g_pace.bmass)
++                    g_pace.bmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++                else memset(g_pace.bmass, 0, (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++                g_pace.bmass_rows = 0;
++            }
++            /* widen keep-K one step on a degeneration-triggered breath */
++            if (sensor_due && g_pace.keep < g_pace.keep_max)
++                g_pace.keep = g_pace.keep + g_pace.keep_step < g_pace.keep_max
++                    ? g_pace.keep + g_pace.keep_step : g_pace.keep_max;
++            if (g_pace.breath_keep <= 0) ds4_pace_unmask(model, weights);
++            else ds4_pace_apply_keep(model, weights, g_pace.breath_keep);
++            g_pace.phase = PACE_BREATH;
++            g_pace.phase_start_tok = g_pace.tok;
++            ds4_pace_emit(sensor_due ? "breath(ngram)" : "breath(clock)",
++                          g_pace.ema_ngram, g_pace.ema_hit);
++            break;
++        }
++        /* tighten keep-K when confident (annealing-gated) */
++        if (g_pace.tok >= g_pace.anneal_warm
++            && g_pace.ema_ngram <= g_pace.tighten_lo
++            && g_pace.ema_hit >= g_pace.hit_hi
++            && g_pace.tok - g_pace.stable_since >= g_pace.stable
++            && g_pace.keep > g_pace.keep_min) {
++            g_pace.keep = g_pace.keep - g_pace.keep_step > g_pace.keep_min
++                ? g_pace.keep - g_pace.keep_step : g_pace.keep_min;
++            ds4_pace_apply_keep(model, weights, g_pace.keep);
++            ds4_pace_emit("tighten", g_pace.ema_ngram, g_pace.ema_hit);
++        }
++        break;
++    }
++
++    case PACE_BREATH:
++        if (g_pace.tok - g_pace.phase_start_tok >= g_pace.breath_len) {
++            if (g_pace.relearn && g_pace.bmass && g_pace.bmass_rows > 0) {
++                ds4_pace_merge_decayed(g_pace.relearn_decay);
++                ds4_pace_emit("relearn", g_pace.ema_ngram, g_pace.ema_hit);
++            }
++            ds4_pace_apply_keep(model, weights, g_pace.keep);
++            g_pace.phase = PACE_HOLD;
++            g_pace.phase_start_tok = g_pace.tok;
++            g_pace.last_breath_end_tok = g_pace.tok;
++            ds4_pace_emit("breath_end", g_pace.ema_ngram, g_pace.ema_hit);
++        }
++        break;
++
++    default: break;
++    }
++}
++
++
+ static bool metal_graph_stream_prefill_selected_pagein_start(
+         ds4_gpu_graph                 *g,
+         const ds4_model               *model,
+@@ -14794,6 +15200,9 @@ static void metal_graph_spex_note_selected(
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
+     metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
++    /* PACE (0014): in-memory gate-mass + hit-rate, decode tokens only. */
++    if (g && g->spex_trace_decode_active && selected_ids && n_selected > 0)
++        ds4_pace_note_selected(il, selected_ids, n_selected);
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
+     g->spex_prefetch_selected_valid = false;
+     if (!selected_ids ||
+@@ -20429,6 +20838,8 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+     g->spex_trace_decode_active = logits != NULL;
+     g->spex_trace_pos = pos;
+     ds4_reap_mask_poll(model, weights);
++    /* PACE (0014): in-engine controller tick, decode tokens only (logits!=NULL). */
++    if (logits) ds4_pace_tick(model, weights, token);
+     if (static_decode_map) {
+         if (!static_map_state_cache || !g->streaming_static_decode_map_current) {
+             ok = metal_graph_stream_map_decode_static_all(model, weights);
+-- 
+2.43.0
+
