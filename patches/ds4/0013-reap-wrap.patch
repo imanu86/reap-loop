@@ -1,0 +1,236 @@
+diff --git a/ds4.c b/ds4.c
+index f18e852..7275234 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7428,6 +7428,9 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+             slot, ranges_updated);
+ }
+ 
++static void ds4_reap_prefetch_working_set(const ds4_model *model,
++                                          const ds4_weights *weights);
++
+ static void ds4_reap_mask_poll(const ds4_model *model, const ds4_weights *weights) {
+     if (!g_reap_mask_env_checked) {
+         g_reap_mask_env_checked = true;
+@@ -7457,6 +7460,7 @@ static void ds4_reap_mask_poll(const ds4_model *model, const ds4_weights *weight
+     fclose(f);
+     fprintf(stderr, "ds4: REAP mask reload da %s: %u entry potate\n", g_reap_mask_path, count);
+     ds4_reap_mask_apply(model, weights);
++    ds4_reap_prefetch_working_set(model, weights);
+ }
+ 
+ static void layer_topk_selected_experts_from_probs(
+@@ -12396,6 +12400,213 @@ static uint32_t metal_graph_stream_prefill_layer_prepare_ahead(void) {
+     return (uint32_t)v;
+ }
+ 
++/* ---- patch 0013: REAP "WRAP" - bulk page-in of the masked working set.
++ * After a REAP mask reload (patch 0011), prefetch ALL kept routed experts
++ * (gate/up/down slices) into the page cache with one threaded sequential
++ * pass, so decode expert loads hit RAM instead of ~150 random SSD reads per
++ * token.  Host-side only (mmap touch + madvise WILLNEED, reusing the prefill
++ * union-load machinery): no CUDA stream interaction, no blocking-sync risk.
++ * Env: DS4_REAP_WRAP=1        enable
++ *      DS4_REAP_WRAP_THREADS  worker threads (default 8, max 16)
++ *      DS4_REAP_WRAP_LOCK=1   also mlock() the ranges (needs memlock rlimit;
++ *                                 keeps the working set immune to page eviction) */
++static volatile int g_reap_prefetch_busy;
++static uint64_t g_reap_prefetch_sig = 0;
++
++typedef struct {
++    const ds4_model   *model;
++    const ds4_weights *weights;
++} ds4_reap_prefetch_args;
++
++static int ds4_reap_prefetch_range_cmp(const void *a, const void *b) {
++    const metal_graph_stream_pagein_range *ra = a, *rb = b;
++    if (ra->off < rb->off) return -1;
++    if (ra->off > rb->off) return 1;
++    return 0;
++}
++
++static void *ds4_reap_prefetch_main(void *argp) {
++    ds4_reap_prefetch_args args = *(ds4_reap_prefetch_args *)argp;
++    free(argp);
++    const ds4_model *model = args.model;
++    const ds4_weights *weights = args.weights;
++    const double t0 = now_sec();
++
++    uint32_t cap = 4096, n = 0;
++    metal_graph_stream_pagein_range *ranges = xmalloc(cap * sizeof(*ranges));
++    uint64_t total = 0;
++    uint32_t n_layers = 0, n_experts_kept = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_exp_probs_b || !layer->ffn_gate_exps ||
++            !layer->ffn_up_exps || !layer->ffn_down_exps) {
++            continue;
++        }
++        uint32_t pruned = 0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            pruned += g_reap_mask_pruned[il][e] ? 1u : 0u;
++        }
++        if (pruned == 0) continue;   /* layer not masked: skip */
++        const uint64_t gate_eb = layer->ffn_gate_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_gate_exps);
++        const uint64_t up_eb = layer->ffn_up_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_up_exps);
++        const uint64_t down_eb = layer->ffn_down_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_down_exps);
++        if (gate_eb == 0 || up_eb == 0 || down_eb == 0) continue;
++        n_layers++;
++        uint32_t e = 0;
++        while (e < DS4_N_EXPERT && e < DS4_MAX_EXPERT) {
++            if (g_reap_mask_pruned[il][e]) { e++; continue; }
++            const uint32_t first = e;
++            while (e < DS4_N_EXPERT && e < DS4_MAX_EXPERT &&
++                   !g_reap_mask_pruned[il][e]) {
++                e++;
++            }
++            const uint64_t cnt = (uint64_t)(e - first);
++            n_experts_kept += (uint32_t)cnt;
++            if (n + 3u > cap) {
++                cap *= 2u;
++                ranges = xrealloc(ranges, cap * sizeof(*ranges));
++            }
++            ranges[n].off = layer->ffn_gate_exps->abs_offset +
++                (uint64_t)first * gate_eb;
++            ranges[n].size = cnt * gate_eb;
++            n++;
++            ranges[n].off = layer->ffn_up_exps->abs_offset +
++                (uint64_t)first * up_eb;
++            ranges[n].size = cnt * up_eb;
++            n++;
++            ranges[n].off = layer->ffn_down_exps->abs_offset +
++                (uint64_t)first * down_eb;
++            ranges[n].size = cnt * down_eb;
++            n++;
++            total += cnt * (gate_eb + up_eb + down_eb);
++        }
++    }
++    if (n == 0) {
++        free(ranges);
++        g_reap_prefetch_busy = 0;
++        return NULL;
++    }
++    qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
++
++    metal_graph_stream_pagein_job job;
++    memset(&job, 0, sizeof(job));
++    job.model = model;
++    job.ranges = ranges;
++    job.n_ranges = n;
++    job.ok = true;
++
++    uint32_t n_threads = 8;
++    {
++        const char *tv = getenv("DS4_REAP_WRAP_THREADS");
++        if (tv && *tv) {
++            char *end = NULL;
++            unsigned long v = strtoul(tv, &end, 10);
++            if (end != tv && *end == '\0' && v > 0) {
++                n_threads = v > 16 ? 16u : (uint32_t)v;
++            }
++        }
++    }
++    if (n_threads > n) n_threads = n;
++
++    metal_graph_stream_pagein_worker *workers =
++        xmalloc(n_threads * sizeof(*workers));
++    pthread_t *threads = xmalloc(n_threads * sizeof(*threads));
++    memset(workers, 0, n_threads * sizeof(*workers));
++    uint32_t started = 0;
++    for (uint32_t i = 0; i < n_threads; i++) {
++        workers[i].job = &job;
++        workers[i].first = i;
++        workers[i].stride = n_threads;
++        if (pthread_create(&threads[i], NULL,
++                           metal_graph_stream_pagein_worker_main,
++                           &workers[i]) != 0) {
++            workers[i].stride = 0;
++            break;
++        }
++        started++;
++    }
++    uint64_t touched = 0;
++    bool ok = started > 0;
++    for (uint32_t i = 0; i < started; i++) {
++        pthread_join(threads[i], NULL);
++        touched += workers[i].touched;
++        ok = ok && workers[i].ok;
++    }
++
++    uint64_t locked = 0;
++    const char *lockv = getenv("DS4_REAP_WRAP_LOCK");
++    if (lockv && *lockv && strcmp(lockv, "0") != 0 && model->map) {
++        const uint64_t page = (uint64_t)getpagesize();
++        const uint8_t *base = (const uint8_t *)model->map;
++        for (uint32_t i = 0; i < n; i++) {
++            const uint64_t po = ranges[i].off & ~(page - 1u);
++            uint64_t lb = ranges[i].off - po + ranges[i].size;
++            lb = (lb + page - 1u) & ~(page - 1u);
++            if (po > model->size || lb > model->size - po) continue;
++            if (mlock((const void *)(base + po), (size_t)lb) == 0) {
++                locked += lb;
++            }
++        }
++    }
++
++    fprintf(stderr,
++            "ds4: REAP prefetch (WRAP): %u layer, %u expert, %u range, "
++            "%.2f GiB touched in %.0f ms (%u thread%s%s)\n",
++            n_layers, n_experts_kept, n,
++            (double)touched / (1024.0 * 1024.0 * 1024.0),
++            (now_sec() - t0) * 1000.0,
++            started,
++            ok ? "" : ", ERRORI",
++            locked ? ", mlock" : "");
++
++    free(threads);
++    free(workers);
++    free(ranges);
++    g_reap_prefetch_busy = 0;
++    return NULL;
++}
++
++static void ds4_reap_prefetch_working_set(const ds4_model *model,
++                                          const ds4_weights *weights) {
++    static int checked, enabled;
++    if (!checked) {
++        checked = 1;
++        const char *p = getenv("DS4_REAP_WRAP");
++        enabled = p && *p && strcmp(p, "0") != 0;
++    }
++    if (!enabled || !model || !weights) return;
++    uint64_t sig = 1469598103934665603ull;
++    for (uint32_t il = 0; il < DS4_MAX_LAYER; il++) {
++        for (uint32_t e = 0; e < DS4_MAX_EXPERT; e++) {
++            if (g_reap_mask_pruned[il][e]) {
++                sig ^= ((uint64_t)il << 32) | e;
++                sig *= 1099511628211ull;
++            }
++        }
++    }
++    if (sig == g_reap_prefetch_sig) return;   /* same mask: nothing to do */
++    if (__sync_lock_test_and_set(&g_reap_prefetch_busy, 1)) {
++        fprintf(stderr, "ds4: REAP prefetch: gia' in corso, salto\n");
++        return;
++    }
++    g_reap_prefetch_sig = sig;
++    ds4_reap_prefetch_args *args = xmalloc(sizeof(*args));
++    args->model = model;
++    args->weights = weights;
++    pthread_t th;
++    if (pthread_create(&th, NULL, ds4_reap_prefetch_main, args) != 0) {
++        free(args);
++        g_reap_prefetch_busy = 0;
++        fprintf(stderr, "ds4: REAP prefetch: pthread_create fallita\n");
++        return;
++    }
++    pthread_detach(th);
++}
++
++
+ static bool metal_graph_stream_prefill_selected_pagein_start(
+         ds4_gpu_graph                 *g,
+         const ds4_model               *model,
