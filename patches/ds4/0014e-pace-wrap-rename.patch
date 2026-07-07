@@ -10,8 +10,8 @@ the 0013 WRAP function can read g_pace.wrap_on. No behavior change when PACE off
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
- ds4.c | 131 ++++++++++++++++++++++++++++++++--------------------------
- 1 file changed, 72 insertions(+), 59 deletions(-)
+ ds4.c | 130 ++++++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 71 insertions(+), 59 deletions(-)
 
 diff --git a/ds4.c b/ds4.c
 index 36cb124..88263f4 100644
@@ -85,18 +85,17 @@ index 36cb124..88263f4 100644
  static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
      if (!g_reap_mask_on || !bias_tensor) return NULL;
      for (uint32_t i = 0; i < g_reap_bias_n; i++) {
-@@ -12574,8 +12635,15 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+@@ -12574,8 +12635,14 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
      static int checked, enabled;
      if (!checked) {
          checked = 1;
 -        const char *p = getenv("DS4_REAP_WRAP");
 -        enabled = p && *p && strcmp(p, "0") != 0;
-+        /* WRAP (0013/0014): DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat
++        /* WRAP (0013/0014): DS4_PACE_WRAP, with back-compat alias
 +         * DS4_REAP_WRAP. Default ON when PACE drives it (g_pace.wrap_on
-+         * already gates the call site); enabled here iff any is set non-zero,
++         * already gates the call site); enabled here iff either is set non-zero,
 +         * OR PACE is active with wrap_on (so PACE need not set the env). */
 +        const char *p = getenv("DS4_PACE_WRAP");
-+        if (!p) p = getenv("DS4_REAP_WRAP");
 +        if (!p) p = getenv("DS4_REAP_WRAP");
 +        enabled = (p && *p && strcmp(p, "0") != 0)
 +                  || (g_pace.enabled == 1 && g_pace.wrap_on);

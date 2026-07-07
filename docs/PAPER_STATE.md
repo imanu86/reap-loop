@@ -1,3 +1,6 @@
+> **[SUPERSEDED — framing storico; il contributo corrente è REAP-LOOP, stato in [docs/CLAIMS_CURRENT.md](CLAIMS_CURRENT.md)]**
+> Questo documento descrive una tesi SUPERATA ("Impact-weighted expert prefetch" con la quantizzazione temperature-per-expert come contributo centrale). È tenuto per storia, NON come stato corrente. Per lo stato canonico dei claim (cosa è CLOSED / OPEN / RETRACTED / SUPERSEDED) fai riferimento SOLO a [docs/CLAIMS_CURRENT.md](CLAIMS_CURRENT.md), che in caso di conflitto vince su questo file.
+
 # PAPER STATE — "Impact-weighted expert prefetch: running a 158B general MoE on a 12GB consumer GPU"
 
 > Stato del paper a 2026-07-04. NON ripartire da capo: dati, esperimenti e citazioni sono TUTTI durevoli (vedi §Dati e §Citazioni). Questo doc lega le scoperte al paper. Compagni: `EXPERIMENTS_LEDGER.md` (100 esp), `PRIOR_ART.md` (citazioni), `references/DSpark_paper.txt`, `references/DwarfStar_ds4_README.md`.
@@ -10,7 +13,7 @@
 2. **Coverage statico vs working-set temporale** (I6): un prompt ristretto NON restringe staticamente il modello (union ~60-65% expert anche per 1 prompt); il guadagno-dominio è TEMPORALE (cache calda, miss .098). → `scripts_pod/expert_union_coverage.py`.
 3. **"Lo STATICO è il collo" su VRAM piccola** (I4/I5 sim + CONFERMATO empiricamente sul 3060): attention/shared (~10GB) soffocano la cache-expert (~1-2GB) → non gli expert. Contro-intuitivo (tutti quantizzano gli expert). → `spex_speed_sim.py`, `spex_speed_sim_quant.py`, `sim_3060_static.py`.
 4. **[NUOVO 2026-07-04] Leva-RAM: gli engine di offloading MoE sprecano la RAM.** ds4-CUDA usa O_DIRECT + `posix_fadvise(DONTNEED)` → bypassa la page-cache. Fix (2 env: `DS4_CUDA_NO_DIRECT_IO=1` + `DS4_CUDA_KEEP_MODEL_PAGES=1`) → **0.49→2.1 t/s (4.3×)**. Finding di sistema sull'uso della gerarchia di memoria negli engine streaming-MoE.
-5. **[IL CONTRIBUTO CENTRALE, da costruire+misurare] Quantizzazione temperature-per-expert.** Bit-width per-expert dalla FREQUENZA di routing (freddi → 1-1.58bit, caldi → 2bit+). Ortogonale all'imatrix (imatrix = qualità a taglia fissa; temp-quant = memoria). Fondata su H4/H5 (freddi = basso impatto → comprimere ≪ droppare). Dati per costruirlo: nostri trace + REAP (`reap_union_sim.py`). Da BATTERE i baseline (dwarf-2bit-uniforme / layer-mixed-antirez / 4bit) a parità di GB.
+5. **[SUPERSEDED come "contributo centrale" — ora idea-sola [OPEN], vedi docs/CLAIMS_CURRENT.md] Quantizzazione temperature-per-expert.** Bit-width per-expert dalla FREQUENZA di routing (freddi → 1-1.58bit, caldi → 2bit+). Ortogonale all'imatrix (imatrix = qualità a taglia fissa; temp-quant = memoria). Fondata su H4/H5 (freddi = basso impatto → comprimere ≪ droppare). Dati per costruirlo: nostri trace + REAP (`reap_union_sim.py`). Da BATTERE i baseline (dwarf-2bit-uniforme / layer-mixed-antirez / 4bit) a parità di GB. **NB: non più il centro del lavoro (il contributo corrente è REAP-LOOP); resta un'idea NON costruita e NON misurata, stato [OPEN].**
 6. **Risultato NEGATIVO solido**: ridondanza sub-expert weight-space = ZERO su 3 famiglie (Qwen-30B 128/0-shared, DS2-Lite 64/2-shared, V4-Flash 256/1-shared fp4). → I1/I2/I3, H6/H7. Pubblicabile ("non fondere sub-expert in weight-space").
 7. **Scala-invarianza della miss-rate** (30B ≈ 235B per-workload) → I3.
 8. **REAP/FT su dominio dimezza l'union quasi-lossless** (keep50 reroute 8.2%/massa 99.3%) → I10.
@@ -32,4 +35,5 @@
 - Pesi: 2-bit `models\ds4\` (86.7GB) + su WSL `/root/models/ds4-2bit.gguf`; static-Q4 in build sul pod.
 
 ## TAGLIO PUBBLICABILE
+**[SUPERSEDED — taglio storico; il contributo corrente è REAP-LOOP, stato in docs/CLAIMS_CURRENT.md]**
 Nota breve / workshop: *"Impact-weighted expert prefetch"* — (1) decomposizione impatto come contributo centrale, (2) coverage-vs-temporal + (3) static-is-the-collo + (4) leva-RAM come contorno sistemistico, (5) temperature-quant come metodo, (6) negativo come appendice. **Ciò che manca per la credibilità: la validazione qualita' (2bit vs 4bit vs temp-quant, a parità di GB) — in corso.**

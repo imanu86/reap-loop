@@ -16,14 +16,14 @@ back-compat DS4_REAP_WRAP). No disk on the hot path.
 
 Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
 ---
- ds4.c | 411 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 411 insertions(+)
+ ds4.c | 417 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 417 insertions(+)
 
 diff --git a/ds4.c b/ds4.c
 index 7275234..36cb124 100644
 --- a/ds4.c
 +++ b/ds4.c
-@@ -12607,6 +12607,412 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+@@ -12607,6 +12607,418 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
  }
  
  
@@ -132,6 +132,12 @@ index 7275234..36cb124 100644
 +    g_pace.keep_max     = pace_env_i("DS4_PACE_KEEP_MAX", 64);
 +    g_pace.keep_step    = pace_env_i("DS4_PACE_KEEP_STEP", 4);
 +    g_pace.ngram_n      = pace_env_i("DS4_PACE_NGRAM_N", 3);
++    /* clamp: n<1 degenerates the n-gram score (loops use n*4, len-n+1, k<n),
++     * yielding meaningless/degenerate breath triggers. Non-numeric env already
++     * falls back to 3 via pace_env_i; 0/negative parse fine but are invalid,
++     * so floor at 3 and cap so a full n-gram fits the ring. */
++    if (g_pace.ngram_n < 1) g_pace.ngram_n = 3;
++    if (g_pace.ngram_n > DS4_PACE_NGRAM_MAX / 4) g_pace.ngram_n = DS4_PACE_NGRAM_MAX / 4;
 +    g_pace.ngram_window = (uint32_t)pace_env_i("DS4_PACE_NGRAM_WINDOW", 120);
 +    if (g_pace.ngram_window > DS4_PACE_NGRAM_MAX)
 +        g_pace.ngram_window = DS4_PACE_NGRAM_MAX;

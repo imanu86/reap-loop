@@ -77,9 +77,13 @@ it extends it. A verbatim copy of the upstream README and the relevant paper are
   a research direction, not a shipped algorithm; the fixed keep-level schedules in the ledger are the
   datapoints that would *map* the response curve, not the final controller.
 - **The prior-art analysis is deliberately conservative.** No single building block is claimed as new.
-  What is defensible is the *closed-loop composition*, an observed causal asymmetry in pruning, and a
-  specific drift signal (gate-mass landing on pruned experts). See `docs/REAP_LOOP_NOVELTY.md` and
-  `docs/PRIOR_ART.md`.
+  What is defensible is the *reversible closed-loop composition* (mask actuator, zero-violation), a
+  *paired rand/reap contrast* (1.345x, CI[1.270, 1.423], same GPU, confound-clean), and static keep-23
+  as a **speed diagnostic** (11-17 t/s on a pod 3090, **not** generalized). The previously claimed
+  "causal asymmetry in pruning" is **RETRACTED** — it did not replicate under multiseed (N=3) and was a
+  mask-inert + n=1 artifact. For the current, canonical status of every claim, see
+  [`docs/CLAIMS_CURRENT.md`](docs/CLAIMS_CURRENT.md) (single source of truth), plus
+  `docs/REAP_LOOP_NOVELTY.md` and `docs/PRIOR_ART.md`.
 
 ## License
 

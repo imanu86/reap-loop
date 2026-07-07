@@ -20,7 +20,7 @@ index f18e852..7275234 100644
  }
  
  static void layer_topk_selected_experts_from_probs(
-@@ -12396,6 +12400,213 @@ static uint32_t metal_graph_stream_prefill_layer_prepare_ahead(void) {
+@@ -12396,6 +12400,226 @@ static uint32_t metal_graph_stream_prefill_layer_prepare_ahead(void) {
      return (uint32_t)v;
  }
  
@@ -35,6 +35,7 @@ index f18e852..7275234 100644
 + *      DS4_REAP_WRAP_LOCK=1   also mlock() the ranges (needs memlock rlimit;
 + *                                 keeps the working set immune to page eviction) */
 +static volatile int g_reap_prefetch_busy;
++static volatile int g_reap_prefetch_pending;   /* mask change seen while busy */
 +static uint64_t g_reap_prefetch_sig = 0;
 +
 +typedef struct {
@@ -111,6 +112,9 @@ index f18e852..7275234 100644
 +    if (n == 0) {
 +        free(ranges);
 +        g_reap_prefetch_busy = 0;
++        /* WRAP-race fix: honor a mask change that arrived while busy. */
++        if (__sync_lock_test_and_set(&g_reap_prefetch_pending, 0))
++            ds4_reap_prefetch_working_set(model, weights);
 +        return NULL;
 +    }
 +    qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
@@ -190,6 +194,12 @@ index f18e852..7275234 100644
 +    free(workers);
 +    free(ranges);
 +    g_reap_prefetch_busy = 0;
++    /* WRAP-race fix: if a mask change arrived while this pass was busy, the
++     * trigger set pending instead of dropping it. Re-run now with the LATEST
++     * mask (re-read from the globals) so the working set is never left stale
++     * (root cause of the "staircase cache-poisoned" behavior). */
++    if (__sync_lock_test_and_set(&g_reap_prefetch_pending, 0))
++        ds4_reap_prefetch_working_set(model, weights);
 +    return NULL;
 +}
 +
@@ -213,7 +223,10 @@ index f18e852..7275234 100644
 +    }
 +    if (sig == g_reap_prefetch_sig) return;   /* same mask: nothing to do */
 +    if (__sync_lock_test_and_set(&g_reap_prefetch_busy, 1)) {
-+        fprintf(stderr, "ds4: REAP prefetch: gia' in corso, salto\n");
++        /* WRAP-race fix: a pass is in flight. Do NOT drop this mask change:
++         * flag it pending so the running worker re-runs the prefetch with the
++         * latest mask when it finishes (see ds4_reap_prefetch_main). */
++        g_reap_prefetch_pending = 1;
 +        return;
 +    }
 +    g_reap_prefetch_sig = sig;
