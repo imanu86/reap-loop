@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Pasta alla carbonara. Per 6 persone, tempo 60 minuti.
+Ingredienti: zucchero, prezzemolo, brodo vegetale, aglio, pancetta.
+Preparazione: cuocere a fuoco lento aglio; sfumare con prezzemolo; mantecare aglio; infornare zucchero; aggiungere pancetta; scolare pancetta.
+{"titolo": "Pasta alla carbonara", "porzioni": 6, "tempo_minuti": 60, "ingredienti": ["zucchero", "prezzemolo", "brodo vegetale", "aglio", "pancetta"], "passi": ["cuocere a fuoco lento aglio", "sfumare con prezzemolo", "mantecare aglio", "infornare zucchero", "aggiungere pancetta", "scolare pancetta"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Risotto allo zafferano. Per 8 persone, tempo 15 minuti.
+Ingredienti: pancetta, burro, riso Carnaroli, parmigiano, farina 00, vino bianco, cipolla.
+Preparazione: scolare riso Carnaroli; infornare cipolla; mescolare pancetta; mantecare pancetta; mantecare parmigiano; scolare vino bianco.
+{"titolo": "Risotto allo zafferano", "porzioni": 8, "tempo_minuti": 15, "ingredienti": ["pancetta", "burro", "riso Carnaroli", "parmigiano", "farina 00", "vino bianco", "cipolla"], "passi": ["scolare riso Carnaroli", "infornare cipolla", "mescolare pancetta", "mantecare pancetta", "mantecare parmigiano", "scolare vino bianco"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 8 persone, tempo 60 minuti.
+Ingredienti: sale fino, basilico, uova, parmigiano, prezzemolo, riso Carnaroli, farina 00.
+Preparazione: scolare basilico; mescolare farina 00; aggiungere farina 00; scolare riso Carnaroli; impastare prezzemolo; scolare parmigiano.
+{"titolo": "Polenta concia", "porzioni": 8, "tempo_minuti": 60, "ingredienti": ["sale fino", "basilico", "uova", "parmigiano", "prezzemolo", "riso Carnaroli", "farina 00"], "passi": ["scolare basilico", "mescolare farina 00", "aggiungere farina 00", "scolare riso Carnaroli", "impastare prezzemolo", "scolare parmigiano"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Insalata di farro. Per 4 persone, tempo 90 minuti.
+Ingredienti: sedano, brodo vegetale, carote, lievito, zafferano, uova, zucchero, farina 00.
+Preparazione: mantecare lievito; scolare zafferano; mescolare zafferano; impastare carote; cuocere a fuoco lento zucchero; mescolare zucchero.
+{"titolo": "Insalata di farro", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["sedano", "brodo vegetale", "carote", "lievito", "zafferano", "uova", "zucchero", "farina 00"], "passi": ["mantecare lievito", "scolare zafferano", "mescolare zafferano", "impastare carote", "cuocere a fuoco lento zucchero", "mescolare zucchero"]}

@@ -1,0 +1,26 @@
+# OLMoE-1B-7B-0924 — punto ad ALTA sparsità (s=0.125). Specifiche verificate (docs/02_models.md).
+model_id: allenai/OLMoE-1B-7B-0924
+arch: olmoe
+n_total_experts: 64
+top_k: 8
+n_active_experts: 8
+shared_experts: 0
+sparsity_ratio: 0.125          # n_active / n_total
+total_params_b: 6.9
+fp16_size_gb: 13.8             # NON entra a fp16 in 12GB
+fits_12gb_fp16: false
+
+expert_layout: module_list      # mlp.experts[i] -> ResidencyManager backend ModuleListStore (offload facile)
+gate_attr_path: mlp.gate        # forward-hook qui (raw logits, senza output_router_logits)
+first_moe_layer: 0
+norm_topk_prob: false
+
+# FULL ground truth su 12GB: int8 uniforme in VRAM (~7GB) OPPURE bf16 con CPU-offload degli expert.
+full_baseline: int8_in_vram     # {int8_in_vram | bf16_cpu_offload}
+
+# Sweep top-k within-model (asse B continuo): rinormalizza i gate a top-k variato.
+topk_sweep: [4, 8, 16]
+
+notes: >
+  Modello di riferimento per l'alta sparsità: router pulito, expert ModuleList (offload per-expert
+  diretto), e benchmarkato da SpecMD (hit-rate >88% con cache ~5%) -> evidenza esterna di alta località.

@@ -1,0 +1,164 @@
+From 7a93e3b19d8bc3359c2581dd81de4b2391590d27 Mon Sep 17 00:00:00 2001
+From: root <root@WORKSTATION.localdomain>
+Date: Sun, 5 Jul 2026 18:32:33 +0200
+Subject: [PATCH] feat(spex): DS4_SPEX_TRACE_HIDDEN dump of router-input hidden
+ (decode+prefill) [WIP]
+
+Decode: reads g->ffn_norm (exact router input) inside the existing
+per-token/per-layer trace hook. Prefill: reads rows of g->batch_ffn_norm
+after the batch router select. fp16 records, DSH1 header. No-op when the
+env var is unset.
+---
+ ds4.c | 122 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 122 insertions(+)
+
+diff --git a/ds4.c b/ds4.c
+index 78cae24..c5520ed 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14318,6 +14318,108 @@ static FILE *metal_graph_spex_trace_routing_file(void) {
+     return g_spex_trace_routing_fh;
+ }
+ 
++/* DS4_SPEX_TRACE_HIDDEN=/path/file.dsh dumps, for every DECODE token and
++ * (bonus) every PREFILL token, the router-input hidden of each MoE layer:
++ * the post-attention, ffn_norm-normalized vector that feeds the router gate
++ * matmul.  This is the EXACT router input, not an approximation: on the decode
++ * path it is g->ffn_norm (written by ds4_gpu_rms_norm_weight_tensor right
++ * before ds4_gpu_router_select_tensor, and never overwritten before the
++ * note_selected trace call in the same layer iteration); on the prefill path
++ * it is a row of g->batch_ffn_norm (written by ds4_gpu_rms_norm_weight_rows_
++ * tensor right before ds4_gpu_router_select_batch_tensor).
++ *
++ * Binary format (append-only, little-endian):
++ *   header (16 bytes, written once):
++ *     char     magic[4] = "DSH1"
++ *     uint32_t version  = 1
++ *     uint32_t n_layer          (DS4_N_LAYER at open time)
++ *     uint32_t n_embd           (DS4_N_EMBD  at open time)
++ *   record (repeated):
++ *     uint32_t pos              (absolute token position)
++ *     uint32_t layer            (MoE layer index il)
++ *     uint16_t hidden[n_embd]   (fp16, simple f32_to_f16 cast of the router input)
++ *
++ * Overhead is zero when the env var is unset: the flag is parsed once into a
++ * static and every hook early-returns before touching the file or allocating.
++ * When enabled it does one synchronous n_embd*4-byte GPU readback + one fp16
++ * cast + one buffered fwrite per (token,layer); the readback dominates. */
++static FILE *g_spex_trace_hidden_fh;
++static bool  g_spex_trace_hidden_failed;
++static bool  g_spex_trace_hidden_header_written;
++static uint64_t g_spex_trace_hidden_read_fail;
++
++static bool metal_graph_spex_trace_hidden_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_SPEX_TRACE_HIDDEN");
++        cached = (v && v[0]) ? 1 : 0;
++    }
++    return cached == 1;
++}
++
++static FILE *metal_graph_spex_trace_hidden_file(void) {
++    if (g_spex_trace_hidden_failed) return NULL;
++    if (g_spex_trace_hidden_fh) return g_spex_trace_hidden_fh;
++    const char *path = getenv("DS4_SPEX_TRACE_HIDDEN");
++    if (!path || !path[0]) return NULL;
++    g_spex_trace_hidden_fh = fopen(path, "wb");
++    if (!g_spex_trace_hidden_fh) {
++        fprintf(stderr,
++                "ds4: cannot open DS4_SPEX_TRACE_HIDDEN '%s': %s\n",
++                path,
++                strerror(errno));
++        g_spex_trace_hidden_failed = true;
++        return NULL;
++    }
++    if (!g_spex_trace_hidden_header_written) {
++        const uint32_t version = 1;
++        const uint32_t n_layer = (uint32_t)DS4_N_LAYER;
++        const uint32_t n_embd  = (uint32_t)DS4_N_EMBD;
++        fwrite("DSH1", 1, 4, g_spex_trace_hidden_fh);
++        fwrite(&version, sizeof(version), 1, g_spex_trace_hidden_fh);
++        fwrite(&n_layer, sizeof(n_layer), 1, g_spex_trace_hidden_fh);
++        fwrite(&n_embd,  sizeof(n_embd),  1, g_spex_trace_hidden_fh);
++        g_spex_trace_hidden_header_written = true;
++        fprintf(stderr,
++                "ds4: SPEX hidden trace enabled: %s (n_layer=%u n_embd=%u)\n",
++                path, n_layer, n_embd);
++    }
++    return g_spex_trace_hidden_fh;
++}
++
++/* Reads the DS4_N_EMBD-float router input from GPU tensor 'src' at 'row_bytes'
++ * offset, casts to fp16, and appends one record.  'src' must already be
++ * populated on the GPU and visible to a synchronous readback (guaranteed at
++ * both call sites: decode runs after a blocking selected-id readback, prefill
++ * runs after the batch router select is committed). */
++static void metal_graph_spex_trace_hidden_row(
++        const ds4_gpu_tensor *src,
++        uint64_t              row_byte_offset,
++        uint32_t              pos,
++        uint32_t              layer) {
++    if (!metal_graph_spex_trace_hidden_enabled()) return;
++    if (!src) return;
++    FILE *fh = metal_graph_spex_trace_hidden_file();
++    if (!fh) return;
++    const uint32_t n_embd = (uint32_t)DS4_N_EMBD;
++    if (n_embd == 0) return;
++    float  *fbuf = xmalloc((size_t)n_embd * sizeof(float));
++    uint16_t *hbuf = xmalloc((size_t)n_embd * sizeof(uint16_t));
++    if (ds4_gpu_tensor_read(src, row_byte_offset, fbuf,
++                            (uint64_t)n_embd * sizeof(float)) != 0) {
++        for (uint32_t i = 0; i < n_embd; i++) hbuf[i] = f32_to_f16(fbuf[i]);
++        fwrite(&pos, sizeof(pos), 1, fh);
++        fwrite(&layer, sizeof(layer), 1, fh);
++        fwrite(hbuf, sizeof(uint16_t), n_embd, fh);
++    } else if (g_spex_trace_hidden_read_fail++ == 0) {
++        fprintf(stderr,
++                "ds4: SPEX hidden trace: router-input readback failed "
++                "(reported once)\n");
++    }
++    free(hbuf);
++    free(fbuf);
++}
++
+ static void metal_graph_spex_trace_selected(
+         const ds4_gpu_graph *g,
+         uint32_t             il,
+@@ -14332,6 +14434,11 @@ static void metal_graph_spex_trace_selected(
+             return;
+         }
+     }
++    /* SPEX hidden dump (decode): g->ffn_norm is the exact router input for this
++     * layer (post-attention ffn_norm-normalized hidden), written just before the
++     * router select and still live here.  Independent of the routing CSV. */
++    metal_graph_spex_trace_hidden_row(g->ffn_norm, 0, g->spex_trace_pos, il);
++
+     FILE *fh = metal_graph_spex_trace_routing_file();
+     if (!fh) return;
+     fprintf(fh,
+@@ -19617,6 +19724,21 @@ static bool metal_graph_encode_layer_ffn_batch(
+         metal_graph_debug_dump_tensor("ffn_moe_weights_scaled", g->batch_router_weights,
+                                       (uint64_t)n_tokens * DS4_N_EXPERT_USED, il, pos0);
+     }
++    /* SPEX hidden dump (prefill/bonus): g->batch_ffn_norm holds the exact router
++     * input for every prefill token (token-major rows of DS4_N_EMBD floats),
++     * written by ds4_gpu_rms_norm_weight_rows_tensor just above and consumed by
++     * the batch router select.  Token t's absolute position is pos0 + t (see the
++     * pos = pos0 + t convention elsewhere in the batch path).  Guarded internally
++     * so this is a no-op unless DS4_SPEX_TRACE_HIDDEN is set. */
++    if (ok && metal_graph_spex_trace_hidden_enabled()) {
++        for (uint32_t t = 0; t < n_tokens; t++) {
++            metal_graph_spex_trace_hidden_row(
++                g->batch_ffn_norm,
++                (uint64_t)t * (uint64_t)DS4_N_EMBD * sizeof(float),
++                pos0 + t,
++                il);
++        }
++    }
+     DS4_METAL_PROFILE_FFN_STAGE("router");
+ 
+     if (ok) {
+-- 
+2.43.0
+

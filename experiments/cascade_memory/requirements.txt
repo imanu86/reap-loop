@@ -1,0 +1,6 @@
+# Harness deps. Everything else is Python stdlib (urllib for the OpenAI-compat client).
+numpy>=1.26
+scikit-learn>=1.3
+# e5 embedding (rung-1, Step 2 only — NOT needed for Step 0/1):
+#   sentence-transformers>=3.0
+#   torch

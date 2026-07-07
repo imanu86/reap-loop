@@ -1,0 +1,7 @@
+Sei un consulente esperto.
+
+Spiega passo passo, in italiano, la tecnica ottimale per preparare questo piatto senza errori, i punti critici e le varianti utili. Sii dettagliato.
+
+Ricetta: Panna cotta. Per 2 persone, tempo 90 minuti.
+Ingredienti: carote, olio extravergine, zucchero, vino bianco, latte intero, uova, cipolla, prezzemolo.
+Preparazione: mantecare latte intero; scolare zucchero; mantecare vino bianco; scolare latte intero; mescolare latte intero; mescolare prezzemolo.

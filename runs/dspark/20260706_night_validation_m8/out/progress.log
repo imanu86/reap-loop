@@ -1,0 +1,23 @@
+[2026-07-05 21:13:37] NOTTURNA START; gpu=NVIDIA GeForce RTX 3060
+[2026-07-05 21:13:37] sanity ds4-eval ON (1 domanda, 16 tok)
+[2026-07-05 21:14:49] sanity rc=1
+[2026-07-05 21:14:49] SANITY FALLITA - salto JOB1, procedo con JOB2/JOB3
+[2026-07-05 21:14:49] JOB2 M8 start (reserve 1GB)
+[2026-07-05 21:16:49] JOB2 m8_base_res1_r1 rc=0 120s ds4: prefill: 1.51 t/s, generation: 1.06 t/s
+[2026-07-05 21:19:37] JOB2 m8_spec2_res1_r1 rc=0 168s ds4: prefill: 1.55 t/s, generation: 0.70 t/s
+[2026-07-05 21:21:45] JOB2 m8_base_res1_r2 rc=0 128s ds4: prefill: 1.49 t/s, generation: 0.98 t/s
+[2026-07-05 21:24:37] JOB2 m8_spec2_res1_r2 rc=0 172s ds4: prefill: 1.54 t/s, generation: 0.68 t/s
+[2026-07-05 21:24:37] JOB2: cache disabled con reserve 1GB (dato per 0011) - provo reserve 3GB + 250 exp
+[2026-07-05 21:27:31] JOB2 m8_spec2_res3_r1 rc=0 174s ds4: prefill: 1.60 t/s, generation: 0.67 t/s
+[2026-07-05 21:33:37] JOB2 m8_base_res3_r1 rc=0 366s ds4: prefill: 1.57 t/s, generation: 0.29 t/s
+[2026-07-05 21:33:37] JOB2 M8 spec4 bonus
+[2026-07-05 21:37:15] JOB2 m8_spec4_res1_r1 rc=0 218s ds4: prefill: 1.55 t/s, generation: 0.52 t/s
+[2026-07-05 21:37:15] JOB3 coppie CLI start
+[2026-07-05 21:39:43] JOB3 code OFF rc=0
+[2026-07-05 21:42:12] JOB3 code ON rc=0 conf=27
+[2026-07-05 21:44:45] JOB3 math OFF rc=0
+[2026-07-05 21:47:21] JOB3 math ON rc=0 conf=28
+[2026-07-05 21:47:56] JOB3 chat OFF rc=1
+[2026-07-05 21:50:33] JOB3 chat ON rc=0 conf=24
+[2026-07-05 21:50:33] NOTTURNA DONE
+[2026-07-05 21:51:07] JOB1(retry) OFF start - 20 domande, 384 tok, cache 250

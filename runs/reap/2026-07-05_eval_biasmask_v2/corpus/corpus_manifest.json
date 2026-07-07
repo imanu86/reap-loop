@@ -1,0 +1,175 @@
+{
+ "dom": [
+  {
+   "file": "dom_chunk0.txt",
+   "domain_item_indices": [
+    1
+   ],
+   "chars": 2736,
+   "sha256": "90aad4c3b4a3a5a05517bcf83ebfb2f8b2998a0a5d072675db4ed2e1ab22aba9"
+  },
+  {
+   "file": "dom_chunk1.txt",
+   "domain_item_indices": [
+    2,
+    3
+   ],
+   "chars": 3846,
+   "sha256": "e15013d904bf5fc05bf53235c9edae29520121a77792902dddd350f4f0a1a8b9"
+  },
+  {
+   "file": "dom_chunk2.txt",
+   "domain_item_indices": [
+    4,
+    5
+   ],
+   "chars": 4344,
+   "sha256": "c0545da6521837c307f3f126084f417f3ada3856bd82ca24b4d94039f5e7dead"
+  },
+  {
+   "file": "dom_chunk3.txt",
+   "domain_item_indices": [
+    6,
+    8
+   ],
+   "chars": 4279,
+   "sha256": "efb7b42122c94eddcf616db76944b695efd6f00e897c70ae4f1af33bd3c1cdc8"
+  },
+  {
+   "file": "dom_chunk4.txt",
+   "domain_item_indices": [
+    10,
+    11
+   ],
+   "chars": 4115,
+   "sha256": "031a5e52bf798652512382c91c82a50048822125aeae824165169a8a29871981"
+  },
+  {
+   "file": "dom_chunk5.txt",
+   "domain_item_indices": [
+    12
+   ],
+   "chars": 2740,
+   "sha256": "cf0f98d17a31b2766cc5c7ad05e8a90e5a7ea3edb9a6c7efc8e2a33db2c91716"
+  },
+  {
+   "file": "dom_chunk6.txt",
+   "domain_item_indices": [
+    13
+   ],
+   "chars": 2486,
+   "sha256": "068f51f797472d7d85a15a8c062336afafb381ab5d830f61113f60c0aea7d321"
+  },
+  {
+   "file": "dom_chunk7.txt",
+   "domain_item_indices": [
+    14,
+    15
+   ],
+   "chars": 4132,
+   "sha256": "ac92692aa35e6f3b74f7ce0cbf92f3ec04c6cbcfc4d08c462f8a44a0704e7b55"
+  },
+  {
+   "file": "dom_chunk8.txt",
+   "domain_item_indices": [
+    16,
+    17
+   ],
+   "chars": 4753,
+   "sha256": "cd6802488897f8da24e57249675f17f19fe585e91b33fea8b8d3780ffdfe161a"
+  },
+  {
+   "file": "dom_chunk9.txt",
+   "domain_item_indices": [
+    19,
+    20
+   ],
+   "chars": 4002,
+   "sha256": "ef13b9de2b6ec9a80733a79da5b435f3eb0893ed861eb4f77ec58f90c9d8e60a"
+  }
+ ],
+ "gen": [
+  {
+   "file": "gen_chunk0.txt",
+   "wiki_titles": [
+    "Armonium"
+   ],
+   "chars": 3002,
+   "sha256": "5bb11a06136786e6df4503b52a3a713c5cb426052c341e961174272365fd0bdc"
+  },
+  {
+   "file": "gen_chunk1.txt",
+   "wiki_titles": [
+    "Antropologia"
+   ],
+   "chars": 3002,
+   "sha256": "4345c583a8958ed277c03ac58bc64c5f33d26e8608a828b9afcd11dccfe55c80"
+  },
+  {
+   "file": "gen_chunk2.txt",
+   "wiki_titles": [
+    "Agricoltura"
+   ],
+   "chars": 3002,
+   "sha256": "0864ed9d853392c2352454ff04b7c7af4e375f442399905231d8d51215c76765"
+  },
+  {
+   "file": "gen_chunk3.txt",
+   "wiki_titles": [
+    "Architettura"
+   ],
+   "chars": 3002,
+   "sha256": "0d1ede6d6fa43d56cb2494b55451898c0e1dadb4d62974b2ff83038e4b884e5e"
+  },
+  {
+   "file": "gen_chunk4.txt",
+   "wiki_titles": [
+    "Astronomia"
+   ],
+   "chars": 3002,
+   "sha256": "4eea697b19dcbb33ddb67c03620e737fa40ff4c5da630dd7df5204aaf34db60d"
+  },
+  {
+   "file": "gen_chunk5.txt",
+   "wiki_titles": [
+    "Archeologia subacquea"
+   ],
+   "chars": 3002,
+   "sha256": "752c91db229d004098bde5a0f1f09282bd26e2ed97140c405e36960512246d44"
+  },
+  {
+   "file": "gen_chunk6.txt",
+   "wiki_titles": [
+    "Analisi delle frequenze",
+    "Aerofoni"
+   ],
+   "chars": 4568,
+   "sha256": "af6ee08c3fc22e2c70dc471594d33b5a2609087994b6606c40bfacc05b509c65"
+  },
+  {
+   "file": "gen_chunk7.txt",
+   "wiki_titles": [
+    "Arte"
+   ],
+   "chars": 3002,
+   "sha256": "5c552dd53deb5e526ba9cc5923ef12167324322fa67fb5da8fffaf8a1a3ee140"
+  },
+  {
+   "file": "gen_chunk8.txt",
+   "wiki_titles": [
+    "Abbie Hoffman"
+   ],
+   "chars": 3002,
+   "sha256": "2362058317855497b51f0bf8ba4a91f352d7ab214b76033eb718479d673ecbfa"
+  },
+  {
+   "file": "gen_chunk9.txt",
+   "wiki_titles": [
+    "Adige"
+   ],
+   "chars": 3002,
+   "sha256": "1987283f78f728ac6bad4432c5dfa79172790f771b05cf5ee676c6db8976a854"
+  }
+ ],
+ "nota": "dom: domain-eval item DISGIUNTI dalla trace (anti-overfit mask); gen: wikimedia/wikipedia 20231101.it come build_general_it.py"
+}

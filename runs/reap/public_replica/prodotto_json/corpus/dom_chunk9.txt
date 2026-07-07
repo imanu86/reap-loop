@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Ferroni Scarpe661
+Categoria: scarpe da corsa. Marca: Ferroni. Colore: blu notte. Materiale principale: nylon balistico. Peso: 2.51 kg. Prezzo di listino: 152.01 euro. Disponibilita': ultimi pezzi. Spedizione da Firenze. Garanzia 24 mesi. Codice: FER-35456.
+{"nome": "Ferroni Scarpe661", "marca": "Ferroni", "categoria": "scarpe da corsa", "colore": "blu notte", "materiale": "nylon balistico", "peso_kg": 2.51, "prezzo_eur": 152.01, "sconto_pct": 0, "disponibilita": "ultimi pezzi", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sanpietro Caffettiera460
+Categoria: caffettiera. Marca: Sanpietro. Colore: grigio antracite. Materiale principale: policarbonato. Peso: 2.76 kg. Prezzo di listino: 356.03 euro. Disponibilita': ultimi pezzi. Spedizione da Napoli. Garanzia 24 mesi. Codice: SAN-98653.
+{"nome": "Sanpietro Caffettiera460", "marca": "Sanpietro", "categoria": "caffettiera", "colore": "grigio antracite", "materiale": "policarbonato", "peso_kg": 2.76, "prezzo_eur": 356.03, "sconto_pct": 0, "disponibilita": "ultimi pezzi", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Belcanto Tastiera649
+Categoria: tastiera meccanica. Marca: Belcanto. Colore: blu notte. Materiale principale: alluminio. Peso: 4.33 kg. Prezzo di listino: 498.19 euro. Disponibilita': ultimi pezzi. Spedizione da Bologna. Garanzia 24 mesi. Codice: BEL-80637.
+{"nome": "Belcanto Tastiera649", "marca": "Belcanto", "categoria": "tastiera meccanica", "colore": "blu notte", "materiale": "alluminio", "peso_kg": 4.33, "prezzo_eur": 498.19, "sconto_pct": 0, "disponibilita": "ultimi pezzi", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Aurelia Monitor105
+Categoria: monitor 27 pollici. Marca: Aurelia. Colore: verde oliva. Materiale principale: acciaio inox. Peso: 1.94 kg. Prezzo di listino: 77.03 euro, sconto 15% attivo. Disponibilita': ultimi pezzi. Spedizione da Verona. Garanzia 12 mesi. Codice: AUR-27825.
+{"nome": "Aurelia Monitor105", "marca": "Aurelia", "categoria": "monitor 27 pollici", "colore": "verde oliva", "materiale": "acciaio inox", "peso_kg": 1.94, "prezzo_eur": 77.03, "sconto_pct": 15, "disponibilita": "ultimi pezzi", "garanzia_mesi": 12}

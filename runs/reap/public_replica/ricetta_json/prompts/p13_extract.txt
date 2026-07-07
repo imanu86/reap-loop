@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Pesto alla genovese. Per 6 persone, tempo 45 minuti.
+Ingredienti: parmigiano, riso Carnaroli, basilico, uova, pomodori pelati, vino bianco, carote.
+Preparazione: far riposare basilico; aggiungere parmigiano; cuocere a fuoco lento uova; scolare uova.

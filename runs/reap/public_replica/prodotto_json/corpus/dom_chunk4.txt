@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Smartwatch976
+Categoria: smartwatch. Marca: Tavernelli. Colore: azzurro. Materiale principale: gomma naturale. Peso: 3.14 kg. Prezzo di listino: 114.93 euro, sconto 25% attivo. Disponibilita': in arrivo. Spedizione da Bari. Garanzia 24 mesi. Codice: TAV-40143.
+{"nome": "Tavernelli Smartwatch976", "marca": "Tavernelli", "categoria": "smartwatch", "colore": "azzurro", "materiale": "gomma naturale", "peso_kg": 3.14, "prezzo_eur": 114.93, "sconto_pct": 25, "disponibilita": "in arrivo", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Aurelia Bicicletta463
+Categoria: bicicletta da citta'. Marca: Aurelia. Colore: nero. Materiale principale: poliestere riciclato. Peso: 4.09 kg. Prezzo di listino: 295.5 euro. Disponibilita': disponibile. Spedizione da Bologna. Garanzia 24 mesi. Codice: AUR-62671.
+{"nome": "Aurelia Bicicletta463", "marca": "Aurelia", "categoria": "bicicletta da citta'", "colore": "nero", "materiale": "poliestere riciclato", "peso_kg": 4.09, "prezzo_eur": 295.5, "sconto_pct": 0, "disponibilita": "disponibile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Montefiore Smartwatch823
+Categoria: smartwatch. Marca: Montefiore. Colore: verde oliva. Materiale principale: poliestere riciclato. Peso: 0.49 kg. Prezzo di listino: 364.55 euro, sconto 10% attivo. Disponibilita': prenotabile. Spedizione da Verona. Garanzia 36 mesi. Codice: MON-39474.
+{"nome": "Montefiore Smartwatch823", "marca": "Montefiore", "categoria": "smartwatch", "colore": "verde oliva", "materiale": "poliestere riciclato", "peso_kg": 0.49, "prezzo_eur": 364.55, "sconto_pct": 10, "disponibilita": "prenotabile", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sartori Giacca611
+Categoria: giacca antipioggia. Marca: Sartori. Colore: bianco panna. Materiale principale: legno di faggio. Peso: 2.42 kg. Prezzo di listino: 46.45 euro, sconto 10% attivo. Disponibilita': ultimi pezzi. Spedizione da Bologna. Garanzia 36 mesi. Codice: SAR-66281.
+{"nome": "Sartori Giacca611", "marca": "Sartori", "categoria": "giacca antipioggia", "colore": "bianco panna", "materiale": "legno di faggio", "peso_kg": 2.42, "prezzo_eur": 46.45, "sconto_pct": 10, "disponibilita": "ultimi pezzi", "garanzia_mesi": 36}

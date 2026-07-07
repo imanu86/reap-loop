@@ -1,0 +1,180 @@
+From b45aba5842f19e188bb0d781f4d6b25ccd642d15 Mon Sep 17 00:00:00 2001
+From: REAP-LOOP contributors <noreply@example.com>
+Date: Sun, 5 Jul 2026 20:01:11 +0200
+Subject: [PATCH] cuda: durable secondary registration for the MTP support
+ model map
+
+The primary model-map slot churns on SSD-streaming remaps:
+cuda_model_set_host_map unregisters the previous base, so the MTP support
+map registered at engine init loses device access on the first streaming
+remap. Per-range fallbacks then fail on WSL2 (pageable DMA from file-backed
+mmap -> cudaErrorInvalidValue on every draft, spec decode silently dead).
+
+Add a dedicated support slot (register once, resolve before fallbacks,
+ownership handoff so the primary churn never unregisters it). Metal stub
+returns success (unified memory). Observed on RTX 3060/WSL2: drafter goes
+from 100% range-copy failures to 33/33 verify cycles per 100 tokens.
+---
+ ds4.c       |  2 ++
+ ds4_cuda.cu | 67 ++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ ds4_gpu.h   |  1 +
+ ds4_metal.m |  5 ++++
+ 4 files changed, 74 insertions(+), 1 deletion(-)
+
+diff --git a/ds4.c b/ds4.c
+index 8bcbdbb..342bb43 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -26615,6 +26615,8 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+                 return 1;
+             }
+             (void)ds4_gpu_set_model_fd_for_map(e->model.fd, e->model.map);
++            (void)ds4_gpu_register_support_model_map(e->mtp_model.map,
++                                                     e->mtp_model.size);
+         }
+         fprintf(stderr, "ds4: %s backend initialized for graph diagnostics\n",
+                 ds4_backend_name(e->backend));
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index f80de86..7b73a25 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -76,6 +76,13 @@ static const void *g_model_host_base;
+ static const char *g_model_device_base;
+ static uint64_t g_model_registered_size;
+ static int g_model_registered;
++/* Secondary durable mapping for the MTP support model: the primary slot above
++ * churns on SSD-streaming remaps (set_host_map unregisters the old base), so
++ * the drafter needs its own registration that survives the churn. */
++static const void *g_support_host_base;
++static const char *g_support_device_base;
++static uint64_t g_support_size;
++static int g_support_registered;
+ static int g_model_device_owned;
+ static int g_model_range_mapping_supported = 1;
+ static int g_model_hmm_direct;
+@@ -375,6 +382,7 @@ static int cuda_attention_score_buffer_fits(uint32_t n_comp) {
+ 
+ static const char *cuda_model_ptr(const void *model_map, uint64_t offset) {
+     if (model_map == g_model_host_base && g_model_device_base) return g_model_device_base + offset;
++    if (model_map == g_support_host_base && g_support_registered) return g_support_device_base + offset;
+     return (const char *)model_map + offset;
+ }
+ 
+@@ -533,6 +541,10 @@ static const char *cuda_model_range_ptr(const void *model_map, uint64_t offset,
+         }
+     }
+ 
++    if (g_support_registered && model_map == g_support_host_base &&
++        end >= offset && end <= g_support_size) {
++        return g_support_device_base + offset;
++    }
+     if (g_model_device_owned || g_model_registered) return cuda_model_ptr(model_map, offset);
+     if (g_model_hmm_direct &&
+         getenv("DS4_CUDA_WEIGHT_CACHE") == NULL &&
+@@ -555,6 +567,7 @@ static const char *cuda_model_range_ptr(const void *model_map, uint64_t offset,
+ 
+ static int cuda_model_range_is_cached(const void *model_map, uint64_t offset, uint64_t bytes) {
+     if (bytes == 0) return 1;
++    if (g_support_registered && model_map == g_support_host_base) return 1;
+     if (g_model_device_owned || g_model_registered || g_model_hmm_direct) return 1;
+ 
+     const uint64_t end = offset + bytes;
+@@ -2727,7 +2740,11 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+             g_model_device_owned = 0;
+         }
+         if (g_model_registered && g_model_host_base) {
+-            (void)cudaHostUnregister((void *)g_model_host_base);
++            /* Ownership handoff: never unregister memory the support slot
++             * still resolves (MTP map registered before a streaming remap). */
++            if (g_model_host_base != g_support_host_base) {
++                (void)cudaHostUnregister((void *)g_model_host_base);
++            }
+             g_model_registered = 0;
+         }
+         g_model_host_base = model_map;
+@@ -2864,6 +2881,54 @@ extern "C" int ds4_gpu_set_model_map_spans(
+     return 1;
+ }
+ 
++extern "C" int ds4_gpu_register_support_model_map(const void *model_map,
++                                                  uint64_t model_size) {
++    if (!model_map || model_size == 0) return 0;
++    if (g_support_registered && g_support_host_base == model_map) return 1;
++    if (g_support_registered && g_support_host_base) {
++        (void)cudaHostUnregister((void *)g_support_host_base);
++        g_support_registered = 0;
++        g_support_device_base = NULL;
++    }
++    unsigned int flags = cudaHostRegisterMapped | cudaHostRegisterReadOnly;
++    cudaError_t err = cudaHostRegister((void *)model_map, (size_t)model_size, flags);
++    if (err == cudaErrorHostMemoryAlreadyRegistered) {
++        /* Already registered through the primary-slot churn at init: adopt it. */
++        (void)cudaGetLastError();
++        err = cudaSuccess;
++    } else if (err != cudaSuccess) {
++        (void)cudaGetLastError();
++        err = cudaHostRegister((void *)model_map, (size_t)model_size,
++                               cudaHostRegisterMapped);
++        if (err == cudaErrorHostMemoryAlreadyRegistered) {
++            (void)cudaGetLastError();
++            err = cudaSuccess;
++        }
++    }
++    if (err != cudaSuccess) {
++        fprintf(stderr, "ds4: CUDA support model registration skipped: %s\n",
++                cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++    void *dev = NULL;
++    err = cudaHostGetDevicePointer(&dev, (void *)model_map, 0);
++    if (err != cudaSuccess || !dev) {
++        fprintf(stderr, "ds4: CUDA support model pointer lookup failed: %s\n",
++                cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++    g_support_host_base = model_map;
++    g_support_device_base = (const char *)dev;
++    g_support_size = model_size;
++    g_support_registered = 1;
++    fprintf(stderr,
++            "ds4: CUDA registered %.2f GiB support (MTP) model mapping for device access\n",
++            (double)model_size / 1073741824.0);
++    return 1;
++}
++
+ extern "C" int ds4_gpu_set_model_fd_for_map(int fd, const void *model_map) {
+     g_model_fd = fd;
+     g_model_fd_host_base = model_map;
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 025e7c5..e6160f0 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -58,6 +58,7 @@ int ds4_gpu_synchronize(void);
+ int ds4_gpu_set_model_map(const void *model_map, uint64_t model_size);
+ int ds4_gpu_set_model_fd(int fd);
+ int ds4_gpu_set_model_fd_for_map(int fd, const void *model_map);
++int ds4_gpu_register_support_model_map(const void *model_map, uint64_t model_size);
+ int ds4_gpu_set_model_map_range(const void *model_map, uint64_t model_size, uint64_t map_offset, uint64_t map_size, uint64_t max_tensor_bytes);
+ int ds4_gpu_set_model_map_spans(const void *model_map, uint64_t model_size, const uint64_t *offsets, const uint64_t *sizes, uint32_t count, uint64_t max_tensor_bytes);
+ int ds4_gpu_cache_model_range(const void *model_map, uint64_t model_size, uint64_t offset, uint64_t bytes, const char *label);
+diff --git a/ds4_metal.m b/ds4_metal.m
+index 7e3f8bd..c73dbd9 100644
+--- a/ds4_metal.m
++++ b/ds4_metal.m
+@@ -7315,6 +7315,11 @@ static int ds4_gpu_model_views_cover_spans(
+     return 1;
+ }
+ 
++int ds4_gpu_register_support_model_map(const void *model_map, uint64_t model_size) {
++    (void)model_map; (void)model_size;
++    return 1; /* Metal: unified memory, nothing to register */
++}
++
+ int ds4_gpu_set_model_fd_for_map(int fd, const void *model_map) {
+     (void)fd;
+     (void)model_map;
+-- 
+2.43.0
+

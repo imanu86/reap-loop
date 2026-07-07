@@ -1,0 +1,13 @@
+[val] carico Qwen3-30B (non-expert su GPU, expert da memmap-SSD)...
+Fetching 23 files:   0%|          | 0/23 [00:00<?, ?it/s]Fetching 23 files: 100%|##########| 23/23 [00:00<?, ?it/s]
+[load] non-expert su GPU=435 | param meta rimasti (expert)=96 | unexpected=0
+[val] cap=8/128 pin=7: react=41638 pred=41773 probe=16256 saving=-135 net=-16391 tok/s r=0.1/p=0.1 acc r=0.00/p=0.00
+[val] cap=16/128 pin=15: react=33237 pred=34883 probe=16256 saving=-1646 net=-17902 tok/s r=0.1/p=0.1 acc r=0.00/p=0.00
+[val] cap=32/128 pin=31: react=26405 pred=25105 probe=16256 saving=1300 net=-14956 tok/s r=0.1/p=0.2 acc r=0.00/p=0.00
+
+=== Qwen3-30B (128 expert, memmap-SSD): predire vs reagire ===
+ cap |   react    pred   probe |  saving     net | tok/s r/p | acc r/p
+   8 |   41638   41773   16256 |    -135  -16391 | 0.1/0.12 | 0.00/0.00
+  16 |   33237   34883   16256 |   -1646  -17902 | 0.11/0.14 | 0.00/0.00
+  32 |   26405   25105   16256 |    1300  -14956 | 0.1/0.16 | 0.00/0.00
+[val] CSV: runs/validate_probe_qwen3.csv

@@ -1,0 +1,6 @@
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -I. -c -o tests/cuda_long_context_smoke.o tests/cuda_long_context_smoke.c
+/usr/local/cuda/bin/nvcc -O3 -g -lineinfo --use_fast_math -arch=sm_86 -Xcompiler -march=native -Xcompiler -pthread -o tests/cuda_long_context_smoke tests/cuda_long_context_smoke.o ds4_cuda.o -lm -Xcompiler -pthread -L/usr/local/cuda/targets/sbsa-linux/lib -L/usr/local/cuda/lib64 -lcudart -lcublas
+./tests/cuda_long_context_smoke
+ds4: CUDA backend initialized on NVIDIA RTX A6000 (sm_86)
+cuda-regression: top-k n_comp=32768 n_tokens=32 elapsed=0.000s
+cuda long-context regression: OK

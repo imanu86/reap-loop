@@ -1,0 +1,31 @@
+{
+ "test": "eval ppl bias-mask Stage A: full vs reap_k50 vs random_k50, dominio+generale",
+ "date_utc": "2026-07-05",
+ "track": "reap/ds4-domain-prune",
+ "metodo": {
+  "stage": "A (bias-mask): -1e9 nei exp_probs_b dei pruned, runtime ds4 stock, ≡ pruning fisico",
+  "tool_biasmask": "scripts/reap_bias_mask_ds4.py --apply reap|random",
+  "mask": "runs/reap/reap_mask_ds4_domain.json (K50 g-only, 128/256 su 40 layer)",
+  "metrica": "ds4 --perplexity-file (teacher-forced NLL), prefix 32 tok, -n 850 dom / 800 gen",
+  "corpus": "runs/reap/2026-07-05_eval_biasmask/corpus (dom raft DISGIUNTO dalla trace, gen wiki-it)",
+  "parallelismo": "3 pod, una config ciascuno (full/reap/rand); confronto appaiato sul testo",
+  "warmup": "1 run -n 8 scartata per config",
+  "V0_mechanism_check": "reap: 11280 selezioni, 0 violazioni (nessun expert pruned mai selezionato)"
+ },
+ "software": {
+  "ds4_base": "80ebbc3 + patch 0001..0006",
+  "build": "make cuda CUDA_ARCH=sm_86, exit 0; cuda-regression OK su tutti e 3 i pod",
+  "model": "DeepSeek-V4-Flash-IQ2XXS-...-imatrix.gguf (86720111488 byte)"
+ },
+ "costi": {
+  "delta_finestra_usd": 2.27,
+  "nota": "finestra condivisa con 2 pod DSpark attivi (altro track). Quota REAP eval stimata ~$0.7-0.9 (3 pod x ~1h x $--0.27, inclusi i pod scartati a vuoto <10min). Vincolo di costo rimosso dall'utente per questa fase ('budget solo temporale')."
+ },
+ "risultato": {
+  "reap_dom_vs_full": 1.0129,
+  "rand_dom_vs_full": 1.3645,
+  "rand_gen_vs_full": 2.1149,
+  "verdetto": "reap near-lossless (PASS <=1.10); random degrada 36.5% e >reap (selezione conta) ma <1.5x pre-registrato (PARTIAL, soglia tarata sul 30B bf16 troppo severa per ds4 IQ2)",
+  "dettaglio": "eval_summary.json"
+ }
+}

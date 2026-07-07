@@ -1,0 +1,10 @@
+HOST_GB=251 CGROUP_GB=57 TOTAL_GB=57
+scenario,mask,rep,prefill_tps,gen_tps,spex_stats
+avail60,off,1,rc=0,pf=27.60,gen=1.03,"SPEX stats: selected_batches=8600 selected_experts=60082 cache_hits=0 cache_misses=51498 hit_rate=0.0000 miss_per_expert=0.8571 direct_loads=8740 copy_calls=180714 copied=406606.50 MiB copy_ms=212096.424 copy_ms_per_batch=24.662 sync_calls=180714 sync_ms=16308.172 sync_ms_per_batch=1.896"
+avail60,off,2,rc=0,pf=26.00,gen=1.06,"SPEX stats: selected_batches=8600 selected_experts=60073 cache_hits=0 cache_misses=51498 hit_rate=0.0000 miss_per_expert=0.8573 direct_loads=8731 copy_calls=180687 copied=406545.75 MiB copy_ms=207781.229 copy_ms_per_batch=24.161 sync_calls=180687 sync_ms=16049.523 sync_ms_per_batch=1.866"
+avail28,off,1,rc=1,pf=,gen=,""
+avail28,off,2,rc=1,pf=,gen=,""
+avail60,on,1,rc=0,pf=40.70,gen=1.15,"SPEX stats: selected_batches=8600 selected_experts=56879 cache_hits=0 cache_misses=51498 hit_rate=0.0000 miss_per_expert=0.9054 direct_loads=5537 copy_calls=171105 copied=384986.25 MiB copy_ms=182007.996 copy_ms_per_batch=21.164 sync_calls=171105 sync_ms=15177.185 sync_ms_per_batch=1.765"
+avail60,on,2,rc=0,pf=39.56,gen=1.15,"SPEX stats: selected_batches=8600 selected_experts=56882 cache_hits=0 cache_misses=51498 hit_rate=0.0000 miss_per_expert=0.9053 direct_loads=5540 copy_calls=171114 copied=385006.50 MiB copy_ms=181127.532 copy_ms_per_batch=21.061 sync_calls=171114 sync_ms=15310.778 sync_ms_per_batch=1.780"
+avail28,on,1,rc=1,pf=,gen=,""
+avail28,on,2,rc=1,pf=,gen=,""

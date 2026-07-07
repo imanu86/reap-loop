@@ -1,0 +1,11 @@
+Fetching 23 files:   0%|          | 0/23 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+Fetching 23 files:   9%|8         | 2/23 [00:00<00:03,  6.68it/s]Fetching 23 files:  17%|#7        | 4/23 [37:37<3:30:13, 663.88s/it]MemoryError
+MemoryError
+object address  : 00000219FB31D060
+object refcount : 2
+object type     : 00007FFDE303EE30
+object type name: MemoryError
+object repr     : MemoryError()
+lost sys.stderr
+memory allocation of 67075229 bytes failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

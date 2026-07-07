@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Aurelia Friggitrice229
+Categoria: friggitrice ad aria. Marca: Aurelia. Colore: nero. Materiale principale: poliestere riciclato. Peso: 1.22 kg. Prezzo di listino: 79.84 euro, sconto 30% attivo. Disponibilita': disponibile. Spedizione da Napoli. Garanzia 12 mesi. Codice: AUR-72933.

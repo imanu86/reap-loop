@@ -1,0 +1,12 @@
+Fetching 23 files:   0%|          | 0/23 [00:00<?, ?it/s]Fetching 23 files: 100%|##########| 23/23 [00:00<00:00, 4756.38it/s]
+[load] non-expert su GPU=435 | param meta rimasti (expert)=96 | unexpected=0
+
+=== Qwen3-30B (E=128/layer) — saturazione distinti dopo K token ===
+ len |    1    2    4    8   16   32   48   64   96  128  | A(working set)
+ 110 |    8   15   24   36   50   64   71   75   80    -  | 84/128 (66%)
+  87 |    8   15   24   36   49   64   71   76    -    -  | 82/128 (64%)
+ 117 |    8   15   24   36   51   64   73   80   85    -  | 90/128 (71%)
+  95 |    8   15   24   36   50   64   71   75    -    -  | 82/128 (64%)
+
+[q3] Qwen3-30B: A medio = 84.7/128 (66%) per prompt ~100 token
+[q3] DS2-Lite era 61/64 (95%). Se Qwen3 % e' MOLTO piu bassa -> piu expert AIUTA. Se ~simile -> saturazione universale.

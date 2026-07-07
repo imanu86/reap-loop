@@ -1,0 +1,11 @@
+# timestamped run outputs (evidence smoke runs are copied to samples/ and committed)
+runs/
+runs_*/
+__pycache__/
+*.pyc
+# large generated datasets (smoke set data/smoke.jsonl IS committed as a fixture;
+# gate1_*.jsonl are reproducible from synth_gen.py + fixed seeds, so not committed)
+data/synth_full.jsonl
+data/gate1_*.jsonl
+data/gate2_*.jsonl
+data/e4_*.jsonl

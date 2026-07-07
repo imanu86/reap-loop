@@ -1,0 +1,1 @@
+Explain what debouncing is in JavaScript and implement a debounce utility with leading and trailing options.

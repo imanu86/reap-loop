@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Materasso905
+Categoria: materasso matrimoniale. Marca: Tavernelli. Colore: grigio antracite. Materiale principale: alluminio. Peso: 3.84 kg. Prezzo di listino: 179.78 euro. Disponibilita': disponibile. Spedizione da Bari. Garanzia 36 mesi. Codice: TAV-70643.

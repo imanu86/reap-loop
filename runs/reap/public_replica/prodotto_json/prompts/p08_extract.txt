@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Dellamora Bicicletta285
+Categoria: bicicletta da citta'. Marca: Dellamora. Colore: azzurro. Materiale principale: alluminio. Peso: 2.54 kg. Prezzo di listino: 216.69 euro, sconto 25% attivo. Disponibilita': esaurito. Spedizione da Torino. Garanzia 12 mesi. Codice: DEL-43345.

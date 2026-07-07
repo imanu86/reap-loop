@@ -1,0 +1,12 @@
+file: models/DeepSeek-V4-Flash-IQ2XXS-imatrix.gguf  size_bytes=86720111488
+blk.3.ffn_gate_exps.weight dims=[4096, 2048, 256] type=16 bytes~=553648128 per_expert=2162688
+blk.3.ffn_up_exps.weight dims=[4096, 2048, 256] type=16 bytes~=553648128 per_expert=2162688
+blk.3.ffn_down_exps.weight dims=[2048, 4096, 256] type=10 bytes~=704643072 per_expert=2752512
+blk.3.ffn_gate_inp.weight dims=[4096, 256] type=1 bytes~=2097152 per_expert=None
+blk.3.exp_probs_b.bias dims=[256] type=0 bytes~=1024 per_expert=None
+blk.0.ffn_gate_tid2eid.weight dims=[6, 129280] type=26 bytes~=3102720 per_expert=None
+per_expert_bytes(gate+up+down)=7077888 (6.750 MiB)
+per_layer_expert_bytes=1811939328 (1.6875 GiB); x43 layer=72.56 GiB
+drop 50% su 40 layer non-hash: risparmio 33.75 GiB -> file ~47.01 GiB
+drop 54% su 40 layer non-hash: risparmio 36.45 GiB -> file ~44.31 GiB
+drop 60% su 40 layer non-hash: risparmio 40.50 GiB -> file ~40.26 GiB

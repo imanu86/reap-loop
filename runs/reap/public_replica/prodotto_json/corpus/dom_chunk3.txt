@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sartori Tenda263
+Categoria: tenda da campeggio. Marca: Sartori. Colore: bianco panna. Materiale principale: alluminio. Peso: 3.09 kg. Prezzo di listino: 348.8 euro, sconto 30% attivo. Disponibilita': ultimi pezzi. Spedizione da Genova. Garanzia 12 mesi. Codice: SAR-99232.
+{"nome": "Sartori Tenda263", "marca": "Sartori", "categoria": "tenda da campeggio", "colore": "bianco panna", "materiale": "alluminio", "peso_kg": 3.09, "prezzo_eur": 348.8, "sconto_pct": 30, "disponibilita": "ultimi pezzi", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sanpietro Monitor172
+Categoria: monitor 27 pollici. Marca: Sanpietro. Colore: verde oliva. Materiale principale: cotone organico. Peso: 1.26 kg. Prezzo di listino: 365.41 euro, sconto 15% attivo. Disponibilita': disponibile. Spedizione da Genova. Garanzia 24 mesi. Codice: SAN-28515.
+{"nome": "Sanpietro Monitor172", "marca": "Sanpietro", "categoria": "monitor 27 pollici", "colore": "verde oliva", "materiale": "cotone organico", "peso_kg": 1.26, "prezzo_eur": 365.41, "sconto_pct": 15, "disponibilita": "disponibile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Roccabruna Smartwatch542
+Categoria: smartwatch. Marca: Roccabruna. Colore: verde oliva. Materiale principale: poliestere riciclato. Peso: 0.64 kg. Prezzo di listino: 304.82 euro, sconto 10% attivo. Disponibilita': esaurito. Spedizione da Verona. Garanzia 12 mesi. Codice: ROC-58815.
+{"nome": "Roccabruna Smartwatch542", "marca": "Roccabruna", "categoria": "smartwatch", "colore": "verde oliva", "materiale": "poliestere riciclato", "peso_kg": 0.64, "prezzo_eur": 304.82, "sconto_pct": 10, "disponibilita": "esaurito", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bergamasco Materasso464
+Categoria: materasso matrimoniale. Marca: Bergamasco. Colore: rosso mattone. Materiale principale: cotone organico. Peso: 4.34 kg. Prezzo di listino: 351.29 euro. Disponibilita': prenotabile. Spedizione da Verona. Garanzia 36 mesi. Codice: BER-94702.
+{"nome": "Bergamasco Materasso464", "marca": "Bergamasco", "categoria": "materasso matrimoniale", "colore": "rosso mattone", "materiale": "cotone organico", "peso_kg": 4.34, "prezzo_eur": 351.29, "sconto_pct": 0, "disponibilita": "prenotabile", "garanzia_mesi": 36}

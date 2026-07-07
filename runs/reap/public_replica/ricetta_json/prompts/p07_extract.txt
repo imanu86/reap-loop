@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Minestrone di verdure. Per 4 persone, tempo 15 minuti.
+Ingredienti: zucchero, pomodori pelati, basilico, olio extravergine, lievito, latte intero, riso Carnaroli.
+Preparazione: aggiungere pomodori pelati; cuocere a fuoco lento zucchero; sfumare con zucchero; impastare pomodori pelati; scolare olio extravergine.

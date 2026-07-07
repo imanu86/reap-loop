@@ -1,0 +1,21 @@
+[mmap] Qwen/Qwen3-30B-A3B: L=48 E=128 H=2048 I=768
+[mmap] gate_up (48, 128, 1536, 2048) + down (48, 128, 2048, 768) fp16 -> 54.0 GB su <MEMMAP_DIR>
+Fetching 22 files:   0%|          | 0/22 [00:00<?, ?it/s]Fetching 22 files: 100%|##########| 22/22 [00:00<00:00, 6986.80it/s]
+[mmap] model-00001-of-00016.safetensors: 1037 tensori-expert scritti
+[mmap] model-00002-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00003-of-00016.safetensors: 1222 tensori-expert scritti
+[mmap] model-00004-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00005-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00006-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00007-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00008-of-00016.safetensors: 1222 tensori-expert scritti
+[mmap] model-00009-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00010-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00011-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00012-of-00016.safetensors: 1231 tensori-expert scritti
+[mmap] model-00013-of-00016.safetensors: 1222 tensori-expert scritti
+[mmap] model-00014-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00015-of-00016.safetensors: 1235 tensori-expert scritti
+[mmap] model-00016-of-00016.safetensors: 148 tensori-expert scritti
+[mmap] FATTO. gate=6144/6144 up=6144/6144 down=6144/6144 (E=128 expert su 48 layer)
+[mmap] memmap pronti in <MEMMAP_DIR> (gate_up.f16.mmap, down.f16.mmap, meta.json)

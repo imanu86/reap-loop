@@ -1,0 +1,7 @@
+Sei un consulente esperto.
+
+Spiega passo passo, in italiano, la tecnica ottimale per preparare questo piatto senza errori, i punti critici e le varianti utili. Sii dettagliato.
+
+Ricetta: Frittata di zucchine. Per 4 persone, tempo 30 minuti.
+Ingredienti: burro, zafferano, parmigiano, brodo vegetale, latte intero, aglio.
+Preparazione: cuocere a fuoco lento aglio; scolare burro; aggiungere brodo vegetale; infornare aglio; tritare aglio; impastare brodo vegetale.

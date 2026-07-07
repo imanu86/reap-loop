@@ -1,0 +1,7 @@
+Sei un consulente esperto.
+
+Spiega passo passo, in italiano, la tecnica ottimale per preparare questo piatto senza errori, i punti critici e le varianti utili. Sii dettagliato.
+
+Ricetta: Frittata di zucchine. Per 8 persone, tempo 45 minuti.
+Ingredienti: latte intero, aglio, pecorino, carote, riso Carnaroli.
+Preparazione: cuocere a fuoco lento riso Carnaroli; cuocere a fuoco lento riso Carnaroli; mantecare riso Carnaroli; cuocere a fuoco lento latte intero; tritare aglio; cuocere a fuoco lento riso Carnaroli.

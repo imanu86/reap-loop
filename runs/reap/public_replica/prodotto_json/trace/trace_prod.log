@@ -1,0 +1,22 @@
+warmup done 2026-07-06T03:27:14Z
+traced p00_extract (4601 rows) 2026-07-06T03:28:38Z
+traced p01_extract (4161 rows) 2026-07-06T03:29:58Z
+traced p02_extract (4641 rows) 2026-07-06T03:31:21Z
+traced p03_extract (4641 rows) 2026-07-06T03:32:43Z
+traced p04_extract (4561 rows) 2026-07-06T03:34:10Z
+traced p05_extract (4601 rows) 2026-07-06T03:35:30Z
+traced p06_extract (4881 rows) 2026-07-06T03:36:55Z
+traced p07_extract (4721 rows) 2026-07-06T03:38:19Z
+traced p08_extract (4761 rows) 2026-07-06T03:39:43Z
+traced p09_extract (4681 rows) 2026-07-06T03:41:04Z
+traced p10_extract (4561 rows) 2026-07-06T03:42:24Z
+traced p11_extract (4721 rows) 2026-07-06T03:43:47Z
+traced p12_extract (4641 rows) 2026-07-06T03:45:06Z
+traced p13_extract (4881 rows) 2026-07-06T03:46:30Z
+traced p14_extract (4481 rows) 2026-07-06T03:47:51Z
+traced p15_extract (4681 rows) 2026-07-06T03:49:12Z
+traced p16_explain (20441 rows) 2026-07-06T03:53:02Z
+traced p17_explain (20441 rows) 2026-07-06T03:56:56Z
+traced p18_explain (20441 rows) 2026-07-06T04:00:48Z
+traced p19_explain (20441 rows) 2026-07-06T04:04:34Z
+TRACE_ALL_DONE 2026-07-06T04:04:34Z

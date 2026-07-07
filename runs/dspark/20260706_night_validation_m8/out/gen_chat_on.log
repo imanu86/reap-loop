@@ -1,0 +1,161 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: MTP+SSD-streaming enabled (experimental, DS4_MTP_STREAMING)
+ds4: MTP support model loaded: /root/models/ds4-mtp.gguf (draft=2)
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA registered 3.55 GiB model mapping for device access
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.000s
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 3.55 GiB of tensor spans in 0.224s
+ds4: CUDA registered 3.55 GiB support (MTP) model mapping for device access
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.83 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache capped from 250 to 10 experts (available 6.07 GiB, reserve 6.00 GiB, 6.75 MiB/expert)
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+Heyds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB limit=8.00 GiB free=0.00 GiB reserve=4.00 GiB total=12.00 GiB)
+ds4: mtp conf drafted=2 committed=1 mtp_top=11907 runner=734 margin=0.038559 target_next=734 draft_next=11907
+, thatds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=2405 runner=3146 margin=4.496368 target_next=2405 draft_next=2405
+'s a greatds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=458 runner=85703 margin=0.891529 target_next=85703 draft_next=458
+ question—ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=2395 runner=2968 margin=3.117134 target_next=2395 draft_next=2395
+getting a smallds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ teamds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+'sds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ scheduleds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=3146 runner=2929 margin=0.573967 target_next=1635 draft_next=3146
+ organized cands4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ makeds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=5335 runner=10140 margin=7.322962 target_next=5335 draft_next=5335
+ a huge differenceds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ inds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=6660 runner=5675 margin=0.752296 target_next=270 draft_next=6660
+ how smoothlyds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=7881 runner=12122 margin=0.146858 target_next=7881 draft_next=7881
+ the week goesds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=734 runner=442 margin=2.300407 target_next=734 draft_next=734
+. Here'sds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ someds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ practicalds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+,ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=979 runner=943 margin=1.937840 target_next=342 draft_next=979
+ friendly adviceds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=2006 runner=13915 margin=0.229555 target_next=2006 draft_next=2006
+ I've foundds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=362 runner=979 margin=1.127922 target_next=979 draft_next=362
+ works wellds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=13298 runner=19 margin=0.374111 target_next=13298 draft_next=13298
+:
+
+**Startds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=4787 runner=3107 margin=1.241840 target_next=3107 draft_next=4787
+ with ads4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ shortds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ weeklyds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ planningds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=2143 runner=983 margin=0.537487 target_next=2143 draft_next=2143
+ meeting.**  
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=270 runner=782 margin=0.117567 target_next=270 draft_next=270
+Gather theds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=223 runner=260 margin=2.150543 target_next=1438 draft_next=223
+ team fords4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=856 runner=553 margin=6.079689 target_next=856 draft_next=856
+ just 15ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=4786 runner=39345 margin=6.328846 target_next=4786 draft_next=4786
+–20 minutesds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ (ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=9219 runner=50947 margin=8.301315 target_next=9219 draft_next=9219
+say, Mondayds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=15315 runner=6757 margin=0.383186 target_next=127462 draft_next=15315
+ morning).ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ Quicklyds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ gods4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ overds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ whatds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=3946 runner=223 margin=2.602205 target_next=3946 draft_next=3946
+ everyone's workingds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ onds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=5603 runner=3734 margin=0.760035 target_next=55662 draft_next=5603
+, anyds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=305 runner=223 margin=9.510815 target_next=305 draft_next=305
+ deadlines, and
+ds4: prefill: 1.33 t/s, generation: 0.60 t/s
+ds4: SPEX stats: selected_batches=2947 selected_experts=23880 cache_hits=0 cache_misses=6 hit_rate=0.0000 miss_per_expert=0.0003 direct_loads=23874 copy_calls=71640 copied=163863.00 MiB copy_ms=114008.291 copy_ms_per_batch=38.686 sync_calls=70452 sync_ms=9978.816 sync_ms_per_batch=3.386

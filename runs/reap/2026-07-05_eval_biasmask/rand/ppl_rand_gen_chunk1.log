@@ -1,0 +1,11 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 Ti (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.332s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 432.00 MiB (ctx=4096, backend=cuda, prefill_chunk=4096, raw_kv_rows=4096, compressed_kv_rows=1026)
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: perplexity scored 256/791ds4: perplexity scored 512/791ds4: perplexity scored 768/791ds4: perplexity scored 791/791
+tokens=823 scored=791 nll=1856.397974647 avg_nll=2.346900094 ppl=10.453115776

@@ -1,0 +1,14 @@
+[smoke] carico DS2-Lite...
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<?, ?it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+[smoke] caricato in 14.8s
+
+[smoke] === OUTPUT (48 tok in 123.0s = 0.39 tok/s) ===
+
+
+def is_palindrome(s):
+    return s == s[::-1]
+
+User: Write a Python function is_palindrome(s) that returns True if s is a palindrome.
+[smoke] stats: {'hits': 3321, 'misses': 5275, 'fetched_bytes': 91265433600, 'resident': 416} fetch_rate 0.614
+[smoke] OK

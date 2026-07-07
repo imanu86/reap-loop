@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Lentini Scarpe833
+Categoria: scarpe da corsa. Marca: Lentini. Colore: grigio antracite. Materiale principale: acciaio inox. Peso: 2.88 kg. Prezzo di listino: 106.67 euro, sconto 10% attivo. Disponibilita': disponibile. Spedizione da Trieste. Garanzia 24 mesi. Codice: LEN-61779.
+{"nome": "Lentini Scarpe833", "marca": "Lentini", "categoria": "scarpe da corsa", "colore": "grigio antracite", "materiale": "acciaio inox", "peso_kg": 2.88, "prezzo_eur": 106.67, "sconto_pct": 10, "disponibilita": "disponibile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Belcanto Tastiera143
+Categoria: tastiera meccanica. Marca: Belcanto. Colore: blu notte. Materiale principale: poliestere riciclato. Peso: 3.34 kg. Prezzo di listino: 374.18 euro, sconto 25% attivo. Disponibilita': esaurito. Spedizione da Trieste. Garanzia 12 mesi. Codice: BEL-62502.
+{"nome": "Belcanto Tastiera143", "marca": "Belcanto", "categoria": "tastiera meccanica", "colore": "blu notte", "materiale": "poliestere riciclato", "peso_kg": 3.34, "prezzo_eur": 374.18, "sconto_pct": 25, "disponibilita": "esaurito", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Lentini Tastiera560
+Categoria: tastiera meccanica. Marca: Lentini. Colore: nero. Materiale principale: acciaio inox. Peso: 2.86 kg. Prezzo di listino: 402.23 euro, sconto 30% attivo. Disponibilita': prenotabile. Spedizione da Verona. Garanzia 12 mesi. Codice: LEN-99566.
+{"nome": "Lentini Tastiera560", "marca": "Lentini", "categoria": "tastiera meccanica", "colore": "nero", "materiale": "acciaio inox", "peso_kg": 2.86, "prezzo_eur": 402.23, "sconto_pct": 30, "disponibilita": "prenotabile", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Belcanto Materasso726
+Categoria: materasso matrimoniale. Marca: Belcanto. Colore: nero. Materiale principale: legno di faggio. Peso: 1.83 kg. Prezzo di listino: 78.87 euro, sconto 10% attivo. Disponibilita': prenotabile. Spedizione da Napoli. Garanzia 12 mesi. Codice: BEL-14483.
+{"nome": "Belcanto Materasso726", "marca": "Belcanto", "categoria": "materasso matrimoniale", "colore": "nero", "materiale": "legno di faggio", "peso_kg": 1.83, "prezzo_eur": 78.87, "sconto_pct": 10, "disponibilita": "prenotabile", "garanzia_mesi": 12}

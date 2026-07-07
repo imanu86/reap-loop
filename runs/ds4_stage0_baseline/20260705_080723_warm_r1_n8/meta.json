@@ -1,0 +1,14 @@
+{
+  "started": "20260705_080723",
+  "mode": "warm",
+  "runs": 1,
+  "tokens": 8,
+  "ctx": 2048,
+  "model": "<MODEL_GGUF>",
+  "ds4_dir": "<DS4_DIR>",
+  "cache_experts": null,
+  "prefill_chunk": 512,
+  "hotlist": true,
+  "drop_caches": false,
+  "prompt": "Write a concise technical explanation of cache locality in MoE inference. Mention expert residency, misses, and latency."
+}

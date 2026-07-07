@@ -1,0 +1,61 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.899s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 5.96 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache capped from 2048 to 31 experts (available 6.21 GiB, reserve 6.00 GiB, 6.75 MiB/expert)
+ds4: CUDA loading model tensors 1.64 GiB cached
+ds4: CUDA loading model tensors 3.06 GiB cached
+ds4: CUDA loading model tensors 4.64 GiB cached
+ds4: CUDA loading model tensors 6.12 GiB cached
+Expert caching reduces latency in mixture-of-experts (

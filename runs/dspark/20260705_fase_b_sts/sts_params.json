@@ -1,0 +1,13 @@
+{
+ "temperatures": [
+  0.8498909001364048,
+  1.072967679935872,
+  0.7135847882282057,
+  1.0122336603168605,
+  1.4358727932283146
+ ],
+ "block_size": 5,
+ "source_csv": "<internal>",
+ "confidence_input": "pre-sigmoid logits",
+ "formula": "P_k = prod_{i<=k} sigmoid(c_i / T_i)"
+}

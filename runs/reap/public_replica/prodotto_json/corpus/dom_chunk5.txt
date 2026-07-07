@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Roccabruna Materasso301
+Categoria: materasso matrimoniale. Marca: Roccabruna. Colore: rosso mattone. Materiale principale: poliestere riciclato. Peso: 3.53 kg. Prezzo di listino: 64.78 euro, sconto 15% attivo. Disponibilita': ultimi pezzi. Spedizione da Genova. Garanzia 36 mesi. Codice: ROC-61278.
+{"nome": "Roccabruna Materasso301", "marca": "Roccabruna", "categoria": "materasso matrimoniale", "colore": "rosso mattone", "materiale": "poliestere riciclato", "peso_kg": 3.53, "prezzo_eur": 64.78, "sconto_pct": 15, "disponibilita": "ultimi pezzi", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Ferroni Cuffie468
+Categoria: cuffie wireless. Marca: Ferroni. Colore: bianco panna. Materiale principale: nylon balistico. Peso: 2.22 kg. Prezzo di listino: 439.52 euro, sconto 15% attivo. Disponibilita': disponibile. Spedizione da Milano. Garanzia 12 mesi. Codice: FER-29232.
+{"nome": "Ferroni Cuffie468", "marca": "Ferroni", "categoria": "cuffie wireless", "colore": "bianco panna", "materiale": "nylon balistico", "peso_kg": 2.22, "prezzo_eur": 439.52, "sconto_pct": 15, "disponibilita": "disponibile", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sartori Tenda871
+Categoria: tenda da campeggio. Marca: Sartori. Colore: blu notte. Materiale principale: acciaio inox. Peso: 3.35 kg. Prezzo di listino: 287.95 euro, sconto 30% attivo. Disponibilita': prenotabile. Spedizione da Torino. Garanzia 24 mesi. Codice: SAR-58828.
+{"nome": "Sartori Tenda871", "marca": "Sartori", "categoria": "tenda da campeggio", "colore": "blu notte", "materiale": "acciaio inox", "peso_kg": 3.35, "prezzo_eur": 287.95, "sconto_pct": 30, "disponibilita": "prenotabile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Dellamora Scarpe987
+Categoria: scarpe da corsa. Marca: Dellamora. Colore: blu notte. Materiale principale: nylon balistico. Peso: 4.04 kg. Prezzo di listino: 307.53 euro. Disponibilita': prenotabile. Spedizione da Padova. Garanzia 24 mesi. Codice: DEL-75225.
+{"nome": "Dellamora Scarpe987", "marca": "Dellamora", "categoria": "scarpe da corsa", "colore": "blu notte", "materiale": "nylon balistico", "peso_kg": 4.04, "prezzo_eur": 307.53, "sconto_pct": 0, "disponibilita": "prenotabile", "garanzia_mesi": 24}

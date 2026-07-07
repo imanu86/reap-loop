@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Ragu' alla bolognese. Per 6 persone, tempo 40 minuti.
+Ingredienti: pomodori pelati, zafferano, cipolla, riso Carnaroli, pepe nero, vino bianco.
+Preparazione: far riposare pepe nero; impastare pepe nero; impastare pomodori pelati; mantecare pepe nero.

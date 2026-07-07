@@ -1,0 +1,20 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 1.806s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 2.35 GiB cached
+ds4: CUDA loading model tensors 3.84 GiB cached
+ds4: CUDA loading model tensors 6.56 GiB cached
+Expert caching reduces latency in mixture of experts (MoE) inference by intelligently storing and reusing the outputs of the most frequently activated "expert" sub
+ds4: prefill: 0.22 t/s, generation: 0.15 t/s
+ds4: SPEX stats: selected_batches=1419 selected_experts=10961 cache_hits=4530 cache_misses=5774 hit_rate=0.4396 miss_per_expert=0.5268 direct_loads=2705 copy_calls=25437 copied=57233.25 MiB copy_ms=240025.549 copy_ms_per_batch=169.151 sync_calls=25437 sync_ms=8608.734 sync_ms_per_batch=6.067

@@ -1,0 +1,18 @@
+[cov] 8 prompt da 'codegen'
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<00:00, 8894.61it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+[cov] prompt 1/8 (113 tok): working set medio 61/64 expert/layer
+[cov] prompt 2/8 (94 tok): working set medio 59/64 expert/layer
+[cov] prompt 3/8 (133 tok): working set medio 63/64 expert/layer
+[cov] prompt 4/8 (97 tok): working set medio 60/64 expert/layer
+[cov] prompt 5/8 (137 tok): working set medio 62/64 expert/layer
+[cov] prompt 6/8 (116 tok): working set medio 62/64 expert/layer
+[cov] prompt 7/8 (111 tok): working set medio 62/64 expert/layer
+[cov] prompt 8/8 (98 tok): working set medio 60/64 expert/layer
+
+=== DS2-Lite (E=64/layer), 8 prompt da 'codegen' ===
+A) PER-PROMPT working set:  60.9/64 expert/layer  => per UN prompt comprimibile ~5% degli expert
+B) UNIONE su tutti i prompt: 64.0/64 expert/layer  => senza specializzare comprimibile ~0%
+C) Jaccard medio cross-prompt: 0.94  => ALTO: stesso set tra prompt (osserva-1-volta-comprimi-sempre)
+
+[cov] LETTURA: A basso = un prompt usa pochi expert (margine per-prompt). C alto = il margine vale per tutto il dominio. Servono ENTRAMBI per 'osserva-poi-comprimi' su dominio.

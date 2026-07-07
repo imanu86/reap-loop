@@ -1,0 +1,43 @@
+# Griglia 4D dell'esperimento (docs/00_architecture.md §3, §9).
+# Cardinalità ~ |modelli| x |K| x |ctx| x |miss_mode| x |policy|, ridotta dalle scorciatoie (§9).
+
+# --- Asse modello + sparsità (B) ------------------------------------------------------------------
+# Sequenza a top-k=8 fisso: isola n_total (32/40/64) a n_active costante.
+models:
+  - configs/models/granite_3b_a800m.yaml   # s=0.20  (FULL fp16: implementare la pipeline qui per primo)
+  - configs/models/olmoe_1b_7b.yaml        # s=0.125 (alta sparsità, ModuleList)
+  - configs/models/granite_1b_a400m.yaml   # s=0.25  (terzo punto, quasi gratis)
+  # estensioni alta sparsità (post-numeri / 5090): deepseek_v2_lite (s=0.094), qwen1.5_moe (s=0.067)
+
+# --- Asse aggressività commit (A): frazione di expert residenti -----------------------------------
+k_fractions: [1.0, 0.5, 0.25, 0.12, 0.06]   # 100/50/25/12/6%  (1.0 == FULL)
+
+# --- Asse lunghezza di contesto (C): MAI fisso ----------------------------------------------------
+ctx_lengths: [1024, 4096, 16384, 65536, -1]  # -1 = max della context window del modello
+# Nota R6: VRAM_kv cresce con ctx -> riportata separata da VRAM_expert.
+# Nota: verificare la context window effettiva di ciascun modello prima di promettere 64k/max.
+
+# --- Asse gestione miss (D) -----------------------------------------------------------------------
+miss_modes:
+  - fetch-lossless      # Δacc=0 (baseline latenza-pura); accuratezza calcolata UNA volta (scorciatoia)
+  - precision-cascade   # int4 sul complemento; soglie stile HOBBIT su ||G(x)||
+  - hard-drop           # variante 'zero' (più pulita di 'reroute', vedi R8)
+
+# --- Policy a confronto ---------------------------------------------------------------------------
+policies: [FULL, COARSE, AGGRESSIVE-COMMIT]
+
+# --- Parametri comuni -----------------------------------------------------------------------------
+coverage_theta: 0.95
+warmup_examples: 32
+seed: 0
+decode: greedy          # T=0, deterministico (rischio R5)
+
+# --- Validatori (a contesto crescente) ------------------------------------------------------------
+validators:
+  - python-unit-tests    # primario: segnale binario via unit test nascosti
+  - needle-in-haystack   # probe long-context: cattura il fallimento R1 (regge a 2k, sfasa a 32k)
+
+# --- Soglia di promozione (docs §12) --------------------------------------------------------------
+promotion:
+  max_accuracy_drop: 0.02   # <2%
+  must_hold_on_all_ctx: true  # FALLITA se sfora anche a UNA sola lunghezza

@@ -1,0 +1,50 @@
+=== warm-up 2026-07-06T04:44:22Z
+=== CONFIG full 2026-07-06T04:44:34Z
+full,dom_chunk0,rc=0,tokens=985 scored=600 nll=480.726203326 avg_nll=0.801210339 ppl=2.228236218
+full,dom_chunk1,rc=0,tokens=966 scored=600 nll=462.280586414 avg_nll=0.770467644 ppl=2.160776492
+full,dom_chunk2,rc=0,tokens=1021 scored=600 nll=460.049497343 avg_nll=0.766749162 ppl=2.152756604
+full,dom_chunk3,rc=0,tokens=996 scored=600 nll=481.997581459 avg_nll=0.803329302 ppl=2.232962775
+full,dom_chunk4,rc=0,tokens=991 scored=600 nll=484.919355380 avg_nll=0.808198926 ppl=2.243862981
+full,dom_chunk5,rc=0,tokens=1001 scored=600 nll=486.968645439 avg_nll=0.811614409 ppl=2.251539961
+full,dom_chunk6,rc=0,tokens=1007 scored=600 nll=432.535512822 avg_nll=0.720892521 ppl=2.056267655
+full,dom_chunk7,rc=0,tokens=1006 scored=600 nll=435.712494126 avg_nll=0.726187490 ppl=2.067184404
+full,dom_chunk8,rc=0,tokens=999 scored=600 nll=484.249521055 avg_nll=0.807082535 ppl=2.241359351
+full,dom_chunk9,rc=0,tokens=987 scored=600 nll=453.725215916 avg_nll=0.756208693 ppl=2.130184708
+=== DONE_CONFIG full 2026-07-06T05:34:55Z
+=== CONFIG reap_k50 2026-07-06T05:34:55Z
+exp_probs_b trovati: 40 layer (3..42)
+backup bias -> /root/models/ds4-2bit.gguf.biasbak.json
+apply reap: scritti 5120 bias a -1e9 su 40 layer
+=== V0 mechanism check reap_k50
+V0 checked=11280 violations=0 V0_OK
+reap_k50,dom_chunk0,rc=0,tokens=985 scored=600 nll=531.108055676 avg_nll=0.885180093 ppl=2.423420793
+reap_k50,dom_chunk1,rc=0,tokens=966 scored=600 nll=496.622978126 avg_nll=0.827704964 ppl=2.288061525
+reap_k50,dom_chunk2,rc=0,tokens=1021 scored=600 nll=496.951215543 avg_nll=0.828252026 ppl=2.289313580
+reap_k50,dom_chunk3,rc=0,tokens=996 scored=600 nll=493.613078217 avg_nll=0.822688464 ppl=2.276612207
+reap_k50,dom_chunk4,rc=0,tokens=991 scored=600 nll=512.084304931 avg_nll=0.853473842 ppl=2.347788548
+reap_k50,dom_chunk5,rc=0,tokens=1001 scored=600 nll=536.134055956 avg_nll=0.893556760 ppl=2.443806244
+reap_k50,dom_chunk6,rc=0,tokens=1007 scored=600 nll=449.375471786 avg_nll=0.748959120 ppl=2.114797619
+reap_k50,dom_chunk7,rc=0,tokens=1006 scored=600 nll=472.999677963 avg_nll=0.788332797 ppl=2.199725977
+reap_k50,dom_chunk8,rc=0,tokens=999 scored=600 nll=507.840164072 avg_nll=0.846400273 ppl=2.331239903
+reap_k50,dom_chunk9,rc=0,tokens=987 scored=600 nll=471.597127764 avg_nll=0.785995213 ppl=2.194589939
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json
+=== DONE_CONFIG reap_k50 2026-07-06T06:21:19Z
+=== CONFIG rand50_s0 2026-07-06T06:21:19Z
+exp_probs_b trovati: 40 layer (3..42)
+random keep seed=0 salvato in /root/models/ds4-2bit.gguf.random_seed0.json
+apply random: scritti 5120 bias a -1e9 su 40 layer
+rand50_s0,dom_chunk0,rc=0,tokens=985 scored=600 nll=560.261743817 avg_nll=0.933769573 ppl=2.544081225
+rand50_s0,dom_chunk1,rc=0,tokens=966 scored=600 nll=567.750424092 avg_nll=0.946250707 ppl=2.576033227
+rand50_s0,dom_chunk2,rc=0,tokens=1021 scored=600 nll=560.792370978 avg_nll=0.934653952 ppl=2.546332151
+rand50_s0,dom_chunk3,rc=0,tokens=996 scored=600 nll=600.785839686 avg_nll=1.001309733 ppl=2.721844384
+rand50_s0,dom_chunk4,rc=0,tokens=991 scored=600 nll=590.449425737 avg_nll=0.984082376 ppl=2.675355788
+rand50_s0,dom_chunk5,rc=0,tokens=1001 scored=600 nll=599.547783506 avg_nll=0.999246306 ppl=2.716233847
+rand50_s0,dom_chunk6,rc=0,tokens=1007 scored=600 nll=534.489401017 avg_nll=0.890815668 ppl=2.437116720
+rand50_s0,dom_chunk7,rc=0,tokens=1006 scored=600 nll=557.679465803 avg_nll=0.929465776 ppl=2.533155544
+rand50_s0,dom_chunk8,rc=0,tokens=999 scored=600 nll=605.281714717 avg_nll=1.008802858 ppl=2.742316107
+rand50_s0,dom_chunk9,rc=0,tokens=987 scored=600 nll=564.762372359 avg_nll=0.941270621 ppl=2.563236251
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json
+=== DONE_CONFIG rand50_s0 2026-07-06T07:11:28Z
+ALL_DONE 2026-07-06T07:11:28Z

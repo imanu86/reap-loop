@@ -1,0 +1,74 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: MTP+SSD-streaming enabled (experimental, DS4_MTP_STREAMING)
+ds4: MTP support model loaded: /root/models/ds4-mtp.gguf (draft=1)
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA registered 3.55 GiB model mapping for device access
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.000s
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 3.55 GiB of tensor spans in 0.173s
+ds4: CUDA registered 3.55 GiB support (MTP) model mapping for device access
+ds4: cuda backend initialized for graph diagnostics
+ds4-eval: context auto-sized to 217 tokens (largest prompt=201 tokens, case=1, generation budget=16)
+ds4-eval: model shape DeepSeek V4 Flash
+ds4-eval: context buffers 24.69 MiB (ctx=217, backend=cuda, prefill_chunk=217, raw_kv_rows=256, compressed_kv_rows=56)
+
+[1/1] GPQA Diamond/Physics An intelligent civilization in the Large Magellanic Cloud has
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 1.09 GiB cached
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+Weds4: mtp probe token=1309 draft=1309 hit=1/1
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ needds4: mtp probe token=304 draft=304 hit=2/2
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ tods4: mtp probe token=23917 draft=1783 hit=2/3
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ computeds4: mtp probe token=270 draft=270 hit=3/4
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ theds4: mtp probe token=2443 draft=2443 hit=4/5
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ properds4: mtp probe token=1014 draft=1014 hit=5/6
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ timeds4: mtp probe token=10552 draft=10552 hit=6/7
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ experiencedds4: mtp probe token=513 draft=513 hit=7/8
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ byds4: mtp probe token=270 draft=270 hit=8/9
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ theds4: mtp probe token=56063 draft=56063 hit=9/10
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ astronautds4: mtp probe token=24185 draft=24185 hit=10/11
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ travelingds4: mtp probe token=509 draft=509 hit=11/12
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ atds4: mtp probe token=374 draft=6276 hit=11/13
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ vds4: mtp probe token=438 draft=438 hit=12/14
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ =ds4: mtp probe token=223 draft=223 hit=13/15
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 6.00 GiB
+ ds4: SPEX stats: selected_batches=747 selected_experts=11056 cache_hits=0 cache_misses=256 hit_rate=0.0000 miss_per_expert=0.0232 direct_loads=11050 copy_calls=33918 copied=76963.50 MiB copy_ms=50217.733 copy_ms_per_batch=67.226 sync_calls=33630 sync_ms=4247.733 sync_ms_per_batch=5.686
+
+FAIL got ? expected B (27.7s, 16 tokens)
+ds4-eval: 0/1 passed, 1 failed, runtime 00h:01m
+#   state      prompt      gen    total given    correct  test
+  1 FAILED        201       16      217 ?        B        GPQA Diamond/recNu3MXkvWUzHZr9

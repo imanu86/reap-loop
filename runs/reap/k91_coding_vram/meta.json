@@ -1,0 +1,86 @@
+{
+ "test": "REAP K91 coding-domain extreme prune -> 12GB VRAM fit + coding quality",
+ "date_utc": "2026-07-06",
+ "track": "reap/k91-coding-vram",
+ "status": "IN_PROGRESS",
+ "pod": {
+  "provider": "<internal note redacted>",
+  "gpu": "NVIDIA GeForce RTX 3080 Ti 12288 MiB (sm_86)",
+  "gpu_note": "sm_86 = stessa arch del RTX 3060 target; VRAM reale 12GB = tetto hardware vero, NON budget forzato",
+  "vcpu": 19,
+  "ram_gb_api": 24,
+  "ram_gb_free_host": 125,
+  "container_disk_gb": 130,
+  "cost_per_hr_usd": 0.18,
+  "image": "<internal note redacted>",
+  "ssh": "direct TCP (ip:port), key <redacted>",
+  "pod_paralleli": "3x RTX 3080 Ti 12GB (uno per config: pod1 K91/K96, pod2 K0, pod3 K50) per parallelizzare la generazione lenta in streaming",
+  "nota_reboot": "l'host oelj0arf6zti (condiviso dai 3 pod) si e' riavviato una volta sotto carico (3 download+build concorrenti); container-disk sopravvissuto, processi ripresi con wget -c."
+ },
+ "costi": {
+  "nota": "budget autorizzato $2-4; 3 pod x $-/h ~2-2.5h totali = $-. Pod separato (l'utente ha chiesto di non toccare il pod A6000 'reap-public-replica' di un'altra eval)."
+ },
+ "software": {
+  "ds4_base": "80ebbc3 (github.com/antirez/ds4)",
+  "patches": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006",
+   "0007"
+  ],
+  "build": "make cuda CUDA_ARCH=sm_86 -j: BUILD_OK",
+  "regression": "make cuda-regression CUDA_ARCH=sm_86: 'cuda long-context regression: OK'",
+  "model": "DeepSeek-V4-Flash-IQ2XXS-w2Q2K-AProjQ8-SExpQ8-OutQ8-chat-v2-imatrix.gguf",
+  "model_bytes": 86720111488,
+  "model_source": "https://huggingface.co/antirez/deepseek-v4-gguf"
+ },
+ "geometria": {
+  "n_layer": 43,
+  "n_expert": 256,
+  "hash_layers": [
+   0,
+   1,
+   2
+  ],
+  "prunable_layers": 40,
+  "bytes_per_expert": 7077888,
+  "K91_keep_per_layer": 23,
+  "K91_keep_frac": 0.09,
+  "K91_expert_residenti": 920,
+  "K91_expert_gib_atteso": 6.06
+ },
+ "risultati": {
+  "backbone_reserve_gib_misurato": 5.82,
+  "usable_expert_cache_experts_12GB": 407,
+  "usable_cache_note": "backbone 5.82 + arene q8_0 ~1.8GiB + overhead -> solo ~2.7GiB cache; >=440 OOM. La stima task 6.2GiB->910exp ignorava le arene.",
+  "V0_mechanism": "checked=5760 violations=0",
+  "fit_K0_full": {
+   "hit_rate": 0.3509,
+   "direct_loads": 2670,
+   "gen_ts": 2.16
+  },
+  "fit_K91": {
+   "hit_rate": 0.6725,
+   "direct_loads": 993,
+   "gen_ts": 3.67,
+   "working_set": 920
+  },
+  "fit_K96": {
+   "hit_rate": 0.9593,
+   "direct_loads": 631,
+   "gen_ts": 12.02,
+   "working_set": 360
+  },
+  "esito_ABC": "K91 = esito C (non entra: 920>407 cache) E fallisce qualita' (degenera). K96 = esito B (entra hit_rate 0.96 ma degenera). Nessun K entra in 12GB reali E codifica.",
+  "quality_1run_greedy": {
+   "K0_full": "sito completo, renderizza pulito (nav+hero+form+toggle+footer), 0 errori console",
+   "K50": "degradato: CSS valido ma body a pseudo-HTML (<toggle>,<error>), nav ok form rotto",
+   "K91": "degenera: loop 'The answer is a single-file HTML document...' - nessun codice",
+   "K96": "degenera: index_html x88 - nessun codice"
+  },
+  "quality_verdict": "degradazione monotona K0 pulito -> K50 degradato -> K91 loop-prosa -> K96 loop-token; coding generativo troppo largo per potatura estrema"
+ }
+}

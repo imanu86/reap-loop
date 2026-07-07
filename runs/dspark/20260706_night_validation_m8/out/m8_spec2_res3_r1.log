@@ -1,0 +1,181 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: MTP+SSD-streaming enabled (experimental, DS4_MTP_STREAMING)
+ds4: MTP support model loaded: /root/models/ds4-mtp.gguf (draft=2)
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA registered 3.55 GiB model mapping for device access
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.000s
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 3.55 GiB of tensor spans in 0.174s
+ds4: CUDA registered 3.55 GiB support (MTP) model mapping for device access
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB limit=8.00 GiB free=0.00 GiB reserve=4.00 GiB total=12.00 GiB)
+ds4: CUDA loading model tensors 8.08 GiB cached
+ds4: mtp conf drafted=2 committed=2 mtp_top=260 runner=411 margin=5.464600 target_next=260 draft_next=260
+ds4: mtp timing micro drafted=2 committed=2 draft=26.292 ms snapshot=0.000 ms verify=2771.697 ms total=2798.479 ms
+Here's ads4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=396 runner=3608 margin=3.091002 target_next=396 draft_next=396
+ds4: mtp timing micro drafted=2 committed=2 draft=29.308 ms snapshot=0.000 ms verify=3299.553 ms total=3329.343 ms
+ Python function thatds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=260 runner=270 margin=3.806396 target_next=260 draft_next=260
+ds4: mtp timing micro drafted=2 committed=2 draft=110.256 ms snapshot=0.000 ms verify=2782.392 ms total=2892.853 ms
+ parses ads4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=14 runner=305 margin=0.728188 target_next=305 draft_next=14
+ds4: mtp timing micro drafted=2 committed=1 draft=23.525 ms snapshot=0.000 ms verify=2179.182 ms prefix=1.146 ms total=2204.056 ms noreplay=1
+ CSV fileds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=270 runner=260 margin=8.908787 target_next=270 draft_next=270
+ds4: mtp timing micro drafted=2 committed=2 draft=21.220 ms snapshot=0.000 ms verify=2326.027 ms total=2347.416 ms
+ and returns theds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=270 runner=3785 margin=4.672527 target_next=270 draft_next=270
+ds4: mtp timing micro drafted=2 committed=2 draft=22.793 ms snapshot=0.000 ms verify=2599.781 ms total=2622.739 ms
+ sum of theds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=979 runner=14 margin=2.088795 target_next=14 draft_next=979
+ds4: mtp timing micro drafted=2 committed=1 draft=28.024 ms snapshot=0.000 ms verify=2650.934 ms prefix=1.340 ms total=2680.473 ms noreplay=1
+ second columnds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+,ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=17363 runner=21085 margin=13.241474 target_next=17363 draft_next=17363
+ds4: mtp timing micro drafted=2 committed=2 draft=27.122 ms snapshot=0.000 ms verify=2251.278 ms total=2278.610 ms
+ with error handlingds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=3696 runner=3107 margin=7.208633 target_next=3696 draft_next=3696
+ds4: mtp timing micro drafted=2 committed=2 draft=27.000 ms snapshot=0.000 ms verify=2469.578 ms total=2496.796 ms
+ and a docds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=9854 runner=3465 margin=11.045425 target_next=9854 draft_next=9854
+ds4: mtp timing micro drafted=2 committed=2 draft=28.990 ms snapshot=0.000 ms verify=2183.296 ms total=2212.514 ms
+string:
+
+```ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=1897 runner=3465 margin=4.728794 target_next=1897 draft_next=1897
+ds4: mtp timing micro drafted=2 committed=2 draft=23.818 ms snapshot=0.000 ms verify=2245.824 ms total=2269.812 ms
+python
+importds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=3465 runner=1897 margin=3.055695 target_next=3465 draft_next=3465
+ds4: mtp timing micro drafted=2 committed=2 draft=28.478 ms snapshot=0.000 ms verify=2227.683 ms total=2256.332 ms
+ csv
+
+defds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=10930 runner=20 margin=8.585052 target_next=10930 draft_next=10930
+ds4: mtp timing micro drafted=2 committed=2 draft=28.435 ms snapshot=0.000 ms verify=2136.097 ms total=2164.702 ms
+ sum_secondds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=9860 runner=17555 margin=1.275234 target_next=17555 draft_next=9860
+ds4: mtp timing micro drafted=2 committed=1 draft=24.677 ms snapshot=0.000 ms verify=2100.993 ms prefix=1.241 ms total=2127.108 ms noreplay=1
+_column(fileds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=361 runner=26712 margin=7.030556 target_next=361 draft_next=361
+ds4: mtp timing micro drafted=2 committed=2 draft=27.587 ms snapshot=0.000 ms verify=2443.110 ms total=2470.878 ms
+_path):
+   ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=50924 runner=82630 margin=0.178722 target_next=82630 draft_next=50924
+ds4: mtp timing micro drafted=2 committed=1 draft=29.325 ms snapshot=0.000 ms verify=2452.521 ms prefix=1.320 ms total=2483.339 ms noreplay=1
+ """
+   ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ Parseds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=4245 runner=343 margin=7.474480 target_next=4245 draft_next=4245
+ds4: mtp timing micro drafted=2 committed=2 draft=27.957 ms snapshot=0.000 ms verify=2193.878 ms total=2222.035 ms
+ a CSV fileds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=270 runner=2595 margin=5.555721 target_next=270 draft_next=270
+ds4: mtp timing micro drafted=2 committed=2 draft=27.075 ms snapshot=0.000 ms verify=2425.440 ms total=2452.688 ms
+ and return theds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=1 mtp_top=270 runner=3785 margin=1.377224 target_next=710 draft_next=270
+ds4: mtp timing micro drafted=2 committed=1 draft=27.251 ms snapshot=0.000 ms verify=2668.003 ms prefix=1.851 ms total=2697.291 ms noreplay=1
+ sum ofds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=295 runner=538 margin=9.224342 target_next=295 draft_next=295
+ds4: mtp timing micro drafted=2 committed=2 draft=27.681 ms snapshot=0.000 ms verify=2361.966 ms total=2389.818 ms
+ all values inds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=7133 runner=201 margin=11.845184 target_next=7133 draft_next=7133
+ds4: mtp timing micro drafted=2 committed=2 draft=30.383 ms snapshot=0.000 ms verify=2299.310 ms total=2329.871 ms
+ the second columnds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+.
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=93634 runner=39996 margin=0.535484 target_next=93634 draft_next=93634
+ds4: mtp timing micro drafted=2 committed=2 draft=27.656 ms snapshot=0.000 ms verify=2515.450 ms total=2543.306 ms
+    
+    Argsds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=4245 runner=9405 margin=11.839657 target_next=4245 draft_next=4245
+ds4: mtp timing micro drafted=2 committed=2 draft=35.878 ms snapshot=0.000 ms verify=2443.726 ms total=2479.801 ms
+:
+        fileds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=2533 runner=1691 margin=11.179905 target_next=2533 draft_next=2533
+ds4: mtp timing micro drafted=2 committed=2 draft=30.289 ms snapshot=0.000 ms verify=2291.552 ms total=2322.033 ms
+_path (strds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=304 runner=294 margin=3.968500 target_next=304 draft_next=304
+ds4: mtp timing micro drafted=2 committed=2 draft=27.250 ms snapshot=0.000 ms verify=2221.258 ms total=2248.681 ms
+): Path tods4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=4245 runner=5791 margin=10.669022 target_next=4245 draft_next=4245
+ds4: mtp timing micro drafted=2 committed=2 draft=28.701 ms snapshot=0.000 ms verify=2307.994 ms total=2336.879 ms
+ the CSV fileds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+.
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=27669 runner=10340 margin=12.611389 target_next=27669 draft_next=27669
+ds4: mtp timing micro drafted=2 committed=2 draft=27.957 ms snapshot=0.000 ms verify=2510.415 ms total=2538.551 ms
+        
+    Returnsds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=12249 runner=688 margin=9.660770 target_next=12249 draft_next=12249
+ds4: mtp timing micro drafted=2 committed=2 draft=27.395 ms snapshot=0.000 ms verify=2736.779 ms total=2764.340 ms
+:
+        floatds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=294 runner=14 margin=7.884886 target_next=294 draft_next=294
+ds4: mtp timing micro drafted=2 committed=2 draft=34.938 ms snapshot=0.000 ms verify=2834.030 ms total=2869.135 ms
+: Sum ofds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=7133 runner=1990 margin=11.403000 target_next=7133 draft_next=7133
+ds4: mtp timing micro drafted=2 committed=2 draft=31.295 ms snapshot=0.000 ms verify=2474.516 ms total=2505.989 ms
+ the second columnds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA loading model tensors 8.20 GiB cached
+ds4: mtp conf drafted=2 committed=1 mtp_top=528 runner=12467 margin=0.981380 target_next=9970 draft_next=528
+ds4: mtp timing micro drafted=2 committed=1 draft=29.668 ms snapshot=0.000 ms verify=3010.668 ms prefix=1.398 ms total=3041.916 ms noreplay=1
+ values.
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=62984 runner=13559 margin=9.389164 target_next=62984 draft_next=62984
+ds4: mtp timing micro drafted=2 committed=2 draft=33.466 ms snapshot=0.000 ms verify=2906.946 ms total=2940.596 ms
+        
+    Raisds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=528 runner=361 margin=7.817137 target_next=528 draft_next=528
+ds4: mtp timing micro drafted=2 committed=2 draft=33.754 ms snapshot=0.000 ms verify=2920.408 ms total=2954.340 ms
+es:
+       ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: CUDA streaming expert cache disabled: available 0.00 GiB <= reserve 3.00 GiB
+ds4: mtp conf drafted=2 committed=2 mtp_top=9000 runner=28 margin=8.052931 target_next=9000 draft_next=9000
+ds4: mtp timing micro drafted=2 committed=2 draft=32.729 ms snapshot=0.000 ms verify=2397.980 ms total=2430.882 ms
+ FileNotFoundError
+ds4: prefill: 1.60 t/s, generation: 0.67 t/s
+ds4: SPEX stats: selected_batches=3211 selected_experts=27877 cache_hits=0 cache_misses=508 hit_rate=0.0000 miss_per_expert=0.0182 direct_loads=27619 copy_calls=84381 copied=192773.25 MiB copy_ms=129760.740 copy_ms_per_batch=40.411 sync_calls=83085 sync_ms=11481.214 sync_ms_per_batch=3.576

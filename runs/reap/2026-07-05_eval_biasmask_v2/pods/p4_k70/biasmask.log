@@ -1,0 +1,5 @@
+exp_probs_b trovati: 40 layer (3..42)
+backup bias -> /root/models/ds4-2bit.gguf.biasbak.json
+apply reap: scritti 7160 bias a -1e9 su 40 layer
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json

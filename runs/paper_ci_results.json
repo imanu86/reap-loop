@@ -1,0 +1,95 @@
+{
+  "_meta": {
+    "script": "scripts/paper_ci.py",
+    "bootstrap_resamples": 10000,
+    "seed": 42,
+    "ci": "percentile 95% (2.5\u201397.5)",
+    "note": "Bootstrap CIs on ratios already on disk (GAPS M4). Where the number of independent replicates is <3 the CI is flagged 'dati insufficienti'. A CI that crosses 1.0 means the comparison is not significant at 95%."
+  },
+  "a_reap_perplexity_ratios": {
+    "_source": "runs/reap/2026-07-05_eval_biasmask/results_raw.csv",
+    "reap_over_full_dom": {
+      "point_geomean_ppl_ratio": 1.013,
+      "per_chunk_ppl_ratio": [
+        1.0332,
+        0.9868,
+        1.0112,
+        1.0212
+      ],
+      "n_chunks": 4,
+      "ci95": [
+        0.9953,
+        1.0277
+      ],
+      "crosses_1.0": true
+    },
+    "rand_over_full_dom": {
+      "point_geomean_ppl_ratio": 1.3645,
+      "per_chunk_ppl_ratio": [
+        1.265,
+        1.2945,
+        1.5053,
+        1.4061
+      ],
+      "n_chunks": 4,
+      "ci95": [
+        1.2797,
+        1.4549
+      ],
+      "crosses_1.0": false
+    },
+    "rand_over_full_gen": {
+      "point_geomean_ppl_ratio": 2.115,
+      "per_chunk_ppl_ratio": [
+        2.1263,
+        2.1038
+      ],
+      "n_chunks": 2,
+      "ci95": [
+        2.1038,
+        2.1263
+      ],
+      "crosses_1.0": false,
+      "note": "[CI: dati insufficienti, n=2 chunk] \u2014 CI mostrato ma non affidabile"
+    }
+  },
+  "b_dspark_wall_ratio": {
+    "_source": "runs/dspark/20260705_fase_c_smoke_3060/out/runtimes.csv",
+    "_note": "Matched protocol: NTOK=100, draft=2. base_r1/r2 vs spec2_r1/r2. spec2_verbose excluded (n=30 tokens), spec4 excluded (draft=4), spec2_m3 excluded (margin-skip variant). speedup = 1/ratio.",
+    "spec2_over_base": {
+      "point_ratio_spec_over_base": 0.9101,
+      "base_wall_s": [
+        186.0,
+        181.0
+      ],
+      "spec_wall_s": [
+        168.0,
+        166.0
+      ],
+      "n_base": 2,
+      "n_spec": 2,
+      "ci95": [
+        0.8925,
+        0.9282
+      ],
+      "crosses_1.0": false,
+      "note": "[CI: dati insufficienti, n_base=2 n_spec=2] \u2014 CI mostrato ma le braccia hanno <3 repliche"
+    }
+  },
+  "c_acceptance": {
+    "_source": "runs/dspark/20260705_fase_c_smoke_3060/out/spec2_r1.log (56 committed / 66 cycles)",
+    "fase_c_spec2": {
+      "k": 56,
+      "n": 66,
+      "point": 0.8485,
+      "wilson_ci95": [
+        0.7431,
+        0.9156
+      ],
+      "bootstrap_ci95": [
+        0.7576,
+        0.9242
+      ]
+    }
+  }
+}

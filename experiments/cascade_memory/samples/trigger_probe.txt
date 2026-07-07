@@ -1,0 +1,30 @@
+
+=== Gate #1 regime (FULL window, hallucination-dominated errors) ===  N=2400  correct=2275 (94.8%)  abstained=41 (1.7%)
+  single-feature AUROC(feature, correct):
+    mean_logprob (pre-reg sensor) : 0.845
+    min_logprob                   : 0.848
+    mean_prob                     : 0.845
+    NOT-abstained (free trigger)  : 0.664
+  learned classifier AUROC (5-fold CV):
+    logprob-only [ml,min,mp]      : 0.811
+    abstention-only [ab]          : 0.638
+    FULL black-box [ml,min,mp,ab] : 0.814
+  RESIDUAL (non-abstained only, N=2359, correct=2275):
+    mean_logprob AUROC            : 0.800
+    min_logprob  AUROC            : 0.806
+    logprob-only classifier (CV)  : 0.721
+
+=== Gate #2 regime (SMALL window, abstention-dominated) ===  N=600  correct=120 (20.0%)  abstained=441 (73.5%)
+  single-feature AUROC(feature, correct):
+    mean_logprob (pre-reg sensor) : 0.685
+    min_logprob                   : 0.627
+    mean_prob                     : 0.685
+    NOT-abstained (free trigger)  : 0.959
+  learned classifier AUROC (5-fold CV):
+    logprob-only [ml,min,mp]      : 0.607
+    abstention-only [ab]          : 0.955
+    FULL black-box [ml,min,mp,ab] : 0.984
+  RESIDUAL (non-abstained only, N=159, correct=120):
+    mean_logprob AUROC            : 0.937
+    min_logprob  AUROC            : 0.939
+    logprob-only classifier (CV)  : 0.837

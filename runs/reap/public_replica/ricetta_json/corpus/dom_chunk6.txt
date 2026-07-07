@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Tiramisu' classico. Per 2 persone, tempo 40 minuti.
+Ingredienti: sale fino, vino bianco, carote, pecorino, zafferano, riso Carnaroli.
+Preparazione: scolare vino bianco; tritare sale fino; infornare vino bianco; scolare sale fino; cuocere a fuoco lento carote; impastare vino bianco.
+{"titolo": "Tiramisu' classico", "porzioni": 2, "tempo_minuti": 40, "ingredienti": ["sale fino", "vino bianco", "carote", "pecorino", "zafferano", "riso Carnaroli"], "passi": ["scolare vino bianco", "tritare sale fino", "infornare vino bianco", "scolare sale fino", "cuocere a fuoco lento carote", "impastare vino bianco"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Panna cotta. Per 4 persone, tempo 45 minuti.
+Ingredienti: zafferano, parmigiano, olio extravergine, cipolla, carote, guanciale, sale fino.
+Preparazione: aggiungere sale fino; mescolare zafferano; mantecare olio extravergine; cuocere a fuoco lento sale fino; infornare zafferano.
+{"titolo": "Panna cotta", "porzioni": 4, "tempo_minuti": 45, "ingredienti": ["zafferano", "parmigiano", "olio extravergine", "cipolla", "carote", "guanciale", "sale fino"], "passi": ["aggiungere sale fino", "mescolare zafferano", "mantecare olio extravergine", "cuocere a fuoco lento sale fino", "infornare zafferano"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 2 persone, tempo 60 minuti.
+Ingredienti: brodo vegetale, carote, pomodori pelati, basilico, uova, olio extravergine, lievito, sale fino.
+Preparazione: far riposare pomodori pelati; far riposare pomodori pelati; cuocere a fuoco lento sale fino; tritare brodo vegetale.
+{"titolo": "Polenta concia", "porzioni": 2, "tempo_minuti": 60, "ingredienti": ["brodo vegetale", "carote", "pomodori pelati", "basilico", "uova", "olio extravergine", "lievito", "sale fino"], "passi": ["far riposare pomodori pelati", "far riposare pomodori pelati", "cuocere a fuoco lento sale fino", "tritare brodo vegetale"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Ragu' alla bolognese. Per 4 persone, tempo 90 minuti.
+Ingredienti: farina 00, pancetta, guanciale, burro, zucchero, aglio, pepe nero, uova.
+Preparazione: mantecare burro; cuocere a fuoco lento pancetta; sfumare con pancetta; cuocere a fuoco lento pepe nero.
+{"titolo": "Ragu' alla bolognese", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["farina 00", "pancetta", "guanciale", "burro", "zucchero", "aglio", "pepe nero", "uova"], "passi": ["mantecare burro", "cuocere a fuoco lento pancetta", "sfumare con pancetta", "cuocere a fuoco lento pepe nero"]}

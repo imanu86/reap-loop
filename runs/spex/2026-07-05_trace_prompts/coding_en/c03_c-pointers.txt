@@ -1,0 +1,1 @@
+Explain the most common pointer mistakes in C with small code examples and how to fix each one.

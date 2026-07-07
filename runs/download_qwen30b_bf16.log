@@ -1,0 +1,2 @@
+Fetching 23 files:   0%|          | 0/23 [00:00<?, ?it/s]Fetching 23 files:  22%|##1       | 5/23 [49:59<2:59:58, 599.94s/it]Fetching 23 files:  39%|###9      | 9/23 [50:33<1:06:22, 284.49s/it]Fetching 23 files:  57%|#####6    | 13/23 [50:50<27:13, 163.34s/it] Fetching 23 files:  70%|######9   | 16/23 [51:31<13:31, 115.86s/it]Fetching 23 files: 100%|##########| 23/23 [51:31<00:00, 134.40s/it]
+DOWNLOAD_DONE <HF_CACHE_ROOT>\huggingface\hub\models--Qwen--Qwen3-30B-A3B\snapshots\ad44e777bcd18fa416d9da3bd8f70d33ebb85d39

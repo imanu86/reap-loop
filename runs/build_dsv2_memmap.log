@@ -1,0 +1,9 @@
+[mmap] deepseek-ai/DeepSeek-V2-Lite: L=27 (MoE da layer 1) E=64 H=2048 I=1408
+[mmap] gate_up (27, 64, 2816, 2048) + down (27, 64, 2048, 1408) fp16 -> 27.8 GB su <MEMMAP_DIR>
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<?, ?it/s]
+[mmap] model-00001-of-000004.safetensors: 1241 tensori-expert scritti
+[mmap] model-00002-of-000004.safetensors: 1414 tensori-expert scritti
+[mmap] model-00003-of-000004.safetensors: 1403 tensori-expert scritti
+[mmap] model-00004-of-000004.safetensors: 934 tensori-expert scritti
+[mmap] FATTO. gate=1664/1664 up=1664/1664 down=1664/1664 (E=64 su 26 layer MoE)
+[mmap] memmap pronti in <MEMMAP_DIR> (gate_up.f16.mmap, down.f16.mmap, meta.json)

@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Valdarno Zaino328
+Categoria: zaino da trekking. Marca: Valdarno. Colore: blu notte. Materiale principale: cotone organico. Peso: 2.02 kg. Prezzo di listino: 108.29 euro. Disponibilita': disponibile. Spedizione da Genova. Garanzia 36 mesi. Codice: VAL-47055.

@@ -1,0 +1,4 @@
+cap,pin,react_miss,pred_miss,probe_miss,saving,net_vs_probe,react_tok_s,pred_tok_s,acc_react,acc_pred,acc_match
+4,3,53676,41144,5337,12532,7195,6.4,7.3,0.0,0.0,True
+8,7,37444,33176,5337,4268,-1069,7.5,7.9,0.0,0.0,True
+16,15,22356,22434,5337,-78,-5415,8.8,8.8,0.0,0.0,True

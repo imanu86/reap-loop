@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Tiramisu' classico. Per 2 persone, tempo 15 minuti.
+Ingredienti: vino bianco, brodo vegetale, cipolla, olio extravergine, sedano, latte intero.
+Preparazione: mescolare cipolla; far riposare cipolla; mantecare sedano; tritare sedano; aggiungere olio extravergine.
+{"titolo": "Tiramisu' classico", "porzioni": 2, "tempo_minuti": 15, "ingredienti": ["vino bianco", "brodo vegetale", "cipolla", "olio extravergine", "sedano", "latte intero"], "passi": ["mescolare cipolla", "far riposare cipolla", "mantecare sedano", "tritare sedano", "aggiungere olio extravergine"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Insalata di farro. Per 4 persone, tempo 30 minuti.
+Ingredienti: zucchero, sale fino, vino bianco, zafferano, basilico, burro.
+Preparazione: infornare zafferano; scolare zafferano; cuocere a fuoco lento zucchero; far riposare sale fino; mantecare vino bianco; scolare zafferano.
+{"titolo": "Insalata di farro", "porzioni": 4, "tempo_minuti": 30, "ingredienti": ["zucchero", "sale fino", "vino bianco", "zafferano", "basilico", "burro"], "passi": ["infornare zafferano", "scolare zafferano", "cuocere a fuoco lento zucchero", "far riposare sale fino", "mantecare vino bianco", "scolare zafferano"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Panna cotta. Per 2 persone, tempo 15 minuti.
+Ingredienti: latte intero, zafferano, sedano, cipolla, brodo vegetale.
+Preparazione: cuocere a fuoco lento zafferano; sfumare con cipolla; cuocere a fuoco lento sedano; far riposare cipolla; infornare latte intero; infornare brodo vegetale.
+{"titolo": "Panna cotta", "porzioni": 2, "tempo_minuti": 15, "ingredienti": ["latte intero", "zafferano", "sedano", "cipolla", "brodo vegetale"], "passi": ["cuocere a fuoco lento zafferano", "sfumare con cipolla", "cuocere a fuoco lento sedano", "far riposare cipolla", "infornare latte intero", "infornare brodo vegetale"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 2 persone, tempo 40 minuti.
+Ingredienti: pepe nero, guanciale, prezzemolo, carote, sale fino, vino bianco, olio extravergine, farina 00.
+Preparazione: aggiungere carote; far riposare prezzemolo; aggiungere pepe nero; infornare carote; scolare guanciale; infornare carote.
+{"titolo": "Frittata di zucchine", "porzioni": 2, "tempo_minuti": 40, "ingredienti": ["pepe nero", "guanciale", "prezzemolo", "carote", "sale fino", "vino bianco", "olio extravergine", "farina 00"], "passi": ["aggiungere carote", "far riposare prezzemolo", "aggiungere pepe nero", "infornare carote", "scolare guanciale", "infornare carote"]}

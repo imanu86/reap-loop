@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Roccabruna Giacca431
+Categoria: giacca antipioggia. Marca: Roccabruna. Colore: azzurro. Materiale principale: cotone organico. Peso: 3.52 kg. Prezzo di listino: 183.36 euro. Disponibilita': prenotabile. Spedizione da Verona. Garanzia 12 mesi. Codice: ROC-23147.

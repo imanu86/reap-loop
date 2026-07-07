@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Risotto allo zafferano. Per 2 persone, tempo 40 minuti.
+Ingredienti: lievito, farina 00, sedano, zafferano, latte intero, guanciale, cipolla, brodo vegetale.
+Preparazione: far riposare lievito; sfumare con sedano; sfumare con sedano; scolare sedano.
+{"titolo": "Risotto allo zafferano", "porzioni": 2, "tempo_minuti": 40, "ingredienti": ["lievito", "farina 00", "sedano", "zafferano", "latte intero", "guanciale", "cipolla", "brodo vegetale"], "passi": ["far riposare lievito", "sfumare con sedano", "sfumare con sedano", "scolare sedano"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 4 persone, tempo 45 minuti.
+Ingredienti: vino bianco, pepe nero, latte intero, parmigiano, pecorino, lievito, cipolla.
+Preparazione: sfumare con vino bianco; infornare latte intero; mescolare vino bianco; infornare cipolla; scolare pepe nero; sfumare con lievito.
+{"titolo": "Frittata di zucchine", "porzioni": 4, "tempo_minuti": 45, "ingredienti": ["vino bianco", "pepe nero", "latte intero", "parmigiano", "pecorino", "lievito", "cipolla"], "passi": ["sfumare con vino bianco", "infornare latte intero", "mescolare vino bianco", "infornare cipolla", "scolare pepe nero", "sfumare con lievito"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Minestrone di verdure. Per 2 persone, tempo 30 minuti.
+Ingredienti: riso Carnaroli, cipolla, pepe nero, guanciale, zucchero, sale fino, sedano, lievito.
+Preparazione: tritare cipolla; infornare sedano; infornare sale fino; sfumare con pepe nero; mantecare pepe nero; mantecare riso Carnaroli.
+{"titolo": "Minestrone di verdure", "porzioni": 2, "tempo_minuti": 30, "ingredienti": ["riso Carnaroli", "cipolla", "pepe nero", "guanciale", "zucchero", "sale fino", "sedano", "lievito"], "passi": ["tritare cipolla", "infornare sedano", "infornare sale fino", "sfumare con pepe nero", "mantecare pepe nero", "mantecare riso Carnaroli"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Insalata di farro. Per 4 persone, tempo 45 minuti.
+Ingredienti: carote, aglio, basilico, guanciale, pepe nero, brodo vegetale, riso Carnaroli, sale fino.
+Preparazione: far riposare sale fino; scolare brodo vegetale; mantecare brodo vegetale; cuocere a fuoco lento basilico; mantecare pepe nero.
+{"titolo": "Insalata di farro", "porzioni": 4, "tempo_minuti": 45, "ingredienti": ["carote", "aglio", "basilico", "guanciale", "pepe nero", "brodo vegetale", "riso Carnaroli", "sale fino"], "passi": ["far riposare sale fino", "scolare brodo vegetale", "mantecare brodo vegetale", "cuocere a fuoco lento basilico", "mantecare pepe nero"]}

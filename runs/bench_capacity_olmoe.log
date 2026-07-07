@@ -1,0 +1,73 @@
+Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+[bench] carico OLMoE su CPU (bf16)...
+Loading weights:   0%|          | 0/179 [00:00<?, ?it/s]Loading weights:   2%|2         | 4/179 [00:00<00:19,  9.16it/s]Loading weights:   3%|2         | 5/179 [00:01<00:51,  3.38it/s]Loading weights:   8%|8         | 15/179 [00:01<00:13, 12.15it/s]Loading weights:  10%|#         | 18/179 [00:02<00:17,  9.41it/s]Loading weights:  15%|#4        | 26/179 [00:02<00:10, 14.30it/s]Loading weights:  16%|#6        | 29/179 [00:02<00:14, 10.42it/s]Loading weights:  21%|##        | 37/179 [00:03<00:09, 14.86it/s]Loading weights:  22%|##2       | 40/179 [00:03<00:12, 11.04it/s]Loading weights:  27%|##6       | 48/179 [00:03<00:08, 15.20it/s]Loading weights:  28%|##8       | 51/179 [00:04<00:11, 11.22it/s]Loading weights:  33%|###2      | 59/179 [00:04<00:07, 15.28it/s]Loading weights:  35%|###4      | 62/179 [00:05<00:10, 11.24it/s]Loading weights:  39%|###9      | 70/179 [00:05<00:07, 15.09it/s]Loading weights:  41%|####      | 73/179 [00:06<00:09, 11.02it/s]Loading weights:  45%|####5     | 81/179 [00:06<00:06, 14.99it/s]Loading weights:  47%|####6     | 84/179 [00:07<00:08, 11.30it/s]Loading weights:  51%|#####1    | 92/179 [00:07<00:05, 15.10it/s]Loading weights:  53%|#####3    | 95/179 [00:07<00:07, 11.19it/s]Loading weights:  58%|#####7    | 103/179 [00:08<00:05, 15.16it/s]Loading weights:  59%|#####9    | 106/179 [00:08<00:06, 11.37it/s]Loading weights:  64%|######3   | 114/179 [00:09<00:04, 15.00it/s]Loading weights:  65%|######4   | 116/179 [00:09<00:06, 10.29it/s]Loading weights:  70%|######9   | 125/179 [00:09<00:03, 14.96it/s]Loading weights:  72%|#######1  | 128/179 [00:10<00:04, 11.06it/s]Loading weights:  76%|#######5  | 136/179 [00:10<00:02, 14.86it/s]Loading weights:  78%|#######7  | 139/179 [00:11<00:03, 10.99it/s]Loading weights:  82%|########2 | 147/179 [00:11<00:02, 14.81it/s]Loading weights:  84%|########3 | 150/179 [00:12<00:02, 10.98it/s]Loading weights:  88%|########8 | 158/179 [00:12<00:01, 14.89it/s]Loading weights:  90%|########9 | 161/179 [00:13<00:01, 11.19it/s]Loading weights:  94%|#########4| 169/179 [00:13<00:00, 15.14it/s]Loading weights:  96%|#########6| 172/179 [00:13<00:00, 11.36it/s]Loading weights: 100%|##########| 179/179 [00:13<00:00, 12.89it/s]
+[bench] warmup: cache piccola + cattura routing (prefill)...
+Traceback (most recent call last):
+  File "<REPO>\scripts\benchmark_capacity_olmoe.py", line 114, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "<REPO>\scripts\benchmark_capacity_olmoe.py", line 73, in main
+    model(**enc)  # prefill only
+    ^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\utils\generic.py", line 907, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\models\olmoe\modeling_olmoe.py", line 666, in forward
+    outputs: MoeModelOutputWithPast = self.model(
+                                      ^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\utils\generic.py", line 1036, in wrapper
+    output = func(self, *args, **kwargs)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\utils\output_capturing.py", line 252, in wrapper
+    outputs = func(self, *args, **kwargs)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\models\olmoe\modeling_olmoe.py", line 504, in forward
+    hidden_states = decoder_layer(
+                    ^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\modeling_layers.py", line 93, in __call__
+    return super().__call__(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\models\olmoe\modeling_olmoe.py", line 414, in forward
+    hidden_states = self.mlp(hidden_states)
+                    ^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\transformers\models\olmoe\modeling_olmoe.py", line 372, in forward
+    final_hidden_states = self.experts(hidden_states, top_k_index, top_k_weights).reshape(
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1739, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<PYTHON>\Python312\Lib\site-packages\torch\nn\modules\module.py", line 1750, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<REPO>\src\msc\hierarchy\olmoe_cache.py", line 292, in cached_forward
+    gate_up_w, down_w = cache.get(int(expert_idx))
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<REPO>\src\msc\hierarchy\olmoe_cache.py", line 245, in get
+    self._evict_one()
+  File "<REPO>\src\msc\hierarchy\olmoe_cache.py", line 223, in _evict_one
+    raise RuntimeError("evict richiesto ma nessuna slice non-pinnata disponibile")
+RuntimeError: evict richiesto ma nessuna slice non-pinnata disponibile

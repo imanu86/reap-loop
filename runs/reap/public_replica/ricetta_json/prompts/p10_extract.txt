@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 4 persone, tempo 90 minuti.
+Ingredienti: cipolla, sale fino, farina 00, pepe nero, prezzemolo, pancetta, lievito, sedano.
+Preparazione: scolare pepe nero; mescolare sedano; mescolare lievito; aggiungere lievito; scolare sale fino.

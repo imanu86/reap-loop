@@ -1,0 +1,83 @@
+{
+ "experiment": "Confidence-Cascade Memory - Gate #2 (does the cascade dominate?)",
+ "date": "2026-07-06",
+ "phase": "Step 2 - cascade controller + adversarial arms",
+ "model": "Qwen/Qwen2.5-7B-Instruct (GQA, positive substrate)",
+ "serving": "<internal note redacted>",
+ "regime": "small native window (native 6 / buffer 50 turns), abstention-gated cascade",
+ "pod_cost_usd_gate2_total": 0.33,
+ "pod_notes": "2 pods failed on flaky hosts (3090 crash-loop, 4090 no-start) before pod #3 (3090) served; cost includes the wasted pods",
+ "dataset": "gate2_main.jsonl - 30/cell, 600 plant items, seed0=500000; dist {5,20,40,60,80} x {single_fact,distractor_dense} x {easy,hard}",
+ "operating_point": "theta=-0.1 (logprob gate is INERT here; cascade is effectively abstention-gated -> single point)",
+ "arms": {
+  "B0_sw": {
+   "acc": 0.2,
+   "mean_tokens": 296.5
+  },
+  "B1_always_rag": {
+   "acc": 0.863,
+   "mean_tokens": 157.6
+  },
+  "B2_reactive": {
+   "acc": 0.843,
+   "mean_tokens": 570.7
+  },
+  "B3_random": {
+   "acc": 0.887,
+   "mean_tokens": 705.2
+  },
+  "B4_cascade": {
+   "acc": 0.885,
+   "mean_tokens": 792.8,
+   "rung_stop": {
+    "0": 0.4,
+    "1": 0.01,
+    "2": 0.32,
+    "native": 0.27
+   }
+  },
+  "B5_cascade_no_rung0": {
+   "acc": 0.84,
+   "mean_tokens": 722.6
+  }
+ },
+ "pre_registered_gate2": {
+  "(i)_B4_dominates_B1_and_B3": {
+   "B4_vs_B1_delta_cost_matched_acc": 635.2,
+   "CI95": [
+    600.0,
+    667.8
+   ],
+   "pass": false,
+   "CI95_b3": [
+    64.8,
+    108.9
+   ],
+   "note": "positive delta = cascade MORE expensive; needed < 0. Cheap-first loses even to random at equal budget."
+  },
+  "(ii)_rung0_contribution": {
+   "rung0_share_of_recovered": 0.545,
+   "pass_share": true,
+   "B5_cannot_match_B1_acc": true,
+   "note": "rung-0 adds value but insufficient"
+  },
+  "(iii)_stop_too_early": {
+   "value": 0.07,
+   "threshold": 0.05,
+   "pass": false
+  }
+ },
+ "verdict": "NO-GO for the novelty claim (honest negative). Do not proceed to Gate #3.",
+ "findings": [
+  "F1: logprob confidence sensor collapses under verbalized abstention (mean_logprob ~ -0.003 for 'I don't know'); regime-fragile, does not transfer from Gate #1's full-window regime.",
+  "F2: always-RAG dominates on cost; a cost cascade needs cheap rungs with a high hit rate. Under uniform fact-distance, buffer-scoped cheap rungs fail on 60% of facts and the cascade pays for them before reaching full-RAG."
+ ],
+ "runs_committed": [
+  "B0_sw",
+  "B1_always_rag",
+  "B2_reactive_th-0.1",
+  "B3_random_th-0.1",
+  "B4_cascade_th-0.1",
+  "B5_cascade_no_rung0_th-0.1"
+ ]
+}

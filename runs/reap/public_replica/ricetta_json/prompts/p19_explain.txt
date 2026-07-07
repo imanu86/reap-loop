@@ -1,0 +1,7 @@
+Sei un consulente esperto.
+
+Spiega passo passo, in italiano, la tecnica ottimale per preparare questo piatto senza errori, i punti critici e le varianti utili. Sii dettagliato.
+
+Ricetta: Crostata di marmellata. Per 4 persone, tempo 20 minuti.
+Ingredienti: pancetta, basilico, prezzemolo, farina 00, pepe nero.
+Preparazione: tritare pepe nero; tritare basilico; infornare farina 00; mescolare farina 00.

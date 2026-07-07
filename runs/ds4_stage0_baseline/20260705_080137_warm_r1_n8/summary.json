@@ -1,0 +1,24 @@
+[
+  {
+    "prefill_tps": 0.29,
+    "generation_tps": 0.1,
+    "selected_batches": 344,
+    "selected_experts": 4923,
+    "cache_hits": 0,
+    "cache_misses": 78,
+    "hit_rate": 0.0,
+    "miss_per_expert": 0.0158,
+    "direct_loads": 4845,
+    "copy_calls": 14769,
+    "copied": 33230.25,
+    "copy_ms": 140180.364,
+    "copy_ms_per_batch": 407.501,
+    "sync_calls": 14769,
+    "sync_ms": 3923.156,
+    "sync_ms_per_batch": 11.405,
+    "run": 1,
+    "mode": "warm",
+    "exit_code": 0,
+    "log": "runs\\ds4_stage0_baseline\\20260705_080137_warm_r1_n8\\run_01.log"
+  }
+]

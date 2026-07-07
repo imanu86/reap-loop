@@ -1,0 +1,17 @@
+B0_sw (no recovery, floor)  : acc=0.425  cost=274.5
+B1_always_rag (ceiling ref) : acc=0.944  cost=153.1
+
+T_abst = B2 @ theta=-2.0 (abstention-only): acc=0.899 cost=461.6 recovery=0.50
+
+B2_reactive frontier (theta -> T_learned):
+    theta    acc    cost  recov   d_acc         d_acc_CI95  cost_x
+     -2.0  0.899   461.6   0.50  +0.000 [+0.000,+0.000]   1.00x
+    -0.02  0.914   468.8   0.51  +0.015 [+0.007,+0.024]   1.02x <= GO-candidate
+    -0.01  0.917   470.7   0.52  +0.019 [+0.010,+0.029]   1.02x <= GO-candidate
+   -0.006  0.919   471.5   0.52  +0.020 [+0.011,+0.030]   1.02x <= GO-candidate
+   -0.004  0.921   473.4   0.52  +0.022 [+0.014,+0.033]   1.03x <= GO-candidate
+   -0.002  0.924   475.1   0.53  +0.025 [+0.015,+0.036]   1.03x <= GO-candidate
+   -0.001  0.929   478.0   0.54  +0.030 [+0.019,+0.042]   1.04x <= GO-candidate
+
+============================================================
+VERDICT: GO - learned trigger dominates at theta=-0.001: +0.030 acc (CI95 [+0.019,+0.042]) at 1.04x cost

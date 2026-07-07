@@ -1,0 +1,92 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.680s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 102.14 MiB (ctx=1024, backend=cuda, prefill_chunk=1024, raw_kv_rows=1024, compressed_kv_rows=258)
+ds4: CUDA streaming expert cache capped from 512 to 156 experts (available 7.03 GiB, reserve 6.00 GiB, 6.75 MiB/expert)
+ds4: SPEX markov loaded '/root/ds4_synthetic_flash.spex' L=43 E=256 topN=6
+ds4: SPEX markov prefetch L3->L4 experts=6 ok=1
+ds4: SPEX markov prefetch L4->L5 experts=6 ok=1
+ds4: SPEX markov prefetch L5->L6 experts=6 ok=1
+ds4: SPEX markov prefetch L6->L7 experts=6 ok=1
+ds4: SPEX markov prefetch L7->L8 experts=6 ok=1
+ds4: SPEX markov prefetch L8->L9 experts=6 ok=1
+ds4: SPEX markov prefetch L9->L10 experts=6 ok=1
+ds4: SPEX markov prefetch L10->L11 experts=6 ok=1
+ds4: SPEX markov prefetch L11->L12 experts=6 ok=1
+ds4: SPEX markov prefetch L12->L13 experts=6 ok=1
+ds4: SPEX markov prefetch L13->L14 experts=6 ok=1
+ds4: SPEX markov prefetch L14->L15 experts=6 ok=1
+ds4: SPEX markov prefetch L15->L16 experts=6 ok=1
+ds4: SPEX markov prefetch L16->L17 experts=6 ok=1
+ds4: SPEX markov prefetch L17->L18 experts=6 ok=1
+ds4: SPEX markov prefetch L18->L19 experts=6 ok=1
+ds4: SPEX markov prefetch L19->L20 experts=6 ok=1
+ds4: SPEX markov prefetch L20->L21 experts=6 ok=1
+ds4: SPEX markov prefetch L21->L22 experts=6 ok=1
+ds4: SPEX markov prefetch L22->L23 experts=6 ok=1
+ds4: SPEX markov prefetch L23->L24 experts=6 ok=1
+ds4: SPEX markov prefetch L24->L25 experts=6 ok=1
+ds4: SPEX markov prefetch L25->L26 experts=6 ok=1
+ds4: SPEX markov prefetch L26->L27 experts=6 ok=1
+ds4: SPEX markov prefetch L27->L28 experts=6 ok=1
+ds4: SPEX markov prefetch L28->L29 experts=6 ok=1
+ds4: SPEX markov prefetch L29->L30 experts=6 ok=1
+ds4: SPEX markov prefetch L30->L31 experts=6 ok=1
+ds4: SPEX markov prefetch L31->L32 experts=6 ok=1
+ds4: SPEX markov prefetch L32->L33 experts=6 ok=1
+ds4: SPEX markov prefetch L33->L34 experts=6 ok=1
+ds4: SPEX markov prefetch L34->L35 experts=6 ok=1
+ds4: SPEX markov prefetch L35->L36 experts=6 ok=1
+ds4: SPEX markov prefetch L36->L37 experts=6 ok=1
+ds4: SPEX markov prefetch L37->L38 experts=6 ok=1
+ds4: SPEX markov prefetch L38->L39 experts=6 ok=1
+ds4: SPEX markov prefetch L39->L40 experts=6 ok=1
+ds4: SPEX markov prefetch L40->L41 experts=6 ok=1
+ds4: SPEX markov prefetch L41->L42 experts=6 ok=1
+ds4: CUDA loading model tensors 7.33 GiB cached
+ds4: SPEX markov prefetch L3->L4 experts=6 ok=1
+ds4: SPEX markov prefetch L4->L5 experts=6 ok=1
+ds4: SPEX markov prefetch L5->L6 experts=6 ok=1
+ds4: SPEX markov prefetch L6->L7 experts=6 ok=1
+ds4: SPEX markov prefetch L7->L8 experts=6 ok=1
+ds4: SPEX markov prefetch L8->L9 experts=6 ok=1
+ds4: SPEX markov prefetch L9->L10 experts=6 ok=1
+ds4: SPEX markov prefetch L10->L11 experts=6 ok=1
+ds4: SPEX markov prefetch L11->L12 experts=6 ok=1
+ds4: SPEX markov prefetch L12->L13 experts=6 ok=1
+ds4: SPEX markov prefetch L13->L14 experts=6 ok=1
+ds4: SPEX markov prefetch L14->L15 experts=6 ok=1
+ds4: SPEX markov prefetch L15->L16 experts=6 ok=1
+ds4: SPEX markov prefetch L16->L17 experts=6 ok=1
+ds4: SPEX markov prefetch L17->L18 experts=6 ok=1
+ds4: SPEX markov prefetch L18->L19 experts=6 ok=1
+ds4: SPEX markov prefetch L19->L20 experts=6 ok=1
+ds4: SPEX markov prefetch L20->L21 experts=6 ok=1
+ds4: SPEX markov prefetch L21->L22 experts=6 ok=1
+ds4: SPEX markov prefetch L22->L23 experts=6 ok=1
+ds4: SPEX markov prefetch L23->L24 experts=6 ok=1
+ds4: SPEX markov prefetch L24->L25 experts=6 ok=1
+ds4: SPEX markov prefetch L25->L26 experts=6 ok=1
+ds4: SPEX markov prefetch L26->L27 experts=6 ok=1
+ds4: SPEX markov prefetch L27->L28 experts=6 ok=1
+ds4: SPEX markov prefetch L28->L29 experts=6 ok=1
+ds4: SPEX markov prefetch L29->L30 experts=6 ok=1
+ds4: SPEX markov prefetch L30->L31 experts=6 ok=1
+ds4: SPEX markov prefetch L31->L32 experts=6 ok=1
+ds4: SPEX markov prefetch L32->L33 experts=6 ok=1
+ds4: SPEX markov prefetch L33->L34 experts=6 ok=1
+ds4: SPEX markov prefetch L34->L35 experts=6 ok=1
+ds4: SPEX markov prefetch L35->L36 experts=6 ok=1
+ds4: SPEX markov prefetch L36->L37 experts=6 ok=1
+ds4: SPEX markov prefetch L37->L38 experts=6 ok=1
+ds4: SPEX markov prefetch L38->L39 experts=6 ok=1
+ds4: SPEX markov prefetch L39->L40 experts=6 ok=1
+ds4: SPEX markov prefetch L40->L41 experts=6 ok=1
+ds4: SPEX markov prefetch L41->L42 experts=6 ok=1
+C
+ds4: prefill: 0.57 t/s, generation: 0.44 t/s
+ds4: SPEX stats: selected_batches=516 selected_experts=3096 cache_hits=2 cache_misses=538 hit_rate=0.0037 miss_per_expert=0.1738 direct_loads=3024 copy_calls=10686 copied=24043.50 MiB copy_ms=14631.058 copy_ms_per_batch=28.355 sync_calls=216 sync_ms=25.744 sync_ms_per_batch=0.050

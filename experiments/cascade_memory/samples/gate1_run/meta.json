@@ -1,0 +1,41 @@
+{
+ "experiment": "Confidence-Cascade Memory - Gate #1 (sensor separability + baseline frontier)",
+ "date": "2026-07-06",
+ "phase": "Step 1 (pre-cascade); Gate #1 of the pre-registration",
+ "model": "Qwen/Qwen2.5-7B-Instruct",
+ "substrate": "GQA (pre-registered POSITIVE substrate; MLA negative is a later deliverable)",
+ "serving": "<internal note redacted>",
+ "endpoint_returned_logprobs": true,
+ "pod_cost_usd_total": 0.18,
+ "n_llm_calls_total": 4800,
+ "errors": 0,
+ "dataset": {
+  "generator": "synth_gen.py (fictitious-universe)",
+  "main": "gate1_main.jsonl - 100/cell, 2000 plant items, seed0=1000 (reproducible)",
+  "leak": "gate1_leak.jsonl - 20/cell + leak-control twins, 400 plant / 400 control, seed0=900000",
+  "grid": "distance {5,20,40,60,80} x category {single_fact,distractor_dense} x difficulty {easy,hard}"
+ },
+ "sensor_primary": "mean_logprob (PRE-REGISTERED before results)",
+ "cost_denominator": "N_total (never N_resolved)",
+ "results": {
+  "baseline_arm": "B0_no_memory",
+  "N_task": 2400,
+  "accuracy": 0.948,
+  "abstention": 0.017,
+  "AUROC_confidence_correct": 0.845,
+  "AUROC_CI95_bootstrap": [
+   0.802,
+   0.883
+  ],
+  "P_highconf_wrong": 0.007,
+  "leak_control_acc": 0.0,
+  "verdict": "GO (>= 0.65; NO-GO threshold was < 0.60)"
+ },
+ "B1_always_rag_note": "BM25-over-turns always-RAG UNDERPERFORMS full-history B0 here (acc 0.882 vs 0.948, abst 0.109 vs 0.017): within an 8k window the whole history fits, so retrieval that misses the plant (esp. distractor_dense) loses information. Tangential to Gate #1.",
+ "caveat": "Qwen2.5-7B has MILD attention-decay within 8k (acc 0.971->0.915 over dist 5->80). The small-native-window regime that actually stresses the concept (old facts fall out of context) is a Step-2 refinement: cap history tokens so recovery is necessary.",
+ "runs_committed": [
+  "20260706_121324_B0_no_memory.jsonl (B0 main, 2000)",
+  "20260706_122348_B1_always_rag.jsonl (B1 main, 2000)",
+  "20260706_122547_B0_no_memory.jsonl (B0 leak, 400 plant + 400 control)"
+ ]
+}

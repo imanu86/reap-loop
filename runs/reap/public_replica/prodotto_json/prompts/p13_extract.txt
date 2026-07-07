@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bergamasco Aspirapolvere211
+Categoria: aspirapolvere. Marca: Bergamasco. Colore: verde oliva. Materiale principale: poliestere riciclato. Peso: 3.71 kg. Prezzo di listino: 384.9 euro, sconto 30% attivo. Disponibilita': ultimi pezzi. Spedizione da Milano. Garanzia 24 mesi. Codice: BER-92459.

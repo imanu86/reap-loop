@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Giacca280
+Categoria: giacca antipioggia. Marca: Tavernelli. Colore: verde oliva. Materiale principale: poliestere riciclato. Peso: 2.57 kg. Prezzo di listino: 410.8 euro. Disponibilita': prenotabile. Spedizione da Genova. Garanzia 24 mesi. Codice: TAV-90298.

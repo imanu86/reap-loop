@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Zuppa di ceci. Per 6 persone, tempo 30 minuti.
+Ingredienti: cipolla, brodo vegetale, farina 00, uova, aglio, latte intero, parmigiano.
+Preparazione: mantecare brodo vegetale; scolare brodo vegetale; scolare uova; impastare cipolla; cuocere a fuoco lento latte intero.

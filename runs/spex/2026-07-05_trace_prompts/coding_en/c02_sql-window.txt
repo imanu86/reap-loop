@@ -1,0 +1,1 @@
+Explain SQL window functions with practical examples: running totals, rank within groups, and moving averages.

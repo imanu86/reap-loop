@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Pasta alla carbonara. Per 8 persone, tempo 60 minuti.
+Ingredienti: sale fino, riso Carnaroli, olio extravergine, pecorino, guanciale, brodo vegetale.
+Preparazione: aggiungere sale fino; cuocere a fuoco lento riso Carnaroli; impastare riso Carnaroli; cuocere a fuoco lento pecorino.

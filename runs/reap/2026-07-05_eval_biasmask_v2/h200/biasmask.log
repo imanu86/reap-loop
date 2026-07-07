@@ -1,0 +1,15 @@
+exp_probs_b trovati: 40 layer (3..42)
+backup bias -> /root/models/ds4-2bit.gguf.biasbak.json
+apply reap: scritti 5120 bias a -1e9 su 40 layer
+V0 /root/eval/v0_reap_k50_trace.csv: checked=11280 violations=0 V0_OK
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json
+exp_probs_b trovati: 40 layer (3..42)
+apply reap: scritti 6880 bias a -1e9 su 40 layer
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json
+exp_probs_b trovati: 40 layer (3..42)
+random keep seed=0 salvato in /root/models/ds4-2bit.gguf.random_seed0.json
+apply random: scritti 5120 bias a -1e9 su 40 layer
+exp_probs_b trovati: 40 layer (3..42)
+ripristinati 40 layer da /root/models/ds4-2bit.gguf.biasbak.json

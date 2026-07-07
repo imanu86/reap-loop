@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Panna cotta. Per 4 persone, tempo 30 minuti.
+Ingredienti: olio extravergine, sale fino, parmigiano, pecorino, sedano, carote, pancetta.
+Preparazione: tritare sale fino; mescolare olio extravergine; mescolare olio extravergine; tritare sedano.

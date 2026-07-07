@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Valdarno Tastiera156
+Categoria: tastiera meccanica. Marca: Valdarno. Colore: blu notte. Materiale principale: policarbonato. Peso: 3.47 kg. Prezzo di listino: 351.85 euro, sconto 30% attivo. Disponibilita': in arrivo. Spedizione da Bologna. Garanzia 24 mesi. Codice: VAL-77804.

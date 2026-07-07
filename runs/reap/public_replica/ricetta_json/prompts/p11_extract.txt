@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Insalata di farro. Per 8 persone, tempo 60 minuti.
+Ingredienti: pecorino, farina 00, vino bianco, olio extravergine, zafferano, latte intero, pomodori pelati.
+Preparazione: aggiungere pecorino; aggiungere vino bianco; cuocere a fuoco lento olio extravergine; mescolare vino bianco; mescolare vino bianco.

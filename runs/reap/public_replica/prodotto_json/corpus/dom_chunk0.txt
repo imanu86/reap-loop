@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Montefiore Bicicletta196
+Categoria: bicicletta da citta'. Marca: Montefiore. Colore: nero. Materiale principale: gomma naturale. Peso: 1.56 kg. Prezzo di listino: 257.71 euro, sconto 20% attivo. Disponibilita': disponibile. Spedizione da Napoli. Garanzia 36 mesi. Codice: MON-76924.
+{"nome": "Montefiore Bicicletta196", "marca": "Montefiore", "categoria": "bicicletta da citta'", "colore": "nero", "materiale": "gomma naturale", "peso_kg": 1.56, "prezzo_eur": 257.71, "sconto_pct": 20, "disponibilita": "disponibile", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bormio Power646
+Categoria: power bank. Marca: Bormio. Colore: rosso mattone. Materiale principale: alluminio. Peso: 1.33 kg. Prezzo di listino: 416.22 euro, sconto 10% attivo. Disponibilita': prenotabile. Spedizione da Bologna. Garanzia 24 mesi. Codice: BOR-46047.
+{"nome": "Bormio Power646", "marca": "Bormio", "categoria": "power bank", "colore": "rosso mattone", "materiale": "alluminio", "peso_kg": 1.33, "prezzo_eur": 416.22, "sconto_pct": 10, "disponibilita": "prenotabile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Valdarno Scarpe170
+Categoria: scarpe da corsa. Marca: Valdarno. Colore: azzurro. Materiale principale: legno di faggio. Peso: 4.4 kg. Prezzo di listino: 211.71 euro, sconto 25% attivo. Disponibilita': ultimi pezzi. Spedizione da Bologna. Garanzia 24 mesi. Codice: VAL-78145.
+{"nome": "Valdarno Scarpe170", "marca": "Valdarno", "categoria": "scarpe da corsa", "colore": "azzurro", "materiale": "legno di faggio", "peso_kg": 4.4, "prezzo_eur": 211.71, "sconto_pct": 25, "disponibilita": "ultimi pezzi", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Lentini Tastiera337
+Categoria: tastiera meccanica. Marca: Lentini. Colore: nero. Materiale principale: poliestere riciclato. Peso: 1.2 kg. Prezzo di listino: 279.98 euro. Disponibilita': in arrivo. Spedizione da Torino. Garanzia 36 mesi. Codice: LEN-60476.
+{"nome": "Lentini Tastiera337", "marca": "Lentini", "categoria": "tastiera meccanica", "colore": "nero", "materiale": "poliestere riciclato", "peso_kg": 1.2, "prezzo_eur": 279.98, "sconto_pct": 0, "disponibilita": "in arrivo", "garanzia_mesi": 36}

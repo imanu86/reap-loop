@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Tiramisu' classico. Per 4 persone, tempo 90 minuti.
+Ingredienti: zafferano, sale fino, farina 00, burro, pancetta, pepe nero.
+Preparazione: impastare sale fino; tritare pepe nero; sfumare con pancetta; impastare pancetta.
+{"titolo": "Tiramisu' classico", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["zafferano", "sale fino", "farina 00", "burro", "pancetta", "pepe nero"], "passi": ["impastare sale fino", "tritare pepe nero", "sfumare con pancetta", "impastare pancetta"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 4 persone, tempo 90 minuti.
+Ingredienti: riso Carnaroli, parmigiano, zafferano, olio extravergine, zucchero, sale fino, pepe nero.
+Preparazione: infornare pepe nero; sfumare con zucchero; sfumare con riso Carnaroli; far riposare zafferano; far riposare parmigiano; mantecare pepe nero.
+{"titolo": "Polenta concia", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["riso Carnaroli", "parmigiano", "zafferano", "olio extravergine", "zucchero", "sale fino", "pepe nero"], "passi": ["infornare pepe nero", "sfumare con zucchero", "sfumare con riso Carnaroli", "far riposare zafferano", "far riposare parmigiano", "mantecare pepe nero"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 4 persone, tempo 15 minuti.
+Ingredienti: sedano, pepe nero, lievito, brodo vegetale, cipolla, riso Carnaroli.
+Preparazione: scolare lievito; mescolare sedano; cuocere a fuoco lento cipolla; mescolare cipolla; tritare cipolla; aggiungere cipolla.
+{"titolo": "Polenta concia", "porzioni": 4, "tempo_minuti": 15, "ingredienti": ["sedano", "pepe nero", "lievito", "brodo vegetale", "cipolla", "riso Carnaroli"], "passi": ["scolare lievito", "mescolare sedano", "cuocere a fuoco lento cipolla", "mescolare cipolla", "tritare cipolla", "aggiungere cipolla"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Torta di mele. Per 8 persone, tempo 40 minuti.
+Ingredienti: riso Carnaroli, sale fino, pepe nero, pecorino, lievito, prezzemolo.
+Preparazione: cuocere a fuoco lento pepe nero; mantecare riso Carnaroli; aggiungere prezzemolo; tritare lievito; infornare prezzemolo; infornare pepe nero.
+{"titolo": "Torta di mele", "porzioni": 8, "tempo_minuti": 40, "ingredienti": ["riso Carnaroli", "sale fino", "pepe nero", "pecorino", "lievito", "prezzemolo"], "passi": ["cuocere a fuoco lento pepe nero", "mantecare riso Carnaroli", "aggiungere prezzemolo", "tritare lievito", "infornare prezzemolo", "infornare pepe nero"]}

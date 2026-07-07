@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ds4 · REAP-LOOP Cockpit</title>
+<!--
+  ================= CONTRATTO API (il backend WSL deve implementare questo) =================
+  Il backend gira in WSL, gestisce il processo ds4 e lo streaming. Endpoint (JSON salvo /chat SSE):
+
+  GET  /api/state
+       -> { running:bool, pid:int|null, config:{...ultima config...}, ds4_commit, model }
+  POST /api/launch     body = { config completo, vedi buildConfig() }
+       -> avvia (o riavvia) ds4/ds4-server con TUTTE le leve. { ok:bool, pid, log_tail }
+       NB: i parametri "launch-time" (leva-RAM, cache, streaming, modello, wrap-enable,
+           keep iniziale) richiedono (ri)avvio. Il bottone "Applica & Riavvia" fa questo.
+  POST /api/stop       -> ferma ds4. { ok:bool }
+  POST /api/reap       body = { keep, descent, warmup, breath:{...}, trigger:{...} }
+       -> aggiorna a RUNTIME i parametri REAP se il driver lo supporta.
+          { ok:bool, applied_live:bool, needs_relaunch:bool }
+  POST /api/chat       body = { prompt }
+       -> Server-Sent Events. Eventi:
+          event: token   data: {"t":"...pezzo di testo..."}
+          event: done     data: { gen_tps, prefill_tps, hit_rate, in_keep_rate,
+                                   violations, copied_mib, tokens }
+  GET  /api/telemetry
+       -> snapshot live (poll 1s): { running, gen_tps, prefill_tps, hit_rate,
+            in_keep_rate, violations, copied_mib, copied_mib_per_tok, masks_written,
+            keep_current, phase, vram_used_mib, vram_total_mib, ram_used_gib, ram_total_gib,
+            disk_read_mibs }
+  Base URL configurabile in alto (default http://localhost:8000). CORS: consentire l'origine
+  del file/della pagina servita, o servire questo file dallo stesso host:porta.
+  ==========================================================================================
+-->
+<style>
+  :root{
+    --bg:#0d1117; --panel:#141b24; --panel2:#1b2430; --edge:#2a3644;
+    --ink:#e6edf3; --dim:#8aa0b3; --accent:#4ea1ff; --good:#3ddc84; --warn:#ffb454; --bad:#ff6b6b;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,Segoe UI,Roboto,sans-serif}
+  header{display:flex;align-items:center;gap:16px;padding:10px 16px;background:var(--panel);border-bottom:1px solid var(--edge);position:sticky;top:0;z-index:5}
+  header h1{font-size:15px;margin:0;font-weight:650;letter-spacing:.2px}
+  header h1 .tag{color:var(--accent)}
+  .pill{font:600 12px var(--mono);padding:3px 10px;border-radius:999px;border:1px solid var(--edge)}
+  .pill.on{background:rgba(61,220,132,.12);color:var(--good);border-color:rgba(61,220,132,.4)}
+  .pill.off{background:rgba(255,107,107,.10);color:var(--bad);border-color:rgba(255,107,107,.35)}
+  .bigtps{margin-left:auto;text-align:right}
+  .bigtps b{font:800 26px/1 var(--mono);color:var(--good)}
+  .bigtps span{color:var(--dim);font-size:11px;display:block}
+  main{display:grid;grid-template-columns:340px 1fr 300px;gap:12px;padding:12px;align-items:start}
+  @media(max-width:1100px){main{grid-template-columns:1fr}}
+  .col{display:flex;flex-direction:column;gap:12px;min-width:0}
+  .card{background:var(--panel);border:1px solid var(--edge);border-radius:10px}
+  .card h2{font-size:12px;text-transform:uppercase;letter-spacing:.6px;color:var(--dim);margin:0;padding:10px 12px;border-bottom:1px solid var(--edge);display:flex;justify-content:space-between;align-items:center}
+  .card .body{padding:10px 12px;display:flex;flex-direction:column;gap:9px}
+  label.row{display:grid;grid-template-columns:1fr auto;align-items:center;gap:8px;font-size:13px}
+  label.row .hint{color:var(--dim);font-size:11px;grid-column:1/-1;margin-top:-4px}
+  input[type=text],input[type=number],select{background:var(--panel2);color:var(--ink);border:1px solid var(--edge);border-radius:6px;padding:5px 7px;font:12px var(--mono);width:120px}
+  input[type=text]{width:100%}
+  input[type=range]{width:130px;accent-color:var(--accent)}
+  .sw{position:relative;width:38px;height:22px}
+  .sw input{opacity:0;width:0;height:0}
+  .sw span{position:absolute;inset:0;background:var(--panel2);border:1px solid var(--edge);border-radius:999px;transition:.15s;cursor:pointer}
+  .sw span:before{content:"";position:absolute;width:16px;height:16px;left:2px;top:2px;background:var(--dim);border-radius:50%;transition:.15s}
+  .sw input:checked+span{background:rgba(78,161,255,.25);border-color:var(--accent)}
+  .sw input:checked+span:before{transform:translateX(16px);background:var(--accent)}
+  .btn{border:1px solid var(--edge);background:var(--panel2);color:var(--ink);border-radius:7px;padding:8px 12px;font:600 13px system-ui;cursor:pointer}
+  .btn:hover{border-color:var(--accent)}
+  .btn.primary{background:var(--accent);color:#04121f;border-color:var(--accent)}
+  .btn.warnb{color:var(--warn)}
+  .btn.stop{color:var(--bad)}
+  .btn:disabled{opacity:.5;cursor:not-allowed}
+  .btnrow{display:flex;gap:8px;flex-wrap:wrap}
+  .keeplbl{font:700 13px var(--mono);color:var(--accent)}
+  /* chat */
+  .chat{display:flex;flex-direction:column;height:calc(100vh - 100px);min-height:420px}
+  .msgs{flex:1;overflow:auto;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .msg{max-width:88%;padding:8px 11px;border-radius:10px;white-space:pre-wrap;word-break:break-word;font-size:13.5px}
+  .msg.u{align-self:flex-end;background:#17324e;border:1px solid #2b4a68}
+  .msg.a{align-self:flex-start;background:var(--panel2);border:1px solid var(--edge);font-family:var(--mono);font-size:12.5px}
+  .msg .meta{display:block;margin-top:6px;color:var(--dim);font:11px var(--mono)}
+  .composer{display:flex;gap:8px;padding:10px;border-top:1px solid var(--edge)}
+  .composer textarea{flex:1;resize:none;height:46px;background:var(--panel2);color:var(--ink);border:1px solid var(--edge);border-radius:8px;padding:8px;font:13px system-ui}
+  /* gauges */
+  .gauge{display:flex;justify-content:space-between;align-items:baseline;padding:7px 0;border-bottom:1px dashed var(--edge)}
+  .gauge:last-child{border-bottom:0}
+  .gauge .k{color:var(--dim);font-size:12px}
+  .gauge .v{font:700 14px var(--mono)}
+  .bar{height:6px;border-radius:4px;background:var(--panel2);overflow:hidden;margin-top:3px}
+  .bar>i{display:block;height:100%;background:var(--accent)}
+  .logline{font:11px var(--mono);color:var(--dim);white-space:pre-wrap;max-height:120px;overflow:auto}
+</style>
+</head>
+<body>
+<header>
+  <h1>ds4 · <span class="tag">REAP-LOOP</span> Cockpit</h1>
+  <span id="status" class="pill off">ds4 fermo</span>
+  <div class="bigtps"><b id="tps_big">—</b><span>generation tok/s</span></div>
+</header>
+
+<main>
+  <!-- ============ COLONNA SINISTRA: LEVE ============ -->
+  <div class="col">
+    <div class="card">
+      <h2>Motore &amp; leva-RAM</h2>
+      <div class="body">
+        <label class="row">Modello <input type="text" id="model" value="/root/models/ds4-2bit.gguf"></label>
+        <label class="row">context -c <input type="number" id="ctx" value="2048"></label>
+        <label class="row">prefill-chunk <input type="number" id="prefill" value="512"></label>
+        <label class="row">temp <input type="number" id="temp" value="0" step="0.05"></label>
+        <label class="row">NO_DIRECT_IO <span class="sw"><input type="checkbox" id="nodirect" checked><span></span></span></label>
+        <label class="row">KEEP_MODEL_PAGES <span class="sw"><input type="checkbox" id="keeppages" checked><span></span></span></label>
+        <label class="row hint">leva-RAM: tiene le pagine del modello in RAM invece di rileggerle dall'SSD.</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>RAM di WSL 🧠</h2>
+      <div class="body">
+        <label class="row">Cap attuale <span class="v" id="wsl_cur" style="font:700 13px var(--mono)">— GB</span></label>
+        <label class="row">RAM fisica <span class="v" id="wsl_phys" style="font:700 13px var(--mono);color:var(--dim)">— GB</span></label>
+        <label class="row">Nuovo cap <span class="keeplbl"><span id="wsl_gbv">28</span> GB</span></label>
+        <input type="range" id="wsl_gbr" min="8" max="64" value="28" style="width:100%">
+        <input type="number" id="wsl_gb" value="28" min="8" style="width:100%">
+        <label class="row hint">Più RAM = più modello resta in RAM invece che sull'SSD → più veloce. NON superare la RAM fisica meno ~4 GB per Windows. Cambiare la RAM richiede il riavvio di WSL (ferma ds4).</label>
+        <div class="btnrow">
+          <button class="btn" id="wsl_save">Salva in .wslconfig</button>
+          <button class="btn stop" id="wsl_apply">Riavvia WSL &amp; applica ⚠</button>
+        </div>
+        <div class="logline" id="wsl_log"></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Streaming / Cache</h2>
+      <div class="body">
+        <label class="row">ssd-streaming <span class="sw"><input type="checkbox" id="stream" checked><span></span></span></label>
+        <label class="row">cache-experts <input type="number" id="cache" value="2048"></label>
+        <label class="row">reserve-GB <input type="number" id="reserve" value="1"></label>
+        <label class="row hint">Sul 12GB la cache-attiva può essere più lenta del cache-off (§3.1) — provale entrambe.</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>REAP-LOOP</h2>
+      <div class="body">
+        <label class="row">Attiva REAP <span class="sw"><input type="checkbox" id="reap" checked><span></span></span></label>
+        <label class="row">Sorgente mask
+          <select id="masksrc"><option value="load">carica file (veloce da subito)</option><option value="learn">impara live (warmup)</option></select></label>
+        <label class="row" id="maskfilerow">file mask <input type="text" id="maskfile" value="/root/ds4/runs_reap/20260706_2210_phaseB/stats_learned.json"></label>
+        <label class="row">warmup token <input type="number" id="warmup" value="150"></label>
+        <label class="row">discesa
+          <select id="descent"><option value="direct">diretta</option><option value="stepwise">a gradini</option></select></label>
+        <label class="row">Discesa keep (K% = quanto POTI) <input type="text" id="kschedule" value="91" style="width:130px"></label>
+        <label class="row">→ <span class="keeplbl" id="kexperts">tieni 23 esperti</span></label>
+        <label class="row hint">K = quanto poti (%). "91"=keep-23 (aggressivo, veloce). "50"=keep-128 (blando, qualità). "50, 91"=parti keep-128 poi stringi a keep-23 (discesa a gradini). Ordine consigliato: dal K basso al K alto.</label>
+        <hr style="border:0;border-top:1px solid var(--edge);width:100%">
+        <label class="row">Respiro <span class="sw"><input type="checkbox" id="breath" checked><span></span></span></label>
+        <label class="row">ogni N token <input type="number" id="bevery" value="400"></label>
+        <label class="row">durata respiro <input type="number" id="blen" value="80"></label>
+        <label class="row">keep durante respiro <input type="number" id="bkeep" value="64"></label>
+        <label class="row">re-impara al respiro <span class="sw"><input type="checkbox" id="brelearn" checked><span></span></span></label>
+        <hr style="border:0;border-top:1px solid var(--edge);width:100%">
+        <label class="row">trigger
+          <select id="trigger"><option value="ngram">n-gram testuale</option><option value="fixed">clock fisso</option><option value="off">nessuno</option></select></label>
+        <label class="row">soglia <input type="number" id="thr" value="0.35" step="0.01"></label>
+        <label class="row">relativa <input type="number" id="rel" value="0.15" step="0.01"></label>
+        <label class="row">isteresi <input type="number" id="hyst" value="200"></label>
+        <div class="btnrow"><button class="btn" id="applylive">Applica live (keep/respiro)</button></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>WRAP · bulk page-in 🚚</h2>
+      <div class="body">
+        <label class="row">Attiva WRAP <span class="sw"><input type="checkbox" id="wrap"><span></span></span></label>
+        <label class="row hint">Dopo aver imparato la mask, carica l'intero working-set (~6.2GB) in UN blocco
+          in RAM pinned → il decode non fa più letture random dall'SSD. È lo sblocco vero sul 12GB.</label>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="body">
+        <div class="btnrow">
+          <button class="btn primary" id="launch">Applica &amp; (Ri)avvia ds4</button>
+          <button class="btn stop" id="stop">Ferma</button>
+        </div>
+        <div class="logline" id="launchlog">—</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COLONNA CENTRALE: CHAT ============ -->
+  <div class="col">
+    <div class="card chat">
+      <h2>Chat <span id="chatphase" style="color:var(--dim);font:600 11px var(--mono)"></span></h2>
+      <div class="msgs" id="msgs"></div>
+      <div class="composer">
+        <textarea id="prompt" placeholder="Scrivi qui e premi Invio (Shift+Invio = a capo)…"></textarea>
+        <button class="btn primary" id="send">Invia</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============ COLONNA DESTRA: TELEMETRIA ============ -->
+  <div class="col">
+    <div class="card">
+      <h2>Telemetria live</h2>
+      <div class="body">
+        <div class="gauge"><span class="k">generation</span><span class="v" id="g_gen">—</span></div>
+        <div class="gauge"><span class="k">prefill</span><span class="v" id="g_pre">—</span></div>
+        <div class="gauge"><span class="k">cache hit-rate</span><span class="v" id="g_hit">—</span></div>
+        <div class="gauge"><span class="k">in-keep-rate</span><span class="v" id="g_keep">—</span></div>
+        <div class="gauge"><span class="k">violazioni</span><span class="v" id="g_viol">—</span></div>
+        <div class="gauge"><span class="k">copiato / token</span><span class="v" id="g_cptok">—</span></div>
+        <div class="gauge"><span class="k">copiato totale</span><span class="v" id="g_cp">—</span></div>
+        <div class="gauge"><span class="k">disco (lettura)</span><span class="v" id="g_disk">—</span></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Memoria</h2>
+      <div class="body">
+        <div class="gauge"><span class="k">VRAM</span><span class="v" id="g_vram">—</span></div>
+        <div class="bar"><i id="b_vram" style="width:0%"></i></div>
+        <div class="gauge" style="margin-top:6px"><span class="k">RAM (cache modello)</span><span class="v" id="g_ram">—</span></div>
+        <div class="bar"><i id="b_ram" style="width:0%;background:var(--warn)"></i></div>
+      </div>
+    </div>
+    <div class="card">
+      <h2>Stato REAP</h2>
+      <div class="body">
+        <div class="gauge"><span class="k">keep attuale</span><span class="v" id="g_keepc">—</span></div>
+        <div class="gauge"><span class="k">fase</span><span class="v" id="g_phase">—</span></div>
+        <div class="gauge"><span class="k">mask scritte</span><span class="v" id="g_masks">—</span></div>
+      </div>
+    </div>
+  </div>
+</main>
+
+<script>
+const API = localStorage.getItem('ds4_api') || 'http://localhost:8000';
+const $ = id => document.getElementById(id);
+const fmt = (v,d=2)=> (v==null||isNaN(v))?'—':(+v).toFixed(d);
+
+// keep slider label + mask-source toggle
+// K% = quanto POTI → keep-esperti = 256*(1-K/100). Lista "50, 91" = discesa keep-128→keep-23.
+function parseK(){ const a=($('kschedule').value||'91').replace(/[^\d.]+/g,' ').trim().split(/\s+/).map(Number).filter(x=>x>=0&&x<100); return a.length?a:[91]; }
+function kToKeep(K){ return Math.max(1, Math.round(256*(1-K/100))); }
+function updateKexperts(){ $('kexperts').textContent='tieni '+parseK().map(kToKeep).join(' → ')+' esperti'; }
+$('kschedule').oninput = updateKexperts; updateKexperts();
+$('masksrc').onchange = e => $('maskfilerow').style.display = e.target.value==='load'?'grid':'none';
+
+function buildConfig(){
+  return {
+    model:$('model').value, ctx:+$('ctx').value, prefill_chunk:+$('prefill').value, temp:+$('temp').value,
+    leva_ram:{ no_direct_io:$('nodirect').checked, keep_model_pages:$('keeppages').checked },
+    streaming:{ enabled:$('stream').checked, cache_experts:+$('cache').value, reserve_gb:+$('reserve').value },
+    reap:{
+      enabled:$('reap').checked, mask_source:$('masksrc').value, mask_file:$('maskfile').value,
+      warmup:+$('warmup').value, descent:$('descent').value, keep_schedule:parseK().map(kToKeep), keep:kToKeep(parseK().slice(-1)[0]),
+      breath:{ enabled:$('breath').checked, every:+$('bevery').value, len:+$('blen').value, keep:+$('bkeep').value, relearn:$('brelearn').checked },
+      trigger:{ type:$('trigger').value, threshold:+$('thr').value, relative:+$('rel').value, hysteresis:+$('hyst').value }
+    },
+    wrap:{ enabled:$('wrap').checked },
+    trace:false
+  };
+}
+
+async function post(path, body){
+  const r = await fetch(API+path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body||{})});
+  return r.json();
+}
+
+$('launch').onclick = async () => {
+  $('launch').disabled=true; $('launchlog').textContent='avvio ds4 con le leve impostate…';
+  try{ const r = await post('/api/launch', buildConfig());
+    $('launchlog').textContent = (r.ok?'✓ avviato pid '+r.pid+'\n':'✗ errore\n') + (r.log_tail||'');
+  }catch(e){ $('launchlog').textContent='backend non raggiungibile a '+API+' — '+e.message; }
+  $('launch').disabled=false;
+};
+$('stop').onclick = async () => { try{ await post('/api/stop',{});}catch(e){} $('launchlog').textContent='fermato.'; };
+$('applylive').onclick = async () => {
+  const c = buildConfig();
+  try{ const r = await post('/api/reap', {keep:c.reap.keep, descent:c.reap.descent, warmup:c.reap.warmup, breath:c.reap.breath, trigger:c.reap.trigger});
+    $('launchlog').textContent = r.applied_live ? '✓ REAP aggiornato a runtime' : (r.needs_relaunch?'⚠ serve riavvio per applicare':'—');
+  }catch(e){ $('launchlog').textContent='live update non disponibile: '+e.message; }
+};
+
+// ---- WSL RAM ----
+$('wsl_gb').oninput = e => { $('wsl_gbr').value=e.target.value; $('wsl_gbv').textContent=e.target.value; };
+$('wsl_gbr').oninput = e => { $('wsl_gb').value=e.target.value; $('wsl_gbv').textContent=e.target.value; };
+async function loadWslRam(){
+  try{ const r=await fetch(API+'/api/wslram'); const w=await r.json();
+    $('wsl_cur').textContent=(w.current_gb??'—')+' GB'; $('wsl_phys').textContent=(w.physical_gb??'—')+' GB';
+    if(w.physical_gb) $('wsl_gbr').max = w.physical_gb;
+    if(w.current_gb){ $('wsl_gb').value=w.current_gb; $('wsl_gbr').value=w.current_gb; $('wsl_gbv').textContent=w.current_gb; }
+  }catch(e){}
+}
+$('wsl_save').onclick = async () => {
+  try{ const r=await post('/api/wslram',{gb:+$('wsl_gb').value});
+    $('wsl_log').textContent = r.ok?('✓ salvato: memory='+$('wsl_gb').value+'GB in .wslconfig. Serve "Riavvia WSL & applica" per attivarlo.'):'✗ '+(r.error||'errore');
+  }catch(e){ $('wsl_log').textContent='backend offline: '+e.message; }
+};
+$('wsl_apply').onclick = async () => {
+  if(!confirm('Questo salva memory='+$('wsl_gb').value+'GB, FERMA ds4 e riavvia WSL (wsl --shutdown). La cockpit tornerà viva tra ~15-30s (poi ri-lancia ds4). Continuare?')) return;
+  $('wsl_log').textContent='riavvio WSL in corso… la pagina torna viva tra ~15-30s, poi premi "Applica & (Ri)avvia ds4".';
+  try{ await post('/api/wslram/apply',{gb:+$('wsl_gb').value}); }catch(e){ /* il backend muore col shutdown: atteso */ }
+};
+
+// ---- chat (SSE) ----
+function addMsg(cls, txt){ const d=document.createElement('div'); d.className='msg '+cls; d.textContent=txt; $('msgs').appendChild(d); $('msgs').scrollTop=1e9; return d; }
+$('prompt').addEventListener('keydown', e=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); $('send').click(); }});
+$('send').onclick = async () => {
+  const p = $('prompt').value.trim(); if(!p) return;
+  $('prompt').value=''; addMsg('u', p);
+  const out = addMsg('a', ''); const meta = document.createElement('span'); meta.className='meta'; out.appendChild(meta);
+  try{
+    const r = await fetch(API+'/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({prompt:p})});
+    const rd = r.body.getReader(); const dec = new TextDecoder(); let buf='';
+    for(;;){ const {value,done}=await rd.read(); if(done)break; buf+=dec.decode(value,{stream:true});
+      let i; while((i=buf.indexOf('\n\n'))>=0){ const chunk=buf.slice(0,i); buf=buf.slice(i+2);
+        const ev=(chunk.match(/event:\s*(\w+)/)||[])[1]; const dm=chunk.match(/data:\s*(.*)/s); if(!dm)continue;
+        let data={}; try{data=JSON.parse(dm[1]);}catch(_){}
+        if(ev==='token'){ out.insertBefore(document.createTextNode(data.t||''), meta); $('msgs').scrollTop=1e9; }
+        else if(ev==='done'){ meta.textContent=`⏱ ${fmt(data.gen_tps)} t/s · hit ${fmt(data.hit_rate)} · in-keep ${fmt(data.in_keep_rate,3)} · copiato ${fmt(data.copied_mib,0)} MiB`; }
+      }
+    }
+  }catch(e){ meta.textContent='errore: '+e.message; }
+};
+
+// ---- telemetria (poll 1s) ----
+async function poll(){
+  try{
+    const r = await fetch(API+'/api/telemetry'); const t = await r.json();
+    $('status').className='pill '+(t.running?'on':'off'); $('status').textContent = t.running?'ds4 attivo':'ds4 fermo';
+    $('tps_big').textContent = fmt(t.gen_tps);
+    $('g_gen').textContent=fmt(t.gen_tps)+' t/s'; $('g_pre').textContent=fmt(t.prefill_tps)+' t/s';
+    $('g_hit').textContent=fmt(t.hit_rate); $('g_keep').textContent=fmt(t.in_keep_rate,3);
+    $('g_viol').textContent=t.violations??'—';
+    $('g_cptok').textContent=fmt(t.copied_mib_per_tok,0)+' MiB'; $('g_cp').textContent=fmt(t.copied_mib,0)+' MiB';
+    $('g_disk').textContent=fmt(t.disk_read_mibs,0)+' MiB/s';
+    if(t.vram_total_mib){ $('g_vram').textContent=`${fmt(t.vram_used_mib,0)}/${fmt(t.vram_total_mib,0)} MiB`; $('b_vram').style.width=(100*t.vram_used_mib/t.vram_total_mib)+'%'; }
+    if(t.ram_total_gib){ $('g_ram').textContent=`${fmt(t.ram_used_gib,1)}/${fmt(t.ram_total_gib,1)} GiB`; $('b_ram').style.width=(100*t.ram_used_gib/t.ram_total_gib)+'%'; }
+    $('g_keepc').textContent=t.keep_current??'—'; $('g_phase').textContent=t.phase||'—'; $('g_masks').textContent=t.masks_written??'—';
+    $('chatphase').textContent = t.running?`[${t.phase||'—'} · keep ${t.keep_current??'?'}]`:'';
+  }catch(e){ $('status').className='pill off'; $('status').textContent='backend offline'; }
+}
+setInterval(poll, 1000); poll(); loadWslRam();
+</script>
+</body>
+</html>

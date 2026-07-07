@@ -1,0 +1,31 @@
+﻿{
+  "path": "runs/ds4_routing_trace_smoke/routing_trace_count64.csv",
+  "rows": 2600,
+  "positions": [
+    17,
+    81,
+    65
+  ],
+  "layers": [
+    3,
+    42,
+    40
+  ],
+  "metrics": {
+    "prev_layer_plus_window2_top12": 0.3194177247659356,
+    "prev_layer_plus_window2_top6": 0.2062972938309606,
+    "prev_layer_plus_window4_top12": 0.4456201102988329,
+    "prev_layer_plus_window4_top6": 0.3275618827754264,
+    "prev_layer_plus_window8_top12": 0.5312940874695395,
+    "prev_layer_plus_window8_top6": 0.35654739002180325,
+    "prev_token_prev_layer_top6": 0.025106837606837604,
+    "prev_token_same_layer_top6": 0.2623046875,
+    "same_token_prev_layer_top6": 0.024523339907955292,
+    "window2_same_layer_top12": 0.388671875,
+    "window2_same_layer_top6": 0.2591796875,
+    "window4_same_layer_top12": 0.5068359375,
+    "window4_same_layer_top6": 0.3419921875,
+    "window8_same_layer_top12": 0.5495442708333333,
+    "window8_same_layer_top6": 0.3655598958333333
+  }
+}

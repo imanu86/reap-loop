@@ -1,0 +1,50 @@
+[cov] 8 prompt da 'codegen'
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<?, ?it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+[cov] osservato prompt 1/8
+[cov] osservato prompt 2/8
+[cov] osservato prompt 3/8
+[cov] osservato prompt 4/8
+[cov] osservato prompt 5/8
+[cov] osservato prompt 6/8
+[cov] osservato prompt 7/8
+[cov] osservato prompt 8/8
+
+=== CONCENTRAZIONE routing DS2-Lite (E=64/layer) — n. expert per coprire X% massa ===
+layer | distinti |  50%  90%  99% 99.9%
+    1 |       64 |   18   48   60    63
+    2 |       64 |   21   49   60    63
+    3 |       64 |   18   46   60    63
+    4 |       64 |   15   45   61    64
+    5 |       64 |   18   46   59    64
+    6 |       64 |   17   44   59    63
+    7 |       64 |   15   42   58    63
+    8 |       64 |   13   40   59    63
+    9 |       64 |   15   42   58    62
+   10 |       64 |   16   42   59    63
+   11 |       64 |   13   42   57    63
+   12 |       64 |   14   43   57    62
+   13 |       64 |   12   40   57    62
+   14 |       64 |   13   44   60    63
+   15 |       64 |   13   43   59    63
+   16 |       64 |   14   45   60    64
+   17 |       64 |   15   45   60    63
+   18 |       64 |   11   41   58    62
+   19 |       64 |   14   42   59    63
+   20 |       64 |   11   40   58    62
+   21 |       64 |   13   41   59    63
+   22 |       64 |   14   45   60    64
+   23 |       64 |   13   40   59    64
+   24 |       64 |   13   43   60    64
+   25 |       64 |   15   43   60    63
+   26 |       64 |   13   42   59    64
+
+--- MEDIA sui 26 layer MoE ---
+  distinti visti: 64.0/64
+  copertura 50% : 14.5/64 expert  => comprimibile ~77% degli expert
+  copertura 90% : 43.2/64 expert  => comprimibile ~33% degli expert
+  copertura 99% : 59.0/64 expert  => comprimibile ~8% degli expert
+  copertura 99% : 63.1/64 expert  => comprimibile ~1% degli expert
+
+[cov] LETTURA: piu basso il numero a 99.9%, piu margine di compressione a iso-qualita.
+[cov] trace: runs/coverage_dsv2_trace.jsonl

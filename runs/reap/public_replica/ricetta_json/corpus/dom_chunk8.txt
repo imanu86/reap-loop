@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 8 persone, tempo 90 minuti.
+Ingredienti: sedano, uova, aglio, vino bianco, latte intero, pomodori pelati, basilico.
+Preparazione: cuocere a fuoco lento sedano; mescolare latte intero; tritare basilico; far riposare latte intero; impastare basilico.
+{"titolo": "Frittata di zucchine", "porzioni": 8, "tempo_minuti": 90, "ingredienti": ["sedano", "uova", "aglio", "vino bianco", "latte intero", "pomodori pelati", "basilico"], "passi": ["cuocere a fuoco lento sedano", "mescolare latte intero", "tritare basilico", "far riposare latte intero", "impastare basilico"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Lasagne al forno. Per 4 persone, tempo 90 minuti.
+Ingredienti: sale fino, pancetta, sedano, basilico, pecorino, carote, parmigiano, cipolla.
+Preparazione: cuocere a fuoco lento cipolla; mantecare pecorino; sfumare con sedano; aggiungere sedano; cuocere a fuoco lento sedano.
+{"titolo": "Lasagne al forno", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["sale fino", "pancetta", "sedano", "basilico", "pecorino", "carote", "parmigiano", "cipolla"], "passi": ["cuocere a fuoco lento cipolla", "mantecare pecorino", "sfumare con sedano", "aggiungere sedano", "cuocere a fuoco lento sedano"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Tiramisu' classico. Per 4 persone, tempo 45 minuti.
+Ingredienti: olio extravergine, pecorino, farina 00, uova, burro, latte intero.
+Preparazione: sfumare con olio extravergine; mescolare pecorino; aggiungere burro; scolare pecorino; sfumare con uova; infornare olio extravergine.
+{"titolo": "Tiramisu' classico", "porzioni": 4, "tempo_minuti": 45, "ingredienti": ["olio extravergine", "pecorino", "farina 00", "uova", "burro", "latte intero"], "passi": ["sfumare con olio extravergine", "mescolare pecorino", "aggiungere burro", "scolare pecorino", "sfumare con uova", "infornare olio extravergine"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 6 persone, tempo 60 minuti.
+Ingredienti: lievito, sale fino, guanciale, zucchero, pomodori pelati.
+Preparazione: mantecare guanciale; far riposare sale fino; far riposare guanciale; impastare zucchero; aggiungere pomodori pelati; infornare sale fino.
+{"titolo": "Frittata di zucchine", "porzioni": 6, "tempo_minuti": 60, "ingredienti": ["lievito", "sale fino", "guanciale", "zucchero", "pomodori pelati"], "passi": ["mantecare guanciale", "far riposare sale fino", "far riposare guanciale", "impastare zucchero", "aggiungere pomodori pelati", "infornare sale fino"]}

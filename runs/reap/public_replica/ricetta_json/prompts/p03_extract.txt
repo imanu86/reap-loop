@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Gnocchi al pomodoro. Per 2 persone, tempo 90 minuti.
+Ingredienti: sedano, latte intero, pecorino, parmigiano, pancetta, pomodori pelati, guanciale.
+Preparazione: cuocere a fuoco lento latte intero; mescolare guanciale; mantecare pomodori pelati; mescolare pomodori pelati; far riposare pomodori pelati; mantecare guanciale.

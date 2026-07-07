@@ -1,0 +1,5 @@
+[val] carico DeepSeek-V2-Lite (non-expert+shared su GPU, routed expert da memmap-SSD)...
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<00:00, 8983.52it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+[val] cap=8/64 pin=7: react=16926 pred=17070 probe=6301 saving=-144 net=-6445 tok/s r=0.4/p=0.4 acc r=0.00/p=0.00
+[val] cap=16/64 pin=15: react=13465 pred=13890 probe=6301 saving=-425 net=-6726 tok/s r=0.4/p=0.5 acc r=0.00/p=0.00

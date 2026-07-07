@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Pallavicini Sedia857
+Categoria: sedia ergonomica. Marca: Pallavicini. Colore: verde oliva. Materiale principale: poliestere riciclato. Peso: 2.2 kg. Prezzo di listino: 66.36 euro. Disponibilita': in arrivo. Spedizione da Napoli. Garanzia 36 mesi. Codice: PAL-78130.

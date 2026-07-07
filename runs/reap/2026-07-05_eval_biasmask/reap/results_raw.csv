@@ -1,0 +1,4 @@
+reap,dom_chunk0,rc=0,tokens=1647 scored=850 nll=928.011638904 avg_nll=1.091778399 ppl=2.979568224
+reap,dom_chunk1,rc=0,tokens=1394 scored=850 nll=1172.362911639 avg_nll=1.379250484 ppl=3.971923492
+reap,dom_chunk2,rc=0,tokens=1494 scored=850 nll=1423.563791653 avg_nll=1.674780931 ppl=5.337625715
+reap,dom_chunk3,rc=0,tokens=1442 scored=850 nll=1068.718863725 avg_nll=1.257316310 ppl=3.515973034

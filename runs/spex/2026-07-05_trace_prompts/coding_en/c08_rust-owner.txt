@@ -1,0 +1,1 @@
+Introduce Rust ownership and borrowing for a C++ developer, with small examples that fail to compile and why.

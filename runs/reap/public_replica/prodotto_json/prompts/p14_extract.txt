@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Power489
+Categoria: power bank. Marca: Tavernelli. Colore: azzurro. Materiale principale: poliestere riciclato. Peso: 1.3 kg. Prezzo di listino: 341.27 euro. Disponibilita': in arrivo. Spedizione da Napoli. Garanzia 24 mesi. Codice: TAV-39776.

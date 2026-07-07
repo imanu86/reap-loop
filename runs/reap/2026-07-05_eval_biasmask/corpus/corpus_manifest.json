@@ -1,0 +1,59 @@
+{
+ "dom": [
+  {
+   "file": "dom_chunk0.txt",
+   "raft_indices": [
+    1,
+    2
+   ],
+   "chars": 4760,
+   "sha256": "558a5733016fe71f45f42708d8b495dd9e267d04479a6919c2bbde0a431942cb"
+  },
+  {
+   "file": "dom_chunk1.txt",
+   "raft_indices": [
+    3,
+    4
+   ],
+   "chars": 3930,
+   "sha256": "b90f8671ea32c87670eb21e8b91bf0f4c5ae9452fe7e5b8ad8db9b95aaf56202"
+  },
+  {
+   "file": "dom_chunk2.txt",
+   "raft_indices": [
+    5,
+    6
+   ],
+   "chars": 4411,
+   "sha256": "d52a966e49e900c104aa54aef123c5b782e23aceb06392b8e6fc1185f506952e"
+  },
+  {
+   "file": "dom_chunk3.txt",
+   "raft_indices": [
+    8,
+    10
+   ],
+   "chars": 4257,
+   "sha256": "7ba1a5d15c681d02a880bea60f2ed47b11cc7334c4c523002c513ed57f2d279e"
+  }
+ ],
+ "gen": [
+  {
+   "file": "gen_chunk0.txt",
+   "wiki_titles": [
+    "Armonium"
+   ],
+   "chars": 3002,
+   "sha256": "5bb11a06136786e6df4503b52a3a713c5cb426052c341e961174272365fd0bdc"
+  },
+  {
+   "file": "gen_chunk1.txt",
+   "wiki_titles": [
+    "Antropologia"
+   ],
+   "chars": 3002,
+   "sha256": "4345c583a8958ed277c03ac58bc64c5f33d26e8608a828b9afcd11dccfe55c80"
+  }
+ ],
+ "nota": "dom: held-out items from a real structured-extraction task, DISGIUNTI dalla trace (anti-overfit mask); gen: wikimedia/wikipedia 20231101.it come build_general_it.py"
+}

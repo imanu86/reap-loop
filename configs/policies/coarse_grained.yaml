@@ -1,0 +1,5 @@
+# COARSE — top-K expert più frequenti GLOBALMENTE. Baseline stile BrainStorm (NON MoE-Infinity).
+# Vedi docs/01_positioning.md §2 per la correzione di posizionamento.
+policy: COARSE
+# Frequenza aggregata su corpus globale/statico, NON sulla sessione corrente (quello è AGGRESSIVE).
+global_freq_path: data/global_expert_freq.json   # da pre-calcolare una volta per modello

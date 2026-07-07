@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Pesto alla genovese. Per 6 persone, tempo 15 minuti.
+Ingredienti: guanciale, uova, zafferano, basilico, burro.
+Preparazione: mantecare burro; mescolare zafferano; far riposare burro; cuocere a fuoco lento zafferano; scolare burro.

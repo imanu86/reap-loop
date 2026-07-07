@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sartori Borraccia833
+Categoria: borraccia termica. Marca: Sartori. Colore: rosso mattone. Materiale principale: gomma naturale. Peso: 2.64 kg. Prezzo di listino: 113.1 euro, sconto 25% attivo. Disponibilita': ultimi pezzi. Spedizione da Milano. Garanzia 24 mesi. Codice: SAR-42877.

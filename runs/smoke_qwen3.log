@@ -1,0 +1,14 @@
+[smoke] carico non-expert su GPU...
+Fetching 23 files:   0%|          | 0/23 [00:00<?, ?it/s]Fetching 23 files: 100%|##########| 23/23 [00:00<00:00, 4080.75it/s]
+[load] non-expert su GPU=435 | param meta rimasti (expert)=96 | unexpected=0
+[smoke] caricato in 4.9s
+Traceback (most recent call last):
+  File "<TMP>/scratchpad/smoke_qwen3.py", line 24, in <module>
+    h = install_expert_cache(model, 16, {i: set() for i in range(cfg.num_hidden_layers)}, backing_factory=bf)
+        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<REPO>\src\msc\hierarchy\olmoe_cache.py", line 479, in install_expert_cache
+    _move_backbone_to_device(model, device)
+  File "<REPO>\src\msc\hierarchy\olmoe_cache.py", line 435, in _move_backbone_to_device
+    b.data = b.data.to(device)
+             ^^^^^^^^^^^^^^^^^
+NotImplementedError: Cannot copy out of meta tensor; no data!

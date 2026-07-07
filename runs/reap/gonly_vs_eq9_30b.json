@@ -1,0 +1,1043 @@
+{
+ "source_truth": "models/reap_saliency_base.json",
+ "source_npz": "models/spex/hidden_scores_q30_dom.npz",
+ "E": 128,
+ "n_layers": 48,
+ "T_npz": 60080,
+ "topk": 8,
+ "ks": [
+  32,
+  64,
+  90
+ ],
+ "note": "gonly usa probe-scores (recall@32 .9978 dom, ledger E8), layer 1..47",
+ "per_layer": {
+  "0": {
+   "freq": {
+    "overlap@32": 0.4062,
+    "overlap@64": 0.6406,
+    "overlap@90": 0.7222,
+    "retention@32": 0.8969,
+    "retention@64": 0.7619,
+    "retention@90": 0.6192,
+    "spearman": 0.2473
+   }
+  },
+  "1": {
+   "freq": {
+    "overlap@32": 0.375,
+    "overlap@64": 0.5625,
+    "overlap@90": 0.6889,
+    "retention@32": 0.377,
+    "retention@64": 0.287,
+    "retention@90": 0.1864,
+    "spearman": 0.1918
+   },
+   "gonly": {
+    "overlap@32": 0.5,
+    "overlap@64": 0.625,
+    "overlap@90": 0.7222,
+    "retention@32": 0.9715,
+    "retention@64": 0.9294,
+    "retention@90": 0.1984,
+    "spearman": 0.3229
+   }
+  },
+  "2": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.6094,
+    "overlap@90": 0.7222,
+    "retention@32": 0.2394,
+    "retention@64": 0.1701,
+    "retention@90": 0.1076,
+    "spearman": 0.3489
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.6719,
+    "overlap@90": 0.8,
+    "retention@32": 0.2522,
+    "retention@64": 0.1908,
+    "retention@90": 0.1254,
+    "spearman": 0.5678
+   }
+  },
+  "3": {
+   "freq": {
+    "overlap@32": 0.375,
+    "overlap@64": 0.6094,
+    "overlap@90": 0.7444,
+    "retention@32": 0.9359,
+    "retention@64": 0.8482,
+    "retention@90": 0.55,
+    "spearman": 0.3246
+   },
+   "gonly": {
+    "overlap@32": 0.5,
+    "overlap@64": 0.6875,
+    "overlap@90": 0.7556,
+    "retention@32": 0.9638,
+    "retention@64": 0.904,
+    "retention@90": 0.8464,
+    "spearman": 0.4409
+   }
+  },
+  "4": {
+   "freq": {
+    "overlap@32": 0.5,
+    "overlap@64": 0.6406,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9264,
+    "retention@64": 0.8856,
+    "retention@90": 0.8593,
+    "spearman": 0.4575
+   },
+   "gonly": {
+    "overlap@32": 0.5625,
+    "overlap@64": 0.6406,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9408,
+    "retention@64": 0.9038,
+    "retention@90": 0.887,
+    "spearman": 0.527
+   }
+  },
+  "5": {
+   "freq": {
+    "overlap@32": 0.5312,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9495,
+    "retention@64": 0.9119,
+    "retention@90": 0.8657,
+    "spearman": 0.6307
+   },
+   "gonly": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9544,
+    "retention@64": 0.9245,
+    "retention@90": 0.8881,
+    "spearman": 0.669
+   }
+  },
+  "6": {
+   "freq": {
+    "overlap@32": 0.4375,
+    "overlap@64": 0.5469,
+    "overlap@90": 0.7556,
+    "retention@32": 0.9137,
+    "retention@64": 0.8647,
+    "retention@90": 0.8106,
+    "spearman": 0.3467
+   },
+   "gonly": {
+    "overlap@32": 0.5,
+    "overlap@64": 0.6562,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9331,
+    "retention@64": 0.8809,
+    "retention@90": 0.8582,
+    "spearman": 0.4296
+   }
+  },
+  "7": {
+   "freq": {
+    "overlap@32": 0.5312,
+    "overlap@64": 0.7031,
+    "overlap@90": 0.7778,
+    "retention@32": 0.9199,
+    "retention@64": 0.8797,
+    "retention@90": 0.8299,
+    "spearman": 0.5222
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9456,
+    "retention@64": 0.8936,
+    "retention@90": 0.8687,
+    "spearman": 0.6309
+   }
+  },
+  "8": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9636,
+    "retention@64": 0.9358,
+    "retention@90": 0.8549,
+    "spearman": 0.665
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9658,
+    "retention@64": 0.929,
+    "retention@90": 0.878,
+    "spearman": 0.6762
+   }
+  },
+  "9": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9672,
+    "retention@64": 0.9328,
+    "retention@90": 0.8985,
+    "spearman": 0.6854
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9633,
+    "retention@64": 0.918,
+    "retention@90": 0.9064,
+    "spearman": 0.6909
+   }
+  },
+  "10": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8556,
+    "retention@32": 0.962,
+    "retention@64": 0.9626,
+    "retention@90": 0.8926,
+    "spearman": 0.761
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9579,
+    "retention@64": 0.9317,
+    "retention@90": 0.871,
+    "spearman": 0.6418
+   }
+  },
+  "11": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.875,
+    "overlap@90": 0.8778,
+    "retention@32": 0.9616,
+    "retention@64": 0.961,
+    "retention@90": 0.9365,
+    "spearman": 0.7689
+   },
+   "gonly": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8,
+    "retention@32": 0.9584,
+    "retention@64": 0.9467,
+    "retention@90": 0.8715,
+    "spearman": 0.7087
+   }
+  },
+  "12": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8594,
+    "overlap@90": 0.8778,
+    "retention@32": 0.9705,
+    "retention@64": 0.9518,
+    "retention@90": 0.8927,
+    "spearman": 0.745
+   },
+   "gonly": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9663,
+    "retention@64": 0.898,
+    "retention@90": 0.8618,
+    "spearman": 0.6543
+   }
+  },
+  "13": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.8594,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9812,
+    "retention@64": 0.9496,
+    "retention@90": 0.8567,
+    "spearman": 0.7493
+   },
+   "gonly": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9771,
+    "retention@64": 0.9102,
+    "retention@90": 0.881,
+    "spearman": 0.7359
+   }
+  },
+  "14": {
+   "freq": {
+    "overlap@32": 0.7812,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9839,
+    "retention@64": 0.9234,
+    "retention@90": 0.8337,
+    "spearman": 0.6631
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9787,
+    "retention@64": 0.9446,
+    "retention@90": 0.8892,
+    "spearman": 0.7466
+   }
+  },
+  "15": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8333,
+    "retention@32": 0.983,
+    "retention@64": 0.9272,
+    "retention@90": 0.8658,
+    "spearman": 0.7155
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9806,
+    "retention@64": 0.9405,
+    "retention@90": 0.8962,
+    "spearman": 0.7489
+   }
+  },
+  "16": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9838,
+    "retention@64": 0.94,
+    "retention@90": 0.8415,
+    "spearman": 0.7404
+   },
+   "gonly": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8,
+    "retention@32": 0.978,
+    "retention@64": 0.9308,
+    "retention@90": 0.8675,
+    "spearman": 0.7152
+   }
+  },
+  "17": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8281,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9475,
+    "retention@64": 0.931,
+    "retention@90": 0.8611,
+    "spearman": 0.6819
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9537,
+    "retention@64": 0.9297,
+    "retention@90": 0.9027,
+    "spearman": 0.7282
+   }
+  },
+  "18": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9479,
+    "retention@64": 0.9239,
+    "retention@90": 0.8837,
+    "spearman": 0.6327
+   },
+   "gonly": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8,
+    "retention@32": 0.9572,
+    "retention@64": 0.9081,
+    "retention@90": 0.8326,
+    "spearman": 0.5738
+   }
+  },
+  "19": {
+   "freq": {
+    "overlap@32": 0.5312,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9614,
+    "retention@64": 0.9136,
+    "retention@90": 0.8901,
+    "spearman": 0.7027
+   },
+   "gonly": {
+    "overlap@32": 0.5625,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9745,
+    "retention@64": 0.9396,
+    "retention@90": 0.8685,
+    "spearman": 0.658
+   }
+  },
+  "20": {
+   "freq": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9709,
+    "retention@64": 0.9432,
+    "retention@90": 0.9041,
+    "spearman": 0.7836
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8778,
+    "retention@32": 0.9696,
+    "retention@64": 0.9476,
+    "retention@90": 0.9282,
+    "spearman": 0.8064
+   }
+  },
+  "21": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9664,
+    "retention@64": 0.9305,
+    "retention@90": 0.9283,
+    "spearman": 0.7282
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9584,
+    "retention@64": 0.95,
+    "retention@90": 0.9021,
+    "spearman": 0.7382
+   }
+  },
+  "22": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.8594,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9774,
+    "retention@64": 0.8365,
+    "retention@90": 0.7037,
+    "spearman": 0.7274
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8778,
+    "retention@32": 0.8894,
+    "retention@64": 0.8347,
+    "retention@90": 0.7378,
+    "spearman": 0.7191
+   }
+  },
+  "23": {
+   "freq": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8444,
+    "retention@32": 0.966,
+    "retention@64": 0.9631,
+    "retention@90": 0.8987,
+    "spearman": 0.726
+   },
+   "gonly": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.8281,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9772,
+    "retention@64": 0.9515,
+    "retention@90": 0.9082,
+    "spearman": 0.74
+   }
+  },
+  "24": {
+   "freq": {
+    "overlap@32": 0.5625,
+    "overlap@64": 0.8594,
+    "overlap@90": 0.8,
+    "retention@32": 0.9648,
+    "retention@64": 0.9434,
+    "retention@90": 0.8508,
+    "spearman": 0.6691
+   },
+   "gonly": {
+    "overlap@32": 0.5312,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9653,
+    "retention@64": 0.9536,
+    "retention@90": 0.9081,
+    "spearman": 0.7165
+   }
+  },
+  "25": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9803,
+    "retention@64": 0.9296,
+    "retention@90": 0.882,
+    "spearman": 0.6756
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8444,
+    "retention@32": 0.977,
+    "retention@64": 0.9643,
+    "retention@90": 0.9189,
+    "spearman": 0.7865
+   }
+  },
+  "26": {
+   "freq": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8,
+    "retention@32": 0.9716,
+    "retention@64": 0.935,
+    "retention@90": 0.8242,
+    "spearman": 0.6599
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9785,
+    "retention@64": 0.9363,
+    "retention@90": 0.8757,
+    "spearman": 0.7205
+   }
+  },
+  "27": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8,
+    "retention@32": 0.9828,
+    "retention@64": 0.9332,
+    "retention@90": 0.8698,
+    "spearman": 0.7365
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8,
+    "retention@32": 0.9817,
+    "retention@64": 0.9257,
+    "retention@90": 0.8624,
+    "spearman": 0.6672
+   }
+  },
+  "28": {
+   "freq": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8,
+    "retention@32": 0.9697,
+    "retention@64": 0.9445,
+    "retention@90": 0.8513,
+    "spearman": 0.641
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8,
+    "retention@32": 0.9731,
+    "retention@64": 0.9116,
+    "retention@90": 0.8616,
+    "spearman": 0.6121
+   }
+  },
+  "29": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.8281,
+    "overlap@90": 0.7889,
+    "retention@32": 0.9784,
+    "retention@64": 0.9513,
+    "retention@90": 0.8648,
+    "spearman": 0.6944
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9856,
+    "retention@64": 0.9345,
+    "retention@90": 0.909,
+    "spearman": 0.6957
+   }
+  },
+  "30": {
+   "freq": {
+    "overlap@32": 0.4688,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9441,
+    "retention@64": 0.9248,
+    "retention@90": 0.9031,
+    "spearman": 0.638
+   },
+   "gonly": {
+    "overlap@32": 0.5312,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8889,
+    "retention@32": 0.9513,
+    "retention@64": 0.9449,
+    "retention@90": 0.9151,
+    "spearman": 0.6853
+   }
+  },
+  "31": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9687,
+    "retention@64": 0.9676,
+    "retention@90": 0.9312,
+    "spearman": 0.742
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8222,
+    "retention@32": 0.9763,
+    "retention@64": 0.9471,
+    "retention@90": 0.9079,
+    "spearman": 0.6712
+   }
+  },
+  "32": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9693,
+    "retention@64": 0.9125,
+    "retention@90": 0.8438,
+    "spearman": 0.7023
+   },
+   "gonly": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.8438,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9667,
+    "retention@64": 0.9541,
+    "retention@90": 0.9296,
+    "spearman": 0.7486
+   }
+  },
+  "33": {
+   "freq": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8667,
+    "retention@32": 0.964,
+    "retention@64": 0.9441,
+    "retention@90": 0.9032,
+    "spearman": 0.7359
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8778,
+    "retention@32": 0.9604,
+    "retention@64": 0.9384,
+    "retention@90": 0.8909,
+    "spearman": 0.7548
+   }
+  },
+  "34": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.875,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9847,
+    "retention@64": 0.9528,
+    "retention@90": 0.8561,
+    "spearman": 0.7698
+   },
+   "gonly": {
+    "overlap@32": 0.7812,
+    "overlap@64": 0.8281,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9854,
+    "retention@64": 0.9528,
+    "retention@90": 0.8755,
+    "spearman": 0.7723
+   }
+  },
+  "35": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9666,
+    "retention@64": 0.9475,
+    "retention@90": 0.8402,
+    "spearman": 0.685
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9706,
+    "retention@64": 0.9358,
+    "retention@90": 0.8993,
+    "spearman": 0.6557
+   }
+  },
+  "36": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9727,
+    "retention@64": 0.9414,
+    "retention@90": 0.8264,
+    "spearman": 0.6991
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9773,
+    "retention@64": 0.9179,
+    "retention@90": 0.8719,
+    "spearman": 0.6761
+   }
+  },
+  "37": {
+   "freq": {
+    "overlap@32": 0.7812,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9911,
+    "retention@64": 0.9086,
+    "retention@90": 0.8528,
+    "spearman": 0.7003
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9782,
+    "retention@64": 0.9117,
+    "retention@90": 0.9129,
+    "spearman": 0.7257
+   }
+  },
+  "38": {
+   "freq": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8,
+    "retention@32": 0.9799,
+    "retention@64": 0.9209,
+    "retention@90": 0.8034,
+    "spearman": 0.6661
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9828,
+    "retention@64": 0.892,
+    "retention@90": 0.7876,
+    "spearman": 0.6225
+   }
+  },
+  "39": {
+   "freq": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7031,
+    "overlap@90": 0.8,
+    "retention@32": 0.9626,
+    "retention@64": 0.8989,
+    "retention@90": 0.7983,
+    "spearman": 0.6449
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9648,
+    "retention@64": 0.8923,
+    "retention@90": 0.8197,
+    "spearman": 0.5941
+   }
+  },
+  "40": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.75,
+    "overlap@90": 0.7667,
+    "retention@32": 0.9797,
+    "retention@64": 0.8932,
+    "retention@90": 0.7529,
+    "spearman": 0.6211
+   },
+   "gonly": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7031,
+    "overlap@90": 0.7889,
+    "retention@32": 0.9666,
+    "retention@64": 0.8779,
+    "retention@90": 0.8185,
+    "spearman": 0.625
+   }
+  },
+  "41": {
+   "freq": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9676,
+    "retention@64": 0.9286,
+    "retention@90": 0.7277,
+    "spearman": 0.6837
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.8125,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9756,
+    "retention@64": 0.9313,
+    "retention@90": 0.8414,
+    "spearman": 0.7023
+   }
+  },
+  "42": {
+   "freq": {
+    "overlap@32": 0.6875,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9693,
+    "retention@64": 0.9036,
+    "retention@90": 0.7391,
+    "spearman": 0.6797
+   },
+   "gonly": {
+    "overlap@32": 0.5625,
+    "overlap@64": 0.625,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9474,
+    "retention@64": 0.858,
+    "retention@90": 0.8798,
+    "spearman": 0.6021
+   }
+  },
+  "43": {
+   "freq": {
+    "overlap@32": 0.5938,
+    "overlap@64": 0.7812,
+    "overlap@90": 0.8444,
+    "retention@32": 0.9683,
+    "retention@64": 0.8571,
+    "retention@90": 0.7696,
+    "spearman": 0.7112
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7031,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9525,
+    "retention@64": 0.8846,
+    "retention@90": 0.8535,
+    "spearman": 0.6347
+   }
+  },
+  "44": {
+   "freq": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8556,
+    "retention@32": 0.9585,
+    "retention@64": 0.9099,
+    "retention@90": 0.8438,
+    "spearman": 0.7341
+   },
+   "gonly": {
+    "overlap@32": 0.625,
+    "overlap@64": 0.7188,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9636,
+    "retention@64": 0.8884,
+    "retention@90": 0.8245,
+    "spearman": 0.6393
+   }
+  },
+  "45": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.75,
+    "overlap@90": 0.8333,
+    "retention@32": 0.9709,
+    "retention@64": 0.8248,
+    "retention@90": 0.7536,
+    "spearman": 0.7103
+   },
+   "gonly": {
+    "overlap@32": 0.6562,
+    "overlap@64": 0.6406,
+    "overlap@90": 0.8,
+    "retention@32": 0.9654,
+    "retention@64": 0.8185,
+    "retention@90": 0.7239,
+    "spearman": 0.5788
+   }
+  },
+  "46": {
+   "freq": {
+    "overlap@32": 0.7812,
+    "overlap@64": 0.7656,
+    "overlap@90": 0.8222,
+    "retention@32": 0.974,
+    "retention@64": 0.8114,
+    "retention@90": 0.6574,
+    "spearman": 0.665
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.6875,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9658,
+    "retention@64": 0.8911,
+    "retention@90": 0.8795,
+    "spearman": 0.6745
+   }
+  },
+  "47": {
+   "freq": {
+    "overlap@32": 0.75,
+    "overlap@64": 0.7344,
+    "overlap@90": 0.8667,
+    "retention@32": 0.9686,
+    "retention@64": 0.8544,
+    "retention@90": 0.816,
+    "spearman": 0.7432
+   },
+   "gonly": {
+    "overlap@32": 0.7188,
+    "overlap@64": 0.7969,
+    "overlap@90": 0.8111,
+    "retention@32": 0.9651,
+    "retention@64": 0.8997,
+    "retention@90": 0.8138,
+    "spearman": 0.7547
+   }
+  }
+ },
+ "summary": {
+  "freq": {
+   "overlap@32": {
+    "mean": 0.6361,
+    "std": 0.1047,
+    "min": 0.375
+   },
+   "overlap@64": {
+    "mean": 0.762,
+    "std": 0.076,
+    "min": 0.5469
+   },
+   "overlap@90": {
+    "mean": 0.8208,
+    "std": 0.0424,
+    "min": 0.6889
+   },
+   "retention@32": {
+    "mean": 0.9367,
+    "std": 0.1331,
+    "min": 0.2394
+   },
+   "retention@64": {
+    "mean": 0.8849,
+    "std": 0.1439,
+    "min": 0.1701
+   },
+   "retention@90": {
+    "mean": 0.8028,
+    "std": 0.1575,
+    "min": 0.1076
+   },
+   "spearman": {
+    "mean": 0.649,
+    "std": 0.1362,
+    "min": 0.1918
+   }
+  },
+  "gonly": {
+   "overlap@32": {
+    "mean": 0.6476,
+    "std": 0.0705,
+    "min": 0.5
+   },
+   "overlap@64": {
+    "mean": 0.754,
+    "std": 0.061,
+    "min": 0.625
+   },
+   "overlap@90": {
+    "mean": 0.8326,
+    "std": 0.0324,
+    "min": 0.7222
+   },
+   "retention@32": {
+    "mean": 0.9499,
+    "std": 0.1041,
+    "min": 0.2522
+   },
+   "retention@64": {
+    "mean": 0.9021,
+    "std": 0.1093,
+    "min": 0.1908
+   },
+   "retention@90": {
+    "mean": 0.8395,
+    "std": 0.1493,
+    "min": 0.1254
+   },
+   "spearman": {
+    "mean": 0.6635,
+    "std": 0.0933,
+    "min": 0.3229
+   }
+  }
+ }
+}

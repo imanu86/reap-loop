@@ -1,0 +1,161 @@
+{
+ "tracedir": "/root/trace_prod",
+ "n_files": 20,
+ "window_tokens": 64,
+ "neff64_count": {
+  "mean": 41.837,
+  "median": 41.556,
+  "min": 19.334,
+  "max": 67.615,
+  "n": 800
+ },
+ "neff64_weighted": {
+  "mean": 35.214,
+  "median": 35.077,
+  "min": 10.644,
+  "max": 61.143,
+  "n": 800
+ },
+ "reuse_prevtok_same_layer_top6": {
+  "mean": 0.407,
+  "median": 0.333,
+  "min": 0.0,
+  "max": 1.0,
+  "n": 155160
+ },
+ "per_file": {
+  "trace_p00_extract.csv": {
+   "n_pos": 115,
+   "neff64_count_mean": 43.146,
+   "neff64_weighted_mean": 36.453,
+   "reuse_prevtok_mean": 0.3531
+  },
+  "trace_p01_extract.csv": {
+   "n_pos": 104,
+   "neff64_count_mean": 43.555,
+   "neff64_weighted_mean": 36.794,
+   "reuse_prevtok_mean": 0.3569
+  },
+  "trace_p02_extract.csv": {
+   "n_pos": 116,
+   "neff64_count_mean": 42.555,
+   "neff64_weighted_mean": 35.731,
+   "reuse_prevtok_mean": 0.3569
+  },
+  "trace_p03_extract.csv": {
+   "n_pos": 116,
+   "neff64_count_mean": 42.021,
+   "neff64_weighted_mean": 35.636,
+   "reuse_prevtok_mean": 0.3535
+  },
+  "trace_p04_extract.csv": {
+   "n_pos": 114,
+   "neff64_count_mean": 44.218,
+   "neff64_weighted_mean": 37.637,
+   "reuse_prevtok_mean": 0.3468
+  },
+  "trace_p05_extract.csv": {
+   "n_pos": 115,
+   "neff64_count_mean": 42.295,
+   "neff64_weighted_mean": 35.694,
+   "reuse_prevtok_mean": 0.3578
+  },
+  "trace_p06_extract.csv": {
+   "n_pos": 122,
+   "neff64_count_mean": 42.374,
+   "neff64_weighted_mean": 35.784,
+   "reuse_prevtok_mean": 0.3553
+  },
+  "trace_p07_extract.csv": {
+   "n_pos": 118,
+   "neff64_count_mean": 42.002,
+   "neff64_weighted_mean": 35.451,
+   "reuse_prevtok_mean": 0.3601
+  },
+  "trace_p08_extract.csv": {
+   "n_pos": 119,
+   "neff64_count_mean": 42.235,
+   "neff64_weighted_mean": 35.558,
+   "reuse_prevtok_mean": 0.3585
+  },
+  "trace_p09_extract.csv": {
+   "n_pos": 117,
+   "neff64_count_mean": 42.494,
+   "neff64_weighted_mean": 36.183,
+   "reuse_prevtok_mean": 0.3607
+  },
+  "trace_p10_extract.csv": {
+   "n_pos": 114,
+   "neff64_count_mean": 43.151,
+   "neff64_weighted_mean": 36.637,
+   "reuse_prevtok_mean": 0.3589
+  },
+  "trace_p11_extract.csv": {
+   "n_pos": 118,
+   "neff64_count_mean": 42.539,
+   "neff64_weighted_mean": 35.998,
+   "reuse_prevtok_mean": 0.3556
+  },
+  "trace_p12_extract.csv": {
+   "n_pos": 116,
+   "neff64_count_mean": 42.516,
+   "neff64_weighted_mean": 36.02,
+   "reuse_prevtok_mean": 0.3559
+  },
+  "trace_p13_extract.csv": {
+   "n_pos": 122,
+   "neff64_count_mean": 42.111,
+   "neff64_weighted_mean": 35.523,
+   "reuse_prevtok_mean": 0.3611
+  },
+  "trace_p14_extract.csv": {
+   "n_pos": 112,
+   "neff64_count_mean": 44.201,
+   "neff64_weighted_mean": 37.804,
+   "reuse_prevtok_mean": 0.3495
+  },
+  "trace_p15_extract.csv": {
+   "n_pos": 117,
+   "neff64_count_mean": 42.586,
+   "neff64_weighted_mean": 35.838,
+   "reuse_prevtok_mean": 0.3582
+  },
+  "trace_p16_explain.csv": {
+   "n_pos": 511,
+   "neff64_count_mean": 39.067,
+   "neff64_weighted_mean": 32.177,
+   "reuse_prevtok_mean": 0.4498
+  },
+  "trace_p17_explain.csv": {
+   "n_pos": 511,
+   "neff64_count_mean": 38.224,
+   "neff64_weighted_mean": 31.536,
+   "reuse_prevtok_mean": 0.4477
+  },
+  "trace_p18_explain.csv": {
+   "n_pos": 511,
+   "neff64_count_mean": 37.171,
+   "neff64_weighted_mean": 30.572,
+   "reuse_prevtok_mean": 0.4564
+  },
+  "trace_p19_explain.csv": {
+   "n_pos": 511,
+   "neff64_count_mean": 38.273,
+   "neff64_weighted_mean": 31.263,
+   "reuse_prevtok_mean": 0.4571
+  }
+ },
+ "label": "prodotto_json",
+ "private_reference": {
+  "neff64_count": 46.4,
+  "neff64_weighted": 39.6,
+  "reuse": 0.395
+ },
+ "equivalence_verdict": {
+  "criterion": "n_eff64_count in [35,50] AND reuse > 0.30",
+  "neff64_count": 41.837,
+  "neff64_weighted": 35.214,
+  "reuse": 0.407,
+  "valid": true
+ }
+}

@@ -1,0 +1,48 @@
+Nella crittoanalisi, lanalisi delle frequenze è lo studio della frequenza di utilizzo delle lettere o gruppi di lettere in un testo cifrato. Questo metodo è utilizzato per violare i cifrari classici. Le indagini quantitative sui testi si servono spesso di qualche forma di analisi delle frequenze.
+
+Possono essere interessanti le analisi delle frequenze di caratteri, di parole, di gruppi di parole che si possono assegnare a lemmi o significati definiti; queste analisi possono riguardare un singolo testo (da un frammento epigrafico, a un'opera come la Divina Commedia), un intero corpus letterario o un opportuno campione di un linguaggio specialistico o di un'intera lingua.
+
+In particolare un primo metodo che si adotta in attività di crittanalisi si basa sul fatto che in ogni lingua la frequenza di uso di ogni lettera è piuttosto determinata; questo è vero in modo rigoroso solo per testi lunghi, ma spesso testi anche corti hanno frequenze non molto diverse da quelle previste.
+
+Vediamo come riferimento le frequenze percentuali delle lettere più comuni di due lingue:
+
+Si può notare quanto le prime lettere di queste lingue siano presenti in quantità molto maggiore delle altre, ad esempio da un testo in cui un certo simbolo appare oltre il 12% delle volte si può facilmente intuire che quel simbolo corrisponde alla lettera E (in inglese la distanza della E dalle altre lettere è ancora più marcata).
+
+In particolare le varie lettere si trovano nelle frasi in Italiano con la frequenza
+
+Bibliografia 
+ 
+
+Linguistica computazionale
+Metodi crittanalitici
+
+Gli strumenti aerofoni (classificazione Hornbostel-Sachs: cat. 4) sono strumenti musicali nei quali l'aria stessa è il mezzo primario che viene messo in vibrazione producendo  un suono. Nella classificazione di Hornbostel-Sachs, gli strumenti aerofoni sono divisi in due classi, a seconda che l'aria che vibra sia contenuta in una cavità dello strumento (aerofoni risonanti o strumenti a fiato veri e propri), oppure no (aerofoni liberi).
+
+Aerofoni liberi 
+La prima classe comprende gli "aerofoni liberi", nei quali lo strumento genera direttamente un'onda sonora nell'aria circostante, senza produrre un'onda stazionaria in un volume d'aria racchiuso dallo strumento. Questa classe comprende gli strumenti ad ancia libera come l'armonica a bocca e l'organo a bocca di origine orientale e anche altri strumenti come la sirena e l'armonica o gli aerofoni a vortice come il cosiddetto Rombo, la rotula della zampa di suino (o il bottone) che vengono fatti roteare su sé stessi.
+
+Negli aerofoni liberi (41), quindi, l'aria vibrante non è contenuta dallo strumento, ma si trova al di fuori, lo circonda.
+
+Negli "aerofoni liberi a deviazione" (411) (ad esempio frusta, lama della sciabola che emette il caratteristico sibilo, ecc.) l'aria colpisce un corpo affilato, oppure un corpo affilato viene mosso attraverso l'aria.
+
+Negli "aerofoni liberi ad interruzione" (412) il passaggio dell'aria viene interrotto in maniera periodica generando una frequenza udibile.
+
+Gli "aerofoni ad interruzione ad ancia" (412.1) presentano un'ancia sulla quale viene indirizzato e forzato un flusso d'aria che la mette in vibrazione, originando un'interruzione periodica del flusso stesso, tenere conto del fatto che negli aerofoni di questo tipo, se sono presenti dei tubi, l'aria non vibra in modo primario, ma secondario, cioè arricchendo il suono timbricamente (canne ad ancia dell'organo).
+
+Ancora, negli aerofoni liberi ad interruzione ad ancia troviamo:
+
+ le ance battenti doppie (412.11) (es. lo stelo d'erba spaccato in due);
+ le ance libere singole (412.131);
+ e le ance libere in serie (412.132) (armonium, armonica a bocca, fisarmonica…);
+ nonché le ance a nastro (412.14) (ottenute, ad esempio, nel soffiare contro i bordi affilati di una foglia lanceolata o di un fogliettino di carta).
+
+Negli "aerofoni liberi ad interruzione a spostamento" (412.21) (come ad esempio nella sirena a disco forato) è il dispositivo di interruzione che si muove senza l'intervento di un flusso d'aria.
+
+Negli "aerofoni liberi ad interruzione a vortice" (412.22) (come, ad esempio, il rombo, il frullo, ma anche il ventilatore a pale che emette il caratteristico suono), il dispositivo interruttivo ruota attorno al suo stesso asse.
+
+Negli "aerofoni ad esplosione" ("413"), l'aria viene colpita da un solo impulso di compressione (il palloncino che scoppia, il sacchetto pieno d'aria fatto scoppiare, il tubofono, lo schioppetto come giocattolo infantile d'altri tempi).
+
+Strumenti a fiato (o aerofoni risonanti)  
+
+La seconda 
+

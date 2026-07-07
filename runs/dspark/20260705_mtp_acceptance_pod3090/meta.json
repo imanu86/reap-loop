@@ -1,0 +1,90 @@
+{
+ "track": "dspark",
+ "test": "mtp_acceptance_pod3090",
+ "date": "2026-07-05",
+ "purpose": "Misurare l'acceptance-rate del BASELINE MTP-1 (lo spec-dec --mtp nativo di ds4@80ebbc3 = il production baseline del paper DSpark, NON DSpark) su RTX 3090 community. Doppio uso: (1) riferimento baseline richiesto dal brief; (2) dati di calibrazione per la Strada A (drafter invariato -> l'acceptance e i margini misurati qui SONO quelli che la confidence calibrata deve predire). L'acceptance e' proprieta' del modello e trasferisce al 3060; i t/s del pod NON trasferiscono (modello in RAM/page-cache, zero-copy PCIe, regime diverso dallo streaming SSD del 3060) e non vanno mai presentati come velocita' 3060.",
+ "pod": {
+  "gpu": "NVIDIA GeForce RTX 3090 24GB (sm_86, come il 3060)",
+  "cloud": "COMMUNITY",
+  "image": "<internal note redacted>",
+  "container_disk_gb": 130,
+  "volume_gb": 0,
+  "min_memory_gb": 100
+ },
+ "software": {
+  "ds4_repo": "https://github.com/antirez/ds4",
+  "ds4_commit": "80ebbc3",
+  "patches": "NESSUNO (stock upstream: il test misura l'MTP nativo)",
+  "build": "make cuda CUDA_ARCH=sm_86"
+ },
+ "models": {
+  "target": "hf antirez/deepseek-v4-gguf DeepSeek-V4-Flash-IQ2XXS-w2Q2K-AProjQ8-SExpQ8-OutQ8-chat-v2-imatrix.gguf (86.7GB, stesso 2-bit del regime 3060)",
+  "mtp": "hf antirez/deepseek-v4-gguf DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf (3.8GB, identico a models\\ds4)"
+ },
+ "protocol": {
+  "sampling": "greedy (--temp 0), --nothink, -n 200, -c 2048",
+  "warmup": "1 run scartata (code/spec2) per riempire la page-cache",
+  "measured_runs_per_config": 2,
+  "aggregation": "mediana; acceptance attesa deterministica in greedy (eventuali divergenze tra run = nondeterminismo riduzioni batch, da segnalare)",
+  "cache_state": "warm (dopo download+warmup il modello sta in page-cache; RAM pod >= 100GB)"
+ },
+ "prompts": {
+  "code": "Write a Python function that parses a CSV file and returns the sum of the second column. Include error handling and a short docstring.",
+  "math": "Compute step by step: what is the sum of all integers from 1 to 100 that are divisible by 3? Show your reasoning and give the final number.",
+  "chat": "Give me practical, friendly advice for organizing a small team's weekly schedule. Keep it conversational."
+ },
+ "configs": [
+  {
+   "name": "probe",
+   "args": "--mtp $MTP --mtp-draft 1",
+   "env": "DS4_MTP_PROBE=1",
+   "measures": "acceptance top-1 di MTP-1 per token (hit/total, ds4.c:27112-27123), zero commit speculativi",
+   "prompts": [
+    "code",
+    "math",
+    "chat"
+   ]
+  },
+  {
+   "name": "spec2",
+   "args": "--mtp $MTP --mtp-draft 2 --mtp-margin 0",
+   "env": "DS4_MTP_CONF_LOG=1 DS4_MTP_TIMING=1 DS4_MTP_SPEC_LOG=1",
+   "measures": "drafted/committed per ciclo senza margin gate (acceptance grezza del blocco-2) + timing draft/verify",
+   "prompts": [
+    "code",
+    "math",
+    "chat"
+   ]
+  },
+  {
+   "name": "spec4",
+   "args": "--mtp $MTP --mtp-draft 4 --mtp-margin 0",
+   "env": "DS4_MTP_CONF_LOG=1 DS4_MTP_TIMING=1 DS4_MTP_SPEC_LOG=1",
+   "measures": "curva di acceptance in profondita' (histogram committed 1..4), analogo di Fig.2 del paper DSpark",
+   "prompts": [
+    "code",
+    "math",
+    "chat"
+   ]
+  },
+  {
+   "name": "spec2m3",
+   "args": "--mtp $MTP --mtp-draft 2",
+   "env": "DS4_MTP_CONF_LOG=1 DS4_MTP_TIMING=1 DS4_MTP_SPEC_LOG=1",
+   "measures": "comportamento production col margin gate default 3.0 (quanti cicli skippano il verify)",
+   "prompts": [
+    "code"
+   ]
+  },
+  {
+   "name": "baseline",
+   "args": "",
+   "env": "",
+   "measures": "t/s senza MTP (riferimento pod-only)",
+   "prompts": [
+    "code"
+   ]
+  }
+ ],
+ "results": "TBD (vedi summary.md dopo il run)"
+}

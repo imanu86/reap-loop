@@ -1,0 +1,41 @@
+--no-conversation is not supported by llama-cli
+please use llama-completion instead
+
+Loading model... 
+
+
+▄▄ ▄▄
+██ ██
+██ ██  ▀▀█▄ ███▄███▄  ▀▀█▄    ▄████ ████▄ ████▄
+██ ██ ▄█▀██ ██ ██ ██ ▄█▀██    ██    ██ ██ ██ ██
+██ ██ ▀█▄██ ██ ██ ██ ▀█▄██ ██ ▀████ ████▀ ████▀
+                                    ██    ██
+                                    ▀▀    ▀▀
+
+build      : b9646-c035ff490
+model      : Qwen_Qwen3-30B-A3B-Q4_K_M.gguf
+modalities : text
+
+available commands:
+  /exit or Ctrl+C     stop or exit
+  /regen              regenerate the last response
+  /clear              clear the chat history
+  /read <file>        add a text file
+  /glob <pattern>     add text files using globbing pattern
+
+
+> Write a Python function is_palindrome that returns True if the input string is a palindrome.
+
+[Start thinking]
+Okay, I need to write a Python function called is_palindrome that checks if a string is a palindrome. Hmm, what's a palindrome again? Oh right, it's a string that reads the same forwards and backwards. Like "madam" or "racecar". So the function should return True if
+
+[ Prompt: 19.0 t/s | Generation: 22.7 t/s ]
+
+> 
+
+> 
+
+> 
+
+Exiting...
+[0m

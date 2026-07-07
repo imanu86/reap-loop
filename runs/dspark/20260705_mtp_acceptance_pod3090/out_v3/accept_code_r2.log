@@ -1,0 +1,488 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: cuda SSD streaming cache budget 12.00 GiB / 6.75 MiB per expert = 1820 experts
+ds4: DS4_MTP_STREAMING_UNSAFE=1: MTP+streaming sperimentale (probe-only)
+ds4: MTP support model loaded: /root/models/ds4-mtp.gguf (draft=2)
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA host registration skipped: operation not supported
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.292s
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 3.55 GiB of tensor spans in 0.991s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA loading model tensors 0.01 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA streaming expert cache disabled: available 11.12 GiB <= reserve 11.78 GiB
+Hereds4: mtp probe token=734 draft=734 hit=1/1
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+'sds4: mtp probe token=260 draft=260 hit=2/2
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=15255 draft=15255 hit=3/3
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Pythonds4: mtp probe token=2019 draft=2019 hit=4/4
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ functionds4: mtp probe token=396 draft=396 hit=5/5
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ thatds4: mtp probe token=1383 draft=1383 hit=6/6
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ pards4: mtp probe token=6802 draft=6802 hit=7/7
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+sesds4: mtp probe token=260 draft=260 hit=8/8
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=74134 draft=74134 hit=9/9
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ CSVds4: mtp probe token=4245 draft=4245 hit=10/10
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fileds4: mtp probe token=305 draft=305 hit=11/11
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ andds4: mtp probe token=10340 draft=10340 hit=12/12
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ returnsds4: mtp probe token=270 draft=270 hit=13/13
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=2595 draft=2595 hit=14/14
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ sumds4: mtp probe token=294 draft=294 hit=15/15
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ofds4: mtp probe token=270 draft=270 hit=16/16
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=1957 draft=1957 hit=17/17
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ secondds4: mtp probe token=7133 draft=7133 hit=18/18
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ columnds4: mtp probe token=14 draft=14 hit=19/19
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+,ds4: mtp probe token=418 draft=2622 hit=19/20
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ withds4: mtp probe token=5610 draft=5610 hit=20/21
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ errords4: mtp probe token=17363 draft=17363 hit=21/22
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ handlingds4: mtp probe token=305 draft=979 hit=21/23
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ andds4: mtp probe token=260 draft=260 hit=22/24
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=3696 draft=3696 hit=23/25
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ docds4: mtp probe token=4463 draft=4463 hit=24/26
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+stringds4: mtp probe token=979 draft=979 hit=25/27
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:
+
+ds4: mtp probe token=9854 draft=9854 hit=26/28
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+```ds4: mtp probe token=36490 draft=36490 hit=27/29
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+pythonds4: mtp probe token=201 draft=201 hit=28/30
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+
+ds4: mtp probe token=1897 draft=1897 hit=29/31
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+importds4: mtp probe token=57907 draft=57907 hit=30/32
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ csvds4: mtp probe token=271 draft=271 hit=31/33
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+
+
+ds4: mtp probe token=3465 draft=3465 hit=32/34
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+defds4: mtp probe token=2595 draft=2595 hit=33/35
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ sumds4: mtp probe token=65 draft=65 hit=34/36
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+_ds4: mtp probe token=10930 draft=10930 hit=35/37
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+secondds4: mtp probe token=62929 draft=62929 hit=36/38
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+_columnds4: mtp probe token=29223 draft=29223 hit=37/39
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+(fileds4: mtp probe token=17555 draft=9860 hit=37/40
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+_pathds4: mtp probe token=3395 draft=3395 hit=38/41
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+):
+ds4: mtp probe token=361 draft=361 hit=39/42
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=16786 draft=16786 hit=40/43
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ """
+ds4: mtp probe token=361 draft=68779 hit=40/44
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=82630 draft=82630 hit=41/45
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Parseds4: mtp probe token=260 draft=74134 hit=41/46
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=74134 draft=74134 hit=42/47
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ CSVds4: mtp probe token=4245 draft=4245 hit=43/48
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fileds4: mtp probe token=305 draft=305 hit=44/49
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ andds4: mtp probe token=1354 draft=1354 hit=45/50
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ returnds4: mtp probe token=270 draft=270 hit=46/51
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=2595 draft=2595 hit=47/52
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ sumds4: mtp probe token=294 draft=294 hit=48/53
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ofds4: mtp probe token=710 draft=710 hit=49/54
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ allds4: mtp probe token=3785 draft=3785 hit=50/55
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ valuesds4: mtp probe token=295 draft=295 hit=51/56
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ inds4: mtp probe token=270 draft=270 hit=52/57
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=1957 draft=1957 hit=53/58
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ secondds4: mtp probe token=7133 draft=7133 hit=54/59
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ columnds4: mtp probe token=603 draft=603 hit=55/60
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=5191 draft=361 hit=55/61
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+    
+ds4: mtp probe token=361 draft=361 hit=56/62
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=93634 draft=93634 hit=57/63
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Argsds4: mtp probe token=1137 draft=1137 hit=58/64
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:
+ds4: mtp probe token=528 draft=528 hit=59/65
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+       ds4: mtp probe token=4245 draft=4245 hit=60/66
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fileds4: mtp probe token=17555 draft=343 hit=60/67
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+_pathds4: mtp probe token=343 draft=343 hit=61/68
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ (ds4: mtp probe token=2533 draft=2533 hit=62/69
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+strds4: mtp probe token=2605 draft=2605 hit=63/70
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+):ds4: mtp probe token=15062 draft=15062 hit=64/71
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Pathds4: mtp probe token=304 draft=304 hit=65/72
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ tods4: mtp probe token=270 draft=74134 hit=65/73
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=74134 draft=74134 hit=66/74
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ CSVds4: mtp probe token=4245 draft=4245 hit=67/75
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fileds4: mtp probe token=304 draft=603 hit=67/76
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ tods4: mtp probe token=27438 draft=27438 hit=68/77
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ parseds4: mtp probe token=603 draft=603 hit=69/78
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=5191 draft=361 hit=69/79
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+    
+ds4: mtp probe token=361 draft=361 hit=70/80
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=27669 draft=27669 hit=71/81
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Returnsds4: mtp probe token=1137 draft=1137 hit=72/82
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:
+ds4: mtp probe token=528 draft=528 hit=73/83
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+       ds4: mtp probe token=12249 draft=12249 hit=74/84
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ floatds4: mtp probe token=28 draft=28 hit=75/85
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:ds4: mtp probe token=455 draft=455 hit=76/86
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Theds4: mtp probe token=2595 draft=2595 hit=77/87
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ sumds4: mtp probe token=294 draft=294 hit=78/88
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ofds4: mtp probe token=710 draft=710 hit=79/89
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ allds4: mtp probe token=45442 draft=45442 hit=80/90
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA loading model tensors 8.03 GiB cached
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ numericds4: mtp probe token=3785 draft=3785 hit=81/91
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ valuesds4: mtp probe token=295 draft=295 hit=82/92
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ inds4: mtp probe token=270 draft=270 hit=83/93
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=1957 draft=1957 hit=84/94
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ secondds4: mtp probe token=7133 draft=7133 hit=85/95
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ columnds4: mtp probe token=603 draft=603 hit=86/96
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=5191 draft=775 hit=86/97
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+    
+ds4: mtp probe token=361 draft=361 hit=87/98
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=62984 draft=62984 hit=88/99
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Raisds4: mtp probe token=273 draft=273 hit=89/100
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+esds4: mtp probe token=1137 draft=1137 hit=90/101
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:
+ds4: mtp probe token=528 draft=528 hit=91/102
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+       ds4: mtp probe token=13559 draft=13559 hit=92/103
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Fileds4: mtp probe token=44701 draft=44701 hit=93/104
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+NotFoundds4: mtp probe token=9000 draft=28 hit=93/105
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+Errords4: mtp probe token=28 draft=28 hit=94/106
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:ds4: mtp probe token=2052 draft=2052 hit=95/107
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Ifds4: mtp probe token=270 draft=270 hit=96/108
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=12038 draft=12038 hit=97/109
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ specifiedds4: mtp probe token=4245 draft=4245 hit=98/110
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fileds4: mtp probe token=5354 draft=5354 hit=99/111
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ doesnds4: mtp probe token=1664 draft=1664 hit=100/112
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+'tds4: mtp probe token=3673 draft=3673 hit=101/113
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ existds4: mtp probe token=603 draft=603 hit=102/114
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=528 draft=528 hit=103/115
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+       ds4: mtp probe token=74418 draft=74418 hit=104/116
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ValueErrords4: mtp probe token=28 draft=28 hit=105/117
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:ds4: mtp probe token=2052 draft=2052 hit=106/118
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Ifds4: mtp probe token=260 draft=270 hit=106/119
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=1990 draft=1990 hit=107/120
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ valueds4: mtp probe token=295 draft=295 hit=108/121
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ inds4: mtp probe token=270 draft=270 hit=109/122
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ theds4: mtp probe token=1957 draft=1957 hit=110/123
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ secondds4: mtp probe token=7133 draft=7133 hit=111/124
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ columnds4: mtp probe token=4800 draft=344 hit=111/125
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ cannotds4: mtp probe token=366 draft=366 hit=112/126
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ beds4: mtp probe token=17077 draft=17077 hit=113/127
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ convertedds4: mtp probe token=304 draft=304 hit=114/128
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ tods4: mtp probe token=260 draft=12249 hit=114/129
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ads4: mtp probe token=12249 draft=1167 hit=114/130
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ floatds4: mtp probe token=603 draft=603 hit=115/131
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=528 draft=361 hit=115/132
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+       ds4: mtp probe token=13145 draft=74418 hit=115/133
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Indexds4: mtp probe token=9000 draft=9000 hit=116/134
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+Errords4: mtp probe token=28 draft=28 hit=117/135
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+:ds4: mtp probe token=2052 draft=2052 hit=118/136
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ Ifds4: mtp probe token=1117 draft=260 hit=118/137
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ anyds4: mtp probe token=6946 draft=6946 hit=119/138
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ rowds4: mtp probe token=769 draft=769 hit=120/139
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ hasds4: mtp probe token=18419 draft=18419 hit=121/140
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ fewerds4: mtp probe token=1099 draft=1099 hit=122/141
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ thands4: mtp probe token=223 draft=223 hit=123/142
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ ds4: mtp probe token=20 draft=20 hit=124/143
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+2ds4: mtp probe token=17397 draft=17397 hit=125/144
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ columnsds4: mtp probe token=603 draft=603 hit=126/145
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+.
+ds4: mtp probe token=361 draft=361 hit=127/146
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=16786 draft=16786 hit=128/147
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ """
+ds4: mtp probe token=361 draft=361 hit=129/148
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+   ds4: mtp probe token=3452 draft=3452 hit=130/149
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ds4: CUDA streaming expert cache disabled: available 11.11 GiB <= reserve 11.78 GiB
+ total
+ds4: prefill: 1.54 t/s, generation: 0.81 t/s

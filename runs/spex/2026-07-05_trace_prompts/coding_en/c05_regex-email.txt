@@ -1,0 +1,1 @@
+Discuss why validating emails with regex is tricky, show a reasonable pattern, and explain its limitations.

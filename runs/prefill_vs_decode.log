@@ -1,0 +1,16 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<?, ?it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+[pd] prompt 1/4: prefill 113 tok, decode 23 tok
+[pd] prompt 2/4: prefill 94 tok, decode 23 tok
+[pd] prompt 3/4: prefill 133 tok, decode 23 tok
+[pd] prompt 4/4: prefill 97 tok, decode 23 tok
+
+=== IDEA 'studia-poi-piazza' su DS2-Lite (top-16/64 = set hot da mettere in VRAM) ===
+(a) PREFILL predice DECODE: overlap top-16 prefill vs decode = 0.42
+    -> alto (>0.7): studiare il prefill dice davvero chi sara' hot nel decode
+(b) HOT cambia per prompt?: overlap top-16 decode TRA prompt diversi = 0.68
+    -> ALTO (>0.7): hot GLOBALE -> statico basta, studio per-richiesta SPRECATO
+    -> basso: hot per-prompt -> lo studio online serve davvero
+(bonus) concentrazione decode: top-16 portano 65% della massa decode
+
+[pd] VERDETTO: la tua idea vince solo se (a) alto E (b) basso.

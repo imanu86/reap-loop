@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Pallavicini Zaino337
+Categoria: zaino da trekking. Marca: Pallavicini. Colore: rosso mattone. Materiale principale: cotone organico. Peso: 1.62 kg. Prezzo di listino: 263.83 euro. Disponibilita': in arrivo. Spedizione da Milano. Garanzia 36 mesi. Codice: PAL-39682.
+{"nome": "Pallavicini Zaino337", "marca": "Pallavicini", "categoria": "zaino da trekking", "colore": "rosso mattone", "materiale": "cotone organico", "peso_kg": 1.62, "prezzo_eur": 263.83, "sconto_pct": 0, "disponibilita": "in arrivo", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Belcanto Friggitrice587
+Categoria: friggitrice ad aria. Marca: Belcanto. Colore: grigio antracite. Materiale principale: policarbonato. Peso: 3.27 kg. Prezzo di listino: 310.65 euro. Disponibilita': in arrivo. Spedizione da Torino. Garanzia 24 mesi. Codice: BEL-79698.
+{"nome": "Belcanto Friggitrice587", "marca": "Belcanto", "categoria": "friggitrice ad aria", "colore": "grigio antracite", "materiale": "policarbonato", "peso_kg": 3.27, "prezzo_eur": 310.65, "sconto_pct": 0, "disponibilita": "in arrivo", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Valdarno Smartwatch685
+Categoria: smartwatch. Marca: Valdarno. Colore: azzurro. Materiale principale: alluminio. Peso: 0.97 kg. Prezzo di listino: 455.58 euro. Disponibilita': prenotabile. Spedizione da Trieste. Garanzia 24 mesi. Codice: VAL-81512.
+{"nome": "Valdarno Smartwatch685", "marca": "Valdarno", "categoria": "smartwatch", "colore": "azzurro", "materiale": "alluminio", "peso_kg": 0.97, "prezzo_eur": 455.58, "sconto_pct": 0, "disponibilita": "prenotabile", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bergamasco Power125
+Categoria: power bank. Marca: Bergamasco. Colore: sabbia. Materiale principale: nylon balistico. Peso: 3.34 kg. Prezzo di listino: 389.74 euro, sconto 25% attivo. Disponibilita': disponibile. Spedizione da Genova. Garanzia 24 mesi. Codice: BER-16975.
+{"nome": "Bergamasco Power125", "marca": "Bergamasco", "categoria": "power bank", "colore": "sabbia", "materiale": "nylon balistico", "peso_kg": 3.34, "prezzo_eur": 389.74, "sconto_pct": 25, "disponibilita": "disponibile", "garanzia_mesi": 24}

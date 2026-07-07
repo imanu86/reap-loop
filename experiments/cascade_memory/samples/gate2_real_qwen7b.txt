@@ -1,0 +1,37 @@
+loaded 3600 rows; arms: ['B0_sw', 'B1_always_rag', 'B2_reactive', 'B3_random', 'B4_cascade', 'B5_cascade_no_rung0']
+==============================================================================
+
+B0_sw frontier:
+    theta     N    acc  tot_tok  rung_dist
+     None   600  0.200    296.5  native:1.00
+
+B1_always_rag frontier:
+    theta     N    acc  tot_tok  rung_dist
+     None   600  0.863    157.6  None:1.00
+
+B2_reactive frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -0.1   600  0.843    570.7  2:0.71 native:0.29
+
+B3_random frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -0.1   600  0.887    705.2  0:0.18 1:0.12 2:0.43 native:0.27
+
+B4_cascade frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -0.1   600  0.885    792.8  0:0.40 1:0.01 2:0.32 native:0.27
+
+B5_cascade_no_rung0 frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -0.1   600  0.840    722.6  1:0.35 2:0.36 native:0.29
+
+==============================================================================
+KPI-1  Delta_cost @ matched-accuracy (NEGATIVE = cascade cheaper; good)
+  B4_cascade vs B1(always-RAG): base_acc=0.863 base_cost=157.6  Delta=635.2 CI95=[600.0,667.8] (at/below range)
+  B5_cascade_no_rung0 vs B1(always-RAG): base_acc=0.863 base_cost=157.6  Delta=565.0 CI95=[540.7,588.0] (above range (cannot match acc))
+  B4_cascade vs B3(random,equal-budget) @theta=-0.1: base_acc=0.887 Delta=87.6 CI95=[64.8,108.9]
+
+==============================================================================
+KPI-4  rung-0 contribution (B4_cascade)
+  operating theta=-0.1: recovered(correct via escalation)=411, rung-0 share=0.545  (pre-reg: >=0.10)
+  stop-too-early (accepted native but WRONG) = 0.070  (pre-reg: <0.05)

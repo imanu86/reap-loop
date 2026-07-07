@@ -1,0 +1,23 @@
+# Granite-3.1-3B-A800M — punto a BASSA sparsità (s=0.20). Specifiche verificate (docs/02_models.md).
+# Coppia primaria con OLMoE: STESSO top-k=8 -> isola n_total (64 vs 40) a n_active costante.
+model_id: ibm-granite/granite-3.1-3b-a800m-instruct
+arch: granitemoe
+n_total_experts: 40
+top_k: 8
+n_active_experts: 8
+shared_experts: 0
+sparsity_ratio: 0.20
+total_params_b: 3.3
+fp16_size_gb: 6.6              # ENTRA a fp16 in 12GB -> FULL pulito senza offload
+fits_12gb_fp16: true
+
+expert_layout: fused            # input_linear/output_linear -> ResidencyManager backend FusedSliceStore
+gate_attr_path: block_sparse_moe.router   # forward-hook qui; NIENTE hook per-expert (expert fusi)
+first_moe_layer: 0
+output_router_logits_supported: true
+
+full_baseline: fp16_native      # banco di prova più semplice: implementare la pipeline qui per primo
+
+notes: >
+  ⚠️ Expert FUSI: rendere non-residente l'expert i = slice dei tensori, non spostare un modulo.
+  precision-cascade e hard-drop sono naturali sul layout fuso; fetch-lossless è il più scomodo.

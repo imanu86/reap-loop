@@ -1,0 +1,70 @@
+{
+ "_meta": {
+  "raw": "runs/reap/public_replica/prodotto_json/eval/results_raw.csv",
+  "bootstrap": 10000,
+  "seed": 12345,
+  "n_chunks": 10,
+  "private_reference": "reap/dom 1.010x CI[0.996,1.025] LOSSLESS; rand/dom 1.388x (runs/reap/2026-07-05_eval_biasmask_v2)"
+ },
+ "aggregate_ppl": {
+  "full": 2.1754,
+  "rand50_s0": 2.6038,
+  "reap_k50": 2.2889
+ },
+ "paired_vs_full": {
+  "rand50_s0": {
+   "per_chunk_ppl_ratio": [
+    1.1417,
+    1.1922,
+    1.1828,
+    1.2189,
+    1.1923,
+    1.2064,
+    1.1852,
+    1.2254,
+    1.2235,
+    1.2033
+   ],
+   "geomean": 1.1969,
+   "ci95": [
+    1.1811,
+    1.2105
+   ],
+   "crosses_1.0": false,
+   "ppl_ratio_aggregate": 1.1969
+  },
+  "reap_k50": {
+   "per_chunk_ppl_ratio": [
+    1.0876,
+    1.0589,
+    1.0634,
+    1.0195,
+    1.0463,
+    1.0854,
+    1.0285,
+    1.0641,
+    1.0401,
+    1.0302
+   ],
+   "geomean": 1.0522,
+   "ci95": [
+    1.0389,
+    1.0664
+   ],
+   "crosses_1.0": false,
+   "ppl_ratio_aggregate": 1.0522
+  }
+ },
+ "random_multiseed": {
+  "per_seed": {
+   "rand50_s0": 1.1969
+  },
+  "mean": 1.1969,
+  "min": 1.1969,
+  "max": 1.1969
+ },
+ "verdicts": [
+  "reap_k50 dom geomean 1.0522x CI95 [1.0389, 1.0664] -> NON-lossless (CI sopra 1.0)",
+  "random dom mean 1.1969x (min 1.1969) > reap 1.0522x -> PASS selezione-conta (replica del the private-domain reference)"
+ ]
+}

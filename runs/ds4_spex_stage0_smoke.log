@@ -1,0 +1,22 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 6.623s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: CUDA loading model tensors 1.09 GiB cached
+ds4: CUDA streaming expert cache capped from 512 to 317 experts (available 8.09 GiB, reserve 6.00 GiB, 6.75 MiB/expert)
+ds4: CUDA loading model tensors 2.28 GiB cached
+ds4: CUDA loading model tensors 3.49 GiB cached
+ds4: CUDA loading model tensors 4.71 GiB cached
+ds4: CUDA loading model tensors 5.99 GiB cached
+ds4: CUDA loading model tensors 7.18 GiB cached
+ds4: gpu streaming prefill token 1/17ds4: gpu streaming prefill token 2/17ds4: gpu streaming prefill token 3/17ds4: CUDA loading model tensors 7.33 GiB cached
+ds4: gpu streaming prefill token 4/17ds4: gpu streaming prefill token 5/17ds4: gpu streaming prefill token 6/17ds4: gpu streaming prefill token 7/17ds4: gpu streaming prefill token 8/17ds4: gpu streaming prefill token 9/17ds4: gpu streaming prefill token 10/17ds4: gpu streaming prefill token 11/17ds4: gpu streaming prefill token 12/17ds4: gpu streaming prefill token 13/17ds4: gpu streaming prefill token 14/17ds4: gpu streaming prefill token 15/17ds4: gpu streaming prefill token 16/17ds4: CUDA loading model tensors 7.40 GiB cached
+ds4: gpu streaming prefill token 17/17
+We need to write one short sentence about
+ds4: prefill: 0.08 t/s, generation: 0.15 t/s
+ds4: SPEX stats: selected_batches=1032 selected_experts=6192 cache_hits=0 cache_misses=138 hit_rate=0.0000 miss_per_expert=0.0223 direct_loads=6054 copy_calls=18576 copied=41796.00 MiB copy_ms=203454.706 copy_ms_per_batch=197.146 sync_calls=18576 sync_ms=7498.104 sync_ms_per_batch=7.266

@@ -1,0 +1,14 @@
+Fetching 9 files:   0%|          | 0/9 [00:00<?, ?it/s]Fetching 9 files: 100%|##########| 9/9 [00:00<?, ?it/s]
+[load] non-expert su GPU=299 | param meta rimasti (routed expert)=52 | unexpected=0
+
+=== SATURAZIONE working-set DS2-Lite (E=64/layer) � distinti dopo K token ===
+ len |    1    2    4    8   16   32   48   64   96  128   | prompt
+   9 |    6   11   17   24    -    -    -    -    -    -   | Ciao
+  16 |    6   11   17   28   36    -    -    -    -    -   | Quanto fa sette per otto?
+  20 |    6   11   18   26   40    -    -    -    -    -   | Scrivi una funzione che inverte una string
+  76 |    6   11   18   26   35   48   52   55    -    -   | Scrivi una funzione is_palindrome(s) che r
+----------------------------------------------------------------------
+MEDIA|    6   11   17   26   37   48   52   55    -    -
+
+[sat] LETTURA: se a 8-16 token sei gia' a ~32+/64, satura in fretta (anche le interazioni
+[sat] corte sono dense). Se a 16 token sei ancora basso, le interazioni corte hanno margine.

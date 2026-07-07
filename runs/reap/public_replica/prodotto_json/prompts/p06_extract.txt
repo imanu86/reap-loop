@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sanpietro Friggitrice803
+Categoria: friggitrice ad aria. Marca: Sanpietro. Colore: verde oliva. Materiale principale: policarbonato. Peso: 2.94 kg. Prezzo di listino: 274.35 euro, sconto 15% attivo. Disponibilita': ultimi pezzi. Spedizione da Firenze. Garanzia 12 mesi. Codice: SAN-18920.

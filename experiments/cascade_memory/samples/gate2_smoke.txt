@@ -1,0 +1,64 @@
+# Step-2 Gate #2 analysis - OFFLINE SMOKE (mock backend 'oracle_context')
+# This validates the ANALYSIS MACHINERY, not the concept. Numbers are synthetic:
+# the mock ties correctness to whether the gold fact is present in the context,
+# and gives always-RAG idealized retrieval (so B1 looks unbeatable here). The real
+# Step-2 verdict needs a real model in the small-native-window regime.
+# Generated 2026-07-06T11:34:32Z
+
+loaded 3120 rows; arms: ['B0_sw', 'B1_always_rag', 'B2_reactive', 'B3_random', 'B4_cascade', 'B5_cascade_no_rung0']
+==============================================================================
+
+B0_sw frontier:
+    theta     N    acc  tot_tok  rung_dist
+     None    60  0.200    172.8  native:1.00
+
+B1_always_rag frontier:
+    theta     N    acc  tot_tok  rung_dist
+     None    60  0.867    123.6  None:1.00
+
+B2_reactive frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -3.5    60  0.300    199.2  2:0.10 native:0.90
+     -2.5    60  0.783    322.4  2:0.58 native:0.42
+     -1.5    60  0.867    352.9  2:0.67 native:0.33
+     -1.0    60  0.867    352.9  2:0.67 native:0.33
+     -0.5    60  0.867    364.1  2:0.67 native:0.33
+     -0.1    60  0.867    397.6  2:0.67 native:0.33
+
+B3_random frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -3.5    60  0.317    209.5  0:0.02 1:0.07 2:0.03 native:0.88
+     -2.5    60  0.850    423.0  0:0.10 1:0.10 2:0.45 native:0.35
+     -1.5    60  0.983    481.9  0:0.17 1:0.13 2:0.48 native:0.22
+     -1.0    60  0.983    481.9  0:0.17 1:0.13 2:0.48 native:0.22
+     -0.5    60  0.983    614.5  0:0.17 1:0.13 2:0.48 native:0.22
+     -0.1    60  0.983    816.0  0:0.17 1:0.13 2:0.48 native:0.22
+
+B4_cascade frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -3.5    60  0.317    210.7  0:0.08 2:0.03 native:0.88
+     -2.5    60  0.850    465.9  0:0.30 2:0.35 native:0.35
+     -1.5    60  0.983    508.6  0:0.40 2:0.38 native:0.22
+     -1.0    60  0.983    508.6  0:0.40 2:0.38 native:0.22
+     -0.5    60  0.983    600.2  0:0.40 2:0.38 native:0.22
+     -0.1    60  0.983    816.0  0:0.40 2:0.38 native:0.22
+
+B5_cascade_no_rung0 frontier:
+    theta     N    acc  tot_tok  rung_dist
+     -3.5    60  0.300    210.8  1:0.07 2:0.03 native:0.90
+     -2.5    60  0.783    421.1  1:0.23 2:0.35 native:0.42
+     -1.5    60  0.867    471.1  1:0.28 2:0.38 native:0.33
+     -1.0    60  0.867    471.1  1:0.28 2:0.38 native:0.33
+     -0.5    60  0.867    523.3  1:0.28 2:0.38 native:0.33
+     -0.1    60  0.867    623.6  1:0.28 2:0.38 native:0.33
+
+==============================================================================
+KPI-1  Delta_cost @ matched-accuracy (NEGATIVE = cascade cheaper; good)
+  B4_cascade vs B1(always-RAG): base_acc=0.867 base_cost=123.6  Delta=347.6 CI95=[270.6,420.0] (interp)
+  B5_cascade_no_rung0 vs B1(always-RAG): base_acc=0.867 base_cost=123.6  Delta=500.0 CI95=[495.0,505.0] (above range (cannot match acc))
+  B4_cascade vs B3(random,equal-budget) @theta=-0.1: base_acc=0.983 Delta=-307.5 CI95=[-374.8,-244.4]
+
+==============================================================================
+KPI-4  rung-0 contribution (B4_cascade)
+  operating theta=-1.0: recovered(correct via escalation)=47, rung-0 share=0.511  (pre-reg: >=0.10)
+  stop-too-early (accepted native but WRONG) = 0.017  (pre-reg: <0.05)

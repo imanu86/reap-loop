@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Monitor878
+Categoria: monitor 27 pollici. Marca: Tavernelli. Colore: nero. Materiale principale: poliestere riciclato. Peso: 4.35 kg. Prezzo di listino: 425.6 euro. Disponibilita': ultimi pezzi. Spedizione da Firenze. Garanzia 12 mesi. Codice: TAV-83714.
+{"nome": "Tavernelli Monitor878", "marca": "Tavernelli", "categoria": "monitor 27 pollici", "colore": "nero", "materiale": "poliestere riciclato", "peso_kg": 4.35, "prezzo_eur": 425.6, "sconto_pct": 0, "disponibilita": "ultimi pezzi", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Valdarno Materasso799
+Categoria: materasso matrimoniale. Marca: Valdarno. Colore: verde oliva. Materiale principale: cotone organico. Peso: 3.75 kg. Prezzo di listino: 113.36 euro, sconto 20% attivo. Disponibilita': ultimi pezzi. Spedizione da Bari. Garanzia 24 mesi. Codice: VAL-21881.
+{"nome": "Valdarno Materasso799", "marca": "Valdarno", "categoria": "materasso matrimoniale", "colore": "verde oliva", "materiale": "cotone organico", "peso_kg": 3.75, "prezzo_eur": 113.36, "sconto_pct": 20, "disponibilita": "ultimi pezzi", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Corvara Aspirapolvere767
+Categoria: aspirapolvere. Marca: Corvara. Colore: verde oliva. Materiale principale: alluminio. Peso: 1.76 kg. Prezzo di listino: 303.21 euro. Disponibilita': esaurito. Spedizione da Firenze. Garanzia 36 mesi. Codice: COR-90859.
+{"nome": "Corvara Aspirapolvere767", "marca": "Corvara", "categoria": "aspirapolvere", "colore": "verde oliva", "materiale": "alluminio", "peso_kg": 1.76, "prezzo_eur": 303.21, "sconto_pct": 0, "disponibilita": "esaurito", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Lentini Bicicletta113
+Categoria: bicicletta da citta'. Marca: Lentini. Colore: grigio antracite. Materiale principale: nylon balistico. Peso: 4.28 kg. Prezzo di listino: 93.12 euro, sconto 30% attivo. Disponibilita': prenotabile. Spedizione da Bari. Garanzia 12 mesi. Codice: LEN-21281.
+{"nome": "Lentini Bicicletta113", "marca": "Lentini", "categoria": "bicicletta da citta'", "colore": "grigio antracite", "materiale": "nylon balistico", "peso_kg": 4.28, "prezzo_eur": 93.12, "sconto_pct": 30, "disponibilita": "prenotabile", "garanzia_mesi": 12}

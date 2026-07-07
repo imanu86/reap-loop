@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Vellutata di zucca. Per 4 persone, tempo 40 minuti.
+Ingredienti: pecorino, sale fino, pomodori pelati, guanciale, burro, zafferano, olio extravergine, farina 00.
+Preparazione: far riposare sale fino; tritare pomodori pelati; tritare olio extravergine; far riposare farina 00.

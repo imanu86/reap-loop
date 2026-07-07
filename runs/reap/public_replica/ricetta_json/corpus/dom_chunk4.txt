@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Crostata di marmellata. Per 2 persone, tempo 60 minuti.
+Ingredienti: brodo vegetale, zafferano, uova, zucchero, farina 00, latte intero.
+Preparazione: aggiungere uova; impastare brodo vegetale; aggiungere brodo vegetale; cuocere a fuoco lento farina 00; scolare zafferano; aggiungere zucchero.
+{"titolo": "Crostata di marmellata", "porzioni": 2, "tempo_minuti": 60, "ingredienti": ["brodo vegetale", "zafferano", "uova", "zucchero", "farina 00", "latte intero"], "passi": ["aggiungere uova", "impastare brodo vegetale", "aggiungere brodo vegetale", "cuocere a fuoco lento farina 00", "scolare zafferano", "aggiungere zucchero"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Risotto allo zafferano. Per 8 persone, tempo 45 minuti.
+Ingredienti: latte intero, zucchero, zafferano, carote, cipolla.
+Preparazione: tritare zafferano; scolare latte intero; sfumare con zafferano; far riposare cipolla; tritare cipolla.
+{"titolo": "Risotto allo zafferano", "porzioni": 8, "tempo_minuti": 45, "ingredienti": ["latte intero", "zucchero", "zafferano", "carote", "cipolla"], "passi": ["tritare zafferano", "scolare latte intero", "sfumare con zafferano", "far riposare cipolla", "tritare cipolla"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Pesto alla genovese. Per 2 persone, tempo 45 minuti.
+Ingredienti: olio extravergine, pancetta, burro, basilico, riso Carnaroli, sale fino.
+Preparazione: infornare pancetta; impastare basilico; impastare riso Carnaroli; tritare olio extravergine; tritare riso Carnaroli.
+{"titolo": "Pesto alla genovese", "porzioni": 2, "tempo_minuti": 45, "ingredienti": ["olio extravergine", "pancetta", "burro", "basilico", "riso Carnaroli", "sale fino"], "passi": ["infornare pancetta", "impastare basilico", "impastare riso Carnaroli", "tritare olio extravergine", "tritare riso Carnaroli"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Frittata di zucchine. Per 2 persone, tempo 60 minuti.
+Ingredienti: brodo vegetale, lievito, aglio, carote, zucchero, guanciale.
+Preparazione: mescolare zucchero; mantecare brodo vegetale; mescolare carote; sfumare con zucchero; tritare zucchero.
+{"titolo": "Frittata di zucchine", "porzioni": 2, "tempo_minuti": 60, "ingredienti": ["brodo vegetale", "lievito", "aglio", "carote", "zucchero", "guanciale"], "passi": ["mescolare zucchero", "mantecare brodo vegetale", "mescolare carote", "sfumare con zucchero", "tritare zucchero"]}

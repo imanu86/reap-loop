@@ -1,0 +1,14 @@
+{
+  "card": "RTX 3080 Ti 12288 MiB (sm_86), real 12GB ceiling",
+  "backbone_reserve_gib": 5.82,
+  "usable_expert_cache_experts_max": 407,
+  "usable_expert_cache_note": "cap ~407 (=2.75 GiB); backbone 5.82 + arenas q8_0 ~1.8GiB + ctx/CUDA overhead leave only ~2.7GiB; >=440 OOMs on q8_0 arena. Independent of prefill-chunk (backbone-bound).",
+  "measure_config": "--cuda --ssd-streaming --ssd-streaming-cold --ssd-streaming-cache-experts 380 --prefill-chunk 512 -c 2048 --temp 0 -n 90, same BST prompt",
+  "V0_mechanism": "checked=5760 violations=0 (every selected expert in K91 keep-list)",
+  "configs": {
+    "K0_full":  {"keep_per_layer":256,"working_set":"unbounded","hit_rate":0.3509,"direct_loads":2670,"gen_ts":2.16},
+    "K91_9pct": {"keep_per_layer":23,"working_set":920,"hit_rate":0.6725,"direct_loads":993,"gen_ts":3.67},
+    "K96_3.5pct":{"keep_per_layer":9,"working_set":360,"hit_rate":0.9593,"direct_loads":631,"gen_ts":12.02}
+  },
+  "verdict_fit": "K91 NON entra del tutto in 12GB (hit_rate 0.67, working set 920 > cache 407). La matematica ingenua (12-5.8=6.2GiB->910 exp) IGNORAVA ~2GiB di arene/overhead ds4. Il K che ENTRA davvero in un 3060 e' ~K96 (keep 3.5%, working set 360<=407 cache -> hit_rate 0.96, 12 t/s = 33x il full). K91 comunque bounda il working set (direct_loads plateau ~993 vs full 2670+ in crescita) e va 8x il full."
+}

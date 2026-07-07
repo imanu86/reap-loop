@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Lasagne al forno. Per 4 persone, tempo 60 minuti.
+Ingredienti: aglio, farina 00, pecorino, zafferano, vino bianco.
+Preparazione: cuocere a fuoco lento farina 00; aggiungere aglio; cuocere a fuoco lento zafferano; sfumare con farina 00; sfumare con aglio; mantecare pecorino.
+{"titolo": "Lasagne al forno", "porzioni": 4, "tempo_minuti": 60, "ingredienti": ["aglio", "farina 00", "pecorino", "zafferano", "vino bianco"], "passi": ["cuocere a fuoco lento farina 00", "aggiungere aglio", "cuocere a fuoco lento zafferano", "sfumare con farina 00", "sfumare con aglio", "mantecare pecorino"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Minestrone di verdure. Per 4 persone, tempo 45 minuti.
+Ingredienti: carote, pancetta, brodo vegetale, basilico, sale fino, zucchero, burro.
+Preparazione: tritare burro; impastare sale fino; mescolare brodo vegetale; impastare basilico; tritare brodo vegetale; impastare carote.
+{"titolo": "Minestrone di verdure", "porzioni": 4, "tempo_minuti": 45, "ingredienti": ["carote", "pancetta", "brodo vegetale", "basilico", "sale fino", "zucchero", "burro"], "passi": ["tritare burro", "impastare sale fino", "mescolare brodo vegetale", "impastare basilico", "tritare brodo vegetale", "impastare carote"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Zuppa di ceci. Per 8 persone, tempo 45 minuti.
+Ingredienti: vino bianco, carote, brodo vegetale, pecorino, pancetta, cipolla.
+Preparazione: far riposare pancetta; far riposare carote; mantecare cipolla; scolare brodo vegetale; scolare carote; far riposare pancetta.
+{"titolo": "Zuppa di ceci", "porzioni": 8, "tempo_minuti": 45, "ingredienti": ["vino bianco", "carote", "brodo vegetale", "pecorino", "pancetta", "cipolla"], "passi": ["far riposare pancetta", "far riposare carote", "mantecare cipolla", "scolare brodo vegetale", "scolare carote", "far riposare pancetta"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Crostata di marmellata. Per 4 persone, tempo 90 minuti.
+Ingredienti: basilico, aglio, zafferano, sedano, uova.
+Preparazione: mescolare basilico; mantecare basilico; aggiungere uova; sfumare con sedano; mescolare zafferano; mescolare zafferano.
+{"titolo": "Crostata di marmellata", "porzioni": 4, "tempo_minuti": 90, "ingredienti": ["basilico", "aglio", "zafferano", "sedano", "uova"], "passi": ["mescolare basilico", "mantecare basilico", "aggiungere uova", "sfumare con sedano", "mescolare zafferano", "mescolare zafferano"]}

@@ -1,0 +1,4 @@
+mask scritta: /root/out_prod/reap_mask_prodotto_json_k50.json
+decode tokens: 3899 su 20 file; nan rows: 0
+layer potati: 40 (skip no-data: []); keep 128/256
+stima file: 46.98 GiB

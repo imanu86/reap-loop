@@ -1,0 +1,20 @@
+B1 always-RAG : acc=0.944  retrieval/item=1.00  base_tok=153.1
+B2 T_learned  : acc=0.929  retrieval/item=0.55  base_tok=478.0  (theta=-0.001)
+accuracy gap (B1 - B2) = +0.015 (persists at any C_rag; B1 always retrieves)
+
+    C_rag   cost_B1   cost_B2   winner(cost)
+        0     153.1     478.0     B1 cheaper
+      100     253.1     533.0     B1 cheaper
+      200     353.1     588.0     B1 cheaper
+      300     453.1     643.0     B1 cheaper
+      500     653.1     753.0     B1 cheaper
+      800     953.1     918.0     B2 cheaper
+     1200    1353.1    1138.0     B2 cheaper
+     2000    2153.1    1578.0     B2 cheaper
+
+============================================================
+CROSSOVER: C_rag* = 722 token-equivalents.
+  For C_rag > 722, the 2-tier costs less than always-RAG,
+<!-- redacted: internal cost/infra note -->
+  Interpretation: retrieval must cost > ~722 tok-equiv (query embed + rerank
+  of the candidates) before skipping it on in-window items pays off.

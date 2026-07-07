@@ -1,0 +1,66 @@
+python : 
+In riga:1 car:192
++ ... ggressive-commit"; python scripts\verify_expert_cache.py *>&1 | Tee-O ...
++                        ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Loading weights:   0%|          | 0/179 [00:00<?, ?it/s]
+Loading weights:   2%|2         | 4/179 [00:00<00:18,  9.66it/s]
+Loading weights:   3%|2         | 5/179 [00:01<00:40,  4.32it/s]
+Loading weights:   8%|8         | 15/179 [00:01<00:11, 14.48it/s]
+Loading weights:  10%|#         | 18/179 [00:01<00:15, 10.07it/s]
+Loading weights:  15%|#4        | 26/179 [00:02<00:10, 14.95it/s]
+Loading weights:  16%|#6        | 29/179 [00:02<00:14, 10.55it/s]
+Loading weights:  21%|##        | 37/179 [00:02<00:09, 14.62it/s]
+Loading weights:  22%|##1       | 39/179 [00:03<00:14,  9.59it/s]
+Loading weights:  27%|##6       | 48/179 [00:03<00:09, 14.48it/s]
+Loading weights:  28%|##8       | 51/179 [00:04<00:12, 10.47it/s]
+Loading weights:  33%|###2      | 59/179 [00:04<00:08, 14.28it/s]
+Loading weights:  35%|###4      | 62/179 [00:05<00:11, 10.51it/s]
+Loading weights:  39%|###9      | 70/179 [00:05<00:07, 14.42it/s]
+Loading weights:  41%|####      | 73/179 [00:06<00:10, 10.57it/s]
+Loading weights:  45%|####5     | 81/179 [00:06<00:06, 14.50it/s]
+Loading weights:  47%|####6     | 84/179 [00:07<00:08, 10.79it/s]
+Loading weights:  51%|#####1    | 92/179 [00:07<00:05, 14.52it/s]
+Loading weights:  53%|#####2    | 94/179 [00:08<00:08,  9.95it/s]
+Loading weights:  58%|#####7    | 103/179 [00:08<00:05, 14.56it/s]
+Loading weights:  59%|#####9    | 106/179 [00:08<00:06, 10.70it/s]
+Loading weights:  64%|######3   | 114/179 [00:09<00:04, 14.42it/s]
+Loading weights:  65%|######5   | 117/179 [00:09<00:05, 10.64it/s]
+Loading weights:  70%|######9   | 125/179 [00:10<00:03, 14.43it/s]
+Loading weights:  72%|#######1  | 128/179 [00:10<00:04, 10.51it/s]
+Loading weights:  76%|#######5  | 136/179 [00:11<00:03, 14.28it/s]
+Loading weights:  77%|#######7  | 138/179 [00:11<00:04,  9.81it/s]
+Loading weights:  82%|########2 | 147/179 [00:11<00:02, 14.38it/s]
+Loading weights:  84%|########3 | 150/179 [00:12<00:02, 10.49it/s]
+Loading weights:  88%|########8 | 158/179 [00:12<00:01, 14.17it/s]
+Loading weights:  89%|########9 | 160/179 [00:13<00:01,  9.78it/s]
+Loading weights:  94%|#########4| 169/179 [00:13<00:00, 14.42it/s]
+Loading weights:  96%|#########6| 172/179 [00:16<00:01,  4.50it/s]
+Loading weights: 100%|##########| 179/179 [00:16<00:00, 10.78it/s]
+[transformers] Ignoring clean_up_tokenization_spaces=True for BPE tokenizer GPTNeoXTokenizer. The 
+clean_up_tokenization post-processing step is designed for WordPiece tokenizers and is destructive for BPE (it strips 
+spaces before punctuation). Set clean_up_tokenization_spaces=False to suppress this warning, or set 
+clean_up_tokenization_spaces_for_bpe_even_though_it_will_corrupt_output=True to force cleanup anyway.
+[cfg] n_layers=16 n_experts=64 top_k=8 hidden=2048 inter=1024
+[size] expert totali (fp16) = 12.00 GB  (bytes/expert=12.58 MB)
+
+=== (A) cache PIENA: capacity=64, tutti gli expert residenti ===
+    VRAM-expert (slice residenti) = 12.00 GB | torch.cuda.memory_allocated = 12.89 GB
+    stats: hits=3635 misses=0 fetched_gb=0.000 fetch_rate=0.0000 resident_experts=1024
+    testo: "Explain in one sentence why the sky is blue.\n\nThe sky appears blue because the Earth's atmosphere scatters sunlight in all directions and blue light is scattered more"
+
+=== (B) cache PICCOLA: capacity=8, pinned=4/layer ===
+    VRAM-expert (slice residenti) = 1.500 GB (pre-gen 0.750 GB) | memory_allocated=2.40 GB peak=2.42 GB
+    stats: hits=228 misses=3407 fetched_gb=39.926 fetch_rate=0.9373 resident_experts=128
+    stats per_layer[0] = {'hits': 10, 'misses': 216, 'fetched_bytes': 2717908992, 'resident': 8}
+    testo: "Explain in one sentence why the sky is blue.\n\nThe sky appears blue because the Earth's atmosphere scatters sunlight in all directions and blue light is scattered more"
+
+=== RISULTATI ===
+[1] always-fetch LOSSLESS (token cap64 == token cap8): True
+[2] VRAM-expert cache piccola = 1.500 GB  (< 14 GB: True) | cache piena = 12.00 GB
+[3] stats coerenti (piccola: miss>0 & fetch>0; piena: 0/0): True
+    esempio fetch stats (cache piccola) = {'hits': 228, 'misses': 3407, 'fetched_gb': 39.926, 'fetch_rate': 0.9373}
+
+ALL_OK = True

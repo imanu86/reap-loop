@@ -1,0 +1,172 @@
+{
+ "seed": 42,
+ "ridge": 10.0,
+ "train_docs": [
+  "coding_en_c10_test-mock",
+  "coding_en_c09_api-paging",
+  "coding_en_c00_python-csv",
+  "coding_en_c08_rust-owner",
+  "coding_en_c05_regex-email",
+  "coding_en_c02_sql-window",
+  "coding_en_c01_js-debounce",
+  "coding_en_c11_refactor",
+  "domain_kb_doc00",
+  "domain_kb_doc06",
+  "domain_kb_doc03",
+  "domain_kb_doc01",
+  "domain_kb_doc04",
+  "generale_ita_g11_educazione",
+  "generale_ita_g07_auto",
+  "generale_ita_g06_salute",
+  "generale_ita_g02_viaggi",
+  "generale_ita_g08_filosofia",
+  "generale_ita_g09_fotografia",
+  "generale_ita_g03_sport",
+  "generale_ita_g10_vino"
+ ],
+ "test_docs": [
+  "coding_en_c04_py-asyncio",
+  "coding_en_c07_docker-multi",
+  "coding_en_c03_c-pointers",
+  "coding_en_c06_git-rebase",
+  "domain_kb_doc05",
+  "domain_kb_doc02",
+  "domain_kb_doc07",
+  "generale_ita_g05_giardino",
+  "generale_ita_g00_storia",
+  "generale_ita_g04_finanza",
+  "generale_ita_g01_cucina"
+ ],
+ "n_train_pairs": {
+  "nl": 262743,
+  "nt": 269480
+ },
+ "results": {
+  "coding_en": {
+   "hidden_nextlayer@12": {
+    "mean": 0.5809529164792323,
+    "n": 62244
+   },
+   "hidden_nextlayer@32": {
+    "mean": 0.728297774350406,
+    "n": 62244
+   },
+   "hidden_nextlayer@6": {
+    "mean": 0.4548095666516719,
+    "n": 62244
+   },
+   "hidden_nexttok@12": {
+    "mean": 0.4255169172932331,
+    "n": 63840
+   },
+   "hidden_nexttok@32": {
+    "mean": 0.587640977443609,
+    "n": 63840
+   },
+   "hidden_nexttok@6": {
+    "mean": 0.3148574561403509,
+    "n": 63840
+   },
+   "prevtok@6": {
+    "mean": 0.39889290201005023,
+    "n": 63680
+   },
+   "win8@12": {
+    "mean": 0.5001125418760468,
+    "n": 63680
+   },
+   "win8@32": {
+    "mean": 0.6578465242881072,
+    "n": 63680
+   },
+   "win8@6": {
+    "mean": 0.373963567839196,
+    "n": 63680
+   }
+  },
+  "domain_kb": {
+   "hidden_nextlayer@12": {
+    "mean": 0.8288985647476214,
+    "n": 8268
+   },
+   "hidden_nextlayer@32": {
+    "mean": 0.9201540074181584,
+    "n": 8268
+   },
+   "hidden_nextlayer@6": {
+    "mean": 0.6803741332043219,
+    "n": 8268
+   },
+   "hidden_nexttok@12": {
+    "mean": 0.760436320754717,
+    "n": 8480
+   },
+   "hidden_nexttok@32": {
+    "mean": 0.88125,
+    "n": 8480
+   },
+   "hidden_nexttok@6": {
+    "mean": 0.5986045597484277,
+    "n": 8480
+   },
+   "prevtok@6": {
+    "mean": 0.293859649122807,
+    "n": 8360
+   },
+   "win8@12": {
+    "mean": 0.40604066985645926,
+    "n": 8360
+   },
+   "win8@32": {
+    "mean": 0.5979465709728867,
+    "n": 8360
+   },
+   "win8@6": {
+    "mean": 0.2819577352472089,
+    "n": 8360
+   }
+  },
+  "generale_ita": {
+   "hidden_nextlayer@12": {
+    "mean": 0.6649824347192769,
+    "n": 62244
+   },
+   "hidden_nextlayer@32": {
+    "mean": 0.7972147248463038,
+    "n": 62244
+   },
+   "hidden_nextlayer@6": {
+    "mean": 0.538022406443459,
+    "n": 62244
+   },
+   "hidden_nexttok@12": {
+    "mean": 0.54015507518797,
+    "n": 63840
+   },
+   "hidden_nexttok@32": {
+    "mean": 0.6891160192147033,
+    "n": 63840
+   },
+   "hidden_nexttok@6": {
+    "mean": 0.42433949456975767,
+    "n": 63840
+   },
+   "prevtok@6": {
+    "mean": 0.5108144891122278,
+    "n": 63680
+   },
+   "win8@12": {
+    "mean": 0.6136385050251256,
+    "n": 63680
+   },
+   "win8@32": {
+    "mean": 0.7300905569514239,
+    "n": 63680
+   },
+   "win8@6": {
+    "mean": 0.4843435929648241,
+    "n": 63680
+   }
+  }
+ }
+}

@@ -1,0 +1,200 @@
+{
+ "source_raft": "<internal>",
+ "kb_block": "<internal>",
+ "cli_note": "ds4 CLI single-prompt: system+user concatenati; forma workload preservata",
+ "note": "The 'domain_kb' prompt set (long domain-specific KB-recall prompts) is intentionally omitted from this public release; only the generic 'generale_ita' (Italian prose) and 'coding_en' (English coding) prompt sets are included.",
+ "prompts": [
+  {
+   "set": "generale_ita",
+   "file": "g00_storia.txt",
+   "kind": "prosa_ita",
+   "chars": 113,
+   "sha256": "7b03f4b8171b0d3ccc8dfb7ef08283d551f11bf8f7c43ffb5586dacdf3fd0caf",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g01_cucina.txt",
+   "kind": "prosa_ita",
+   "chars": 94,
+   "sha256": "0f0a6142b4e6cf70d0dbee22c4c5a90a6c237cf7c0a3470f5cb915584d3276d1",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g02_viaggi.txt",
+   "kind": "prosa_ita",
+   "chars": 95,
+   "sha256": "08a293f9b3b6135a34b0314126340723176d7d0efd726563369448831bcd8faf",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g03_sport.txt",
+   "kind": "prosa_ita",
+   "chars": 105,
+   "sha256": "90db242ff85ac848aeb351cb6d8918e4b51c927a871b981b04cc5bedafd63f86",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g04_finanza.txt",
+   "kind": "prosa_ita",
+   "chars": 96,
+   "sha256": "9987e9c920f96eef502d3c5d7d997f9a3dcb13d87b3066d3e54eae29bec8c389",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g05_giardino.txt",
+   "kind": "prosa_ita",
+   "chars": 85,
+   "sha256": "fcb337203b5cdf7eb0830b3933025048902e5a8a80f5e16cd71bb2f665024988",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g06_salute.txt",
+   "kind": "prosa_ita",
+   "chars": 98,
+   "sha256": "77aa861658b8cb5b0b60aa07809165179910d05d99b1cac11fa1c38d00045ddf",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g07_auto.txt",
+   "kind": "prosa_ita",
+   "chars": 87,
+   "sha256": "caaf53dfcc56e934624c7097a049970c6abd4e840ee28a65588d955ac20dff71",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g08_filosofia.txt",
+   "kind": "prosa_ita",
+   "chars": 86,
+   "sha256": "ce403cb8a95b126a8333ebb6f40edfd1715a2d9c768d9757e5e598f176c5870d",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g09_fotografia.txt",
+   "kind": "prosa_ita",
+   "chars": 84,
+   "sha256": "c352849856d83e7a7782d65d19a858f8d37b34ea6c2d157b9e76a30246917f37",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g10_vino.txt",
+   "kind": "prosa_ita",
+   "chars": 90,
+   "sha256": "e2e273f99f8e7ca4fa1b8f6adfdbbd5d7b0ec8193f2256831b24a73a3af4a65f",
+   "n_decode_target": 400
+  },
+  {
+   "set": "generale_ita",
+   "file": "g11_educazione.txt",
+   "kind": "prosa_ita",
+   "chars": 102,
+   "sha256": "f66add04632c14821290ba889f362e80dd07870e22d247a1c5aeb235f5249088",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c00_python-csv.txt",
+   "kind": "coding_en",
+   "chars": 160,
+   "sha256": "6136f560d3a3330ca2924267bb2b901c2158a868e8aed85681f238b1d3225e7a",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c01_js-debounce.txt",
+   "kind": "coding_en",
+   "chars": 108,
+   "sha256": "0762d6a783e64a1843ec195b06ade956a139da6a2458f35272a92f06055ddd56",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c02_sql-window.txt",
+   "kind": "coding_en",
+   "chars": 110,
+   "sha256": "1ee9cb219977691507cce514679307546345e0ee55ae8872cc1afa4f3bf148d7",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c03_c-pointers.txt",
+   "kind": "coding_en",
+   "chars": 95,
+   "sha256": "b4844f199d9268ee9521dcf99a6c29967faf9392b8b86be323eeb6bac270c8b7",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c04_py-asyncio.txt",
+   "kind": "coding_en",
+   "chars": 115,
+   "sha256": "35ad31209369f2f1dec3f6250842163ca251bccd61e75f893ba91a6f8f06cd30",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c05_regex-email.txt",
+   "kind": "coding_en",
+   "chars": 107,
+   "sha256": "c73aa4a5d92e878872de2838382d08dcaaf8e67f4d5a486e0bb2d93265658b52",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c06_git-rebase.txt",
+   "kind": "coding_en",
+   "chars": 98,
+   "sha256": "a94d8a5a2a84e6513923745dbdcd7232162946990607d0e99297d400d35a27eb",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c07_docker-multi.txt",
+   "kind": "coding_en",
+   "chars": 94,
+   "sha256": "a3bae0d829a2137807384f810d6b6e2676de971dd27d9b6baf2e40bbf3779d92",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c08_rust-owner.txt",
+   "kind": "coding_en",
+   "chars": 109,
+   "sha256": "0868c8f1eb5582232aba37526beb5786c32aff97a09652f2d60e3564a4b6570c",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c09_api-paging.txt",
+   "kind": "coding_en",
+   "chars": 95,
+   "sha256": "a1d15c08426dc6207e2933491ff949570c6d7457015b5b90148811aa18a742c6",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c10_test-mock.txt",
+   "kind": "coding_en",
+   "chars": 99,
+   "sha256": "750de9c43f07dc5c2ea572a7bf220fd3a631ac593dd59e23809bdfa60e651dc4",
+   "n_decode_target": 400
+  },
+  {
+   "set": "coding_en",
+   "file": "c11_refactor.txt",
+   "kind": "coding_en",
+   "chars": 177,
+   "sha256": "daefbf34998718f1635abf4134e18f3e55f9e511ad3be0a9fe156a08e6ed4f2c",
+   "n_decode_target": 400
+  }
+ ]
+}

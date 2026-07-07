@@ -1,0 +1,16 @@
+run,rc,wall_s
+warmup,2,0
+accept_code_r1,2,0
+accept_code_r2,2,0
+accept_math_r1,2,0
+accept_math_r2,2,0
+accept_chat_r1,2,0
+accept_chat_r2,2,0
+unionload_prefill,2,0
+accept_code_r1,0,343
+accept_code_r2,0,211
+accept_math_r1,0,418
+accept_math_r2,0,241
+accept_chat_r1,0,229
+accept_chat_r2,0,296
+unionload_prefill,0,0

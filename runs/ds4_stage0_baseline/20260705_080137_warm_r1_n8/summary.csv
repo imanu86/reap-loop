@@ -1,0 +1,2 @@
+cache_hits,cache_misses,copied,copy_calls,copy_ms,copy_ms_per_batch,direct_loads,exit_code,generation_tps,hit_rate,log,miss_per_expert,mode,prefill_tps,run,selected_batches,selected_experts,sync_calls,sync_ms,sync_ms_per_batch
+0,78,33230.25,14769,140180.364,407.501,4845,0,0.1,0.0,runs\ds4_stage0_baseline\20260705_080137_warm_r1_n8\run_01.log,0.0158,warm,0.29,1,344,4923,14769,3923.156,11.405

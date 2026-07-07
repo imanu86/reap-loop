@@ -1,0 +1,35 @@
+[project]
+name = "reap-loop"
+version = "0.0.1"
+description = "REAP-LOOP: reversible gate-bias that live-calibrates a session's MoE expert working-set (accuracy-vs-VRAM surface)"
+requires-python = ">=3.10,<3.13"
+
+# NOTA (3060 12GB): torch va installato dall'index CUDA giusto, non da PyPI puro.
+#   pip install torch --index-url https://download.pytorch.org/whl/cu124
+# Le versioni esatte sono pinnate in docs/02_models.md dopo la verifica ambiente.
+dependencies = [
+    "torch",                 # CUDA build (cu12x) — vedi docs/02_models.md
+    "transformers>=4.44",    # supporto router_logits per i MoE target (OLMoE, DeepSeek-V2-Lite, ...)
+    "accelerate>=0.33",      # device_map / CPU-offload degli expert (baseline FULL su 12GB)
+    "safetensors",
+    "huggingface-hub",
+    "numpy",
+    "pyyaml",                # config YAML
+    "pydantic>=2",           # schema tracce/risultati validati
+    "pandas",                # aggregazione risultati griglia
+    "matplotlib",            # famiglia di curve
+]
+
+[project.optional-dependencies]
+# Quantizzazione per precision-cascade / fit in 12GB. Da scegliere in 02_models.md:
+#   - bitsandbytes: int8/int4 NF4, semplice, ma il "per-expert mixed precision" è limitato
+#   - llama.cpp/gguf: per imatrix e quant aggressivo (path alternativo, fuori da transformers)
+quant = ["bitsandbytes>=0.43"]
+dev = ["pytest", "ruff", "psutil", "nvidia-ml-py"]  # nvidia-ml-py: misura VRAM residente reale
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]   # importa `msc` senza `pip install -e .` (eviterebbe di tirare torch)
+
+[tool.ruff]
+line-length = 100

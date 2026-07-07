@@ -1,0 +1,79 @@
+{
+ "test": "replica pubblica ramo-dominio REAP — surrogato prodotto_json (task #16)",
+ "date_utc": "2026-07-06",
+ "track": "reap/public-domain-replica",
+ "obiettivo": "dimostrare che REAP-K50-lossless-su-dominio NON dipende dalla a domain-specific corpus, replicandolo su corpus pubblico/sintetico equivalente per routing",
+ "pod": {
+  "provider": "<internal note redacted>",
+  "gpu": "NVIDIA RTX A6000 48GB (sm_86)",
+  "image": "<internal note redacted>",
+  "cost_per_hr_usd": 0.33,
+  "nota_gpu": "3090 community (scelta playbook, sm_86) IRRAGGIUNGIBILE: unica macchina disponibile (0eo22ym4knf1) aveva sshd rotto (Connection refused su 2 pod, riassegnata con stessi filtri; minMem alto -> SUPPLY_CONSTRAINT). Fallback A6000 = STESSO sm_86 (build flags identici, binari confrontabili col run the private-domain reference su 3090 sm_86). Routing/saliency/ppl = proprieta' del MODELLO -> trasferiscono; nessun t/s riportato.",
+  "nota_pod_scartati": "2 pod su machine 0eo22ym4knf1 terminati (sshd rotto, ~$-); 1 pod A6000 4bflp82kg7bg01 terminato (dockerArgs sbagliato)."
+ },
+ "costi": {},
+ "software": {
+  "ds4_base": "80ebbc3 (github.com/antirez/ds4)",
+  "patches": [
+   "0001",
+   "0002",
+   "0003",
+   "0004",
+   "0005",
+   "0006-spex-routing-trace-weights",
+   "0007-spex-trace-hidden"
+  ],
+  "build": "make cuda CUDA_ARCH=sm_86, exit 0",
+  "regression": "make cuda-regression CUDA_ARCH=sm_86, exit 0: 'cuda long-context regression: OK'",
+  "model": "DeepSeek-V4-Flash-IQ2XXS-w2Q2K-AProjQ8-SExpQ8-OutQ8-chat-v2-imatrix.gguf",
+  "model_bytes": 86720111488,
+  "model_source": "https://huggingface.co/antirez/deepseek-v4-gguf (byte-size verificato = 86720111488)"
+ },
+ "metodo": {
+  "trace": "20 prompt pubblici (16 extract -n 320 + 4 explain -n 512), DS4_SPEX_TRACE_ROUTING + DS4_SPEX_TRACE_ROUTING_WEIGHTS=1; 3899 token decode; warmup scartata (somma pesi/riga ~1.5, 0 nan)",
+  "equivalenza": "scripts/reap_neff.py: n_eff@64 = exp(H) uso expert per (file,layer) su primi 64 tok; reuse = recall top6 prev-tok same-layer. VALIDATO riproducendo the private-domain reference (46.4/39.6/0.395) dalla trace committata.",
+  "saliency": "scripts/reap_saliency_ds4.py g-only conditional mean, keep-frac 0.5, seed 0; mask + random_control embedded",
+  "eval": "scripts/reap_bias_mask_ds4.py bias-mask (=pruning per selezione/pesi) su 10 dom_chunk DISGIUNTI dai prompt di trace; ppl --perplexity-file -n 600; V0 mechanism-check su reap_k50. Config: full/reap_k50/rand50_s0 (3 config essenziali: baseline + claim lossless + controllo selezione-conta). NOTA: ridotto da 3 seed random a 1 (s0) per il costo/tempo del regime SSD-streaming (~7min/chunk sul A6000, 30 chunk ~3.5h); la robustezza multi-seed del random e' gia' stabilita sul ramo the private-domain reference (runs/reap/2026-07-05_eval_biasmask_v2, 3 seed). Il seed 0 riproduce il random_control embedded nella mask.",
+  "ci": "scripts/reap_public_replica_ci.py geomean ppl-ratio vs full + bootstrap CI95 (B=10000)"
+ },
+ "risultati_equivalenza": {
+  "n_eff64_count": 41.84,
+  "n_eff64_weighted": 35.21,
+  "reuse_prevtok_same_layer": 0.407,
+  "private_ref": {
+   "n_eff64_count": 46.4,
+   "n_eff64_weighted": 39.6,
+   "reuse": 0.395
+  },
+  "verdetto": "VALIDO (n_eff64_count in [35,50] AND reuse > 0.30)",
+  "fonte": "runs/reap/public_replica/prodotto_json/neff.json"
+ },
+ "risultati_eval": {
+  "nota": "COMPLETO: full/reap_k50/rand50_s0 x 10 dom_chunk. Numeri da eval/results_raw.csv + eval/replica_ci.json (bootstrap B=10000).",
+  "aggregate_ppl": {
+   "full": 2.1754,
+   "reap_k50": 2.2889,
+   "rand50_s0": 2.6038
+  },
+  "reap_k50_vs_full": {
+   "geomean": 1.0522,
+   "ci95": [
+    1.0389,
+    1.0664
+   ],
+   "crosses_1.0": false
+  },
+  "rand50_s0_vs_full": {
+   "geomean": 1.1969,
+   "ci95": [
+    1.1811,
+    1.2105
+   ],
+   "crosses_1.0": false
+  },
+  "selezione_conta": "rand 1.197x > reap 1.052x -> PASS (la saliency batte il random a pari K, come the private-domain reference)",
+  "V0_mechanism_check": "checked=11280 violations=0 V0_OK (bias-mask = pruning esatto per selezione, identico a the private-domain reference)",
+  "confronto_private-domain reference": "the private-domain reference reap_k50 dom 1.010x CI[0.996,1.025] = LOSSLESS (CI attraversa 1.0). Surrogato pubblico: 1.052x CI[1.039,1.066] = near-lossless (+5.2%), CI NON attraversa 1.0 -> NON strettamente lossless. Random: the private-domain reference 1.388x, surrogato 1.197x (entrambi >> reap).",
+  "verdetto": "REPLICA PARZIALE — equivalenza VALIDA, V0_OK, selezione-conta PASS (3 proprieta' su 4 replicano identiche); reap_k50 near-lossless (+5.2%) ma NON strettamente lossless come the private-domain reference. Il finding replica in SEGNO, MECCANISMO e ORDINE DI GRANDEZZA senza private data."
+ }
+}

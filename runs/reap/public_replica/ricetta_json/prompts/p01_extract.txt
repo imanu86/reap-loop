@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 2 persone, tempo 40 minuti.
+Ingredienti: basilico, pecorino, sedano, sale fino, guanciale, prezzemolo, pomodori pelati, parmigiano.
+Preparazione: tritare basilico; infornare guanciale; tritare pomodori pelati; mantecare pecorino; scolare sedano; impastare sale fino.

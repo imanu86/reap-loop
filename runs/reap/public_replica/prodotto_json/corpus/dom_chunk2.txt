@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Dellamora Friggitrice864
+Categoria: friggitrice ad aria. Marca: Dellamora. Colore: grigio antracite. Materiale principale: legno di faggio. Peso: 4.06 kg. Prezzo di listino: 253.13 euro, sconto 15% attivo. Disponibilita': in arrivo. Spedizione da Padova. Garanzia 24 mesi. Codice: DEL-12923.
+{"nome": "Dellamora Friggitrice864", "marca": "Dellamora", "categoria": "friggitrice ad aria", "colore": "grigio antracite", "materiale": "legno di faggio", "peso_kg": 4.06, "prezzo_eur": 253.13, "sconto_pct": 15, "disponibilita": "in arrivo", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bormio Zaino692
+Categoria: zaino da trekking. Marca: Bormio. Colore: grigio antracite. Materiale principale: poliestere riciclato. Peso: 4.09 kg. Prezzo di listino: 244.62 euro, sconto 20% attivo. Disponibilita': in arrivo. Spedizione da Bari. Garanzia 36 mesi. Codice: BOR-78210.
+{"nome": "Bormio Zaino692", "marca": "Bormio", "categoria": "zaino da trekking", "colore": "grigio antracite", "materiale": "poliestere riciclato", "peso_kg": 4.09, "prezzo_eur": 244.62, "sconto_pct": 20, "disponibilita": "in arrivo", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Belcanto Caffettiera726
+Categoria: caffettiera. Marca: Belcanto. Colore: blu notte. Materiale principale: poliestere riciclato. Peso: 3.19 kg. Prezzo di listino: 237.27 euro, sconto 20% attivo. Disponibilita': in arrivo. Spedizione da Torino. Garanzia 24 mesi. Codice: BEL-46147.
+{"nome": "Belcanto Caffettiera726", "marca": "Belcanto", "categoria": "caffettiera", "colore": "blu notte", "materiale": "poliestere riciclato", "peso_kg": 3.19, "prezzo_eur": 237.27, "sconto_pct": 20, "disponibilita": "in arrivo", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sanpietro Scarpe734
+Categoria: scarpe da corsa. Marca: Sanpietro. Colore: blu notte. Materiale principale: policarbonato. Peso: 2.58 kg. Prezzo di listino: 161.71 euro. Disponibilita': in arrivo. Spedizione da Trieste. Garanzia 36 mesi. Codice: SAN-11337.
+{"nome": "Sanpietro Scarpe734", "marca": "Sanpietro", "categoria": "scarpe da corsa", "colore": "blu notte", "materiale": "policarbonato", "peso_kg": 2.58, "prezzo_eur": 161.71, "sconto_pct": 0, "disponibilita": "in arrivo", "garanzia_mesi": 36}

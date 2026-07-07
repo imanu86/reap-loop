@@ -1,0 +1,3 @@
+# FULL — nessuna eviction. Ground truth di accuratezza (docs/00_architecture.md §4).
+policy: FULL
+# Tutti gli expert residenti a precisione nativa. K=100%. Usato come riferimento per accuracy_drop.

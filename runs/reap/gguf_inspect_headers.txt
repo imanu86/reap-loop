@@ -1,0 +1,37 @@
+== models/DeepSeek-V4-Flash-IQ2XXS-imatrix.gguf: gguf v3, 1328 tensors
+  KV general.architecture = deepseek4
+  KV general.type = model
+  KV general.sampling.top_p = 1.0
+  KV general.sampling.temp = 1.0
+  KV general.name = DeepSeek V4 Flash
+  KV general.size_label = 256x8.4B
+  KV general.license = mit
+  KV deepseek4.block_count = 43
+  KV deepseek4.expert_used_count = 6
+  KV deepseek4.expert_gating_func = 4
+  KV general.file_type = 19
+  KV deepseek4.expert_feed_forward_length = 2048
+  KV deepseek4.expert_count = 256
+  KV deepseek4.expert_shared_count = 1
+  KV deepseek4.expert_weights_scale = 1.5
+  KV deepseek4.hash_layer_count = 3
+  KV deepseek4.expert_weights_norm = True
+  KV general.quantization_version = 2
+  -- tensori campione (primo per tipo):
+  blk.3.exp_probs_b.bias                     dims=[256] type=0
+  blk.0.ffn_down_exps.weight                 dims=[2048, 4096, 256] type=10
+  blk.0.ffn_gate_exps.weight                 dims=[4096, 2048, 256] type=16
+  blk.0.ffn_gate_inp.weight                  dims=[4096, 256] type=1
+  blk.0.ffn_gate_tid2eid.weight              dims=[6, 129280] type=26
+  blk.0.ffn_up_exps.weight                   dims=[4096, 2048, 256] type=16
+  exp_probs_b: 40   tid2eid: 3   ffn_gate_exps: 43
+
+== models/DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf: gguf v3, 32 tensors
+  KV general.architecture = deepseek4_mtp_support
+  KV general.name = DeepSeek V4 Flash MTP support
+  KV deepseek4.expert_count = 256
+  -- tensori campione (primo per tipo):
+  mtp.0.exp_probs_b.bias                     dims=[256] type=0
+  mtp.0.ffn_gate_exps.weight                 dims=[4096, 2048, 256] type=12
+  mtp.0.ffn_gate_inp.weight                  dims=[4096, 256] type=0
+  exp_probs_b: 1   tid2eid: 0   ffn_gate_exps: 1

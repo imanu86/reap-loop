@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Corvara Aspirapolvere438
+Categoria: aspirapolvere. Marca: Corvara. Colore: verde oliva. Materiale principale: policarbonato. Peso: 4.33 kg. Prezzo di listino: 231.76 euro, sconto 15% attivo. Disponibilita': disponibile. Spedizione da Torino. Garanzia 12 mesi. Codice: COR-11160.

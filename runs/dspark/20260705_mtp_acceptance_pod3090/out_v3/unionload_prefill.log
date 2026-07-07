@@ -1,0 +1,60 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: cuda SSD streaming cache budget 12.00 GiB / 6.75 MiB per expert = 1820 experts
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.308s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: CUDA streaming prefill batch selected load layer=0 tokens=670 sync=0.007 ms read=0.022 ms load=1417.853 ms resume=0.000 ms total=1417.882 ms
+ds4: gpu prefill layer 1/43ds4: CUDA streaming prefill batch selected load layer=1 tokens=670 sync=0.008 ms read=0.030 ms load=845.664 ms resume=0.000 ms total=845.702 ms
+ds4: gpu prefill layer 2/43ds4: CUDA streaming prefill batch selected load layer=2 tokens=670 sync=0.008 ms read=0.025 ms load=751.740 ms resume=0.000 ms total=751.773 ms
+ds4: gpu prefill layer 3/43ds4: CUDA streaming prefill batch selected load layer=3 tokens=670 sync=0.010 ms read=0.016 ms load=1006.193 ms resume=0.000 ms total=1006.219 ms
+ds4: gpu prefill layer 4/43ds4: CUDA streaming prefill batch selected load layer=4 tokens=670 sync=0.011 ms read=0.013 ms load=523.914 ms resume=0.000 ms total=523.938 ms
+ds4: gpu prefill layer 5/43ds4: CUDA streaming prefill batch selected load layer=5 tokens=670 sync=0.010 ms read=0.013 ms load=418.522 ms resume=0.000 ms total=418.545 ms
+ds4: gpu prefill layer 6/43ds4: CUDA streaming prefill batch selected load layer=6 tokens=670 sync=0.990 ms read=0.014 ms load=456.397 ms resume=0.000 ms total=457.401 ms
+ds4: gpu prefill layer 7/43ds4: CUDA streaming prefill batch selected load layer=7 tokens=670 sync=0.011 ms read=0.012 ms load=909.966 ms resume=0.000 ms total=909.989 ms
+ds4: gpu prefill layer 8/43ds4: CUDA streaming prefill batch selected load layer=8 tokens=670 sync=0.946 ms read=0.014 ms load=669.834 ms resume=0.000 ms total=670.794 ms
+ds4: gpu prefill layer 9/43ds4: CUDA streaming prefill batch selected load layer=9 tokens=670 sync=0.010 ms read=0.014 ms load=1001.766 ms resume=0.000 ms total=1001.790 ms
+ds4: gpu prefill layer 10/43ds4: CUDA streaming prefill batch selected load layer=10 tokens=670 sync=0.068 ms read=0.013 ms load=744.841 ms resume=0.000 ms total=744.922 ms
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: gpu prefill layer 11/43ds4: CUDA streaming prefill batch selected load layer=11 tokens=670 sync=0.010 ms read=0.016 ms load=1257.274 ms resume=0.000 ms total=1257.301 ms
+ds4: gpu prefill layer 12/43ds4: CUDA streaming prefill batch selected load layer=12 tokens=670 sync=0.011 ms read=0.017 ms load=968.327 ms resume=0.000 ms total=968.356 ms
+ds4: gpu prefill layer 13/43ds4: CUDA streaming prefill batch selected load layer=13 tokens=670 sync=0.010 ms read=0.015 ms load=1189.896 ms resume=0.000 ms total=1189.922 ms
+ds4: gpu prefill layer 14/43ds4: CUDA streaming prefill batch selected load layer=14 tokens=670 sync=0.433 ms read=0.013 ms load=1068.721 ms resume=0.000 ms total=1069.167 ms
+ds4: gpu prefill layer 15/43ds4: CUDA streaming prefill batch selected load layer=15 tokens=670 sync=0.011 ms read=0.014 ms load=483.337 ms resume=0.000 ms total=483.362 ms
+ds4: gpu prefill layer 16/43ds4: CUDA streaming prefill batch selected load layer=16 tokens=670 sync=0.231 ms read=0.013 ms load=480.039 ms resume=0.000 ms total=480.284 ms
+ds4: gpu prefill layer 17/43ds4: CUDA streaming prefill batch selected load layer=17 tokens=670 sync=0.012 ms read=0.013 ms load=528.551 ms resume=0.000 ms total=528.576 ms
+ds4: gpu prefill layer 18/43ds4: CUDA streaming prefill batch selected load layer=18 tokens=670 sync=0.010 ms read=0.013 ms load=447.518 ms resume=0.000 ms total=447.542 ms
+ds4: gpu prefill layer 19/43ds4: CUDA streaming prefill batch selected load layer=19 tokens=670 sync=0.011 ms read=0.013 ms load=527.450 ms resume=0.000 ms total=527.475 ms
+ds4: gpu prefill layer 20/43ds4: CUDA streaming prefill batch selected load layer=20 tokens=670 sync=0.010 ms read=0.012 ms load=538.978 ms resume=0.000 ms total=539.001 ms
+ds4: gpu prefill layer 21/43ds4: CUDA streaming prefill batch selected load layer=21 tokens=670 sync=0.011 ms read=0.015 ms load=750.777 ms resume=0.000 ms total=750.802 ms
+ds4: gpu prefill layer 22/43ds4: CUDA streaming prefill batch selected load layer=22 tokens=670 sync=0.011 ms read=0.012 ms load=1042.795 ms resume=0.000 ms total=1042.818 ms
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: gpu prefill layer 23/43ds4: CUDA streaming prefill batch selected load layer=23 tokens=670 sync=0.011 ms read=0.013 ms load=553.714 ms resume=0.000 ms total=553.737 ms
+ds4: gpu prefill layer 24/43ds4: CUDA streaming prefill batch selected load layer=24 tokens=670 sync=1.098 ms read=0.013 ms load=459.182 ms resume=0.000 ms total=460.294 ms
+ds4: gpu prefill layer 25/43ds4: CUDA streaming prefill batch selected load layer=25 tokens=670 sync=0.011 ms read=0.014 ms load=525.866 ms resume=0.000 ms total=525.891 ms
+ds4: gpu prefill layer 26/43ds4: CUDA streaming prefill batch selected load layer=26 tokens=670 sync=0.848 ms read=0.013 ms load=497.613 ms resume=0.000 ms total=498.474 ms
+ds4: gpu prefill layer 27/43ds4: CUDA streaming prefill batch selected load layer=27 tokens=670 sync=0.011 ms read=0.013 ms load=582.401 ms resume=0.000 ms total=582.425 ms
+ds4: gpu prefill layer 28/43ds4: CUDA streaming prefill batch selected load layer=28 tokens=670 sync=0.672 ms read=0.013 ms load=517.294 ms resume=0.000 ms total=517.979 ms
+ds4: gpu prefill layer 29/43ds4: CUDA streaming prefill batch selected load layer=29 tokens=670 sync=0.011 ms read=0.014 ms load=513.790 ms resume=0.000 ms total=513.815 ms
+ds4: gpu prefill layer 30/43ds4: CUDA streaming prefill batch selected load layer=30 tokens=670 sync=0.163 ms read=0.013 ms load=565.778 ms resume=0.000 ms total=565.955 ms
+ds4: gpu prefill layer 31/43ds4: CUDA streaming prefill batch selected load layer=31 tokens=670 sync=0.012 ms read=0.013 ms load=544.509 ms resume=0.000 ms total=544.534 ms
+ds4: gpu prefill layer 32/43ds4: CUDA streaming prefill batch selected load layer=32 tokens=670 sync=0.952 ms read=0.013 ms load=519.906 ms resume=0.000 ms total=520.871 ms
+ds4: gpu prefill layer 33/43ds4: CUDA streaming prefill batch selected load layer=33 tokens=670 sync=0.010 ms read=0.013 ms load=947.823 ms resume=0.000 ms total=947.847 ms
+ds4: gpu prefill layer 34/43ds4: CUDA streaming prefill batch selected load layer=34 tokens=670 sync=0.923 ms read=0.016 ms load=934.435 ms resume=0.000 ms total=935.374 ms
+ds4: gpu prefill layer 35/43ds4: CUDA streaming prefill batch selected load layer=35 tokens=670 sync=0.010 ms read=0.018 ms load=1241.201 ms resume=0.000 ms total=1241.229 ms
+ds4: gpu prefill layer 36/43ds4: CUDA streaming prefill batch selected load layer=36 tokens=670 sync=0.009 ms read=0.018 ms load=1556.608 ms resume=0.000 ms total=1556.636 ms
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: gpu prefill layer 37/43ds4: CUDA streaming prefill batch selected load layer=37 tokens=670 sync=0.011 ms read=0.021 ms load=1707.520 ms resume=0.000 ms total=1707.551 ms
+ds4: gpu prefill layer 38/43ds4: CUDA streaming prefill batch selected load layer=38 tokens=670 sync=0.011 ms read=0.014 ms load=718.229 ms resume=0.000 ms total=718.255 ms
+ds4: gpu prefill layer 39/43ds4: CUDA streaming prefill batch selected load layer=39 tokens=670 sync=0.011 ms read=0.022 ms load=758.972 ms resume=0.000 ms total=759.006 ms
+ds4: gpu prefill layer 40/43ds4: CUDA streaming prefill batch selected load layer=40 tokens=670 sync=0.782 ms read=0.017 ms load=421.264 ms resume=0.000 ms total=422.063 ms
+ds4: gpu prefill layer 41/43ds4: CUDA streaming prefill batch selected load layer=41 tokens=670 sync=0.010 ms read=0.015 ms load=747.061 ms resume=0.000 ms total=747.086 ms
+ds4: gpu prefill layer 42/43ds4: CUDA streaming prefill batch selected load layer=42 tokens=670 sync=0.010 ms read=0.017 ms load=942.399 ms resume=0.000 ms total=942.427 ms
+ds4: gpu prefill layer 43/43
+ds4: CUDA loading model tensors 0.00 GiB cached
+I'll provide a
+ds4: prefill: 14.07 t/s, generation: 1.10 t/s

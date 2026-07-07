@@ -1,0 +1,38 @@
+{
+ "label": "prodotto_json",
+ "n_files": 20,
+ "neff64_count": {
+  "mean": 41.837,
+  "median": 41.556,
+  "min": 19.334,
+  "max": 67.615,
+  "n": 800
+ },
+ "neff64_weighted": {
+  "mean": 35.214,
+  "median": 35.077,
+  "min": 10.644,
+  "max": 61.143,
+  "n": 800
+ },
+ "reuse_prevtok_same_layer_top6": {
+  "mean": 0.407,
+  "median": 0.333,
+  "min": 0.0,
+  "max": 1.0,
+  "n": 155160
+ },
+ "private_reference": {
+  "neff64_count": 46.4,
+  "neff64_weighted": 39.6,
+  "reuse": 0.395
+ },
+ "equivalence_verdict": {
+  "criterion": "n_eff64_count in [35,50] AND reuse > 0.30",
+  "neff64_count": 41.837,
+  "neff64_weighted": 35.214,
+  "reuse": 0.407,
+  "valid": true
+ }
+}
+scritto /root/out_prod/neff.json

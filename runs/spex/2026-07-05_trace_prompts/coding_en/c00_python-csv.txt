@@ -1,0 +1,1 @@
+Write a Python function that reads a CSV file, removes duplicate rows based on a key column, and writes the result back. Include error handling and a docstring.

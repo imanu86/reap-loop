@@ -1,0 +1,216 @@
+{
+ "candidate": "ricetta_json",
+ "seed": 20260706,
+ "generator": "scripts/reap_public_replica_corpus.py",
+ "license": "synthetic/public — template-generated, no external source",
+ "target_routing": {
+  "n_eff64_count_private_ref": 46.4,
+  "n_eff64_weighted_private_ref": 39.6,
+  "reuse_prevtok_private_ref": 0.395,
+  "source": "<internal>"
+ },
+ "trace_prompts": [
+  {
+   "file": "p00_extract.txt",
+   "kind": "extract",
+   "chars": 510,
+   "n_decode_target": 320,
+   "sha256": "e06c36f2b68d78fc5a6d2974fd713ded6abd0853c19e5cab9dae6edbc53fba75"
+  },
+  {
+   "file": "p01_extract.txt",
+   "kind": "extract",
+   "chars": 501,
+   "n_decode_target": 320,
+   "sha256": "3b5d86753d978ddb35d25e16385626f477ffd79bcc88d95862cc8a5699ae35a6"
+  },
+  {
+   "file": "p02_extract.txt",
+   "kind": "extract",
+   "chars": 465,
+   "n_decode_target": 320,
+   "sha256": "2c740421e15b7ec1ad91adec823a8eb20b2391b6f5d12481582f5bc001c8fe18"
+  },
+  {
+   "file": "p03_extract.txt",
+   "kind": "extract",
+   "chars": 538,
+   "n_decode_target": 320,
+   "sha256": "9cc27d254826472a7224fc292c11dc3067b7e4f1b9fc214cdf731284713a06ac"
+  },
+  {
+   "file": "p04_extract.txt",
+   "kind": "extract",
+   "chars": 490,
+   "n_decode_target": 320,
+   "sha256": "358af44e93ab6f15ced7aab89b3d803b06a2eca94b80fb8c96e2750a9a67b987"
+  },
+  {
+   "file": "p05_extract.txt",
+   "kind": "extract",
+   "chars": 450,
+   "n_decode_target": 320,
+   "sha256": "d6456a37abd86343beda8b9b116e00a777c60bfe5ef8a6f06d4d9bc61378e15b"
+  },
+  {
+   "file": "p06_extract.txt",
+   "kind": "extract",
+   "chars": 482,
+   "n_decode_target": 320,
+   "sha256": "759b776f50dbe2fd4cbf1db423daa152adeb7ece96789343d94f92d13ae7a70b"
+  },
+  {
+   "file": "p07_extract.txt",
+   "kind": "extract",
+   "chars": 527,
+   "n_decode_target": 320,
+   "sha256": "df22ccc80dee3ec1b6b3dcc1ca78b540fc551c0f507db7c8e825582767ce7ff7"
+  },
+  {
+   "file": "p08_extract.txt",
+   "kind": "extract",
+   "chars": 519,
+   "n_decode_target": 320,
+   "sha256": "14006b757669f3aeb14fb1eb596361584c34abba9365c1895f6379e3a358b328"
+  },
+  {
+   "file": "p09_extract.txt",
+   "kind": "extract",
+   "chars": 457,
+   "n_decode_target": 320,
+   "sha256": "c04273df92b248de2c6474e136209552fdd7e16c656de58023708f9651f9f671"
+  },
+  {
+   "file": "p10_extract.txt",
+   "kind": "extract",
+   "chars": 471,
+   "n_decode_target": 320,
+   "sha256": "755dca68c716206d0e069545f42bff3457e84098708719bd97e5664779e1067c"
+  },
+  {
+   "file": "p11_extract.txt",
+   "kind": "extract",
+   "chars": 519,
+   "n_decode_target": 320,
+   "sha256": "7d9a21b813d02eaa45d659e10290aaa8ff1ba07a5f564954910cd431025ce474"
+  },
+  {
+   "file": "p12_extract.txt",
+   "kind": "extract",
+   "chars": 445,
+   "n_decode_target": 320,
+   "sha256": "ff5d053e32319c451f246f20c6ebff08a854db3b52c3e4d745d7d1d2198afebd"
+  },
+  {
+   "file": "p13_extract.txt",
+   "kind": "extract",
+   "chars": 464,
+   "n_decode_target": 320,
+   "sha256": "14225294c9275b9ee9d7ce65667de60b930287c5475123b475216b107469d282"
+  },
+  {
+   "file": "p14_extract.txt",
+   "kind": "extract",
+   "chars": 496,
+   "n_decode_target": 320,
+   "sha256": "5d2d2d1e48e865e8672e0532c9c5b3e142d4098970fae852ea51b82dcd440e47"
+  },
+  {
+   "file": "p15_extract.txt",
+   "kind": "extract",
+   "chars": 509,
+   "n_decode_target": 320,
+   "sha256": "48034b15997fba567909bb88f95121cb5cc3a4a8853f0b070b3cef4521e92a4c"
+  },
+  {
+   "file": "p16_explain.txt",
+   "kind": "explain",
+   "chars": 463,
+   "n_decode_target": 512,
+   "sha256": "2a5f99271f5d9dd646c3d63f06db36b3864430503bfb764c6ce16219d13f409c"
+  },
+  {
+   "file": "p17_explain.txt",
+   "kind": "explain",
+   "chars": 482,
+   "n_decode_target": 512,
+   "sha256": "063cb5c7a09ac8139bf680dae6a06a428e994530dba9f6a4ba68afd281d75e17"
+  },
+  {
+   "file": "p18_explain.txt",
+   "kind": "explain",
+   "chars": 513,
+   "n_decode_target": 512,
+   "sha256": "14ac5a713360ef14dcf0af408d136e344350b9656b9f131ded6a35be6bbb59cd"
+  },
+  {
+   "file": "p19_explain.txt",
+   "kind": "explain",
+   "chars": 402,
+   "n_decode_target": 512,
+   "sha256": "ecda948c7b77a6d2172190b34215e203bef8ae9b062e4b4c417a678d3db91d50"
+  }
+ ],
+ "eval_chunks": [
+  {
+   "file": "dom_chunk0.txt",
+   "items": 4,
+   "chars": 2438,
+   "sha256": "8b41c03255d826c682deb8424ec8807a909a13d078b5a1fec26b9230b5aac4fb"
+  },
+  {
+   "file": "dom_chunk1.txt",
+   "items": 4,
+   "chars": 2564,
+   "sha256": "63f0dc8e76561a2ac1ab2bcfd3b7c859cef6372b376a37ce191d4fa62da43dbd"
+  },
+  {
+   "file": "dom_chunk2.txt",
+   "items": 4,
+   "chars": 2556,
+   "sha256": "76c5c362db517d788775133d393938a85512f69125f1aa7de9b6804b70a9b166"
+  },
+  {
+   "file": "dom_chunk3.txt",
+   "items": 4,
+   "chars": 2470,
+   "sha256": "9628cf6416f607186e58986a2dd8f16b91605c6fd593d94f4c71c7f6f2d9427d"
+  },
+  {
+   "file": "dom_chunk4.txt",
+   "items": 4,
+   "chars": 2402,
+   "sha256": "5a15331db43184d3e9baa4b7e58f0f6597ba78216dd0d19fd1edea43e74bc65e"
+  },
+  {
+   "file": "dom_chunk5.txt",
+   "items": 4,
+   "chars": 2478,
+   "sha256": "1ce7fa3593aaed43f07531a7d6c256c70a7695dad9a7762be0c065fb8633fa5e"
+  },
+  {
+   "file": "dom_chunk6.txt",
+   "items": 4,
+   "chars": 2530,
+   "sha256": "4af84de1484743f7cc2cc7fe8aa7398280b0c610a405bf8b4b0678e1acb30c4f"
+  },
+  {
+   "file": "dom_chunk7.txt",
+   "items": 4,
+   "chars": 2578,
+   "sha256": "f12cfe7de16035afbd227c80f9ac2edf4d73ee6231fad44abbd26e8d27cd9073"
+  },
+  {
+   "file": "dom_chunk8.txt",
+   "items": 4,
+   "chars": 2528,
+   "sha256": "dd84c1f5ef647fee9cb019505a7834bf839acfcd66a0888c91b80f34e22110f1"
+  },
+  {
+   "file": "dom_chunk9.txt",
+   "items": 4,
+   "chars": 2278,
+   "sha256": "70c4073b9dd4e88b61a9d413ccae061f383ba750801b45e0490adf7d9f4a1914"
+  }
+ ]
+}

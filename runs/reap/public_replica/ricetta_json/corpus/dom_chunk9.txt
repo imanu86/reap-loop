@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Pesto alla genovese. Per 6 persone, tempo 15 minuti.
+Ingredienti: sedano, zafferano, vino bianco, lievito, guanciale, burro, aglio, farina 00.
+Preparazione: aggiungere farina 00; mantecare burro; impastare burro; impastare farina 00; mantecare lievito; aggiungere lievito.
+{"titolo": "Pesto alla genovese", "porzioni": 6, "tempo_minuti": 15, "ingredienti": ["sedano", "zafferano", "vino bianco", "lievito", "guanciale", "burro", "aglio", "farina 00"], "passi": ["aggiungere farina 00", "mantecare burro", "impastare burro", "impastare farina 00", "mantecare lievito", "aggiungere lievito"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Risotto allo zafferano. Per 4 persone, tempo 40 minuti.
+Ingredienti: pancetta, vino bianco, aglio, zafferano, pomodori pelati.
+Preparazione: scolare vino bianco; tritare vino bianco; far riposare vino bianco; mantecare zafferano; infornare aglio.
+{"titolo": "Risotto allo zafferano", "porzioni": 4, "tempo_minuti": 40, "ingredienti": ["pancetta", "vino bianco", "aglio", "zafferano", "pomodori pelati"], "passi": ["scolare vino bianco", "tritare vino bianco", "far riposare vino bianco", "mantecare zafferano", "infornare aglio"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Pasta alla carbonara. Per 4 persone, tempo 20 minuti.
+Ingredienti: pancetta, prezzemolo, cipolla, vino bianco, sale fino.
+Preparazione: scolare pancetta; infornare sale fino; sfumare con prezzemolo; tritare vino bianco; infornare cipolla.
+{"titolo": "Pasta alla carbonara", "porzioni": 4, "tempo_minuti": 20, "ingredienti": ["pancetta", "prezzemolo", "cipolla", "vino bianco", "sale fino"], "passi": ["scolare pancetta", "infornare sale fino", "sfumare con prezzemolo", "tritare vino bianco", "infornare cipolla"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Minestrone di verdure. Per 6 persone, tempo 45 minuti.
+Ingredienti: parmigiano, brodo vegetale, zafferano, sale fino, uova.
+Preparazione: infornare brodo vegetale; tritare parmigiano; aggiungere sale fino; aggiungere sale fino.
+{"titolo": "Minestrone di verdure", "porzioni": 6, "tempo_minuti": 45, "ingredienti": ["parmigiano", "brodo vegetale", "zafferano", "sale fino", "uova"], "passi": ["infornare brodo vegetale", "tritare parmigiano", "aggiungere sale fino", "aggiungere sale fino"]}

@@ -1,0 +1,33 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+.ipynb_checkpoints/
+
+# --- Modelli / binari grossi (NON in git) ---
+*.gguf
+*.npz
+*.bin
+*.safetensors
+*.spex          # parametri predittore esportati (rigenerabili da spex_loop.py --export-c)
+
+# --- Trace/probe dump grossi e rigenerabili (~159M) ---
+# Le tracce SORGENTE preziose vivono FUORI dal repo in models\spex\*.npz (vedi HANDOFF.md).
+# Qui restano solo dump di esperimenti, rigenerabili dagli script.
+runs/**/*.jsonl
+runs/**/*.npy
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+
+# --- SPEX: dump trace pod grossi (~22GB *.dsh) + export model, rigenerabili (sorgente canonica su models\spex) ---
+*.dsh
+runs/spex/2026-07-05_trace_pod/
+runs/spex/spex_model/
+runs/spex/export_spex.log

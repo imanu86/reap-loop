@@ -1,0 +1,42 @@
+documenti appaiati: 15 (dsh 15, routing 32)
+train docs=10 test docs=5
+  train coding_en_c10_test-mock: ok (17250 record)
+  train coding_en_c09_api-paging: ok (17207 record)
+  train coding_en_c00_python-csv: ok (17766 record)
+  train coding_en_c08_rust-owner: ok (17293 record)
+  train coding_en_c05_regex-email: ok (17164 record)
+  train coding_en_c02_sql-window: ok (17164 record)
+  train coding_en_c01_js-debounce: ok (17164 record)
+  train coding_en_c11_refactor: ok (18374 record)
+  train domain_kb_doc00: ok (290387 record)
+  train generale_ita_g00_storia: ok (17723 record)
+pairs train: {'nl': 142662, 'nt': 146320}
+probe nl: risolto (43 layer)
+probe nt: risolto (43 layer)
+
+================ RISULTATI (test, per set) ================
+-- coding_en
+   hidden_nextlayer@12    0.5230  (n=62244)
+   hidden_nextlayer@32    0.6674  (n=62244)
+   hidden_nextlayer@6     0.4125  (n=62244)
+   hidden_nexttok@12      0.3386  (n=63840)
+   hidden_nexttok@32      0.4879  (n=63840)
+   hidden_nexttok@6       0.2483  (n=63840)
+   prevtok@6              0.3989  (n=63680)
+   win8@12                0.5001  (n=63680)
+   win8@32                0.6578  (n=63680)
+   win8@6                 0.3740  (n=63680)
+-- domain_kb
+   hidden_nextlayer@12    0.7327  (n=2964)
+   hidden_nextlayer@32    0.8201  (n=2964)
+   hidden_nextlayer@6     0.6234  (n=2964)
+   hidden_nexttok@12      0.6430  (n=3040)
+   hidden_nexttok@32      0.7423  (n=3040)
+   hidden_nexttok@6       0.5374  (n=3040)
+   prevtok@6              0.3111  (n=3000)
+   win8@12                0.4209  (n=3000)
+   win8@32                0.6123  (n=3000)
+   win8@6                 0.2902  (n=3000)
+
+salvato: <repo>\runs\spex\fit_results.json
+exit=0

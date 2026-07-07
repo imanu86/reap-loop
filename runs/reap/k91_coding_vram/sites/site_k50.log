@@ -1,0 +1,322 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3080 Ti (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.719s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 85.13 MiB (ctx=3072, backend=cuda, prefill_chunk=256, raw_kv_rows=512, compressed_kv_rows=770)
+ds4: using GPU graph generation with graph prefill
+ds4: gpu prefill layer 1/43ds4: gpu prefill layer 2/43ds4: gpu prefill layer 3/43ds4: gpu prefill layer 4/43ds4: gpu prefill layer 5/43ds4: gpu prefill layer 6/43ds4: gpu prefill layer 7/43ds4: gpu prefill layer 8/43ds4: gpu prefill layer 9/43ds4: gpu prefill layer 10/43ds4: gpu prefill layer 11/43ds4: gpu prefill layer 12/43ds4: gpu prefill layer 13/43ds4: gpu prefill layer 14/43ds4: gpu prefill layer 15/43ds4: gpu prefill layer 16/43ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: gpu prefill layer 17/43ds4: gpu prefill layer 18/43ds4: gpu prefill layer 19/43ds4: gpu prefill layer 20/43ds4: gpu prefill layer 21/43ds4: gpu prefill layer 22/43ds4: gpu prefill layer 23/43ds4: gpu prefill layer 24/43ds4: gpu prefill layer 25/43ds4: gpu prefill layer 26/43ds4: gpu prefill layer 27/43ds4: gpu prefill layer 28/43ds4: gpu prefill layer 29/43ds4: gpu prefill layer 30/43ds4: gpu prefill layer 31/43ds4: gpu prefill layer 32/43ds4: gpu prefill layer 33/43ds4: gpu prefill layer 34/43ds4: gpu prefill layer 35/43ds4: gpu prefill layer 36/43ds4: gpu prefill layer 37/43ds4: gpu prefill layer 38/43ds4: gpu prefill layer 39/43ds4: gpu prefill layer 40/43ds4: gpu prefill layer 41/43ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 42/43ds4: gpu prefill layer 43/43
+This is a complete, single-file HTML document that includes a navigation bar, a hero section, a contact form with validation, and a theme toggle button. All the CSS and JavaScript are embedded directly in the file.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Complete Single-File Website</title>
+</head>
+<body>
+  <!-- ============================================================
+     STRUCTURE:
+     1. Topds4: CUDA loading model tensors 7.86 GiB cached
+ navigation bar with 3 links
+     2. Hero section with headline, subtitle, CTA button
+     3. Contact form with name, email, message + validation
+     4. Theme toggle button (light/dark)
+     All CSS and JS are inline.
+  ============================================================ -->
+  <style>
+    /* ---- RESET & BASE ---- */
+    *, *::before, *::after {
+      box-sizing: border-box;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: sans-serif;
+      background-color: #a0a0a0a0; /* light theme default */
+    }
+    /* ---- LAYOUT ---- */
+    body {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      margin: 0;
+    }
+    /* ---- NAVIGATION BAR ---- */
+    nav {
+      display: flex;
+      flex-direction: row;
+      padding: 8px 16px;
+      margin: 0 0 0 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      text-align: center;
+    }
+    nav a {
+      display: inline-block;
+      padding: 6px 12px;
+      margin: 0 4px;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      text-decoration: none;
+      font-weight: bold;
+    }
+    /* ---- HERO SECTION ---- */
+    hero {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      text-align: center;
+    }
+    hero h1 {
+      display: block;
+      padding: 0;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 24px;
+      font-weight: bold;
+    }
+    hero h2 {
+      display: block;
+      padding: 0;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 16px;
+      font-weight: normal;
+    }
+    hero button {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 18px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    /* ---- CONTACT FORM ---- */
+    form {
+      display: flex;
+      flex-direction: column;
+      padding: 20px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+    }
+    form label {
+      display: block;
+      padding: 4px 8px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 14px;
+    }
+    form input, form textarea {
+      display: block;
+      padding: 4px 8px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 1px solid;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+    form button {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    /* ---- THEME TOGGLE ---- */
+    toggle {
+      display: inline-block;
+      padding: 8px 16px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 16px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    /* ---- ERROR DISPLAY ---- */
+    error {
+      display: block;
+      padding: 4px 8px;
+      margin: 0;
+      background-color: #a0a0a0a0;
+      color: #a0a0a0a0;
+      border: 0;
+      border-radius: 0;
+      font-size: 14px;
+    }
+  </style>
+
+  <!-- ========== NAVIGATION BAR ========== -->
+  <nav>
+    <a href="#home" >Home</a>
+    <a href="#about" >About</a>
+    <a href="#contact" >Contact</a>
+  </nav>
+
+  <!-- ========== HERO SECTION ========== -->
+  <hero>
+    <h1 "Welcome to Our Platform"</h1>
+    <h2 "Discover the future of web development — fast, secure, and scalable."</h2>
+    <button "Get Started Now" </button>
+  </hero>
+
+  <!-- ========== CONTACT FORM ========== -->
+  <form id="contactForm" >
+    <label "Name:" </label>
+    <input type="text" id="name" placeholder="Your name" />
+
+    <label "Email:" </label>
+    <input type="email" id="email" placeholder="you@example.com" />
+
+    <label "Message:" </label>
+    <textarea id="message" placeholder="Your message here..." rows="4" />
+
+    <button "Submit" </button>
+  </form>
+
+  <!-- ========== THEME TOGGLE ========== -->
+  <toggle "Switch Theme" </toggle>
+
+  <!-- ========== ERROR DISPLAY ========== -->
+  <error id="formError" "" </error>
+
+  <!-- ========== JAVASCRIPT ========== -->
+  <script>
+    // -------- THEME TOGGLE (light/dark) --------
+    let currentTheme = 'light'; // 'light' or 'dark'
+    const toggleBtn = document.querySelector('toggle');
+    const navLinks = document.querySelectorAll('nav a');
+    const heroSection = document.querySelector('hero');
+    const heroTitle = document.querySelector('hero h1');
+    const heroSubtitle = document.querySelector('hero h2');
+    const heroCTA = document.querySelector('hero button');
+    const formEl = document.querySelector('form');
+    const formLabels = document.querySelectorAll('form label');
+    const formInputs = document.querySelectorAll('form input, form textarea');
+    const formSubmitBtn = document.querySelector('form button');
+    const errorEl = document.querySelector('error');
+
+    function applyTheme(theme) {
+      const isLight = theme === 'light';
+      // Colors
+      const bgColor = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const textColor = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const linkColor = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const heroBg = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const heroText = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const formBg = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const formText = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const inputBg = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const inputText = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const errorBg = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+      const errorText = isLight ? '#a0a0a0a0' : '#b0b0b0b0';
+
+      // Apply to body
+      document.body.style.background = bgColor;
+      document.body.style.color = textColor;
+
+      // Nav links
+      navLinks.forEach(link => {
+        link.style.background = linkColor;
+        link.style.color = linkColor;
+      });
+
+      // Hero
+      heroSection.style.background = heroBg;
+      heroSection.style.color = heroText;
+      heroTitle.style.background = heroBg;
+      heroTitle.style.color = heroText;
+      heroSubtitle.style.background = heroBg;
+      heroSubtitle.style.color = heroText;
+      heroCTA.style.background = heroBg;
+      heroCTA.style.color = heroText;
+
+      // Form
+      formEl.style.background = formBg;
+      formEl.style.color = formText;
+      formLabels.forEach(label => {
+        label.style.background = formBg;
+        label.style.color = formText;
+      });
+      formInputs.forEach(input => {
+        input.style.background = inputBg;
+        input.style.color = inputText;
+      });
+      formSubmitBtn.style.background = formBg;
+      formSubmitBtn.style.color = formText;
+
+      // Error
+      errorEl.style.background = errorBg;
+      errorEl.style.color = errorText;
+    }
+
+    // Initial theme
+    applyTheme('light');
+
+    toggleBtn.addEventListener('click', function(e) {
+      e.preventDefault();
+      currentTheme = (currentTheme === 'light' ? 'dark' : 'light');
+      applyTheme(currentTheme);
+      // Update button text
+      toggleBtn.textContent = currentTheme === 'light' ? 'Switch to Dark' : 'Switch to Light';
+    });
+
+    // -------- CONTACT FORM VALIDATION --------
+    const nameInput = document.querySelector('form input#name');
+    const emailInput = document.querySelector('form input#email');
+    const messageInput = document.querySelector('form textarea#message');
+    const submitBtn = document.querySelector('form button');
+
+    function validateForm() {
+      let errorMsg = '';
+      const name = nameInput.value.trim();
+      const email = emailInput.value.trim();
+      const message = messageInput.value.trim();
+
+      if (name === '') {
+        errorMsg += 'Name field cannot be empty. ';
+      }
+      if (email === '') {
+        errorMsg += 'Email field cannot be empty. ';
+      } else if (!/^[^\s
+ds4: prefill: 6.57 t/s, generation: 1.06 t/s
+ds4: SPEX stats: selected_batches=111800 selected_experts=674698 cache_hits=0 cache_misses=670542 hit_rate=0.0000 miss_per_expert=0.9938 direct_loads=4156 copy_calls=2024094 copied=4554211.50 MiB copy_ms=2338496.624 copy_ms_per_batch=20.917 sync_calls=2024094 sync_ms=176753.948 sync_ms_per_batch=1.581

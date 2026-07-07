@@ -1,0 +1,14 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.703s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 102.14 MiB (ctx=1024, backend=cuda, prefill_chunk=1024, raw_kv_rows=1024, compressed_kv_rows=258)
+ds4: CUDA streaming expert cache capped from 512 to 156 experts (available 7.03 GiB, reserve 6.00 GiB, 6.75 MiB/expert)
+ds4: SPEX routing trace enabled: /tmp/ds4_routing_trace_count64.csv
+ds4: CUDA loading model tensors 7.33 GiB cached
+1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22
+ds4: prefill: 0.63 t/s, generation: 0.70 t/s
+ds4: SPEX stats: selected_batches=3526 selected_experts=21156 cache_hits=0 cache_misses=72 hit_rate=0.0000 miss_per_expert=0.0034 direct_loads=21084 copy_calls=63468 copied=142803.00 MiB copy_ms=84228.010 copy_ms_per_batch=23.888 sync_calls=216 sync_ms=25.524 sync_ms_per_batch=0.007

@@ -1,0 +1,3 @@
+Fetching 3 files:   0%|          | 0/3 [00:00<?, ?it/s]Warning: You are sending unauthenticated requests to the HF Hub. Please set a HF_TOKEN to enable higher rate limits and faster downloads.
+memory allocation of 67000689 bytes failed
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace

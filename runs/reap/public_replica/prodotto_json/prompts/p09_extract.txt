@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Montefiore Monitor661
+Categoria: monitor 27 pollici. Marca: Montefiore. Colore: azzurro. Materiale principale: policarbonato. Peso: 1.94 kg. Prezzo di listino: 152.1 euro. Disponibilita': esaurito. Spedizione da Padova. Garanzia 12 mesi. Codice: MON-14822.

@@ -1,0 +1,6 @@
+Sei un estrattore. Leggi la scheda e restituisci SOLO un oggetto JSON con i campi indicati, senza testo aggiuntivo.
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Roccabruna Caffettiera809
+Categoria: caffettiera. Marca: Roccabruna. Colore: grigio antracite. Materiale principale: policarbonato. Peso: 3.54 kg. Prezzo di listino: 150.42 euro, sconto 20% attivo. Disponibilita': prenotabile. Spedizione da Bari. Garanzia 36 mesi. Codice: ROC-80256.

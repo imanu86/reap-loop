@@ -1,0 +1,6 @@
+# AGGRESSIVE-COMMIT — la nostra policy (docs/00_architecture.md §4, docs/01_positioning.md §6).
+policy: AGGRESSIVE-COMMIT
+# warm-up -> stima working set per-sessione (copertura theta) -> commit -> resto via miss_mode.
+coverage_theta: 0.95         # copertura cumulata target del working set per-layer
+warmup_examples: 32          # finestra di warm-up (la convergenza di W_theta è monitorata, R4)
+# miss_mode NON è qui: è un asse della griglia (configs/grid/sweep.yaml), ortogonale alla policy.

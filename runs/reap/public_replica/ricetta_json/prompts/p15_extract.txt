@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Lasagne al forno. Per 8 persone, tempo 40 minuti.
+Ingredienti: olio extravergine, riso Carnaroli, farina 00, sale fino, basilico.
+Preparazione: infornare riso Carnaroli; far riposare sale fino; aggiungere olio extravergine; infornare sale fino; sfumare con olio extravergine; scolare sale fino.

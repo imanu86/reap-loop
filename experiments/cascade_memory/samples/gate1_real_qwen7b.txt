@@ -1,0 +1,26 @@
+loaded 4800 rows; arms present: ['B0_no_memory', 'B1_always_rag']
+====================================================================
+GATE #1 - sensor separability on baseline arm 'B0_no_memory'
+  N_task=2400  acc=0.948  abst=0.017
+  sensor: logprob n=2400  fallback n=0
+  AUROC(confidence,correct) = 0.845  CI95=[0.802, 0.883]
+  P(high-conf & wrong) = 0.007
+  >>> VERDICT: GO
+====================================================================
+
+Baseline frontier - B0_no_memory (per turn-distance):
+   dist     n    acc   abst   prefill  decode  tot_tok   rag
+      5   480  0.971  0.000     326.4     6.5    333.0  0.00
+     20   480  0.971  0.006     848.4     6.5    854.9  0.00
+     40   480  0.933  0.017    1550.5     6.5   1557.0  0.00
+     60   480  0.950  0.015    2249.5     6.5   2256.0  0.00
+     80   480  0.915  0.048    2957.8     6.5   2964.3  0.00
+  leak-control (no plant): n=400 acc=0.000 [OK]
+
+Baseline frontier - B1_always_rag (per turn-distance):
+   dist     n    acc   abst   prefill  decode  tot_tok   rag
+      5   400  1.000  0.000     184.1     6.5    190.6  1.00
+     20   400  0.873  0.113     198.9     6.4    205.3  1.00
+     40   400  0.828  0.163     200.5     6.4    206.9  1.00
+     60   400  0.835  0.155     200.5     6.5    207.0  1.00
+     80   400  0.877  0.115     201.1     6.5    207.6  1.00

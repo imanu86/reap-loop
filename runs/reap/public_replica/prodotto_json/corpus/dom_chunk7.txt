@@ -1,0 +1,23 @@
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Bergamasco Scarpe764
+Categoria: scarpe da corsa. Marca: Bergamasco. Colore: azzurro. Materiale principale: cotone organico. Peso: 2.54 kg. Prezzo di listino: 322.89 euro, sconto 15% attivo. Disponibilita': esaurito. Spedizione da Firenze. Garanzia 24 mesi. Codice: BER-15504.
+{"nome": "Bergamasco Scarpe764", "marca": "Bergamasco", "categoria": "scarpe da corsa", "colore": "azzurro", "materiale": "cotone organico", "peso_kg": 2.54, "prezzo_eur": 322.89, "sconto_pct": 15, "disponibilita": "esaurito", "garanzia_mesi": 24}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Tavernelli Borraccia628
+Categoria: borraccia termica. Marca: Tavernelli. Colore: grigio antracite. Materiale principale: alluminio. Peso: 3.67 kg. Prezzo di listino: 32.95 euro, sconto 15% attivo. Disponibilita': in arrivo. Spedizione da Padova. Garanzia 36 mesi. Codice: TAV-64988.
+{"nome": "Tavernelli Borraccia628", "marca": "Tavernelli", "categoria": "borraccia termica", "colore": "grigio antracite", "materiale": "alluminio", "peso_kg": 3.67, "prezzo_eur": 32.95, "sconto_pct": 15, "disponibilita": "in arrivo", "garanzia_mesi": 36}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Pallavicini Aspirapolvere872
+Categoria: aspirapolvere. Marca: Pallavicini. Colore: azzurro. Materiale principale: acciaio inox. Peso: 4.38 kg. Prezzo di listino: 350.09 euro, sconto 15% attivo. Disponibilita': disponibile. Spedizione da Trieste. Garanzia 12 mesi. Codice: PAL-10095.
+{"nome": "Pallavicini Aspirapolvere872", "marca": "Pallavicini", "categoria": "aspirapolvere", "colore": "azzurro", "materiale": "acciaio inox", "peso_kg": 4.38, "prezzo_eur": 350.09, "sconto_pct": 15, "disponibilita": "disponibile", "garanzia_mesi": 12}
+
+Estrai: nome, marca, categoria, colore, materiale, peso_kg, prezzo_eur, sconto_pct, disponibilita, garanzia_mesi.
+
+Scheda prodotto — Sartori Borraccia881
+Categoria: borraccia termica. Marca: Sartori. Colore: rosso mattone. Materiale principale: acciaio inox. Peso: 0.58 kg. Prezzo di listino: 214.71 euro. Disponibilita': prenotabile. Spedizione da Milano. Garanzia 36 mesi. Codice: SAR-36740.
+{"nome": "Sartori Borraccia881", "marca": "Sartori", "categoria": "borraccia termica", "colore": "rosso mattone", "materiale": "acciaio inox", "peso_kg": 0.58, "prezzo_eur": 214.71, "sconto_pct": 0, "disponibilita": "prenotabile", "garanzia_mesi": 36}

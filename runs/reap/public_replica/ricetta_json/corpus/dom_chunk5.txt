@@ -1,0 +1,27 @@
+Estrai la ricetta in JSON.
+
+Ricetta: Panna cotta. Per 4 persone, tempo 60 minuti.
+Ingredienti: pancetta, zucchero, carote, prezzemolo, latte intero, sedano, pepe nero, olio extravergine.
+Preparazione: tritare pancetta; far riposare latte intero; mescolare prezzemolo; infornare olio extravergine.
+{"titolo": "Panna cotta", "porzioni": 4, "tempo_minuti": 60, "ingredienti": ["pancetta", "zucchero", "carote", "prezzemolo", "latte intero", "sedano", "pepe nero", "olio extravergine"], "passi": ["tritare pancetta", "far riposare latte intero", "mescolare prezzemolo", "infornare olio extravergine"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Ragu' alla bolognese. Per 8 persone, tempo 45 minuti.
+Ingredienti: basilico, olio extravergine, farina 00, pecorino, brodo vegetale.
+Preparazione: mantecare basilico; sfumare con brodo vegetale; scolare olio extravergine; mantecare farina 00; scolare pecorino; tritare olio extravergine.
+{"titolo": "Ragu' alla bolognese", "porzioni": 8, "tempo_minuti": 45, "ingredienti": ["basilico", "olio extravergine", "farina 00", "pecorino", "brodo vegetale"], "passi": ["mantecare basilico", "sfumare con brodo vegetale", "scolare olio extravergine", "mantecare farina 00", "scolare pecorino", "tritare olio extravergine"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Polenta concia. Per 2 persone, tempo 60 minuti.
+Ingredienti: pomodori pelati, lievito, aglio, pancetta, latte intero, guanciale, farina 00.
+Preparazione: mescolare farina 00; scolare farina 00; scolare latte intero; aggiungere pancetta.
+{"titolo": "Polenta concia", "porzioni": 2, "tempo_minuti": 60, "ingredienti": ["pomodori pelati", "lievito", "aglio", "pancetta", "latte intero", "guanciale", "farina 00"], "passi": ["mescolare farina 00", "scolare farina 00", "scolare latte intero", "aggiungere pancetta"]}
+
+Estrai la ricetta in JSON.
+
+Ricetta: Crostata di marmellata. Per 2 persone, tempo 45 minuti.
+Ingredienti: brodo vegetale, pecorino, pomodori pelati, latte intero, carote, prezzemolo.
+Preparazione: impastare pecorino; far riposare prezzemolo; tritare prezzemolo; scolare brodo vegetale; impastare prezzemolo; aggiungere pomodori pelati.
+{"titolo": "Crostata di marmellata", "porzioni": 2, "tempo_minuti": 45, "ingredienti": ["brodo vegetale", "pecorino", "pomodori pelati", "latte intero", "carote", "prezzemolo"], "passi": ["impastare pecorino", "far riposare prezzemolo", "tritare prezzemolo", "scolare brodo vegetale", "impastare prezzemolo", "aggiungere pomodori pelati"]}

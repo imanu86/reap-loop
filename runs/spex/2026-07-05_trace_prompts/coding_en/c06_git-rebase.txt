@@ -1,0 +1,1 @@
+Explain git rebase vs merge with concrete scenarios, and show how to safely rewrite local history.

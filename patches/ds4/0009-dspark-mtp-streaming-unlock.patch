@@ -1,0 +1,63 @@
+From ef0fbd6f716852e3644e7764fa7f04f4c960a645 Mon Sep 17 00:00:00 2001
+From: REAP-LOOP contributors <noreply@example.com>
+Date: Sun, 5 Jul 2026 18:42:10 +0200
+Subject: [PATCH] mtp: allow SSD streaming behind DS4_MTP_STREAMING (default
+ off)
+
+Two changes, both no-op without the env opt-in:
+1. batch selected load: n_tokens <= 1 -> == 0 (upstream PR antirez/ds4#497):
+   the MTP verifier issues single-position ffn batch encodes; without the
+   selected load the MoE falls back to resident full-expert ranges (OOM under
+   streaming). Upload-event protocol already honored inside the function.
+2. engine guard relaxed only with DS4_MTP_STREAMING=1 (or legacy
+   DS4_MTP_STREAMING_UNSAFE); default behavior unchanged.
+---
+ ds4.c | 18 +++++++++++++++---
+ 1 file changed, 15 insertions(+), 3 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 93fe549..8bcbdbb 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14970,10 +14970,14 @@ static bool metal_graph_cuda_stream_prefill_batch_selected_load(
+         uint64_t                  gate_expert_bytes,
+         uint64_t                  down_expert_bytes) {
+ #if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    /* n_tokens == 1 must also take the selected load (upstream PR #497): the
++     * MTP verifier can issue single-position ffn batch encodes; skipping the
++     * selected load there falls through to resident full-expert ranges, which
++     * cannot fit in device memory under SSD streaming. */
+     if (!metal_graph_decode_cuda_selected_slots_expected(g, layer) ||
+         !model ||
+         !g->batch_router_selected ||
+-        n_tokens <= 1 ||
++        n_tokens == 0 ||
+         DS4_N_EXPERT == 0 ||
+         DS4_N_EXPERT_USED == 0 ||
+         getenv("DS4_CUDA_DISABLE_STREAMING_PREFILL_BATCH_SELECTED_LOAD") != NULL) {
+@@ -26328,12 +26332,20 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+     }
+     if (opt->mtp_path && opt->mtp_path[0] &&
+         opt->distributed.role == DS4_DISTRIBUTED_NONE) {
+-        if (e->ssd_streaming) {
+-            fprintf(stderr, "ds4: --ssd-streaming is not compatible with --mtp yet\n");
++        const bool mtp_streaming_optin =
++            getenv("DS4_MTP_STREAMING") != NULL ||
++            getenv("DS4_MTP_STREAMING_UNSAFE") != NULL;
++        if (e->ssd_streaming && !mtp_streaming_optin) {
++            fprintf(stderr, "ds4: --ssd-streaming with --mtp is experimental; "
++                            "set DS4_MTP_STREAMING=1 to opt in\n");
+             ds4_engine_close(e);
+             *out = NULL;
+             return 1;
+         }
++        if (e->ssd_streaming) {
++            fprintf(stderr, "ds4: MTP+SSD-streaming enabled (experimental, "
++                            "DS4_MTP_STREAMING)\n");
++        }
+         model_open(&e->mtp_model, opt->mtp_path, graph_backend, true);
+         mtp_weights_bind(&e->mtp_weights, &e->mtp_model);
+         e->mtp_ready = true;
+-- 
+2.43.0
+

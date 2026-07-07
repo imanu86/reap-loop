@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Lasagne al forno. Per 4 persone, tempo 20 minuti.
+Ingredienti: pancetta, pecorino, brodo vegetale, carote, uova, pepe nero, lievito, basilico.
+Preparazione: mescolare uova; mescolare brodo vegetale; impastare uova; sfumare con lievito.

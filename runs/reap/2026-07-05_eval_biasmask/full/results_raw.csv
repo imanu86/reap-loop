@@ -1,0 +1,6 @@
+full,dom_chunk0,rc=0,tokens=1647 scored=850 nll=900.227835435 avg_nll=1.059091571 ppl=2.883750117
+full,dom_chunk1,rc=0,tokens=1394 scored=850 nll=1183.666927748 avg_nll=1.392549327 ppl=4.025098275
+full,dom_chunk2,rc=0,tokens=1494 scored=850 nll=1414.130863302 avg_nll=1.663683369 ppl=5.278718546
+full,dom_chunk3,rc=0,tokens=1442 scored=850 nll=1050.883072937 avg_nll=1.236333027 ppl=3.442965028
+full,gen_chunk0,rc=0,tokens=800 scored=768 nll=1344.707276650 avg_nll=1.750920933 ppl=5.759904721
+full,gen_chunk1,rc=0,tokens=823 scored=791 nll=1268.081856280 avg_nll=1.603137619 ppl=4.968597557

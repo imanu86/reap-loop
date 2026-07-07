@@ -1,0 +1,27 @@
+{
+  "dataset_n": 120,
+  "base_url": "mock:oracle_decay",
+  "model": "local-model",
+  "sensor_primary": "mean_logprob",
+  "cost_weights": {
+    "prefill_tokens": 1.0,
+    "decode_tokens": 1.0,
+    "n_embed_calls": 0.0,
+    "n_rag_calls": 0.0,
+    "n_llm_calls": 0.0
+  },
+  "retriever_backend": "external.BM25Index",
+  "gen_defaults": {
+    "temperature": 0.0,
+    "top_p": 1.0,
+    "max_tokens": 48,
+    "seed": 1234,
+    "logprobs": true,
+    "top_logprobs": 5
+  },
+  "git_commit": "d0216853631d1a1c295e683a1aeb0dae87091aad",
+  "k_retrieval": 5,
+  "run_id": "20260706_112619_B0_no_memory",
+  "arm": "B0_no_memory",
+  "created": "20260706_112619"
+}

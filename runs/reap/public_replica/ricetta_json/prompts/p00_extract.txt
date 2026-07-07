@@ -1,0 +1,7 @@
+Sei un estrattore di ricette. Leggi il testo e restituisci SOLO un oggetto JSON con titolo, porzioni, tempo_minuti, ingredienti (lista) e passi (lista), senza testo aggiuntivo.
+
+Estrai la ricetta in JSON.
+
+Ricetta: Risotto allo zafferano. Per 6 persone, tempo 20 minuti.
+Ingredienti: farina 00, zucchero, olio extravergine, latte intero, uova, basilico.
+Preparazione: mescolare latte intero; aggiungere farina 00; sfumare con zucchero; cuocere a fuoco lento farina 00; impastare uova; sfumare con latte intero.
