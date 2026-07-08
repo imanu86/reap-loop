@@ -59,6 +59,21 @@ Questo e' diverso dal vecchio hidden-readback: non legge `ffn_norm` (4096 float)
 e non blocca il decode per calcolare gli ID su CPU; legge solo il risultato
 compatto della predizione, con fallback sicuro.
 
+Micro-step codice suggerito:
+
+- in `ds4_cuda.cu`, aggiungere una piccola pool pinned host per topK SPEX
+  (`cudaMallocHost`, 2-4 buffer, 32 int bastano per cap <= 32);
+- aggiungere `ds4_gpu_spex_topk_readback_async(const ds4_gpu_tensor *topk,
+  uint32_t n, uint32_t layer, ...)`, che fa `cudaMemcpyAsync(...,
+  cudaMemcpyDeviceToHost, stream)` e `cudaEventRecord`;
+- aggiungere una query non bloccante (`cudaEventQuery`) che restituisce
+  "ready/not-ready" e copia gli ID nel buffer CPU usato da
+  `ds4_gpu_stream_expert_cache_seed_experts_async`;
+- nel path DS4, schedule del topK a layer L dopo score/topK; consumo per
+  prefetch L+1 solo se il buffer del layer precedente e' ready;
+- metriche minime: scheduled, ready, skipped_not_ready, seeded, seed_failed,
+  exposed_miss_delta vs `DS4_SPEX_HIDDEN_GPU_SCORE=0`.
+
 Sorgente DS4 verificato dopo J15:
 
 - `g->ffn_norm` e' gia' il tensor F32 device-resident da usare come feature.
