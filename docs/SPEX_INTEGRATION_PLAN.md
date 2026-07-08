@@ -25,6 +25,9 @@ piu' avanti e piu' specifico:
   `DS4_SPEX_HIDDEN_GPU_SCORE=1` lancia un kernel dedicato per il layout SPX1
   `[hidden][expert]`, produce score 256-wide e topK su GPU, ma non consuma
   ancora quegli ID per il prefetch.
+- Primo overhead check HTML160 (J23): score/topK GPU attivo ma prefetch off ha
+  chiuso a 63.559s server contro 61.004s del miglior baseline caldo; quindi il
+  costo del kernel non sembra il blocker principale.
 - Il launcher locale tiene quindi `DS4_SPEX_HIDDEN_PREFETCH=0`.
 - Lo script `scripts/analyze_spex_hidden_trace.py` valuta offline un file SPX1
   contro trace reali `DS4_SPEX_TRACE_HIDDEN` + `DS4_SPEX_TRACE_ROUTING`.
