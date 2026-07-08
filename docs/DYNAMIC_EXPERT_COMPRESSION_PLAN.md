@@ -243,6 +243,13 @@ Implementation status as of 2026-07-08:
   unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
   cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it
   is a capacity-pressure estimate for the next runtime policy.
+- Fresh local runtime observe-ID pair (J31, HTML160) repeated the same kind of
+  prompt under the current launcher with `DS4_EXPERT_TIERING_LOG_IDS=1` only for
+  the diagnostic window. The two runs were 294.992s cold-ish and 133.259s warm,
+  but both had the same path shape: 6922 selected-direct rows and 1 resident row
+  out of 6923. LRU over compact IDs was stable across runs: cap258 about 0.34,
+  cap512 about 0.61, cap1024 about 0.76, cap2048 about 0.81. The warm wall-clock
+  gain is therefore page/cache warmth, not a better resident-cache path.
 - Important implication: the next engineering step is not lossy compression
   yet. First split/measure the selected-direct path versus resident-cache path
   on longer prompts, then decide where cold compression can actually remove
