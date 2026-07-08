@@ -232,6 +232,13 @@ Implementation status as of 2026-07-08:
   `0.48-0.50`, `0.57-0.59`, and `0.68-0.69` for the same caps. This confirms
   that old sessions are enough to estimate the hot/cold shape; new observe-ID
   runs are needed only for runtime cache-path/timing validation.
+- First local runtime observe-ID smoke (J30) used a tiny `Rispondi solo OK`
+  prompt. Each run produced 129 observe events with 86 resident and 43
+  selected-direct batches; resident hit-rate was only `0.2248`, direct loads
+  were 2351, and direct bytes were 15.87 GiB. Because the prompt is tiny and
+  K0/prefill-heavy, the compact-ID LRU rates were not representative
+  (cap258/cap512/cap1024: `0.0405/0.0586/0.0907`). Treat this as a runtime path
+  smoke, not a policy-quality trace.
 - First representative ID trace (J17, HTML160) produced 6923 events and 5653
   unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
   cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it
