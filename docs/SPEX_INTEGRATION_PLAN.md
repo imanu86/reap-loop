@@ -8,6 +8,29 @@
 
 ## 1. Architettura dell'aggancio — flusso dati
 
+## Stato locale 2026-07-08
+
+Il piano sotto resta valido come mappa architetturale, ma lo stato DS4 locale e'
+piu' avanti e piu' specifico:
+
+- DS4 riconosce il formato hidden `SPX1` in commit `/root/ds4` `bec221c`
+  (`spex: recognize hidden SPX1 predictor`).
+- DS4 ha un path sperimentale di hidden-readback prefetch in commit `818ebcf`,
+  ma non va usato come default: richiede `ds4_gpu_tensor_read` del router input
+  e sincronizza CPU/GPU, peggiorando TTFT sui run locali.
+- Il launcher locale tiene quindi `DS4_SPEX_HIDDEN_PREFETCH=0`.
+- Lo script `scripts/analyze_spex_hidden_trace.py` valuta offline un file SPX1
+  contro trace reali `DS4_SPEX_TRACE_HIDDEN` + `DS4_SPEX_TRACE_ROUTING`.
+- Prima trace locale breve (J15): top6 recall 0.5155 / weighted 0.5893;
+  top12 recall 0.6368 / weighted 0.7021; top23 recall 0.7260 / weighted
+  0.7776. Quindi il predittore hidden contiene segnale utile; il collo di
+  bottiglia e' il runtime, non l'artifact SPX1.
+
+Nuovo prossimo passo: GPU-side hidden scoring. Caricare `W[L,D,E]` del file
+SPX1 su GPU, calcolare `score = ffn_norm @ W[L]`, fare topK bounded e passare
+gli ID al prefetch next-layer senza readback host. Qualsiasi soluzione che
+legge `ffn_norm` su CPU resta solo diagnostica.
+
 Verificato: al layer L, dopo `metal_graph_encode_decode_layer` (ds4.c:19399) e lo swap
 (ds4.c:19412-19414), `g->cur_hc` contiene l'hidden di L = input di L+1. La riga **19391-19392**
 fa GIÀ un readahead dei pesi NON-expert di L+1 (`metal_graph_stream_readahead_layer_decode`).
