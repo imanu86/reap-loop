@@ -218,6 +218,20 @@ Implementation status as of 2026-07-08:
 - As of J25, `--target-hit-rate` reports the first simulated cap that reaches a
   desired hit target. On the first HTML160 ID trace, target 0.60 needed cap1024
   among the tested caps, while target 0.75 needed cap2048.
+- As of J29, the analyzer also accepts historical `DS4_SPEX_TRACE_ROUTING` CSV
+  files and `.tgz` archives containing routing CSVs. This means the large
+  existing session corpus can be mined for hot/cold policy replay without new
+  pod time. These legacy traces cannot report resident-cache versus
+  selected-direct runtime paths, but they are valid for `(layer, expert)` reuse,
+  LRU, warm-grace, cold-recall, and frozen-recall simulations.
+- First historical replay checks were consistent across three old corpora:
+  K91 coding trace cap258/cap512/cap1024 LRU hit-rate
+  `0.4003/0.5167/0.6611`; product trace `0.4065/0.5250/0.6676`;
+  domain trace `0.3927/0.5075/0.6500`. With `warm_grace=64` and
+  `freeze_after=512`, served hot+warm rates were roughly
+  `0.48-0.50`, `0.57-0.59`, and `0.68-0.69` for the same caps. This confirms
+  that old sessions are enough to estimate the hot/cold shape; new observe-ID
+  runs are needed only for runtime cache-path/timing validation.
 - First representative ID trace (J17, HTML160) produced 6923 events and 5653
   unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
   cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it
@@ -365,9 +379,10 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
 1. ~~Add observe-only tier stats in DS4 behind `DS4_EXPERT_TIERING=observe`.~~
    Done in `/root/ds4` commit `94e9a7d`.
 2. ~~Add a replay script that consumes `DS4_EXPERT_TIERING_LOG` and estimates
-   compression opportunities/churn offline.~~ Initial summary script added as
-   `scripts/analyze_tiering_observe.py`; deeper churn/counterfactual replay is
-   still open.
+   compression opportunities/churn offline.~~ `scripts/analyze_tiering_observe.py`
+   now accepts tiering JSONL, routing CSV, and routing `.tgz`; it reports LRU
+   capacity, target hit-rate, and a metadata-only hot/warm/cold/frozen policy
+   replay. Runtime path timing still requires real observe JSONL.
 3. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
 4. Wire cold miss promotion into the existing cache miss path.
 5. Add one lossy cold format for a tiny opt-in subset, then run pod quality
