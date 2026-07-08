@@ -208,6 +208,13 @@ still show selected-direct traffic and zero resident hit-rate on short repeated
 requests. Do not start lossy cold-format work until this direct/resident split is
 understood on a real prompt batch.
 
+K0 warmup follow-up (J12): applying the prompt-learned mask before token 1 is
+faster on short tests, but it violates the quality hypothesis that the first
+generated tokens should be unpruned. `DS4_PACE_PREFILL_APPLY=0` preserves K0
+through token 50 and only cuts at token 51, but was slower in the local HTML
+sample. The desired runtime split is a new mode: prompt-derived async prefetch
+without prompt-derived mask application.
+
 ### Step 1: warm/frozen metadata simulation
 
 Still no compressed payload. Treat cold/frozen as labels and measure how often
