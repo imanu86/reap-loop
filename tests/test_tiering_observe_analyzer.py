@@ -27,9 +27,12 @@ def test_lru_capacity_cost_is_reported():
         simulate_cap=[2],
         slot_mib=6.75,
         capacity_scales=[0.5, 0.33],
+        target_hit_rate=[0.2, 0.5],
     )
 
     assert "cap=2 requests=4 hit_rate=0.2500 hits=1 misses=3" in text
+    assert "target_hit_rate=0.2000 first_cap=2 hit_rate=0.2500" in text
+    assert "target_hit_rate=0.5000 first_cap=unmet" in text
     assert "native=13.5MiB" in text
     assert "x0.5=6.8MiB" in text
     assert "x0.33=4.5MiB" in text

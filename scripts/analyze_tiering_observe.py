@@ -85,6 +85,7 @@ def summarize(
     simulate_cap: list[int],
     slot_mib: float,
     capacity_scales: list[float],
+    target_hit_rate: list[float],
 ) -> str:
     if not rows:
         return "No tiering_observe rows found."
@@ -146,14 +147,32 @@ def summarize(
         )
         if simulate_cap:
             lines.append("lru_sim:")
+            sim_results: list[tuple[int, int, int, int, float]] = []
             for cap in simulate_cap:
                 requests, sim_hits, sim_misses = simulate_lru(rows, cap)
                 rate = sim_hits / requests if requests else 0.0
+                sim_results.append((cap, requests, sim_hits, sim_misses, rate))
                 lines.append(
                     f"  cap={cap} requests={requests} hit_rate={rate:.4f} "
                     f"hits={sim_hits} misses={sim_misses}"
                     f"{capacity_cost(cap, slot_mib, capacity_scales)}"
                 )
+            for target in target_hit_rate:
+                if target <= 0:
+                    continue
+                winner = next(
+                    (item for item in sim_results if item[4] >= target),
+                    None,
+                )
+                if winner is None:
+                    lines.append(f"  target_hit_rate={target:.4f} first_cap=unmet")
+                else:
+                    cap, requests, sim_hits, sim_misses, rate = winner
+                    lines.append(
+                        f"  target_hit_rate={target:.4f} first_cap={cap} "
+                        f"hit_rate={rate:.4f} hits={sim_hits} misses={sim_misses}"
+                        f"{capacity_cost(cap, slot_mib, capacity_scales)}"
+                    )
 
     layer_stats: dict[int, dict[str, int]] = collections.defaultdict(
         lambda: collections.defaultdict(int)
@@ -215,6 +234,13 @@ def main() -> int:
         default=[],
         help="Optional footprint multipliers for compressed tiers, e.g. 0.5 0.33.",
     )
+    ap.add_argument(
+        "--target-hit-rate",
+        type=float,
+        nargs="*",
+        default=[],
+        help="Report the first simulated cap that reaches each target hit rate.",
+    )
     args = ap.parse_args()
     rows = load_rows(args.jsonl)
     print(
@@ -224,6 +250,7 @@ def main() -> int:
             args.simulate_cap,
             args.slot_mib,
             args.capacity_scale,
+            args.target_hit_rate,
         )
     )
     return 0

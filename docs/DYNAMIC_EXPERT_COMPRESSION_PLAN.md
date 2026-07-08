@@ -215,6 +215,9 @@ Implementation status as of 2026-07-08:
 - As of J22 the analyzer also accepts `--slot-mib` and `--capacity-scale`, so
   each simulated cap reports the native and compressed memory cost. This is the
   offline sizing bridge for "effective cap512/cap1024" dynamic compression.
+- As of J25, `--target-hit-rate` reports the first simulated cap that reaches a
+  desired hit target. On the first HTML160 ID trace, target 0.60 needed cap1024
+  among the tested caps, while target 0.75 needed cap2048.
 - First representative ID trace (J17, HTML160) produced 6923 events and 5653
   unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
   cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it
