@@ -366,6 +366,7 @@ via `/root/ds4/ds4-server --cuda --ssd-streaming --ssd-streaming-cache-experts 2
 | J18 | SPEX-hidden | Optional GPU upload of SPX1 hidden weights | Commit `/root/ds4` `e85e256 spex: add optional hidden GPU weight upload`; env `DS4_SPEX_HIDDEN_GPU_LOAD=1` allocates a `ds4_gpu_tensor` and uploads the hidden SPX1 weight blob. `DS4_SPEX_HIDDEN_PREFETCH` remains independent and can stay off. | Build OK. Smoke with `DS4_SPEX_HIDDEN_GPU_LOAD=1`, `DS4_SPEX_HIDDEN_PREFETCH=0`, prompt `Rispondi solo OK`, max 1: log printed `SPEX hidden GPU weights uploaded 86.00 MiB`; SPX1 loaded; output `OK`; finish 6.268s. Launcher restored to `DS4_SPEX_HIDDEN_GPU_LOAD=0` after test. | First GPU-side SPEX milestone. This does not score or prefetch yet, but proves the hidden predictor weights can live on GPU without enabling the slow readback path. Next step: expose a score/topK function using `g->ffn_norm`, `ds4_gpu_matmul_f16_tensor`, and `ds4_gpu_indexer_topk_tensor`, then feed bounded IDs into next-layer prefetch. | done |
 | J19 | SPEX-hidden | Tensor-weight F16 matmul API for SPX1 scoring | Commit `/root/ds4` `269056a cuda: add f16 tensor-weight matmul API`; adds `ds4_gpu_matmul_f16_weight_tensor(out, weights, in_dim, out_dim, x, n_tok)` so F16 weights already resident in a `ds4_gpu_tensor` can be multiplied against F32 activations. | Build OK. Smoke `Rispondi solo OK`, max 1 returned `OK`. API is not wired into SPEX yet. | Removes the blocker found after J18: the existing `ds4_gpu_matmul_f16_tensor` only accepted weights by GGUF `model_map + offset`, not arbitrary SPX1 tensors. Next step is now narrower: allocate a 256-float score tensor, view the correct SPX1 layer slice, call tensor-weight matmul with `g->ffn_norm`, then run `ds4_gpu_indexer_topk_tensor`. | done |
 | J20 | SPEX-hidden | GPU-loaded SPX1 overhead A/B before scoring | Same no-think HTML160 prompt as J13/J17, `KEEP=23`, `PREFILL_APPLY=0`, hidden prefetch off, observe tiering on. Temporary launcher `DS4_SPEX_HIDDEN_GPU_LOAD=1` loads the 86 MiB SPX1 tensor but still does not score/topK/prefetch. Compared against the warm direct K23 baseline. | GPU-load run: prompt 10.585s, first 50 decode at 1.75 t/s, finish 73.508s server, decode 62.923s, 79.817s client. Warm direct K23 baseline without GPU load: prompt 10.460s, first 50 at 2.79 t/s, finish 61.004s server, decode 50.543s. Log confirms `SPEX hidden GPU weights uploaded 86.00 MiB`. Launcher restored to `DS4_SPEX_HIDDEN_GPU_LOAD=0`. | Negative but useful: do not enable GPU-loaded SPX1 by default until scoring/topK uses it. The upload foothold is technically valid, but idle SPX1 weights add VRAM/cache pressure and cost about +12.5s decode on this local HTML160 run. | done |
+| J21 | SPEX-hidden | GPU score/topK plumbing for SPX1 layout | Commit `/root/ds4` `dfceee3 spex: add hidden GPU scoring path`; adds `ds4_gpu_spex_hidden_score_tensor`, a CUDA kernel for the real SPX1 layout `[hidden][expert]`, graph scratch tensors for 256 scores/topK, and env `DS4_SPEX_HIDDEN_GPU_SCORE=1`. `GPU_SCORE=1` implies GPU weight upload but does **not** enable prefetch. | Build OK (`make ds4-server CUDA_ARCH=sm_86`). Smoke with `DS4_SPEX_HIDDEN_GPU_SCORE=1`, prefetch off, prompt `Rispondi solo OK`, max 1: output `OK`; log printed `SPEX hidden GPU weights uploaded 86.00 MiB` and `SPEX hidden GPU scoring active cap=6 (prefetch still off)`; finish 14.791s on that cold-ish smoke. Launcher restored to `DS4_SPEX_HIDDEN_GPU_SCORE=0`. | Important plumbing milestone: the previous tensor-weight matmul API was not sufficient for SPX1 because the artifact is stored input-major (`hidden,expert`), not output-major (`expert,hidden`). DS4 now has a layout-correct GPU score/topK path. Remaining work: compare predicted IDs to router IDs without expensive per-token readback, then feed bounded predicted IDs into next-layer prefetch/residency. | done |
 
 Key local finding: on 3060 the useful implemented path is **dynamic working-set
 selection**, not static domain masking and not dynamic quantization. Static domain
@@ -385,8 +386,9 @@ the next available pod can be used immediately without rediscovering the matrix.
 
 Operational note after J10: SPEX hidden is still not operational in the strong
 sense. DS4 can recognize/load the SPX1 artifact and had an experimental
-readback seed path, but the missing useful step remains GPU-side hidden scoring
-on `ffn_norm`, topK, and bounded prefetch. Keep this separate from tiering.
+readback seed path. As of J21, GPU-side hidden score/topK exists, but the missing
+useful step remains consuming that device-side topK for bounded next-layer
+prefetch/residency without host synchronization. Keep this separate from tiering.
 
 Operational note after J11: the UI launcher should not enable hidden-readback
 SPEX by default. It creates a CPU/GPU sync loop during prefill/early decode and
@@ -442,3 +444,8 @@ map and still feed the existing F16 kernels.
 Operational note after J20: `DS4_SPEX_HIDDEN_GPU_LOAD=1` is a development flag,
 not a runtime default. On the 3060 it should stay off until the score/topK path
 turns those resident SPX1 weights into fewer exposed expert misses.
+
+Operational note after J21: SPEX hidden is no longer blocked at "can we score on
+GPU?". It is now blocked at "can we consume the GPU topK without adding a
+readback/sync and use it safely for next-layer residency?". Keep
+`DS4_SPEX_HIDDEN_GPU_SCORE=0` by default until the prefetch consumer is wired.

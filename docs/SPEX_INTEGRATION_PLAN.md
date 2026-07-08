@@ -21,6 +21,10 @@ piu' avanti e piu' specifico:
 - DS4 ha un primo foothold GPU-side in commit `e85e256`: con
   `DS4_SPEX_HIDDEN_GPU_LOAD=1` carica gli 86 MiB di pesi SPX1 su un
   `ds4_gpu_tensor` senza attivare scoring o prefetch.
+- DS4 ha il primo path layout-correct di score/topK GPU in commit `dfceee3`:
+  `DS4_SPEX_HIDDEN_GPU_SCORE=1` lancia un kernel dedicato per il layout SPX1
+  `[hidden][expert]`, produce score 256-wide e topK su GPU, ma non consuma
+  ancora quegli ID per il prefetch.
 - Il launcher locale tiene quindi `DS4_SPEX_HIDDEN_PREFETCH=0`.
 - Lo script `scripts/analyze_spex_hidden_trace.py` valuta offline un file SPX1
   contro trace reali `DS4_SPEX_TRACE_HIDDEN` + `DS4_SPEX_TRACE_ROUTING`.
@@ -29,23 +33,23 @@ piu' avanti e piu' specifico:
   0.7776. Quindi il predittore hidden contiene segnale utile; il collo di
   bottiglia e' il runtime, non l'artifact SPX1.
 
-Nuovo prossimo passo: GPU-side hidden scoring. Caricare `W[L,D,E]` del file
-SPX1 su GPU, calcolare `score = ffn_norm @ W[L]`, fare topK bounded e passare
-gli ID al prefetch next-layer senza readback host. Qualsiasi soluzione che
-legge `ffn_norm` su CPU resta solo diagnostica.
+Nuovo prossimo passo: consumare il topK GPU senza readback host. Il path
+score/topK esiste, ma gli ID restano su device; ora bisogna alimentarli al
+prefetch/residency next-layer senza reintrodurre la sincronizzazione CPU/GPU.
+Qualsiasi soluzione che legge `ffn_norm` o il topK su CPU resta diagnostica.
 
 Sorgente DS4 verificato dopo J15:
 
 - `g->ffn_norm` e' gia' il tensor F32 device-resident da usare come feature.
-- `ds4_gpu_matmul_f16_tensor` esiste gia' e puo' calcolare score F32 da pesi
-  F16 residenti nel GGUF. Per SPX1, commit `/root/ds4` `269056a` aggiunge
-  `ds4_gpu_matmul_f16_weight_tensor`, che accetta direttamente un
-  `ds4_gpu_tensor` di pesi F16.
+- `ds4_gpu_matmul_f16_tensor` esiste gia' per pesi F16 residenti nel GGUF.
+  Per SPX1 non basta: l'artifact e' memorizzato input-major `[hidden][expert]`,
+  mentre la matmul generica assume output-major `[expert][hidden]`.
+- Commit `/root/ds4` `dfceee3` aggiunge quindi un kernel dedicato
+  `ds4_gpu_spex_hidden_score_tensor` per calcolare score F32 dal layout SPX1.
 - `ds4_gpu_indexer_topk_tensor` esiste gia' e puo' trasformare scores in topK.
-- Quindi il primo micro-step pratico e' un loader `SPX1 -> ds4_gpu_tensor`
-  per layer o un buffer device unico, piu' una funzione
-  `ds4_gpu_spex_hidden_score_topk(...)` che riusa matmul+topK. Kernel custom e
-  fusione score+topK possono arrivare dopo, solo se il prototipo mostra margine.
+- Il primo micro-step pratico rimasto e' un consumer device-side del topK:
+  mantenere gli ID su GPU o copiarli in una struttura di residency/prefetch
+  senza fare readback per-token.
 
 Verificato: al layer L, dopo `metal_graph_encode_decode_layer` (ds4.c:19399) e lo swap
 (ds4.c:19412-19414), `g->cur_hc` contiene l'hidden di L = input di L+1. La riga **19391-19392**

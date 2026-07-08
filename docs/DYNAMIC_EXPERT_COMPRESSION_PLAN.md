@@ -221,13 +221,14 @@ Implementation status as of 2026-07-08:
   on longer prompts, then decide where cold compression can actually remove
   bytes from the bottleneck.
 
-Local launcher follow-up (J11): hidden-readback SPEX was disabled again because
-it made TTFT unusable before GPU-side hidden scoring exists. The practical 3060
-launcher uses `DS4_PACE_PREFILL_APPLY=1` and `DS4_PACE_PREFILL_WAIT_WRAP=0`.
-This cuts visible first-token latency versus waiting for WRAP, but observe logs
-still show selected-direct traffic and zero resident hit-rate on short repeated
-requests. Do not start lossy cold-format work until this direct/resident split is
-understood on a real prompt batch.
+Local launcher follow-up (J11/J21): hidden-readback SPEX was disabled again
+because it made TTFT unusable. GPU-side hidden score/topK now exists behind
+`DS4_SPEX_HIDDEN_GPU_SCORE=1`, but it still does not feed residency/prefetch.
+The practical 3060 launcher uses `DS4_PACE_PREFILL_APPLY=1` and
+`DS4_PACE_PREFILL_WAIT_WRAP=0`. This cuts visible first-token latency versus
+waiting for WRAP, but observe logs still show selected-direct traffic and zero
+resident hit-rate on short repeated requests. Do not start lossy cold-format work
+until this direct/resident split is understood on a real prompt batch.
 
 K0 warmup follow-up (J12): applying the prompt-learned mask before token 1 is
 faster on short tests, but it violates the quality hypothesis that the first
