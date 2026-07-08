@@ -148,16 +148,16 @@
       <div class="body">
         <label class="row">Attiva REAP <span class="sw"><input type="checkbox" id="reap" checked><span></span></span></label>
         <label class="row">Sorgente mask
-          <select id="masksrc"><option value="load">carica file (veloce da subito)</option><option value="learn">impara live (warmup)</option></select></label>
-        <label class="row" id="maskfilerow">file mask <input type="text" id="maskfile" value="/root/ds4/runs_reap/20260706_2210_phaseB/stats_learned.json"></label>
-        <label class="row">warmup token <input type="number" id="warmup" value="150"></label>
+          <select id="masksrc"><option value="learn">impara live (warmup) — consigliato</option><option value="load">carica file ⚠ (static mask — rischiosa: solo come cache last-session/output-type)</option></select></label>
+        <label class="row" id="maskfilerow" style="display:none">file mask <input type="text" id="maskfile" value="" placeholder="/path/to/stats_learned.json"></label>
+        <label class="row">warmup token <input type="number" id="warmup" value="50"></label>
         <label class="row">discesa
           <select id="descent"><option value="direct">diretta</option><option value="stepwise">a gradini</option></select></label>
         <label class="row">Discesa keep (K% = quanto POTI) <input type="text" id="kschedule" value="91" style="width:130px"></label>
         <label class="row">→ <span class="keeplbl" id="kexperts">tieni 23 esperti</span></label>
         <label class="row hint">K = quanto poti (%). "91"=keep-23 (aggressivo, veloce). "50"=keep-128 (blando, qualità). "50, 91"=parti keep-128 poi stringi a keep-23 (discesa a gradini). Ordine consigliato: dal K basso al K alto.</label>
         <hr style="border:0;border-top:1px solid var(--edge);width:100%">
-        <label class="row">Respiro <span class="sw"><input type="checkbox" id="breath" checked><span></span></span></label>
+        <label class="row">Respiro <span class="sw"><input type="checkbox" id="breath"><span></span></span></label>
         <label class="row">ogni N token <input type="number" id="bevery" value="400"></label>
         <label class="row">durata respiro <input type="number" id="blen" value="80"></label>
         <label class="row">keep durante respiro <input type="number" id="bkeep" value="64"></label>

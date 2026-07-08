@@ -336,3 +336,25 @@ Pod (A100-80GB) **TERMINATO** a fine batch. Chiude la 3ª famiglia sub-expert e 
 ---
 
 *Note di deduplica: duplicati esatti collassati — (A14-A16 == eval_mass_dom_*), (A19-A21 == eval_mass_gen_*), (C3 == eval_full235==eval_p235_full), (C5 == p235_cold25==prune235_25), (C6 == p235_cold50==prune235_50), (C8 == p235_rand50==prune235_50_rand). stepf_base235 e stepf_base235v2 hanno aggregati identici (differiscono solo per-layer). `subexpert.py` non è in `scripts_pod/` (monkeypatch, mai portato nel repo).*
+
+---
+
+## J) BATCH 4 (2026-07-08) — RTX 3060 local: PACE prefill-learned mask, not dynamic compression
+
+Local machine: RTX 3060 12GB, WSL memory raised to 62GB, DS4 V4-Flash 2-bit GGUF
+via `/root/ds4/ds4-server --cuda --ssd-streaming --ssd-streaming-cache-experts 258`.
+
+| # | Cat | Esperimento | Setup | Risultato | Verdetto | Stato |
+|---|-----|-------------|-------|-----------|----------|-------|
+| J1 | PACE/REAP | Baseline practical run, warmup late | `DS4_PACE_WARMUP=50`, `DS4_PACE_WRAP=0`, `DS4_PACE_CACHE_FLUSH=1`; prompt 105, stream client later disconnected | prompt 64.370s; first 50 decode tokens 0.31 t/s; later chunks 2.46-3.17 t/s; final error `client stream write failed` | Mask learned too late; cache flush and no wrap make the first decode window awful. Not a usable config. | done |
+| J2 | PACE/REAP | Faster decode warmup + WRAP | `warmup=8`, `keep=23`, `wrap=1`, `cache_flush=0`, cache floor 258 slots; prompt 23, max 32 | prompt 52.106s; PACE applied at tok=9; fattorino touched 6.07 GiB in 1569 ms; gen 32 at 1.75 t/s | Decode improves after PACE applies, but prefill is still the dominant wall-clock bottleneck. | done |
+| J3 | PACE/REAP | Prefill-learned dynamic mask | Commit `/root/ds4` `c8dd670 pace-dynamic-prefill-mask`; collect selected experts during prompt, reset stale mask before prefill, apply mask at `tok=0`, wait WRAP before decode | prompt 19 -> prompt done 26.284s; `prefill_apply tok=0`; fattorino 6.07 GiB in 445 ms + wait 454 ms; gen 24 at 2.83 t/s | Positive: dynamic prompt-derived mask is applied before decode and removes the late-warmup penalty. Still not a full prefill fix. | done |
+| J4 | SPEX | Local SPEX predictor file check | `DS4_SPEX_MARKOV_FILE=/mnt/c/Users/imanu/source/repos/moe-aggressive-commit/runs/spex/spex_model/ds4flash_d2_nextlayer.spex` | Launcher disables SPEX because file magic is missing/invalid (`SPEX` header absent) | SPEX was not active in the 3060 local runs; any speedup above is PACE/REAP/WRAP, not SPEX. Need repair/regenerate SPEX artifact before claiming SPEX runtime gains. | done |
+| J5 | Quant/compression | Dynamic expert compression | Desired idea: when an expert is outside the active REAP/PACE working set, store/eject it in a lower-bpw representation and restore/stream it when needed | Not implemented. No alternate low-bpw expert tensor store, no runtime recompression/ejection policy, no quality/speed numbers. | Open. Do not describe current PACE as "dynamic compression"; it is dynamic pruning/masking plus page-cache prefetch. | open |
+
+Key local finding: on 3060 the useful implemented path is **dynamic working-set
+selection**, not static domain masking and not dynamic quantization. Static domain
+masking remains rejected for the product path because it risks bad loops and stale
+behavior. The next real research step is a separate dynamic compression tier:
+hot/kept experts stay in the fast representation, evicted/cold experts use a
+more compressed representation, and REAP/PACE decides K and residency live.

@@ -165,7 +165,7 @@ tradeoff vs a (dead) predictive sensor.
 | Env | Default | Meaning |
 |---|---|---|
 | `DS4_PACE` | off | master enable |
-| `DS4_PACE_WARMUP` | 150 | warmup decode tokens before learning |
+| `DS4_PACE_WARMUP` | 150 | warmup decode tokens before learning. Practical validated sweet spot is **W≈50** (short warmup wins on completion time at equal quality — CLAIMS_CURRENT §SESSION-LEARNING); the cockpit defaults to 50. |
 | `DS4_PACE_KEEP` | 40 | final keep-K (measured curve point) |
 | `DS4_PACE_KEEP_MIN` | 24 | tighten floor |
 | `DS4_PACE_KEEP_MAX` | 64 | widen ceiling |
@@ -187,7 +187,9 @@ tradeoff vs a (dead) predictive sensor.
 | `DS4_PACE_STABLE` | 120 | stable tokens before a tighten step |
 | `DS4_PACE_ANNEAL_WARM` | 300 | tokens before tightening unlocks |
 | `DS4_PACE_S1` | 0 | enable S1 diagnostic (monitor only) |
-| `DS4_PACE_WRAP` | 1 | run WRAP page-in on mask change |
+| `DS4_PACE_WRAP` | 0 | run WRAP bulk page-in on mask change. **Off by default** — on the practical 3060 config prefetch *slows* t/s (0.82 vs 1.27, see CLAIMS_CURRENT §PREFETCH). Enable only when a probe proves a deeply SSD-bound regime. |
+| `DS4_PACE_PREFILL_APPLY` | 1 | learn the first mask from prompt routing and apply it after prefill, before decode token generation. This is a dynamic prompt mask, not a static domain mask. |
+| `DS4_PACE_PREFILL_WAIT_WRAP` | 1 | when WRAP is enabled, wait for the prefill-derived working set page-in before starting decode. Local 3060 smoke: 6.07 GiB touched in 445 ms, generation 2.83 t/s on a 19/24-token probe. |
 | `DS4_PACE_LOG` | "" | optional JSONL event log (off SSD hot path if unset) |
 
 Backward-compat: `DS4_REAP_WRAP` still honored as an alias for
@@ -222,3 +224,19 @@ Backward-compat: `DS4_REAP_WRAP` still honored as an alias for
 * No routing trace CSV during a timed PACE run (that's the whole point).
 * Compare against the same-instrumentation baseline (static keep-K, PACE off).
 * Report t/s + hit-rate + breaths + final keep-K. Never fabricate numbers.
+
+### 2026-07-08 local implementation note
+
+Commit `/root/ds4` `c8dd670 pace-dynamic-prefill-mask` moved PACE from
+decode-only learning to prompt-aware learning:
+
+* reset any stale PACE/REAP mask at the start of a new prefill;
+* accumulate selected expert ids during prompt routing;
+* apply the learned keep-K mask at `tok=0`, immediately after prefill;
+* optionally wait for WRAP/fattorino before decode.
+
+This is **not dynamic expert compression**. It does not create a smaller
+low-bpw copy of evicted experts and it does not recompress experts on eviction.
+That remains a separate open tiering project: active experts in fast form,
+evicted experts in a colder compressed form, with REAP/PACE controlling K and
+residency live.
