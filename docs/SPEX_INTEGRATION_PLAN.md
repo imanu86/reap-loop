@@ -59,6 +59,31 @@ Questo e' diverso dal vecchio hidden-readback: non legge `ffn_norm` (4096 float)
 e non blocca il decode per calcolare gli ID su CPU; legge solo il risultato
 compatto della predizione, con fallback sicuro.
 
+Aggiornamento locale J29, 2026-07-08:
+
+- Implementato in `/root/ds4` un primo handoff topK GPU -> pinned host:
+  `ds4_gpu_async_read` usa host pinned, stream CUDA non bloccante, evento di
+  dipendenza dal default stream e `cudaEventQuery` nel consumer.
+- Nuovi env DS4 sperimentali:
+  `DS4_SPEX_HIDDEN_GPU_PREFETCH=1` abilita score/topK + readback async degli ID;
+  `DS4_SPEX_HIDDEN_GPU_PREFETCH_DRY_RUN=1` legge gli ID ma non semina cache;
+  `DS4_SPEX_PREFETCH_PROFILE=1` abilita il log per-layer. Bug corretto: il
+  valore `0` ora e' davvero off, non solo "env presente".
+- Smoke dry-run con profile acceso ha dimostrato che il vecchio approccio
+  sincrono era sbagliato: moltissimo log/serializzazione, fino a ~44s server per
+  8 token nel microtest. Dopo async + profile off, stesso microtest caldo:
+  prompt ~6.6s, decode ~3.6s, finish ~10.2s.
+- Prefetch reale cap=6 nello stesso microtest non paga ancora: run caldo
+  prompt ~7.1s, decode ~12.2s, finish ~19.3s. Quindi il bridge e' corretto come
+  plumbing, ma il consumer `seed_experts_async`/cache path deve essere profilato
+  prima di diventare default.
+- Decisione: lasciare `DS4_SPEX_HIDDEN_GPU_PREFETCH=0` nel launcher. Usare il
+  path solo per test mirati con profile, mai come setup utente.
+
+Prossimo micro-step dopo J29: aggiungere contatori leggeri `scheduled/ready/
+not_ready/seeded` e tempo di `seed_experts_async` per capire se il peggioramento
+viene da seed ridondante, contesa cache, upload stream o cap troppo piccolo.
+
 Micro-step codice suggerito:
 
 - in `ds4_cuda.cu`, aggiungere una piccola pool pinned host per topK SPEX
