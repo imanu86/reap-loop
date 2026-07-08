@@ -41,6 +41,24 @@ score/topK esiste, ma gli ID restano su device; ora bisogna alimentarli al
 prefetch/residency next-layer senza reintrodurre la sincronizzazione CPU/GPU.
 Qualsiasi soluzione che legge `ffn_norm` o il topK su CPU resta diagnostica.
 
+Aggiornamento architetturale dopo la lettura del loader CUDA: il consumer non
+puo' essere "zero host" nel senso forte, perche' il prefetch SSD e' guidato da
+CPU metadata (`ds4_gpu_stream_expert_cache_seed_experts_async` prende
+`int32_t *expert_ids`, ordina priorita' su host, calcola offset e avvia le copie).
+Il design corretto e' quindi un handoff D2H asincrono minuscolo:
+
+1. GPU score/topK produce `g->spex_hidden_topk`.
+2. `cudaMemcpyAsync` copia topK (6-23 int) su pinned host buffer dedicato,
+   registrando un evento sullo stream corretto.
+3. Il lato CPU consuma il buffer del layer precedente solo se l'evento e'
+   completato; se non e' pronto, salta il prefetch e lascia il miss fallback.
+4. `seed_experts_async` resta il consumer iniziale, ma non deve mai fare una
+   sincronizzazione per-token sul topK.
+
+Questo e' diverso dal vecchio hidden-readback: non legge `ffn_norm` (4096 float)
+e non blocca il decode per calcolare gli ID su CPU; legge solo il risultato
+compatto della predizione, con fallback sicuro.
+
 Sorgente DS4 verificato dopo J15:
 
 - `g->ffn_norm` e' gia' il tensor F32 device-resident da usare come feature.
@@ -51,8 +69,8 @@ Sorgente DS4 verificato dopo J15:
   `ds4_gpu_spex_hidden_score_tensor` per calcolare score F32 dal layout SPX1.
 - `ds4_gpu_indexer_topk_tensor` esiste gia' e puo' trasformare scores in topK.
 - Il primo micro-step pratico rimasto e' un consumer device-side del topK:
-  mantenere gli ID su GPU o copiarli in una struttura di residency/prefetch
-  senza fare readback per-token.
+  copiarli in una struttura pinned-host di residency/prefetch via async D2H,
+  senza readback bloccante per-token.
 
 Verificato: al layer L, dopo `metal_graph_encode_decode_layer` (ds4.c:19399) e lo swap
 (ds4.c:19412-19414), `g->cur_hc` contiene l'hidden di L = input di L+1. La riga **19391-19392**
