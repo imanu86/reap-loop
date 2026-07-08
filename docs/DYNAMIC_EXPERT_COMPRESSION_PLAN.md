@@ -1,7 +1,9 @@
 # Dynamic Expert Compression Plan
 
-Status: design plan only. Do not treat any speed, RAM, or quality benefit below
-as a claim until the local/pod tests in this document pass.
+Status: Step 0 observe-only is implemented in DS4 commit `94e9a7d`
+(`cuda: add expert tiering observe mode`). Compression, sidecars, demotion, and
+lossy cold formats are still design/open work. Do not treat any speed, RAM, or
+quality benefit below as a claim until the local/pod tests in this document pass.
 
 ## Goal
 
@@ -130,9 +132,10 @@ Use env flags so the stock behavior remains the default.
 
 | Env / option | Default | Meaning |
 |---|---|---|
-| `DS4_EXPERT_TIERING` | `0` | Master enable for tier manager. Off means current DS4 behavior. |
-| `DS4_EXPERT_TIER_LOG` | unset | Optional JSONL event log for tier transitions, bytes, and latency. |
-| `DS4_EXPERT_TIER_POLICY` | `observe` | `observe`, `warm-only`, `cold-sidecar`, `frozen-ssd`. |
+| `DS4_EXPERT_TIERING` | `0` | Master enable. Only `observe` is implemented today; off means current DS4 behavior. |
+| `DS4_EXPERT_TIERING_LOG` | unset | Implemented optional JSONL event log for current selected-load/cache observations. |
+| `DS4_EXPERT_TIERING_SUMMARY_EVERY` | `0` | Implemented optional stderr summary interval by observed batches. |
+| `DS4_EXPERT_TIER_POLICY` | `observe` | Planned future policy: `observe`, `warm-only`, `cold-sidecar`, `frozen-ssd`. |
 | `DS4_EXPERT_COLD_FORMAT` | `native` | `native`, `q4`, `q2`, `q1`, `pack`. MVP starts with `native`/metadata only. |
 | `DS4_EXPERT_COLD_RAM_MB` | `0` | RAM budget for cold sidecar cache; 0 disables RAM cold cache. |
 | `DS4_EXPERT_FROZEN_DIR` | unset | Directory for SSD sidecar packs. Unset disables frozen tier. |
@@ -175,6 +178,27 @@ expert but always load native DS4 slabs. Gate:
 - output byte-identical or token-identical to baseline for deterministic runs;
 - no measurable slowdown with logging disabled;
 - JSONL contains enough data to replay tier decisions offline.
+
+Implementation status as of 2026-07-08:
+
+- DS4 commit `94e9a7d` adds CUDA observe-only behind
+  `DS4_EXPERT_TIERING=observe`.
+- JSONL events include `time_unix`, `path` (`resident` or
+  `selected_direct`), layer, slot/compact counts, cache capacity, before/after
+  resident count, hits, misses, direct loads, evictions, and byte estimates.
+- The local launcher currently defaults to
+  `DS4_EXPERT_TIERING=observe` and writes
+  `/root/ds4_tiering_observe.jsonl`.
+- First smoke on RTX 3060 produced: 473 events; 12 resident-cache events at
+  cap 222; 461 selected-direct events; direct loads 2766; hits 0; misses 72;
+  evictions 0. This is diagnostic only, not a throughput claim.
+- `scripts/analyze_tiering_observe.py` summarizes one or more observe JSONL
+  files into path shares, cache capacities, hit/miss/direct totals, byte totals,
+  and worst layers.
+- Important implication: the next engineering step is not lossy compression
+  yet. First split/measure the selected-direct path versus resident-cache path
+  on longer prompts, then decide where cold compression can actually remove
+  bytes from the bottleneck.
 
 ### Step 1: warm/frozen metadata simulation
 
@@ -295,11 +319,13 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
 
 ## Code Steps After This Doc
 
-1. Add observe-only tier stats in DS4 behind `DS4_EXPERT_TIERING=observe`.
-2. Add a replay script that consumes `DS4_EXPERT_TIER_LOG` and estimates
-   compression opportunities/churn offline.
+1. ~~Add observe-only tier stats in DS4 behind `DS4_EXPERT_TIERING=observe`.~~
+   Done in `/root/ds4` commit `94e9a7d`.
+2. ~~Add a replay script that consumes `DS4_EXPERT_TIERING_LOG` and estimates
+   compression opportunities/churn offline.~~ Initial summary script added as
+   `scripts/analyze_tiering_observe.py`; deeper churn/counterfactual replay is
+   still open.
 3. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
 4. Wire cold miss promotion into the existing cache miss path.
 5. Add one lossy cold format for a tiny opt-in subset, then run pod quality
    gates before wider enablement.
-
