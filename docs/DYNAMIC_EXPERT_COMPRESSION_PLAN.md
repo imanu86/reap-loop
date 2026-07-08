@@ -212,6 +212,9 @@ Implementation status as of 2026-07-08:
   files into path shares, cache capacities, hit/miss/direct totals, byte totals,
   and worst layers. With ID traces, `--simulate-cap` replays a global LRU over
   `(layer, expert)` keys.
+- As of J22 the analyzer also accepts `--slot-mib` and `--capacity-scale`, so
+  each simulated cap reports the native and compressed memory cost. This is the
+  offline sizing bridge for "effective cap512/cap1024" dynamic compression.
 - First representative ID trace (J17, HTML160) produced 6923 events and 5653
   unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
   cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it

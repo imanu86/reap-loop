@@ -67,7 +67,25 @@ def simulate_lru(rows: list[dict], cap: int) -> tuple[int, int, int]:
     return requests, hits, misses
 
 
-def summarize(rows: list[dict], top: int, simulate_cap: list[int]) -> str:
+def capacity_cost(cap: int, slot_mib: float, scales: list[float]) -> str:
+    if cap <= 0 or slot_mib <= 0:
+        return ""
+    native = cap * slot_mib
+    parts = [f"native={native:.1f}MiB"]
+    for scale in scales:
+        if scale <= 0:
+            continue
+        parts.append(f"x{scale:g}={native * scale:.1f}MiB")
+    return " " + " ".join(parts)
+
+
+def summarize(
+    rows: list[dict],
+    top: int,
+    simulate_cap: list[int],
+    slot_mib: float,
+    capacity_scales: list[float],
+) -> str:
     if not rows:
         return "No tiering_observe rows found."
 
@@ -134,6 +152,7 @@ def summarize(rows: list[dict], top: int, simulate_cap: list[int]) -> str:
                 lines.append(
                     f"  cap={cap} requests={requests} hit_rate={rate:.4f} "
                     f"hits={sim_hits} misses={sim_misses}"
+                    f"{capacity_cost(cap, slot_mib, capacity_scales)}"
                 )
 
     layer_stats: dict[int, dict[str, int]] = collections.defaultdict(
@@ -183,9 +202,30 @@ def main() -> int:
     ap.add_argument("jsonl", nargs="+", type=Path)
     ap.add_argument("--top", type=int, default=10)
     ap.add_argument("--simulate-cap", type=int, nargs="*", default=[])
+    ap.add_argument(
+        "--slot-mib",
+        type=float,
+        default=6.75,
+        help="Resident expert slot size used for capacity-cost estimates.",
+    )
+    ap.add_argument(
+        "--capacity-scale",
+        type=float,
+        nargs="*",
+        default=[],
+        help="Optional footprint multipliers for compressed tiers, e.g. 0.5 0.33.",
+    )
     args = ap.parse_args()
     rows = load_rows(args.jsonl)
-    print(summarize(rows, args.top, args.simulate_cap))
+    print(
+        summarize(
+            rows,
+            args.top,
+            args.simulate_cap,
+            args.slot_mib,
+            args.capacity_scale,
+        )
+    )
     return 0
 
 
