@@ -80,9 +80,31 @@ Aggiornamento locale J29, 2026-07-08:
 - Decisione: lasciare `DS4_SPEX_HIDDEN_GPU_PREFETCH=0` nel launcher. Usare il
   path solo per test mirati con profile, mai come setup utente.
 
-Prossimo micro-step dopo J29: aggiungere contatori leggeri `scheduled/ready/
-not_ready/seeded` e tempo di `seed_experts_async` per capire se il peggioramento
-viene da seed ridondante, contesa cache, upload stream o cap troppo piccolo.
+Aggiornamento locale J30, 2026-07-08:
+
+- Patch salvate in repo:
+  `patches/ds4/0015-spex-hidden-async-topk-handoff.patch` e
+  `patches/ds4/0016-spex-hidden-gpu-prefetch-stats.patch`.
+- DS4 locale ha ora contatori `DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS=1`:
+  `scheduled`, `schedule_failed`, `ready`, `not_ready`, `zero`, `dry`,
+  `seed_calls`, `seed_ok`, `seed_failed`, `skipped_all_resident`,
+  `candidate_experts`, `seed_experts`, `resident_before`, `seed_ms`.
+- Aggiunto filtro missing: prima del seed, il runtime conta gli expert gia'
+  residenti e semina solo i mancanti; se sono tutti residenti, salta il seed.
+- A/B microtest 8 token, cap=6, 2 run:
+  baseline finish server 11.654s / 9.228s; dry-run async 10.394s / 16.614s;
+  prefetch reale prima del filtro 12.913s / 11.172s; prefetch reale con filtro
+  13.751s / 11.180s.
+- Finding meccanicistico: nel microtest con filtro,
+  `scheduled=672`, `ready=624`, `not_ready=0`, `schedule_failed=0`,
+  `candidate_experts=3744`, `seed_experts=3744`, `resident_before=0`,
+  `seed_ms=3604.641`. Quindi il bridge topK e' pronto in tempo; il problema
+  non e' readback, ne' duplicato di expert residenti. Il costo viene da 624
+  seed reali di 6 expert, su quasi tutti i layer/token.
+- Decisione aggiornata: non abilitare `DS4_SPEX_HIDDEN_GPU_PREFETCH` nel setup
+  utente. Il prossimo test utile non e' "prefetch sempre", ma admission piu'
+  selettiva: meno layer, meno frequenza, cap variabile, o seed solo quando PACE
+  sta per scendere/respirare.
 
 Micro-step codice suggerito:
 

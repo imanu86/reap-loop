@@ -1,0 +1,451 @@
+From d63828e23e9e01ebe21aa037d2948d28459ac7ac Mon Sep 17 00:00:00 2001
+From: root <root@WORKSTATION.localdomain>
+Date: Wed, 8 Jul 2026 20:47:32 +0200
+Subject: [PATCH] spex: add async hidden topk handoff
+
+---
+ ds4.c       | 198 ++++++++++++++++++++++++++++++++++++++++++++--------
+ ds4_cuda.cu |  84 ++++++++++++++++++++++
+ ds4_gpu.h   |   9 +++
+ 3 files changed, 260 insertions(+), 31 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index af2615f..99ee85d 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -10548,6 +10548,7 @@ typedef struct {
+     ds4_gpu_tensor *router_weights;
+     ds4_gpu_tensor *spex_hidden_scores;
+     ds4_gpu_tensor *spex_hidden_topk;
++    ds4_gpu_async_read *spex_hidden_topk_readback;
+     ds4_gpu_tensor *routed_gate;
+     ds4_gpu_tensor *routed_up;
+     ds4_gpu_tensor *routed_mid;
+@@ -10648,6 +10649,9 @@ typedef struct {
+     uint32_t spex_prefetch_selected_layer;
+     uint32_t spex_prefetch_selected_count;
+     int32_t spex_prefetch_selected[DS4_MAX_EXPERT_USED];
++    bool spex_hidden_gpu_topk_valid;
++    uint32_t spex_hidden_gpu_topk_layer;
++    uint32_t spex_hidden_gpu_topk_count;
+     bool spex_trace_decode_active;
+     uint32_t spex_trace_pos;
+     bool mtp_enabled;
+@@ -10764,6 +10768,7 @@ static void metal_graph_free(ds4_gpu_graph *g) {
+     ds4_gpu_tensor_free(g->router_logits);
+     ds4_gpu_tensor_free(g->spex_hidden_topk);
+     ds4_gpu_tensor_free(g->spex_hidden_scores);
++    ds4_gpu_async_read_free(g->spex_hidden_topk_readback);
+     ds4_gpu_tensor_free(g->shared_out);
+     ds4_gpu_tensor_free(g->shared_mid);
+     ds4_gpu_tensor_free(g->shared_up);
+@@ -11300,6 +11305,8 @@ static bool metal_graph_alloc_raw_cap(
+     g->router_weights = ds4_gpu_tensor_alloc(DS4_N_EXPERT_USED * sizeof(float));
+     g->spex_hidden_scores = ds4_gpu_tensor_alloc(DS4_N_EXPERT * sizeof(float));
+     g->spex_hidden_topk = ds4_gpu_tensor_alloc(DS4_N_EXPERT * sizeof(uint32_t));
++    g->spex_hidden_topk_readback =
++        ds4_gpu_async_read_alloc(DS4_N_EXPERT * sizeof(uint32_t));
+     g->routed_gate = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+     g->routed_up = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+     g->routed_mid = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+@@ -11420,6 +11427,7 @@ static bool metal_graph_alloc_raw_cap(
+                     g->shared_out &&
+                     g->router_logits && g->router_probs && g->router_selected && g->router_weights &&
+                     g->spex_hidden_scores && g->spex_hidden_topk &&
++                    g->spex_hidden_topk_readback &&
+                     g->routed_gate && g->routed_up && g->routed_mid &&
+                     g->routed_down && g->routed_out &&
+                     g->after_ffn_hc &&
+@@ -14724,6 +14732,7 @@ static ds4_spex_hidden_params g_spex_hidden_params;
+ static bool metal_graph_spex_hidden_prefetch_enabled(void);
+ static bool metal_graph_spex_hidden_gpu_load_enabled(void);
+ static bool metal_graph_spex_hidden_gpu_score_enabled(void);
++static bool metal_graph_spex_hidden_gpu_prefetch_enabled(void);
+ 
+ static const char *metal_graph_spex_file_path(void) {
+     const char *path = getenv("DS4_SPEX_FILE");
+@@ -15191,13 +15200,15 @@ static const ds4_spex_hidden_params *metal_graph_spex_hidden_params(void) {
+                 }
+             }
+             fprintf(stderr,
+-                    "ds4: SPEX hidden SPX1 loaded '%s' L=%u D=%u E=%u weights=%llu bytes; hidden-readback prefetch=%s\n",
++                    "ds4: SPEX hidden SPX1 loaded '%s' L=%u D=%u E=%u weights=%llu bytes; "
++                    "hidden-readback prefetch=%s gpu-prefetch=%s\n",
+                     g_spex_hidden_params.path,
+                     g_spex_hidden_params.n_layer,
+                     g_spex_hidden_params.n_embd,
+                     g_spex_hidden_params.n_expert,
+                     (unsigned long long)g_spex_hidden_params.weight_bytes,
+-                    metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off");
++                    metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off",
++                    metal_graph_spex_hidden_gpu_prefetch_enabled() ? "on" : "off");
+         } else {
+             fprintf(stderr, "ds4: SPEX hidden disabled: %s\n", err[0] ? err : "load failed");
+             ds4_spex_hidden_free(&g_spex_hidden_params);
+@@ -15279,11 +15290,36 @@ static bool metal_graph_spex_hidden_gpu_load_enabled(void) {
+            strcmp(v, "no") != 0) {
+         return true;
+     }
+-    return metal_graph_spex_hidden_gpu_score_enabled();
++    return metal_graph_spex_hidden_gpu_score_enabled() ||
++           metal_graph_spex_hidden_gpu_prefetch_enabled();
+ }
+ 
+ static bool metal_graph_spex_hidden_gpu_score_enabled(void) {
+     const char *v = getenv("DS4_SPEX_HIDDEN_GPU_SCORE");
++    if (v && v[0] && strcmp(v, "0") != 0 &&
++            strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++            strcmp(v, "no") != 0) {
++        return true;
++    }
++    return metal_graph_spex_hidden_gpu_prefetch_enabled();
++}
++
++static bool metal_graph_spex_hidden_gpu_prefetch_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH");
++    return v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0;
++}
++
++static bool metal_graph_spex_hidden_gpu_prefetch_dry_run(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH_DRY_RUN");
++    return v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0;
++}
++
++static bool metal_graph_spex_prefetch_profile_enabled(void) {
++    const char *v = getenv("DS4_SPEX_PREFETCH_PROFILE");
+     return v && v[0] && strcmp(v, "0") != 0 &&
+            strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
+            strcmp(v, "no") != 0;
+@@ -15355,6 +15391,7 @@ static bool metal_graph_spex_hidden_score_gpu(
+     if (!g || !g->ffn_norm || !g->spex_hidden_scores || !g->spex_hidden_topk) {
+         return false;
+     }
++    g->spex_hidden_gpu_topk_valid = false;
+     const ds4_spex_hidden_params *p = metal_graph_spex_hidden_params();
+     if (!p || !p->gpu_weights) return true;
+     if (il + 1u >= p->n_layer ||
+@@ -15387,13 +15424,41 @@ static bool metal_graph_spex_hidden_score_gpu(
+     }
+     ds4_gpu_tensor_free(layer_weights);
+     if (!ok) return false;
++    if (metal_graph_spex_hidden_gpu_prefetch_enabled() &&
++        il + 1u < DS4_N_LAYER) {
++        if (g->spex_hidden_topk_readback &&
++            ds4_gpu_tensor_read_async(g->spex_hidden_topk_readback,
++                                      g->spex_hidden_topk,
++                                      0,
++                                      (uint64_t)cap * sizeof(uint32_t)) != 0) {
++            g->spex_hidden_gpu_topk_layer = il;
++            g->spex_hidden_gpu_topk_count = cap;
++            g->spex_hidden_gpu_topk_valid = true;
++        } else {
++            static bool warned;
++            if (!warned) {
++                fprintf(stderr,
++                        "ds4: SPEX hidden GPU topK async readback not scheduled "
++                        "(reported once)\n");
++                warned = true;
++            }
++        }
++    } else if (metal_graph_spex_hidden_gpu_prefetch_enabled()) {
++        g->spex_hidden_gpu_topk_valid = false;
++    } else {
++        g->spex_hidden_gpu_topk_layer = il;
++        g->spex_hidden_gpu_topk_count = cap;
++        g->spex_hidden_gpu_topk_valid = true;
++    }
+ 
+     static bool logged;
+     if (!logged) {
+         fprintf(stderr,
+-                "ds4: SPEX hidden GPU scoring active cap=%u (prefetch still %s)\n",
++                "ds4: SPEX hidden GPU scoring active cap=%u "
++                "(hidden-prefetch=%s gpu-prefetch=%s)\n",
+                 cap,
+-                metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off");
++                metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off",
++                metal_graph_spex_hidden_gpu_prefetch_enabled() ? "on" : "off");
+         logged = true;
+     }
+     return true;
+@@ -15404,6 +15469,52 @@ static bool metal_graph_spex_hidden_score_gpu(
+ #endif
+ }
+ 
++static uint32_t metal_graph_spex_hidden_gpu_topk_read(
++        ds4_gpu_graph *g,
++        uint32_t       il,
++        int32_t       *out_ids,
++        uint32_t       out_cap) {
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (!g || !out_ids || out_cap == 0 ||
++        !g->spex_hidden_topk ||
++        !g->spex_hidden_topk_readback ||
++        !g->spex_hidden_gpu_topk_valid ||
++        g->spex_hidden_gpu_topk_layer != il ||
++        g->spex_hidden_gpu_topk_count == 0) {
++        return 0;
++    }
++    uint32_t n = g->spex_hidden_gpu_topk_count;
++    if (n > out_cap) n = out_cap;
++    if (n > DS4_MAX_EXPERT) n = DS4_MAX_EXPERT;
++    if (!ds4_gpu_async_read_ready(g->spex_hidden_topk_readback)) {
++        return 0;
++    }
++    const uint32_t *tmp =
++        (const uint32_t *)ds4_gpu_async_read_host(g->spex_hidden_topk_readback);
++    if (!tmp) return 0;
++    uint32_t out_n = 0;
++    for (uint32_t i = 0; i < n; i++) {
++        if (tmp[i] >= DS4_N_EXPERT) continue;
++        bool seen = false;
++        for (uint32_t j = 0; j < out_n; j++) {
++            if ((uint32_t)out_ids[j] == tmp[i]) {
++                seen = true;
++                break;
++            }
++        }
++        if (!seen) out_ids[out_n++] = (int32_t)tmp[i];
++    }
++    g->spex_hidden_gpu_topk_valid = false;
++    return out_n;
++#else
++    (void)g;
++    (void)il;
++    (void)out_ids;
++    (void)out_cap;
++    return 0;
++#endif
++}
++
+ static uint32_t metal_graph_spex_markov_predict(
+         const ds4_spex_markov_params *p,
+         uint32_t                      il,
+@@ -15775,32 +15886,57 @@ static bool metal_graph_spex_prefetch_next_layer(
+     uint32_t prefetch_n = 0;
+     const char *profile_label = "stage1";
+     if (hidden_spex) {
+-        if (!metal_graph_spex_hidden_prefetch_enabled()) return true;
+-        if (!g->cpu_router_norm || !g->ffn_norm) return true;
+-        const double t0 = getenv("DS4_SPEX_PREFETCH_PROFILE") ? now_sec() : 0.0;
+-        if (ds4_gpu_end_commands() == 0) return false;
+-        const bool read_ok = ds4_gpu_tensor_read(g->ffn_norm,
+-                                                 0,
+-                                                 g->cpu_router_norm,
+-                                                 (uint64_t)DS4_N_EMBD *
+-                                                     sizeof(g->cpu_router_norm[0])) != 0;
+-        if (ds4_gpu_begin_commands() == 0) return false;
+-        if (!read_ok) return true;
+-        prefetch_n = metal_graph_spex_hidden_predict_cpu(hidden_spex,
+-                                                         il,
+-                                                         g->cpu_router_norm,
+-                                                         prefetch_ids,
+-                                                         DS4_MAX_EXPERT);
+-        if (getenv("DS4_SPEX_PREFETCH_PROFILE")) {
+-            const double t1 = now_sec();
+-            fprintf(stderr,
+-                    "ds4: SPEX hidden-readback score L%u->L%u experts=%u %.3f ms\n",
+-                    il,
+-                    next_il,
+-                    prefetch_n,
+-                    (t1 - t0) * 1000.0);
++        const bool gpu_prefetch =
++            metal_graph_spex_hidden_gpu_prefetch_enabled();
++        if (!gpu_prefetch && !metal_graph_spex_hidden_prefetch_enabled()) {
++            return true;
++        }
++        const bool profile = metal_graph_spex_prefetch_profile_enabled();
++        const double t0 = profile ? now_sec() : 0.0;
++        if (gpu_prefetch) {
++            prefetch_n = metal_graph_spex_hidden_gpu_topk_read(g,
++                                                               il,
++                                                               prefetch_ids,
++                                                               DS4_MAX_EXPERT);
++            if (profile) {
++                const double t1 = now_sec();
++                fprintf(stderr,
++                        "ds4: SPEX hidden-gpu topk L%u->L%u experts=%u "
++                        "%.3f ms dry=%d\n",
++                        il,
++                        next_il,
++                        prefetch_n,
++                        (t1 - t0) * 1000.0,
++                        metal_graph_spex_hidden_gpu_prefetch_dry_run() ? 1 : 0);
++            }
++            profile_label = "hidden-gpu";
++            if (metal_graph_spex_hidden_gpu_prefetch_dry_run()) return true;
++        } else {
++            if (!g->cpu_router_norm || !g->ffn_norm) return true;
++            if (ds4_gpu_end_commands() == 0) return false;
++            const bool read_ok = ds4_gpu_tensor_read(g->ffn_norm,
++                                                     0,
++                                                     g->cpu_router_norm,
++                                                     (uint64_t)DS4_N_EMBD *
++                                                         sizeof(g->cpu_router_norm[0])) != 0;
++            if (ds4_gpu_begin_commands() == 0) return false;
++            if (!read_ok) return true;
++            prefetch_n = metal_graph_spex_hidden_predict_cpu(hidden_spex,
++                                                             il,
++                                                             g->cpu_router_norm,
++                                                             prefetch_ids,
++                                                             DS4_MAX_EXPERT);
++            if (profile) {
++                const double t1 = now_sec();
++                fprintf(stderr,
++                        "ds4: SPEX hidden-readback score L%u->L%u experts=%u %.3f ms\n",
++                        il,
++                        next_il,
++                        prefetch_n,
++                        (t1 - t0) * 1000.0);
++            }
++            profile_label = "hidden-readback";
+         }
+-        profile_label = "hidden-readback";
+     } else if (spex_path) {
+         if (!spex) return true;
+         prefetch_n = metal_graph_spex_markov_predict(spex,
+@@ -15829,7 +15965,7 @@ static bool metal_graph_spex_prefetch_next_layer(
+                         prefetch_ids,
+                         NULL,
+                         prefetch_n) != 0;
+-    if (getenv("DS4_SPEX_PREFETCH_PROFILE")) {
++    if (metal_graph_spex_prefetch_profile_enabled()) {
+         fprintf(stderr,
+                 "ds4: SPEX %s prefetch L%u->L%u experts=%u ok=%d\n",
+                 profile_label,
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 585909a..38e7b9f 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -45,6 +45,16 @@ struct ds4_gpu_tensor {
+     int owner;
+ };
+ 
++struct ds4_gpu_async_read {
++    void *host;
++    uint64_t bytes;
++    uint64_t pending_bytes;
++    cudaStream_t stream;
++    cudaEvent_t ready;
++    cudaEvent_t done;
++    int pending;
++};
++
+ typedef struct {
+     uint8_t scales[CUDA_QK_K / 16];
+     uint8_t qs[CUDA_QK_K / 4];
+@@ -3026,6 +3036,80 @@ extern "C" int ds4_gpu_tensor_read(const ds4_gpu_tensor *tensor, uint64_t offset
+     return cuda_ok(cudaMemcpy(data, (const char *)tensor->ptr + offset, (size_t)bytes, cudaMemcpyDeviceToHost), "tensor read");
+ }
+ 
++extern "C" ds4_gpu_async_read *ds4_gpu_async_read_alloc(uint64_t bytes) {
++    if (bytes == 0) bytes = 1;
++    ds4_gpu_async_read *r = (ds4_gpu_async_read *)calloc(1, sizeof(*r));
++    if (!r) return NULL;
++    r->bytes = bytes;
++    if (!cuda_ok(cudaHostAlloc(&r->host, (size_t)bytes, cudaHostAllocDefault),
++                 "async read host alloc") ||
++        !cuda_ok(cudaStreamCreateWithFlags(&r->stream, cudaStreamNonBlocking),
++                 "async read stream create") ||
++        !cuda_ok(cudaEventCreateWithFlags(&r->ready, cudaEventDisableTiming),
++                 "async read ready event create") ||
++        !cuda_ok(cudaEventCreateWithFlags(&r->done, cudaEventDisableTiming),
++                 "async read done event create")) {
++        ds4_gpu_async_read_free(r);
++        return NULL;
++    }
++    return r;
++}
++
++extern "C" void ds4_gpu_async_read_free(ds4_gpu_async_read *readback) {
++    if (!readback) return;
++    if (readback->done) (void)cudaEventDestroy(readback->done);
++    if (readback->ready) (void)cudaEventDestroy(readback->ready);
++    if (readback->stream) (void)cudaStreamDestroy(readback->stream);
++    if (readback->host) (void)cudaFreeHost(readback->host);
++    free(readback);
++}
++
++extern "C" void *ds4_gpu_async_read_host(ds4_gpu_async_read *readback) {
++    return readback ? readback->host : NULL;
++}
++
++extern "C" int ds4_gpu_async_read_ready(ds4_gpu_async_read *readback) {
++    if (!readback || !readback->pending) return 0;
++    cudaError_t err = cudaEventQuery(readback->done);
++    if (err == cudaSuccess) {
++        readback->pending = 0;
++        return 1;
++    }
++    if (err == cudaErrorNotReady) return 0;
++    readback->pending = 0;
++    return cuda_ok(err, "async read query");
++}
++
++extern "C" int ds4_gpu_tensor_read_async(ds4_gpu_async_read *readback,
++                                          const ds4_gpu_tensor *tensor,
++                                          uint64_t offset,
++                                          uint64_t bytes) {
++    if (!readback || !tensor || offset > tensor->bytes ||
++        bytes > tensor->bytes - offset || bytes > readback->bytes) {
++        return 0;
++    }
++    if (readback->pending && !ds4_gpu_async_read_ready(readback)) return 0;
++    readback->pending = 0;
++    readback->pending_bytes = bytes;
++    if (bytes == 0) return 1;
++    if (!cuda_ok(cudaEventRecord(readback->ready, 0),
++                 "async read dependency event record") ||
++        !cuda_ok(cudaStreamWaitEvent(readback->stream, readback->ready, 0),
++                 "async read stream wait") ||
++        !cuda_ok(cudaMemcpyAsync(readback->host,
++                                 (const char *)tensor->ptr + offset,
++                                 (size_t)bytes,
++                                 cudaMemcpyDeviceToHost,
++                                 readback->stream),
++                 "async tensor read copy") ||
++        !cuda_ok(cudaEventRecord(readback->done, readback->stream),
++                 "async read done event record")) {
++        return 0;
++    }
++    readback->pending = 1;
++    return 1;
++}
++
+ extern "C" int ds4_gpu_tensor_read_after_selected_event(const ds4_gpu_tensor *tensor,
+                                                          uint64_t offset,
+                                                          void *data,
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 2cc9e81..f8968cb 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -18,6 +18,7 @@ extern "C" {
+  * buffers stay device-owned across the whole prefill/decode command sequence.
+  */
+ typedef struct ds4_gpu_tensor ds4_gpu_tensor;
++typedef struct ds4_gpu_async_read ds4_gpu_async_read;
+ 
+ int ds4_gpu_init(void);
+ void ds4_gpu_cleanup(void);
+@@ -31,6 +32,14 @@ void *ds4_gpu_tensor_contents(ds4_gpu_tensor *tensor);
+ int ds4_gpu_tensor_fill_f32(ds4_gpu_tensor *tensor, float value, uint64_t count);
+ int ds4_gpu_tensor_write(ds4_gpu_tensor *tensor, uint64_t offset, const void *data, uint64_t bytes);
+ int ds4_gpu_tensor_read(const ds4_gpu_tensor *tensor, uint64_t offset, void *data, uint64_t bytes);
++ds4_gpu_async_read *ds4_gpu_async_read_alloc(uint64_t bytes);
++void ds4_gpu_async_read_free(ds4_gpu_async_read *readback);
++void *ds4_gpu_async_read_host(ds4_gpu_async_read *readback);
++int ds4_gpu_tensor_read_async(ds4_gpu_async_read *readback,
++                              const ds4_gpu_tensor *tensor,
++                              uint64_t offset,
++                              uint64_t bytes);
++int ds4_gpu_async_read_ready(ds4_gpu_async_read *readback);
+ int ds4_gpu_tensor_copy(ds4_gpu_tensor *dst, uint64_t dst_offset,
+                           const ds4_gpu_tensor *src, uint64_t src_offset,
+                           uint64_t bytes);
+-- 
+2.43.0
+

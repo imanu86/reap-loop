@@ -1,0 +1,372 @@
+From ddfc764e724dd78fe7ffae9db33e1fb7ecda3521 Mon Sep 17 00:00:00 2001
+From: root <root@WORKSTATION.localdomain>
+Date: Wed, 8 Jul 2026 21:02:47 +0200
+Subject: [PATCH] spex: instrument hidden gpu prefetch
+
+---
+ ds4.c       | 178 ++++++++++++++++++++++++++++++++++++++++++++++++++--
+ ds4_cuda.cu |  76 ++++++++++++++++++++++
+ ds4_gpu.h   |  11 ++++
+ 3 files changed, 260 insertions(+), 5 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 99ee85d..37f8509 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -15325,6 +15325,100 @@ static bool metal_graph_spex_prefetch_profile_enabled(void) {
+            strcmp(v, "no") != 0;
+ }
+ 
++typedef struct {
++    uint64_t scheduled;
++    uint64_t schedule_failed;
++    uint64_t ready;
++    uint64_t not_ready;
++    uint64_t zero_candidates;
++    uint64_t dry_run;
++    uint64_t seed_calls;
++    uint64_t seed_ok;
++    uint64_t seed_failed;
++    uint64_t seed_skipped_all_resident;
++    uint64_t candidate_experts;
++    uint64_t seed_experts;
++    uint64_t resident_before;
++    double   seed_seconds;
++    bool     atexit_registered;
++} ds4_spex_hidden_gpu_prefetch_stats;
++
++static ds4_spex_hidden_gpu_prefetch_stats g_spex_hidden_gpu_prefetch_stats;
++
++static bool metal_graph_spex_hidden_gpu_prefetch_stats_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS");
++    if (v && v[0] && strcmp(v, "0") != 0 &&
++            strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++            strcmp(v, "no") != 0) {
++        return true;
++    }
++    return metal_graph_spex_prefetch_profile_enabled();
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_print(const char *why) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    const ds4_spex_hidden_gpu_prefetch_stats *s =
++        &g_spex_hidden_gpu_prefetch_stats;
++    if (s->scheduled == 0 && s->seed_calls == 0 && s->ready == 0 &&
++        s->not_ready == 0) {
++        return;
++    }
++    const double seed_ms = s->seed_seconds * 1000.0;
++    fprintf(stderr,
++            "ds4: SPEX hidden-gpu prefetch stats %s "
++            "scheduled=%" PRIu64 " schedule_failed=%" PRIu64
++            " ready=%" PRIu64 " not_ready=%" PRIu64
++            " zero=%" PRIu64 " dry=%" PRIu64
++            " seed_calls=%" PRIu64 " seed_ok=%" PRIu64
++            " seed_failed=%" PRIu64 " skipped_all_resident=%" PRIu64
++            " candidate_experts=%" PRIu64
++            " seed_experts=%" PRIu64 " resident_before=%" PRIu64
++            " seed_ms=%.3f\n",
++            why ? why : "summary",
++            s->scheduled,
++            s->schedule_failed,
++            s->ready,
++            s->not_ready,
++            s->zero_candidates,
++            s->dry_run,
++            s->seed_calls,
++            s->seed_ok,
++            s->seed_failed,
++            s->seed_skipped_all_resident,
++            s->candidate_experts,
++            s->seed_experts,
++            s->resident_before,
++            seed_ms);
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_atexit(void) {
++    metal_graph_spex_hidden_gpu_prefetch_stats_print("exit");
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_touch(void) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    if (!g_spex_hidden_gpu_prefetch_stats.atexit_registered) {
++        atexit(metal_graph_spex_hidden_gpu_prefetch_stats_atexit);
++        g_spex_hidden_gpu_prefetch_stats.atexit_registered = true;
++    }
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print(void) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    const uint32_t every = metal_graph_spex_env_u32(
++        "DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS_EVERY",
++        256,
++        UINT32_MAX);
++    if (every == 0) return;
++    const uint64_t events =
++        g_spex_hidden_gpu_prefetch_stats.ready +
++        g_spex_hidden_gpu_prefetch_stats.not_ready +
++        g_spex_hidden_gpu_prefetch_stats.seed_calls;
++    if (events != 0 && events % every == 0) {
++        metal_graph_spex_hidden_gpu_prefetch_stats_print("periodic");
++    }
++}
++
+ static uint32_t metal_graph_spex_hidden_cap(uint32_t out_cap) {
+     uint32_t fallback = metal_graph_spex_env_u32("DS4_SPEX_CAP",
+                                                  DS4_N_EXPERT_USED,
+@@ -15431,10 +15525,14 @@ static bool metal_graph_spex_hidden_score_gpu(
+                                       g->spex_hidden_topk,
+                                       0,
+                                       (uint64_t)cap * sizeof(uint32_t)) != 0) {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.scheduled++;
+             g->spex_hidden_gpu_topk_layer = il;
+             g->spex_hidden_gpu_topk_count = cap;
+             g->spex_hidden_gpu_topk_valid = true;
+         } else {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.schedule_failed++;
+             static bool warned;
+             if (!warned) {
+                 fprintf(stderr,
+@@ -15487,8 +15585,13 @@ static uint32_t metal_graph_spex_hidden_gpu_topk_read(
+     if (n > out_cap) n = out_cap;
+     if (n > DS4_MAX_EXPERT) n = DS4_MAX_EXPERT;
+     if (!ds4_gpu_async_read_ready(g->spex_hidden_topk_readback)) {
++        metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++        g_spex_hidden_gpu_prefetch_stats.not_ready++;
++        metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
+         return 0;
+     }
++    metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++    g_spex_hidden_gpu_prefetch_stats.ready++;
+     const uint32_t *tmp =
+         (const uint32_t *)ds4_gpu_async_read_host(g->spex_hidden_topk_readback);
+     if (!tmp) return 0;
+@@ -15885,9 +15988,11 @@ static bool metal_graph_spex_prefetch_next_layer(
+         (!hidden_path && spex_path) ? metal_graph_spex_markov_params() : NULL;
+     uint32_t prefetch_n = 0;
+     const char *profile_label = "stage1";
++    bool used_hidden_gpu_prefetch = false;
+     if (hidden_spex) {
+         const bool gpu_prefetch =
+             metal_graph_spex_hidden_gpu_prefetch_enabled();
++        used_hidden_gpu_prefetch = gpu_prefetch;
+         if (!gpu_prefetch && !metal_graph_spex_hidden_prefetch_enabled()) {
+             return true;
+         }
+@@ -15910,7 +16015,15 @@ static bool metal_graph_spex_prefetch_next_layer(
+                         metal_graph_spex_hidden_gpu_prefetch_dry_run() ? 1 : 0);
+             }
+             profile_label = "hidden-gpu";
+-            if (metal_graph_spex_hidden_gpu_prefetch_dry_run()) return true;
++            if (metal_graph_spex_hidden_gpu_prefetch_dry_run()) {
++                metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++                g_spex_hidden_gpu_prefetch_stats.dry_run++;
++                if (prefetch_n == 0) {
++                    g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
++                }
++                metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++                return true;
++            }
+         } else {
+             if (!g->cpu_router_norm || !g->ffn_norm) return true;
+             if (ds4_gpu_end_commands() == 0) return false;
+@@ -15952,7 +16065,14 @@ static bool metal_graph_spex_prefetch_next_layer(
+             prefetch_ids[i] = g->spex_prefetch_selected[i];
+         }
+     }
+-    if (prefetch_n == 0) return true;
++    if (prefetch_n == 0) {
++        if (used_hidden_gpu_prefetch) {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
++            metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++        }
++        return true;
++    }
+ 
+     const ds4_gpu_stream_expert_table table =
+         graph_stream_expert_table_make(model,
+@@ -15960,18 +16080,66 @@ static bool metal_graph_spex_prefetch_next_layer(
+                                        next_il,
+                                        gate_expert_bytes,
+                                        down_expert_bytes);
++    uint32_t resident_before = 0;
++    int32_t seed_ids[DS4_MAX_EXPERT];
++    const int32_t *seed_ids_ptr = prefetch_ids;
++    uint32_t seed_n = prefetch_n;
++    if (used_hidden_gpu_prefetch) {
++        seed_n = ds4_gpu_stream_expert_cache_filter_missing(&table,
++                                                            prefetch_ids,
++                                                            prefetch_n,
++                                                            seed_ids,
++                                                            DS4_MAX_EXPERT,
++                                                            &resident_before);
++        seed_ids_ptr = seed_ids;
++        metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++        g_spex_hidden_gpu_prefetch_stats.candidate_experts += prefetch_n;
++        g_spex_hidden_gpu_prefetch_stats.resident_before += resident_before;
++        g_spex_hidden_gpu_prefetch_stats.seed_experts += seed_n;
++        if (seed_n == 0) {
++            g_spex_hidden_gpu_prefetch_stats.seed_skipped_all_resident++;
++            metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++            if (metal_graph_spex_prefetch_profile_enabled()) {
++                fprintf(stderr,
++                        "ds4: SPEX %s prefetch L%u->L%u experts=%u "
++                        "missing=%u resident=%u skip=all-resident\n",
++                        profile_label,
++                        il,
++                        next_il,
++                        prefetch_n,
++                        seed_n,
++                        resident_before);
++            }
++            return true;
++        }
++    }
++    const double seed_t0 = used_hidden_gpu_prefetch ? now_sec() : 0.0;
+     const bool ok = ds4_gpu_stream_expert_cache_seed_experts_async(
+                         &table,
+-                        prefetch_ids,
++                        seed_ids_ptr,
+                         NULL,
+-                        prefetch_n) != 0;
++                        seed_n) != 0;
++    if (used_hidden_gpu_prefetch) {
++        const double seed_t1 = now_sec();
++        g_spex_hidden_gpu_prefetch_stats.seed_calls++;
++        g_spex_hidden_gpu_prefetch_stats.seed_seconds += seed_t1 - seed_t0;
++        if (ok) {
++            g_spex_hidden_gpu_prefetch_stats.seed_ok++;
++        } else {
++            g_spex_hidden_gpu_prefetch_stats.seed_failed++;
++        }
++        metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++    }
+     if (metal_graph_spex_prefetch_profile_enabled()) {
+         fprintf(stderr,
+-                "ds4: SPEX %s prefetch L%u->L%u experts=%u ok=%d\n",
++                "ds4: SPEX %s prefetch L%u->L%u experts=%u missing=%u "
++                "resident=%u ok=%d\n",
+                 profile_label,
+                 il,
+                 next_il,
+                 prefetch_n,
++                seed_n,
++                resident_before,
+                 ok ? 1 : 0);
+     }
+     return ok;
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 38e7b9f..68b022c 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -3476,6 +3476,82 @@ extern "C" uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+     return cuda_stream_expert_cache_configured_budget();
+ }
+ 
++static int cuda_stream_expert_cache_contains_table(
++        const cuda_stream_expert_cache       *cache,
++        const ds4_gpu_stream_expert_table    *table,
++        uint32_t                              expert) {
++    if (!cache || !table || !cache->valid || cache->capacity == 0) return 0;
++    for (uint32_t slot_i = 0; slot_i < cache->capacity; slot_i++) {
++        const cuda_stream_expert_cache_slot &slot = cache->slots[slot_i];
++        if (slot.valid &&
++            slot.model_map == table->model_map &&
++            slot.model_size == table->model_size &&
++            slot.layer == table->layer &&
++            slot.n_total_expert == table->n_total_expert &&
++            slot.expert == expert &&
++            slot.gate_offset == table->gate_offset &&
++            slot.up_offset == table->up_offset &&
++            slot.down_offset == table->down_offset &&
++            slot.gate_expert_bytes == table->gate_expert_bytes &&
++            slot.down_expert_bytes == table->down_expert_bytes) {
++            return 1;
++        }
++    }
++    return 0;
++}
++
++extern "C" uint32_t ds4_gpu_stream_expert_cache_count_resident(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts) {
++    if (!table || !expert_ids || n_experts == 0) return 0;
++    const cuda_stream_expert_cache *cache = &g_stream_expert_cache;
++    if (!cache->valid || cache->capacity == 0) return 0;
++    uint32_t resident = 0;
++    for (uint32_t i = 0; i < n_experts; i++) {
++        const int32_t expert = expert_ids[i];
++        if (expert < 0 || (uint32_t)expert >= table->n_total_expert) continue;
++        if (cuda_stream_expert_cache_contains_table(cache,
++                                                    table,
++                                                    (uint32_t)expert)) {
++            resident++;
++        }
++    }
++    return resident;
++}
++
++extern "C" uint32_t ds4_gpu_stream_expert_cache_filter_missing(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts,
++        int32_t                           *missing_ids,
++        uint32_t                           missing_cap,
++        uint32_t                          *resident_count) {
++    if (resident_count) *resident_count = 0;
++    if (!table || !expert_ids || !missing_ids || n_experts == 0 ||
++        missing_cap == 0) {
++        return 0;
++    }
++    const cuda_stream_expert_cache *cache = &g_stream_expert_cache;
++    uint32_t missing = 0;
++    uint32_t resident = 0;
++    for (uint32_t i = 0; i < n_experts; i++) {
++        const int32_t expert = expert_ids[i];
++        if (expert < 0 || (uint32_t)expert >= table->n_total_expert) continue;
++        if (cuda_stream_expert_cache_contains_table(cache,
++                                                    table,
++                                                    (uint32_t)expert)) {
++            resident++;
++            continue;
++        }
++        if (missing < missing_cap) {
++            missing_ids[missing++] = expert;
++        }
++    }
++    if (resident_count) *resident_count = resident;
++    return missing;
++}
++
+ extern "C" int ds4_gpu_stream_expert_cache_seed_selected(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *selected_ids,
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index f8968cb..9bbd2d0 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -105,6 +105,17 @@ void ds4_gpu_stream_expert_cache_release_resident(void);
+ uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+         uint64_t gate_expert_bytes,
+         uint64_t down_expert_bytes);
++uint32_t ds4_gpu_stream_expert_cache_count_resident(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts);
++uint32_t ds4_gpu_stream_expert_cache_filter_missing(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts,
++        int32_t                           *missing_ids,
++        uint32_t                           missing_cap,
++        uint32_t                          *resident_count);
+ int ds4_gpu_stream_expert_cache_seed_selected(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *selected_ids,
+-- 
+2.43.0
+
