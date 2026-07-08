@@ -6,8 +6,10 @@ are implemented in DS4 commit `4de3131` (`tiering: optionally log selected
 expert ids`) behind `DS4_EXPERT_TIERING_LOG_IDS=1`. Compression, sidecars,
 and lossy cold formats are still design/open work. Metadata-only dynamic
 promotion simulation, including prompt-derived preloading, exists in
-`scripts/analyze_tiering_observe.py`. Do not treat any speed, RAM, or quality
-benefit below as a claim until the local/pod tests in this document pass.
+`scripts/analyze_tiering_observe.py`; DS4 commit `e3167cc` adds the matching
+runtime observe policy behind `DS4_EXPERT_TIER_POLICY=observe_promote`. Do not
+treat any speed, RAM, or quality benefit below as a claim until the local/pod
+tests in this document pass.
 
 ## Goal
 
@@ -265,6 +267,11 @@ Implementation status as of 2026-07-08:
   expert footprint; cap512 is cheaper at about 10.54 GiB but only hot-hit
   0.6811. This makes prompt-derived promotion the first plausible shape for the
   user's "compress all, dynamically decompress router-winners" idea.
+- J33 wires the same state transition into DS4 as metadata-only runtime
+  instrumentation. `DS4_EXPERT_TIER_POLICY=observe_promote` records prompt
+  batches, preloaded hotset size, decode hot hits, promotions, evictions, and
+  hot count in the existing tiering JSONL rows. Smoke confirms prompt:43 and
+  decode:86 phases on a 2-token local request.
 - Important implication: do not build an on-demand-only decompressor first.
   The runtime prototype should preload from prompt/router observations, then
   promote misses asynchronously. Otherwise the decompressor lands on the token
@@ -414,7 +421,9 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    replay. It also supports prompt-derived preloading with
    `--tier-prefill-rows auto` and reports runtime promotions/promotion-rate.
    Runtime path timing still requires real observe JSONL.
-3. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
-4. Wire cold miss promotion into the existing cache miss path.
-5. Add one lossy cold format for a tiny opt-in subset, then run pod quality
+3. ~~Add metadata-only DS4 runtime observe-promote policy.~~ Done in `/root/ds4`
+   commit `e3167cc`; it does not alter tensors or speed path yet.
+4. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
+5. Wire cold miss promotion into the existing cache miss path.
+6. Add one lossy cold format for a tiny opt-in subset, then run pod quality
    gates before wider enablement.
