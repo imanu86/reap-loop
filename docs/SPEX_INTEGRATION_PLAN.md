@@ -18,6 +18,9 @@ piu' avanti e piu' specifico:
 - DS4 ha un path sperimentale di hidden-readback prefetch in commit `818ebcf`,
   ma non va usato come default: richiede `ds4_gpu_tensor_read` del router input
   e sincronizza CPU/GPU, peggiorando TTFT sui run locali.
+- DS4 ha un primo foothold GPU-side in commit `e85e256`: con
+  `DS4_SPEX_HIDDEN_GPU_LOAD=1` carica gli 86 MiB di pesi SPX1 su un
+  `ds4_gpu_tensor` senza attivare scoring o prefetch.
 - Il launcher locale tiene quindi `DS4_SPEX_HIDDEN_PREFETCH=0`.
 - Lo script `scripts/analyze_spex_hidden_trace.py` valuta offline un file SPX1
   contro trace reali `DS4_SPEX_TRACE_HIDDEN` + `DS4_SPEX_TRACE_ROUTING`.
