@@ -1,9 +1,12 @@
 # Dynamic Expert Compression Plan
 
 Status: Step 0 observe-only is implemented in DS4 commit `94e9a7d`
-(`cuda: add expert tiering observe mode`). Compression, sidecars, demotion, and
-lossy cold formats are still design/open work. Do not treat any speed, RAM, or
-quality benefit below as a claim until the local/pod tests in this document pass.
+(`cuda: add expert tiering observe mode`). Step 0.1 ID-bearing observe traces
+are implemented in DS4 commit `4de3131` (`tiering: optionally log selected
+expert ids`) behind `DS4_EXPERT_TIERING_LOG_IDS=1`. Compression, sidecars,
+demotion, and lossy cold formats are still design/open work. Do not treat any
+speed, RAM, or quality benefit below as a claim until the local/pod tests in
+this document pass.
 
 ## Goal
 
@@ -16,6 +19,13 @@ controller for live expert relevance; compression is a tiering layer under it.
 Target hardware: RTX 3060 12GB under WSL with about 62GB RAM. This is a
 capacity- and I/O-bound target, so the design optimizes for controlled fallback
 and measurement first, not for assumed throughput gains.
+
+Updated local target after J17: dynamic compression should be measured as
+**effective resident-capacity expansion**, not just as smaller cold files. On a
+160-token local HTML trace, simulated global LRU hit-rate over compact expert
+IDs was 0.3396 at cap 258, 0.5927 at cap 512, and 0.7438 at cap 1024. The
+practical goal is therefore to make the 3060 behave closer to cap 512+ without
+allocating uncompressed 512+ resident expert slots.
 
 ## Current DS4 Facts To Preserve
 
@@ -134,6 +144,7 @@ Use env flags so the stock behavior remains the default.
 |---|---|---|
 | `DS4_EXPERT_TIERING` | `0` | Master enable. Only `observe` is implemented today; off means current DS4 behavior. |
 | `DS4_EXPERT_TIERING_LOG` | unset | Implemented optional JSONL event log for current selected-load/cache observations. |
+| `DS4_EXPERT_TIERING_LOG_IDS` | `0` | Implemented optional ID trace: appends `selected` and `compact_ids` arrays to observe JSONL rows for offline policy simulation. |
 | `DS4_EXPERT_TIERING_SUMMARY_EVERY` | `0` | Implemented optional stderr summary interval by observed batches. |
 | `DS4_EXPERT_TIER_POLICY` | `observe` | Planned future policy: `observe`, `warm-only`, `cold-sidecar`, `frozen-ssd`. |
 | `DS4_EXPERT_COLD_FORMAT` | `native` | `native`, `q4`, `q2`, `q1`, `pack`. MVP starts with `native`/metadata only. |
@@ -183,9 +194,14 @@ Implementation status as of 2026-07-08:
 
 - DS4 commit `94e9a7d` adds CUDA observe-only behind
   `DS4_EXPERT_TIERING=observe`.
+- DS4 commit `4de3131` adds optional ID-bearing JSONL rows behind
+  `DS4_EXPERT_TIERING_LOG_IDS=1`. Default remains off because the arrays make
+  logs heavier.
 - JSONL events include `time_unix`, `path` (`resident` or
   `selected_direct`), layer, slot/compact counts, cache capacity, before/after
   resident count, hits, misses, direct loads, evictions, and byte estimates.
+  With `DS4_EXPERT_TIERING_LOG_IDS=1`, rows also include selected expert IDs
+  and the compact working-set IDs used by that batch.
 - The local launcher currently defaults to
   `DS4_EXPERT_TIERING=observe` and writes
   `/root/ds4_tiering_observe.jsonl`.
@@ -194,7 +210,12 @@ Implementation status as of 2026-07-08:
   evictions 0. This is diagnostic only, not a throughput claim.
 - `scripts/analyze_tiering_observe.py` summarizes one or more observe JSONL
   files into path shares, cache capacities, hit/miss/direct totals, byte totals,
-  and worst layers.
+  and worst layers. With ID traces, `--simulate-cap` replays a global LRU over
+  `(layer, expert)` keys.
+- First representative ID trace (J17, HTML160) produced 6923 events and 5653
+  unique compact `(layer, expert)` pairs. LRU sim: cap64 0.0000, cap128 0.0000,
+  cap258 0.3396, cap512 0.5927, cap1024 0.7438. This is not a speed claim; it
+  is a capacity-pressure estimate for the next runtime policy.
 - Important implication: the next engineering step is not lossy compression
   yet. First split/measure the selected-direct path versus resident-cache path
   on longer prompts, then decide where cold compression can actually remove
