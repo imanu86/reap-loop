@@ -38,7 +38,9 @@ Sorgente DS4 verificato dopo J15:
 
 - `g->ffn_norm` e' gia' il tensor F32 device-resident da usare come feature.
 - `ds4_gpu_matmul_f16_tensor` esiste gia' e puo' calcolare score F32 da pesi
-  F16, evitando un kernel GEMV custom nel primo prototipo.
+  F16 residenti nel GGUF. Per SPX1, commit `/root/ds4` `269056a` aggiunge
+  `ds4_gpu_matmul_f16_weight_tensor`, che accetta direttamente un
+  `ds4_gpu_tensor` di pesi F16.
 - `ds4_gpu_indexer_topk_tensor` esiste gia' e puo' trasformare scores in topK.
 - Quindi il primo micro-step pratico e' un loader `SPX1 -> ds4_gpu_tensor`
   per layer o un buffer device unico, piu' una funzione
