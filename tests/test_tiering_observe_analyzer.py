@@ -35,6 +35,9 @@ def test_lru_capacity_cost_is_reported():
         tier_warm_scale=1.0,
         tier_cold_scale=0.5,
         tier_frozen_scale=0.0,
+        tier_prefill_rows="0",
+        tier_preload_top=0,
+        tier_preload_source="selected",
     )
 
     assert "cap=2 requests=4 hit_rate=0.2500 hits=1 misses=3" in text
@@ -71,6 +74,8 @@ def test_tier_policy_tracks_hot_warm_cold_and_frozen_recalls():
     assert result["warm_hits"] == 1
     assert result["frozen_recalls"] == 1
     assert result["initial_loads"] == 7
+    assert result["promotions"] == 8
+    assert result["promotion_rate"] == 0.8
     assert result["peak_hot"] == 2
     assert result["peak_warm"] >= 1
 
@@ -96,10 +101,14 @@ def test_tier_policy_is_reported_in_summary():
         tier_warm_scale=1.0,
         tier_cold_scale=0.25,
         tier_frozen_scale=0.0,
+        tier_prefill_rows="0",
+        tier_preload_top=0,
+        tier_preload_source="selected",
     )
 
     assert "tier_sim: source=compact_ids warm_grace=1 freeze_after=4" in text
     assert "cap=2 requests=4 hot_hit_rate=0.2500 served_hit_rate=0.2500" in text
+    assert "promotions=3 promotion_rate=0.7500" in text
     assert "footprint_scaled=" in text
 
 
@@ -131,3 +140,38 @@ def test_routing_csv_can_feed_tier_simulation(tmp_path):
     assert rows[0]["compact_ids"] == [1, 2, 3]
     assert result["requests"] == 6
     assert result["hot_hits"] == 1
+
+
+def test_prompt_preload_replays_after_prefill_rows():
+    mod = _load_module()
+    rows = [
+        {"event": "tiering_observe", "layer": 0, "selected": [1, 1, 2], "compact_ids": [1, 2], "path": "selected_direct"},
+        {"event": "tiering_observe", "layer": 1, "selected": [3], "compact_ids": [3], "path": "selected_direct"},
+        {"event": "tiering_observe", "layer": 0, "selected": [1], "compact_ids": [1], "path": "selected_direct"},
+        {"event": "tiering_observe", "layer": 1, "selected": [3], "compact_ids": [3], "path": "selected_direct"},
+    ]
+
+    assert mod.infer_first_layer_cycle_rows(rows) == 2
+    text = mod.summarize(
+        rows,
+        top=1,
+        simulate_cap=[],
+        slot_mib=10.0,
+        capacity_scales=[],
+        target_hit_rate=[],
+        tier_sim_cap=[2],
+        tier_sim_source="compact_ids",
+        tier_warm_grace=0,
+        tier_freeze_after=0,
+        tier_warm_scale=1.0,
+        tier_cold_scale=0.25,
+        tier_frozen_scale=0.0,
+        tier_prefill_rows="auto",
+        tier_preload_top=2,
+        tier_preload_source="selected",
+    )
+
+    assert "prefill_rows=2 preload_source=selected" in text
+    assert "requests=2" in text
+    assert "preloaded=2" in text
+    assert "hot_hits=1" in text

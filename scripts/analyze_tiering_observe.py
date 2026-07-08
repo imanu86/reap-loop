@@ -157,12 +157,59 @@ def row_expert_ids(row: dict, source: str) -> list[tuple[int, int]]:
     return out
 
 
+def infer_first_layer_cycle_rows(rows: list[dict]) -> int:
+    """Return the first contiguous layer cycle, usually one prompt/prefill batch."""
+
+    if not rows:
+        return 0
+    prev_layer = int(rows[0].get("layer") or 0)
+    for idx, row in enumerate(rows[1:], 1):
+        layer = int(row.get("layer") or 0)
+        if layer <= prev_layer:
+            return idx
+        prev_layer = layer
+    return len(rows)
+
+
+def resolve_prefill_rows(value: str, rows: list[dict]) -> int:
+    if value.lower() == "auto":
+        return infer_first_layer_cycle_rows(rows)
+    try:
+        resolved = int(value)
+    except ValueError as exc:
+        raise SystemExit(f"bad --tier-prefill-rows value {value!r}") from exc
+    if resolved < 0:
+        raise SystemExit("--tier-prefill-rows must be >= 0 or 'auto'")
+    return min(resolved, len(rows))
+
+
+def prompt_top_keys(
+    rows: list[dict],
+    limit: int,
+    source: str,
+) -> list[tuple[int, int]]:
+    if limit <= 0:
+        return []
+    counts: collections.Counter[tuple[int, int]] = collections.Counter()
+    first_seen: dict[tuple[int, int], int] = {}
+    for row_idx, row in enumerate(rows):
+        for key in row_expert_ids(row, source):
+            counts[key] += 1
+            first_seen.setdefault(key, row_idx)
+    ranked = sorted(
+        counts,
+        key=lambda key: (-counts[key], first_seen[key], key[0], key[1]),
+    )
+    return ranked[:limit]
+
+
 def simulate_tier_policy(
     rows: list[dict],
     cap: int,
     source: str,
     warm_grace: int,
     freeze_after: int,
+    initial_hot: list[tuple[int, int]] | None = None,
 ) -> dict[str, int | float]:
     """Replay a metadata-only hot/warm/cold/frozen tier policy.
 
@@ -182,6 +229,13 @@ def simulate_tier_policy(
     last_seen: dict[tuple[int, int], int] = {}
     out: collections.defaultdict[str, int] = collections.defaultdict(int)
     peak_hot = peak_warm = peak_cold = peak_frozen = 0
+
+    for key in reversed((initial_hot or [])[:cap]):
+        hot[key] = None
+        seen.add(key)
+        last_seen[key] = -1
+    out["preloaded"] = len(hot)
+    peak_hot = len(hot)
 
     def expire_warm(event_index: int) -> None:
         expired = [key for key, until in warm_until.items() if until < event_index]
@@ -265,6 +319,12 @@ def simulate_tier_policy(
         (out["hot_hits"] + out["warm_hits"]) / out["requests"]
         if out["requests"] else 0.0
     )
+    promotions = out["initial_loads"] + out["cold_recalls"] + out["frozen_recalls"]
+    out["promotions"] = promotions
+    out["total_promotions"] = promotions + out["preloaded"]
+    out["promotion_rate"] = promotions / out["requests"] if out["requests"] else 0.0
+    hot_misses = out["requests"] - out["hot_hits"]
+    out["warm_rescue_rate"] = out["warm_hits"] / hot_misses if hot_misses else 0.0
     return dict(out)
 
 
@@ -317,6 +377,9 @@ def summarize(
     tier_warm_scale: float,
     tier_cold_scale: float,
     tier_frozen_scale: float,
+    tier_prefill_rows: str,
+    tier_preload_top: int,
+    tier_preload_source: str,
 ) -> str:
     if not rows:
         return "No tiering_observe rows found."
@@ -405,19 +468,31 @@ def summarize(
                         f"{capacity_cost(cap, slot_mib, capacity_scales)}"
                     )
         if tier_sim_cap:
+            prefill_count = resolve_prefill_rows(tier_prefill_rows, rows)
+            prefill_rows = rows[:prefill_count]
+            replay_rows = rows[prefill_count:] if prefill_count else rows
             lines.append(
                 "tier_sim:"
                 f" source={tier_sim_source}"
                 f" warm_grace={tier_warm_grace}"
                 f" freeze_after={tier_freeze_after}"
+                f" prefill_rows={prefill_count}"
+                f" preload_source={tier_preload_source}"
             )
             for cap in tier_sim_cap:
+                preload_limit = min(cap, tier_preload_top or cap)
+                initial_hot = prompt_top_keys(
+                    prefill_rows,
+                    preload_limit,
+                    tier_preload_source,
+                )
                 result = simulate_tier_policy(
-                    rows,
+                    replay_rows,
                     cap=cap,
                     source=tier_sim_source,
                     warm_grace=tier_warm_grace,
                     freeze_after=tier_freeze_after,
+                    initial_hot=initial_hot,
                 )
                 lines.append(
                     f"  cap={cap} requests={int(result.get('requests') or 0)} "
@@ -428,6 +503,11 @@ def summarize(
                     f"cold_recalls={int(result.get('cold_recalls') or 0)} "
                     f"frozen_recalls={int(result.get('frozen_recalls') or 0)} "
                     f"initial_loads={int(result.get('initial_loads') or 0)} "
+                    f"preloaded={int(result.get('preloaded') or 0)} "
+                    f"promotions={int(result.get('promotions') or 0)} "
+                    f"total_promotions={int(result.get('total_promotions') or 0)} "
+                    f"promotion_rate={float(result.get('promotion_rate') or 0.0):.4f} "
+                    f"warm_rescue_rate={float(result.get('warm_rescue_rate') or 0.0):.4f} "
                     f"hot_evictions={int(result.get('hot_evictions') or 0)} "
                     f"warm_demotions={int(result.get('warm_demotions') or 0)} "
                     f"unique={int(result.get('unique') or 0)} "
@@ -553,6 +633,26 @@ def main() -> int:
         default=0.0,
         help="Footprint multiplier for frozen tier in tier simulation.",
     )
+    ap.add_argument(
+        "--tier-prefill-rows",
+        default="0",
+        help=(
+            "Use the first N rows, or 'auto' for the first layer cycle, as a "
+            "router signal to preload hot experts before replaying the rest."
+        ),
+    )
+    ap.add_argument(
+        "--tier-preload-top",
+        type=int,
+        default=0,
+        help="Number of prompt-ranked experts to preload. 0 means preload up to cap.",
+    )
+    ap.add_argument(
+        "--tier-preload-source",
+        choices=("compact_ids", "selected"),
+        default="selected",
+        help="Which ID array scores prompt-derived preloads.",
+    )
     args = ap.parse_args()
     rows = load_rows(args.trace)
     print(
@@ -570,6 +670,9 @@ def main() -> int:
             args.tier_warm_scale,
             args.tier_cold_scale,
             args.tier_frozen_scale,
+            args.tier_prefill_rows,
+            args.tier_preload_top,
+            args.tier_preload_source,
         )
     )
     return 0

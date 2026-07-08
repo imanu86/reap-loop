@@ -4,9 +4,10 @@ Status: Step 0 observe-only is implemented in DS4 commit `94e9a7d`
 (`cuda: add expert tiering observe mode`). Step 0.1 ID-bearing observe traces
 are implemented in DS4 commit `4de3131` (`tiering: optionally log selected
 expert ids`) behind `DS4_EXPERT_TIERING_LOG_IDS=1`. Compression, sidecars,
-demotion, and lossy cold formats are still design/open work. Do not treat any
-speed, RAM, or quality benefit below as a claim until the local/pod tests in
-this document pass.
+and lossy cold formats are still design/open work. Metadata-only dynamic
+promotion simulation, including prompt-derived preloading, exists in
+`scripts/analyze_tiering_observe.py`. Do not treat any speed, RAM, or quality
+benefit below as a claim until the local/pod tests in this document pass.
 
 ## Goal
 
@@ -26,6 +27,12 @@ Updated local target after J17: dynamic compression should be measured as
 IDs was 0.3396 at cap 258, 0.5927 at cap 512, and 0.7438 at cap 1024. The
 practical goal is therefore to make the 3060 behave closer to cap 512+ without
 allocating uncompressed 512+ resident expert slots.
+
+Updated local target after J32: the plausible shape is prompt-preloaded dynamic
+promotion, not on-demand-only decompression. On J31 run2, cap1024 with
+prompt-derived preload and immediate compressed demotion reached 0.8489 hot-hit
+with 0.1511 runtime promotion-rate and about 13.13 GiB scaled expert footprint
+under an x0.33 cold-RAM assumption.
 
 ## Current DS4 Facts To Preserve
 
@@ -250,10 +257,18 @@ Implementation status as of 2026-07-08:
   out of 6923. LRU over compact IDs was stable across runs: cap258 about 0.34,
   cap512 about 0.61, cap1024 about 0.76, cap2048 about 0.81. The warm wall-clock
   gain is therefore page/cache warmth, not a better resident-cache path.
-- Important implication: the next engineering step is not lossy compression
-  yet. First split/measure the selected-direct path versus resident-cache path
-  on longer prompts, then decide where cold compression can actually remove
-  bytes from the bottleneck.
+- J32 adds the first all-compressed/prompt-preload policy simulation. With
+  `--tier-prefill-rows auto`, the analyzer uses the first layer cycle as the
+  prompt router signal, preloads the top prompt-ranked experts, then replays
+  decode. On J31 run2, cap1024 with immediate demotion to x0.33 compressed RAM
+  reaches hot-hit 0.8489 with promotion-rate 0.1511 and about 13.13 GiB scaled
+  expert footprint; cap512 is cheaper at about 10.54 GiB but only hot-hit
+  0.6811. This makes prompt-derived promotion the first plausible shape for the
+  user's "compress all, dynamically decompress router-winners" idea.
+- Important implication: do not build an on-demand-only decompressor first.
+  The runtime prototype should preload from prompt/router observations, then
+  promote misses asynchronously. Otherwise the decompressor lands on the token
+  critical path and only moves the stall from SSD read to CPU/repack.
 
 Local launcher follow-up (J11/J21): hidden-readback SPEX was disabled again
 because it made TTFT unusable. GPU-side hidden score/topK now exists behind
@@ -396,7 +411,9 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    compression opportunities/churn offline.~~ `scripts/analyze_tiering_observe.py`
    now accepts tiering JSONL, routing CSV, and routing `.tgz`; it reports LRU
    capacity, target hit-rate, and a metadata-only hot/warm/cold/frozen policy
-   replay. Runtime path timing still requires real observe JSONL.
+   replay. It also supports prompt-derived preloading with
+   `--tier-prefill-rows auto` and reports runtime promotions/promotion-rate.
+   Runtime path timing still requires real observe JSONL.
 3. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
 4. Wire cold miss promotion into the existing cache miss path.
 5. Add one lossy cold format for a tiny opt-in subset, then run pod quality
