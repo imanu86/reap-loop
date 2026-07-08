@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import collections
 import json
+from collections import OrderedDict
 from pathlib import Path
 
 
@@ -34,7 +35,39 @@ def mib(n: int) -> float:
     return n / 1048576.0
 
 
-def summarize(rows: list[dict], top: int) -> str:
+def simulate_lru(rows: list[dict], cap: int) -> tuple[int, int, int]:
+    if cap <= 0:
+        return (0, 0, 0)
+    cache: OrderedDict[tuple[int, int], None] = OrderedDict()
+    hits = 0
+    misses = 0
+    requests = 0
+    for row in rows:
+        layer = int(row.get("layer") or 0)
+        ids = row.get("compact_ids")
+        if not isinstance(ids, list):
+            continue
+        for raw in ids:
+            try:
+                expert = int(raw)
+            except (TypeError, ValueError):
+                continue
+            if expert < 0:
+                continue
+            requests += 1
+            key = (layer, expert)
+            if key in cache:
+                hits += 1
+                cache.move_to_end(key)
+            else:
+                misses += 1
+                cache[key] = None
+                if len(cache) > cap:
+                    cache.popitem(last=False)
+    return requests, hits, misses
+
+
+def summarize(rows: list[dict], top: int, simulate_cap: list[int]) -> str:
     if not rows:
         return "No tiering_observe rows found."
 
@@ -64,6 +97,44 @@ def summarize(rows: list[dict], top: int) -> str:
         ),
         f"selected_direct_event_share={direct_share:.3f}",
     ]
+
+    rows_with_ids = [row for row in rows if isinstance(row.get("compact_ids"), list)]
+    if rows_with_ids:
+        compact_req = sum(len(row.get("compact_ids") or []) for row in rows_with_ids)
+        selected_req = sum(len(row.get("selected") or []) for row in rows_with_ids)
+        unique_compact = {
+            (int(row.get("layer") or 0), int(expert))
+            for row in rows_with_ids
+            for expert in (row.get("compact_ids") or [])
+            if isinstance(expert, int) and expert >= 0
+        }
+        unique_selected = {
+            (int(row.get("layer") or 0), int(expert))
+            for row in rows_with_ids
+            for expert in (row.get("selected") or [])
+            if isinstance(expert, int) and expert >= 0
+        }
+        lines.extend(
+            [
+                (
+                    f"id_trace rows={len(rows_with_ids)} selected_req={selected_req} "
+                    f"compact_req={compact_req}"
+                ),
+                (
+                    f"id_trace unique_selected={len(unique_selected)} "
+                    f"unique_compact={len(unique_compact)}"
+                ),
+            ]
+        )
+        if simulate_cap:
+            lines.append("lru_sim:")
+            for cap in simulate_cap:
+                requests, sim_hits, sim_misses = simulate_lru(rows, cap)
+                rate = sim_hits / requests if requests else 0.0
+                lines.append(
+                    f"  cap={cap} requests={requests} hit_rate={rate:.4f} "
+                    f"hits={sim_hits} misses={sim_misses}"
+                )
 
     layer_stats: dict[int, dict[str, int]] = collections.defaultdict(
         lambda: collections.defaultdict(int)
@@ -111,9 +182,10 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("jsonl", nargs="+", type=Path)
     ap.add_argument("--top", type=int, default=10)
+    ap.add_argument("--simulate-cap", type=int, nargs="*", default=[])
     args = ap.parse_args()
     rows = load_rows(args.jsonl)
-    print(summarize(rows, args.top))
+    print(summarize(rows, args.top, args.simulate_cap))
     return 0
 
 
