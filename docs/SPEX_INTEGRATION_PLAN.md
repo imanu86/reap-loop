@@ -31,6 +31,17 @@ SPX1 su GPU, calcolare `score = ffn_norm @ W[L]`, fare topK bounded e passare
 gli ID al prefetch next-layer senza readback host. Qualsiasi soluzione che
 legge `ffn_norm` su CPU resta solo diagnostica.
 
+Sorgente DS4 verificato dopo J15:
+
+- `g->ffn_norm` e' gia' il tensor F32 device-resident da usare come feature.
+- `ds4_gpu_matmul_f16_tensor` esiste gia' e puo' calcolare score F32 da pesi
+  F16, evitando un kernel GEMV custom nel primo prototipo.
+- `ds4_gpu_indexer_topk_tensor` esiste gia' e puo' trasformare scores in topK.
+- Quindi il primo micro-step pratico e' un loader `SPX1 -> ds4_gpu_tensor`
+  per layer o un buffer device unico, piu' una funzione
+  `ds4_gpu_spex_hidden_score_topk(...)` che riusa matmul+topK. Kernel custom e
+  fusione score+topK possono arrivare dopo, solo se il prototipo mostra margine.
+
 Verificato: al layer L, dopo `metal_graph_encode_decode_layer` (ds4.c:19399) e lo swap
 (ds4.c:19412-19414), `g->cur_hc` contiene l'hidden di L = input di L+1. La riga **19391-19392**
 fa GIÀ un readahead dei pesi NON-expert di L+1 (`metal_graph_stream_readahead_layer_decode`).
