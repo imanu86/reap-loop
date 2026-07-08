@@ -200,6 +200,14 @@ Implementation status as of 2026-07-08:
   on longer prompts, then decide where cold compression can actually remove
   bytes from the bottleneck.
 
+Local launcher follow-up (J11): hidden-readback SPEX was disabled again because
+it made TTFT unusable before GPU-side hidden scoring exists. The practical 3060
+launcher uses `DS4_PACE_PREFILL_APPLY=1` and `DS4_PACE_PREFILL_WAIT_WRAP=0`.
+This cuts visible first-token latency versus waiting for WRAP, but observe logs
+still show selected-direct traffic and zero resident hit-rate on short repeated
+requests. Do not start lossy cold-format work until this direct/resident split is
+understood on a real prompt batch.
+
 ### Step 1: warm/frozen metadata simulation
 
 Still no compressed payload. Treat cold/frozen as labels and measure how often
