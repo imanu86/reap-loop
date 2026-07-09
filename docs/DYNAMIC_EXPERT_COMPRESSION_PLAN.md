@@ -17,8 +17,11 @@ expert bytes is effectively useless, so the first smaller cold payload candidate
 is a lossy sign+scale CQ1 sidecar. DS4 commit `809218d` adds the first CQ1
 cold-RAM sidecar prototype behind `DS4_EXPERT_COLD_FORMAT=cq1g32|cq1g64|cq1g256`;
 this is a plumbing/correctness milestone, not a usable speed or quality profile.
-Do not treat any speed, RAM, or quality benefit below as a claim until the
-local/pod tests in this document pass.
+DS4 commit `dc7eaa0` adds the first phase-aware guard: CQ1 is blocked during
+prompt, before prompt hotset finalization, and for a configurable native decode
+warmup (`DS4_EXPERT_COLD_NATIVE_TOKENS`, default 50). Do not treat any speed,
+RAM, or quality benefit below as a claim until the local/pod tests in this
+document pass.
 
 ## Goal
 
@@ -82,6 +85,18 @@ enabled, the same launcher kept CQ1 entries/copies at zero, protecting normal
 runs. Next work must be phase-aware: prompt/prefill and the first
 quality-critical generated tokens stay native, then cold CQ1 is admitted only
 after a prompt-derived hot native set exists.
+
+Runtime note after J37: DS4 commit `dc7eaa0` adds that first gate. CQ1 now
+requires `DS4_EXPERT_TIER_POLICY=observe_promote` unless explicitly ungated via
+`DS4_EXPERT_COLD_ALLOW_UNGATED=1`; prompt/prefill remains native unless
+`DS4_EXPERT_COLD_RAM_PREFILL=1`; default native warmup is 50 generated tokens.
+Local RTX 3060 smokes with cache disabled showed the gate works: with
+`DS4_EXPERT_COLD_NATIVE_TOKENS=50`, CQ1 stayed off (`entries=0`) and reported
+`no_hotset=6`, `warmup=252`; with warmup forced to 0, it materialized 252 CQ1
+entries, copied 252, used about 1134 MiB compressed and repacked about 1701 MiB
+native, with zero failures. That 0-token destructive smoke was still very slow
+and produced only a one-token malformed answer, so the usable path remains
+native prompt plus long native warmup before cold CQ1 experiments.
 
 ## Current DS4 Facts To Preserve
 
@@ -493,8 +508,11 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    latency negative, so the next implementation must add phase-aware admission:
    native prompt/warmup plus a prompt-derived hot native cap such as 1024 or
    2048 before cold CQ1 is allowed.
-6. Wire prompt-preloaded/asynchronous promotion into the existing cache miss
-   path without using prefill-wide native lossless materialization.
+6. Partially done in `/root/ds4` commit `dc7eaa0`: CQ1 is gated by the
+   prompt-derived hotset and native decode warmup, and cache fills receive the
+   real prompt/decode phase instead of being permanently prefill-like. Remaining
+   work: asynchronous promotion/background demotion and quality-gated longer
+   runs.
 7. Add frozen SSD fallback only after cold RAM proves useful, then run pod
    quality
    gates before wider enablement.
