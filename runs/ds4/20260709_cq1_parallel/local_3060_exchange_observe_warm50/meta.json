@@ -1,0 +1,30 @@
+{
+  "label": "exchange_observe_warm50",
+  "started_utc": "2026-07-09T05:16:18+00:00",
+  "finished_utc": "2026-07-09T05:26:07+00:00",
+  "url": "http://127.0.0.1:8013/v1/chat/completions",
+  "model": "deepseek-v4-flash",
+  "max_tokens": 80,
+  "temperature": 0.0,
+  "warmups": 0,
+  "runs": 1,
+  "results": [
+    {
+      "run": 1,
+      "phase": "measured",
+      "wall_s": 589.3908577999973,
+      "usage": {
+        "prompt_tokens": 84,
+        "completion_tokens": 80,
+        "total_tokens": 164,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 84
+        }
+      },
+      "content_chars": 288,
+      "content_prefix": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo di richiesta e popup di conferma.\n\n```ht"
+    }
+  ],
+  "server_log": "runs\\ds4\\20260709_cq1_parallel\\local_3060_exchange_observe_warm50\\server.stderr.log"
+}

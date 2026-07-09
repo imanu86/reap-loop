@@ -1,0 +1,30 @@
+{
+  "label": "local_3060_cq1_native50",
+  "started_utc": "2026-07-09T04:47:22+00:00",
+  "finished_utc": "2026-07-09T04:52:46+00:00",
+  "url": "http://127.0.0.1:8012/v1/chat/completions",
+  "model": "deepseek-v4-flash",
+  "max_tokens": 64,
+  "temperature": 0.0,
+  "warmups": 0,
+  "runs": 1,
+  "results": [
+    {
+      "run": 1,
+      "phase": "measured",
+      "wall_s": 324.0280477999913,
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 64,
+        "total_tokens": 128,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "content_chars": 183,
+      "content_prefix": "```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n  <meta charset=\"UTF-8\" />\n  <meta name=\"viewport\" content=\"width=device"
+    }
+  ],
+  "server_log": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs\\ds4\\20260709_cq1_parallel\\local_3060_cq1_native50\\server.log"
+}

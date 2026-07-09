@@ -513,6 +513,36 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    real prompt/decode phase instead of being permanently prefill-like. Remaining
    work: asynchronous promotion/background demotion and quality-gated longer
    runs.
-7. Add frozen SSD fallback only after cold RAM proves useful, then run pod
+7. ~~Add observe-only PACE exchange accounting at mask transitions.~~ Done in
+   `/root/ds4` commit `0bdad9a` via `DS4_PACE_EXCHANGE_OBSERVE=1`. This logs
+   old/new mask deltas (`promote`, `demote`, `kept`, `cold`) for `descent`,
+   `prebreath`, `breath`, `tighten`, and `breath_end`. The purpose is to attach
+   compression to breath/prebreath exchanges instead of to selected cold misses.
+8. Add the real exchange actuator: at each PACE mask transition, promote and
+   decompress experts that move cold/pruned -> warm/kept, while demoting and
+   compressing experts that move warm/kept -> cold/pruned. This must run through
+   bounded background queues and skip/late-promote if work is not ready; the
+   token path must never synchronously repack CQ1 because that already measured
+   as a hard negative.
+9. Add frozen SSD fallback only after cold RAM proves useful, then run pod
    quality
    gates before wider enablement.
+
+## Breath Exchange Policy
+
+The working runtime model is no longer "selected cold miss decompresses now".
+That policy is mechanically possible but puts decompression/repack work exactly
+where latency hurts most. The preferred policy is exchange-based:
+
+- descent after warmup creates the first cold candidate set;
+- prebreath/breath widening promotes experts that re-enter the mask before they
+  are selected;
+- the same transition demotes experts that cooled while the mask widened;
+- breath_end/tighten compresses the newly cold edge again;
+- selected cold miss remains a correctness fallback, not the normal path.
+
+This matches the 3060 target: with 62GB WSL RAM plus 12GB VRAM, the goal is to
+keep almost everything out of SSD stalls by using compressed RAM backing plus a
+native hot/warm working set. Compressed experts still cannot execute directly in
+the current CUDA kernels; they must be decompressed/repacked into native buffers
+before use, or a future direct compressed-expert kernel is needed.

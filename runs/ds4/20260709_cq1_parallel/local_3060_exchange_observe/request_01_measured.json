@@ -1,0 +1,20 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi in modo diretto, utile e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Ciao fammi una pagina web landing page in stile cyberpunk html, css, js con un modulo per inoltrare richieste che faccia uscire un popup che dica richiesta inviata. E la pagina di un negozio di programmazione ai."
+    }
+  ],
+  "max_tokens": 96,
+  "temperature": 0.0,
+  "stream": false,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  }
+}

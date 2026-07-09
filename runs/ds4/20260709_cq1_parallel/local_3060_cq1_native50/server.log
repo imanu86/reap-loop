@@ -1,0 +1,22 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.875s
+ds4: cuda backend initialized for graph diagnostics
+0709 06:47:22 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0709 06:47:22 ds4-server: listening on http://127.0.0.1:8012
+0709 06:47:23 ds4-server: chat ctx=0..64:64 prompt start
+ds4: cold RAM sidecar enabled (format=cq1 group=32 prefill=0 ungated=0 native_tokens=50 native_layers=43 verify=1)
+ds4: expert tier policy observe_promote enabled cap=32 (metadata plus optional cold-sidecar gate)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+0709 06:47:49 ds4-server: chat ctx=0..64:64 prompt done 23.335s
+0709 06:48:24 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=1.52 t/s avg=1.52 t/s 32.910s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0709 06:52:46 ds4-server: chat ctx=114..128:14 gen=64 decoding chunk=0.06 t/s avg=0.23 t/s 277.114s
+0709 06:52:46 ds4-server: chat ctx=0..64:64 gen=64 finish=length 300.455s
+0709 06:52:46 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=2795 selected_experts=20315 cache_hits=0 cache_misses=264 hit_rate=0.0000 miss_per_expert=0.0130 direct_loads=20309 copy_calls=50883 copied=114486.75 MiB copy_ms=41286.798 copy_ms_per_batch=14.772 sync_calls=50883 sync_ms=5929.532 sync_ms_per_batch=2.121
+ds4: cold RAM sidecar summary format=cq1 group=32 entries=1073 materialized=1073 reuses=2539 copies=3612 failures(mat=0 copy=0 verify=0) bytes=4828.50 MiB repacked=24381.00 MiB repack_failures=0 prefill=0 ungated=0 native_tokens=50 verify=1 policy(allow=3612 prompt=0 no_policy=0 no_hotset=264 warmup=12894 hot=0 invalid=0)

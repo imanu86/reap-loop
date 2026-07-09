@@ -20,6 +20,9 @@ venv/
 # Qui restano solo dump di esperimenti, rigenerabili dagli script.
 runs/**/*.jsonl
 runs/**/*.npy
+runs/ds4/**/pod_*/
+runs/ds4/**/ds4-server-*
+runs/ds4/**/server.windows_pid.txt
 
 # --- OS / editor ---
 .DS_Store

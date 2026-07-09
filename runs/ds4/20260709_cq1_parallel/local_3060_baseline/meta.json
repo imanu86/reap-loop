@@ -1,0 +1,46 @@
+{
+  "label": "local_3060_baseline",
+  "started_utc": "2026-07-09T04:39:02+00:00",
+  "finished_utc": "2026-07-09T04:43:17+00:00",
+  "url": "http://127.0.0.1:8000/v1/chat/completions",
+  "model": "deepseek-v4-flash",
+  "max_tokens": 96,
+  "temperature": 0.0,
+  "warmups": 1,
+  "runs": 1,
+  "results": [
+    {
+      "run": 1,
+      "phase": "warmup",
+      "wall_s": 142.11079210000025,
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 96,
+        "total_tokens": 160,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "content_chars": 301,
+      "content_prefix": "```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-w"
+    },
+    {
+      "run": 2,
+      "phase": "measured",
+      "wall_s": 112.45105879999755,
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 96,
+        "total_tokens": 160,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "content_chars": 300,
+      "content_prefix": "```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n  <meta charset=\"UTF-8\">\n  <meta name=\"viewport\" content=\"width=device-w"
+    }
+  ],
+  "server_log": "C:\\Users\\imanu\\Documents\\Codex\\2026-07-07\\cia\\outputs\\ds4-simple-ui\\ds4-server.log"
+}
