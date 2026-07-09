@@ -48,7 +48,7 @@ Deduplicata: duplicati esatti collassati in una riga (fonti citate). Categorie: 
 | A18 | Pruning | PPL generale K0 | 30B, general_it, n=200, tok=152625 | ppl **5.7239** | Riferimento PPL generale | `eval_genppl_k0.json` | prune_validate.py --metric perplexity --prompts general_it | done |
 | A19 | Pruning | PPL generale K25 (mass) | 30B, general_it | ppl **6.6429** (+16%) | Generale più sensibile del dominio | `eval_genppl_k25.json` == `eval_mass_gen_k25.json` | idem --k 25 | done |
 | A20 | Pruning | PPL generale K50 (mass) | 30B, general_it | ppl **12.226** (2.14x) | Pruning dom-guidato danneggia molto il generale | `eval_genppl_k50.json` == `eval_mass_gen_k50.json` | idem --k 50 | done |
-| A21 | Pruning | PPL generale K70 (mass) | 30B, general_it | ppl **20.387** (3.56x) | Divergenza dom-vs-gen massima a K alti | `eval_genppl_k70.json` == `eval_mass_gen_k70.json` | idem --k 70 | done |
+| A21 | Pruning | PPL generale K70 (mass) | 30B, general_it | ppl **20.387** (3.56x) | Divergena dom-vs-gen massima a K alti | `eval_genppl_k70.json` == `eval_mass_gen_k70.json` | idem --k 70 | done |
 | A22 | Pruning | PPL generale K50 RANDOM (ctrl) | 30B, general_it, --random | ppl **57.752** (4.7x mass) | Random devasta il generale | `eval_genppl_k50_rand.json` | idem --k 50 --random | done |
 | A23 | Pruning | REAP-saliency PPL dominio K25/50/70 | 30B, the held-out domain eval set, maskfile reap_saliency_base | K25 **5.5999** / K50 **5.5004** / K70 **5.8592** | REAP dom K50 **sotto** base 5.559. Tenuta straordinaria | `eval_sal_dom_k25/50/70.json` | prune_validate.py --metric perplexity --maskfile reap | done |
 | A24 | Pruning | REAP-saliency PPL generale K25/50/70 | 30B, general_it, maskfile reap | K25 **6.6004** / K50 **9.3556** / K70 **18.317** | REAP gen K50 9.36 < mass 12.23. REAP degrada meno il generale | `eval_sal_gen_k25/50/70.json` | idem general_it | done |
@@ -483,3 +483,12 @@ cold/pruned -> warm/kept should be promoted and decompressed ahead of use, while
 experts moving warm/kept -> cold/pruned should be compressed/demoted in the same
 bounded background loop. The selected-miss CQ1 path is only a correctness
 fallback; as a normal policy it is too slow.
+
+Operational note after J40: raw-router K-constant rotation is worth keeping as
+an experimental actuator, not as a default speed path. On 2026-07-09 RTX 4070 Ti
+pod tests, cache64 static K23 was faster on HTML (3.15 t/s) but looped
+(`repeat_flag=1`), while rotate32 cache64 was slower (2.74 t/s) and did not trip
+the repeat detector. On code_mini, rotate32 had no quality win and cost speed
+(2.77 vs 2.93 t/s). Keep `DS4_PACE_ROTATE=0` by default; next step is
+quality-triggered rotation based on raw out-of-mask mass / n-gram risk, not
+periodic rotation forever. See `docs/DS4_K23_ROTATION_POD_RESULTS_20260709.md`.

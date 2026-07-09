@@ -98,6 +98,9 @@ BASE_ENV = {
     "DS4_PACE_PREFILL_APPLY": "0",
     "DS4_PACE_PREFILL_WAIT_WRAP": "0",
     "DS4_PACE_EXCHANGE_OBSERVE": "0",
+    "DS4_PACE_ROTATE": "0",
+    "DS4_PACE_ROTATE_EVERY": "32",
+    "DS4_PACE_ROTATE_DECAY": "0.98",
     "DS4_SPEX_STATS": "1",
     "DS4_SPEX_HIDDEN_PREFETCH": "0",
     "DS4_SPEX_HIDDEN_GPU_LOAD": "0",
@@ -150,6 +153,222 @@ QUICK_VARIANTS = [
     ),
     Variant("no_pace", {"DS4_PACE": "0"}, "Quality/perf control with PACE disabled."),
     Variant("direct_k23", {"DS4_PACE_PREBREATH": "0"}, "Direct K23 baseline after the 50-token warmup."),
+    Variant(
+        "k23_static_no_breath",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+        },
+        "Control for rotation: 50-token full warmup, then fixed K23 for the whole decode; no prebreath and no n-gram/clock breath.",
+    ),
+    Variant(
+        "k23_rotate_every16",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "16",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+        },
+        "Rotation test: keep K fixed at 23, but refresh the mask every 16 decode tokens from raw router probabilities.",
+    ),
+    Variant(
+        "k23_rotate_every32",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "32",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+        },
+        "Lower-overhead rotation test: fixed K23, raw-router mask refresh every 32 decode tokens.",
+    ),
+    Variant(
+        "pod_k23_static_no_breath_128",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "128",
+        },
+        "RunPod 12GB control: fixed K23, no breath, reduced streaming cache target to 128 slots to avoid q8_0 OOM on RTX 4070 Ti pods.",
+    ),
+    Variant(
+        "pod_k23_rotate_every16_128",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "16",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "128",
+        },
+        "RunPod 12GB rotation: fixed K23, raw-router mask refresh every 16 decode tokens, cache target 128 slots to avoid q8_0 OOM.",
+    ),
+    Variant(
+        "pod_k23_rotate_every32_128",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "32",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "128",
+        },
+        "RunPod 12GB lower-overhead rotation: fixed K23, raw-router mask refresh every 32 decode tokens, cache target 128 slots.",
+    ),
+    Variant(
+        "pod_k23_static_no_breath_64",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "64",
+        },
+        "RunPod 12GB fallback control: fixed K23, no breath, cache target 64 slots after 128-slot q8_0 OOM on RTX 4070 Ti pods.",
+    ),
+    Variant(
+        "pod_k23_rotate_every16_64",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "16",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "64",
+        },
+        "RunPod 12GB fallback rotation: fixed K23, raw-router refresh every 16 decode tokens, cache target 64 slots.",
+    ),
+    Variant(
+        "pod_k23_rotate_every32_64",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "32",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "64",
+        },
+        "RunPod 12GB fallback lower-overhead rotation: fixed K23, raw-router refresh every 32 decode tokens, cache target 64 slots.",
+    ),
+    Variant(
+        "breath_k96_return",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "0.25",
+        },
+        "K23 after the 50-token warmup; when n-gram drift triggers a breath, widen to K96 and record the measured return keep.",
+    ),
+    Variant(
+        "breath_k0_return",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_KEEP": "0",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "0.25",
+        },
+        "K23 after the 50-token warmup; when n-gram drift triggers a breath, release the mask (K0/full) and record the measured return keep.",
+    ),
+    Variant(
+        "breath_k96_return_k23",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "0.25",
+        },
+        "Exact return test: K23 after warmup, K96 during breath, and no sensor widening of g_pace.keep, so breath_end should return to K23.",
+    ),
+    Variant(
+        "breath_k0_return_k23",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_KEEP": "0",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "0.25",
+        },
+        "Exact return test: K23 after warmup, full K0/unmask during breath, and no sensor widening of g_pace.keep, so breath_end should return to K23.",
+    ),
     Variant(
         "keep32_direct",
         {
@@ -263,6 +482,42 @@ LONG_EXTRA_VARIANTS = [
         },
     ),
     Variant(
+        "k32_pre_step2_every32",
+        {
+            "DS4_PACE_KEEP": "32",
+            "DS4_PACE_KEEP_MIN": "32",
+            "DS4_PACE_PREBREATH": "1",
+            "DS4_PACE_KEEP_STEP": "2",
+            "DS4_PACE_PREBREATH_EVERY": "32",
+            "DS4_PACE_PREBREATH_KEEP_MAX": "64",
+        },
+        "K32 plus smaller prebreath steps: test whether gentler reloads reduce breath stalls without widening too early.",
+    ),
+    Variant(
+        "k32_pre_step2_every16",
+        {
+            "DS4_PACE_KEEP": "32",
+            "DS4_PACE_KEEP_MIN": "32",
+            "DS4_PACE_PREBREATH": "1",
+            "DS4_PACE_KEEP_STEP": "2",
+            "DS4_PACE_PREBREATH_EVERY": "16",
+            "DS4_PACE_PREBREATH_KEEP_MAX": "64",
+        },
+        "K32 plus frequent micro-prebreath: test one smaller reload before the ngram breath becomes urgent.",
+    ),
+    Variant(
+        "k32_pre_step1_every16",
+        {
+            "DS4_PACE_KEEP": "32",
+            "DS4_PACE_KEEP_MIN": "32",
+            "DS4_PACE_PREBREATH": "1",
+            "DS4_PACE_KEEP_STEP": "1",
+            "DS4_PACE_PREBREATH_EVERY": "16",
+            "DS4_PACE_PREBREATH_KEEP_MAX": "64",
+        },
+        "K32 plus one-expert-at-a-time prebreath: smallest practical step for the long-breath hypothesis.",
+    ),
+    Variant(
         "k32_pre_step8_every32",
         {
             "DS4_PACE_KEEP": "32",
@@ -303,7 +558,7 @@ def run(cmd: list[str], *, timeout: int | None = None, check: bool = True) -> su
 
 
 def wsl_bash(script: str, *, timeout: int | None = None, check: bool = True) -> subprocess.CompletedProcess:
-    if IN_WSL:
+    if os.name == "posix":
         return run(["bash", "-lc", script], timeout=timeout, check=check)
     return run([WSL_EXE, "-d", "Ubuntu-24.04", "-u", "root", "--", "bash", "-lc", script], timeout=timeout, check=check)
 
@@ -464,6 +719,93 @@ def post_json(url: str, body: dict, timeout: int) -> tuple[float, dict | str]:
     return time.perf_counter() - t0, parsed
 
 
+def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -> tuple[float, dict | str]:
+    data = json.dumps(body, ensure_ascii=False).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=data,
+        headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+        method="POST",
+    )
+    t0 = time.perf_counter()
+    events = []
+    content_parts = []
+    finish_reason = None
+    usage = None
+    try:
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            for raw_line in resp:
+                line = raw_line.decode("utf-8", errors="replace").strip()
+                if not line or line.startswith(":"):
+                    continue
+                if not line.startswith("data:"):
+                    continue
+                payload = line.removeprefix("data:").strip()
+                if payload == "[DONE]":
+                    break
+                try:
+                    obj = json.loads(payload)
+                except json.JSONDecodeError:
+                    events.append(
+                        {
+                            "event_index": len(events) + 1,
+                            "t_s": round(time.perf_counter() - t0, 6),
+                            "raw": payload,
+                            "parse_error": True,
+                        }
+                    )
+                    continue
+                delta = ""
+                choices = obj.get("choices") or []
+                if choices:
+                    choice = choices[0]
+                    finish_reason = choice.get("finish_reason") or finish_reason
+                    delta_obj = choice.get("delta") or {}
+                    delta = delta_obj.get("content") or ""
+                    if not delta:
+                        message = choice.get("message") or {}
+                        delta = message.get("content") or ""
+                if obj.get("usage") is not None:
+                    usage = obj.get("usage")
+                if delta:
+                    content_parts.append(delta)
+                events.append(
+                    {
+                        "event_index": len(events) + 1,
+                        "t_s": round(time.perf_counter() - t0, 6),
+                        "delta": delta,
+                        "delta_chars": len(delta),
+                        "content_chars": sum(len(part) for part in content_parts),
+                        "finish_reason": finish_reason,
+                        "usage": usage,
+                    }
+                )
+    except urllib.error.HTTPError as exc:
+        raw = exc.read().decode("utf-8", errors="replace")
+        try:
+            parsed = json.loads(raw)
+        except json.JSONDecodeError:
+            parsed = raw
+        return time.perf_counter() - t0, {"http_error": exc.code, "body": parsed}
+    except Exception as exc:  # noqa: BLE001 - command-line diagnostic path.
+        return time.perf_counter() - t0, {"error": type(exc).__name__, "message": str(exc)}
+
+    with events_path.open("w", encoding="utf-8") as fh:
+        for event in events:
+            fh.write(json.dumps(event, ensure_ascii=False) + "\n")
+    content = "".join(content_parts)
+    return (
+        time.perf_counter() - t0,
+        {
+            "stream": True,
+            "stream_events": len(events),
+            "stream_content_events": sum(1 for event in events if event.get("delta")),
+            "usage": usage,
+            "choices": [{"message": {"content": content}, "finish_reason": finish_reason}],
+        },
+    )
+
+
 def response_content(response: dict | str) -> str:
     if not isinstance(response, dict):
         return ""
@@ -490,6 +832,26 @@ def parse_server_log(path: pathlib.Path) -> dict:
             "prebreaths": 0,
             "breaths": 0,
             "tightens": 0,
+            "pace_learned": 0,
+            "pace_descents": 0,
+            "pace_prebreaths": 0,
+            "pace_breaths": 0,
+            "pace_breath_ends": 0,
+            "pace_tightens": 0,
+            "pace_rotates": 0,
+            "first_learned_tok": None,
+            "first_descent_tok": None,
+            "first_descent_keep": None,
+            "first_prebreath_tok": None,
+            "first_prebreath_keep": None,
+            "first_breath_tok": None,
+            "first_breath_keep": None,
+            "first_breath_end_tok": None,
+            "first_breath_end_keep": None,
+            "first_rotate_tok": None,
+            "first_rotate_keep": None,
+            "last_pace_tok": None,
+            "last_pace_keep": None,
             "prefetch_count": 0,
             "prefetch_gib": 0.0,
             "prefetch_ms": 0.0,
@@ -525,6 +887,49 @@ def parse_server_log(path: pathlib.Path) -> dict:
                 current["tightens"] += 1
             current["exchange_promote"] += int(m.group(2))
             current["exchange_demote"] += int(m.group(3))
+        m = re.search(
+            r"PACE (learned|descent|prebreath|breath\([^)]*\)|breath_end|tighten|rotate)\s+"
+            r"tok=(\d+)\s+phase=\d+\s+keep=(\d+)",
+            line,
+        )
+        if m:
+            event = m.group(1)
+            tok = int(m.group(2))
+            keep = int(m.group(3))
+            current["last_pace_tok"] = tok
+            current["last_pace_keep"] = keep
+            if event == "learned":
+                current["pace_learned"] += 1
+                if current["first_learned_tok"] is None:
+                    current["first_learned_tok"] = tok
+            elif event == "descent":
+                current["pace_descents"] += 1
+                if current["first_descent_tok"] is None:
+                    current["first_descent_tok"] = tok
+                    current["first_descent_keep"] = keep
+            elif event == "prebreath":
+                current["pace_prebreaths"] += 1
+                if current["first_prebreath_tok"] is None:
+                    current["first_prebreath_tok"] = tok
+                    current["first_prebreath_keep"] = keep
+            elif event.startswith("breath"):
+                if event == "breath_end":
+                    current["pace_breath_ends"] += 1
+                    if current["first_breath_end_tok"] is None:
+                        current["first_breath_end_tok"] = tok
+                        current["first_breath_end_keep"] = keep
+                else:
+                    current["pace_breaths"] += 1
+                    if current["first_breath_tok"] is None:
+                        current["first_breath_tok"] = tok
+                        current["first_breath_keep"] = keep
+            elif event == "tighten":
+                current["pace_tightens"] += 1
+            elif event == "rotate":
+                current["pace_rotates"] += 1
+                if current["first_rotate_tok"] is None:
+                    current["first_rotate_tok"] = tok
+                    current["first_rotate_keep"] = keep
         m = re.search(r"REAP prefetch .* ([0-9.]+) GiB touched in ([0-9.]+) ms", line)
         if m:
             current["prefetch_count"] += 1
@@ -576,7 +981,7 @@ def start_server(
     stdout = (out_dir / "server.stdout.log").open("wb")
     stderr = (out_dir / "server.stderr.log").open("wb")
     (out_dir / "server_env.json").write_text(json.dumps(env, indent=2), encoding="utf-8")
-    launcher = ["bash", "-lc", cmd] if IN_WSL else [WSL_EXE, "-d", "Ubuntu-24.04", "-u", "root", "--", "bash", "-lc", cmd]
+    launcher = ["bash", "-lc", cmd] if os.name == "posix" else [WSL_EXE, "-d", "Ubuntu-24.04", "-u", "root", "--", "bash", "-lc", cmd]
     return subprocess.Popen(
         launcher,
         stdout=stdout,
@@ -593,6 +998,7 @@ def run_request(
     timeout: int,
     out_path: pathlib.Path,
     phase: str,
+    stream: bool = False,
 ) -> tuple[float, dict | str]:
     body = {
         "model": "deepseek-v4-flash",
@@ -602,19 +1008,29 @@ def run_request(
         ],
         "max_tokens": max_tokens,
         "temperature": 0,
-        "stream": False,
+        "stream": stream,
         "think": False,
         "thinking": {"type": "disabled"},
     }
+    if stream:
+        body["stream_options"] = {"include_usage": True}
     (out_path / f"request_{phase}.json").write_text(
         json.dumps(body, ensure_ascii=False, indent=2),
         encoding="utf-8",
     )
-    wall_s, response = post_json(
-        f"http://127.0.0.1:{port}/v1/chat/completions",
-        body,
-        timeout,
-    )
+    if stream:
+        wall_s, response = post_stream(
+            f"http://127.0.0.1:{port}/v1/chat/completions",
+            body,
+            timeout,
+            out_path / f"stream_events_{phase}.jsonl",
+        )
+    else:
+        wall_s, response = post_json(
+            f"http://127.0.0.1:{port}/v1/chat/completions",
+            body,
+            timeout,
+        )
     (out_path / f"response_{phase}.json").write_text(
         json.dumps(response, ensure_ascii=False, indent=2),
         encoding="utf-8",
@@ -641,6 +1057,7 @@ def main() -> int:
     ap.add_argument("--server-max-tokens", type=int, default=2048)
     ap.add_argument("--cache-experts", type=int, default=258)
     ap.add_argument("--prefill-chunk", type=int, default=512)
+    ap.add_argument("--stream", action="store_true", help="Capture measured requests as SSE stream events with timestamps.")
     ap.add_argument("--no-stop-existing", action="store_true")
     args = ap.parse_args()
 
@@ -707,6 +1124,7 @@ def main() -> int:
                             timeout=args.timeout,
                             out_path=run_dir,
                             phase=f"warmup_{warm_idx:02d}",
+                            stream=False,
                         )
                         print(f"[matrix] warmup {stem} {warm_wall:.3f}s", flush=True)
                     wall_s, response = run_request(
@@ -717,11 +1135,16 @@ def main() -> int:
                         timeout=args.timeout,
                         out_path=run_dir,
                         phase="measured",
+                        stream=args.stream,
                     )
                     usage = response.get("usage") if isinstance(response, dict) else None
                     content = response_content(response)
                     log_metrics = parse_server_log(run_dir / "server.stderr.log")
                     q = quality_flags(prompt_name, content)
+                    completion_tokens = (usage or {}).get("completion_tokens")
+                    post_breath_end_tokens = None
+                    if completion_tokens is not None and log_metrics.get("first_breath_end_tok") is not None:
+                        post_breath_end_tokens = max(0, int(completion_tokens) - int(log_metrics["first_breath_end_tok"]))
                     row = {
                         "stem": stem,
                         "evidence_type": "measured",
@@ -733,7 +1156,10 @@ def main() -> int:
                         "run": run_idx,
                         "wall_s": round(wall_s, 3),
                         "prompt_tokens": (usage or {}).get("prompt_tokens"),
-                        "completion_tokens": (usage or {}).get("completion_tokens"),
+                        "completion_tokens": completion_tokens,
+                        "stream_events": response.get("stream_events") if isinstance(response, dict) else None,
+                        "stream_content_events": response.get("stream_content_events") if isinstance(response, dict) else None,
+                        "derived_tokens_after_breath_end_to_finish": post_breath_end_tokens,
                         **log_metrics,
                         **trace_stats(run_dir),
                         **q,
@@ -742,8 +1168,8 @@ def main() -> int:
                     print(
                         "[matrix] done "
                         f"{stem} wall={wall_s:.1f}s avg={log_metrics.get('avg_tps')} "
-                        f"pre={log_metrics.get('prebreaths')} br={log_metrics.get('breaths')} "
-                        f"promote={log_metrics.get('exchange_promote')}",
+                        f"pace_pre={log_metrics.get('pace_prebreaths')} pace_br={log_metrics.get('pace_breaths')} "
+                        f"pace_rot={log_metrics.get('pace_rotates')} promote={log_metrics.get('exchange_promote')}",
                         flush=True,
                     )
                 finally:

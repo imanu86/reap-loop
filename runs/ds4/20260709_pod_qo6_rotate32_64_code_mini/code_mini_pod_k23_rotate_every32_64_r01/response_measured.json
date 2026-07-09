@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 515,
+  "stream_content_events": 512,
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 512,
+    "total_tokens": 573,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described.\n\n**Main Correctness Risks**\n\n1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode loop may proceed with un-zero (or stale expert weights before the first token uses them.\n2. **Reputation score widening before stale experts** – `reputation_score` may widens the mask after experts are loaded, but the mask update can see partially loaded expert buffers or inconsistent expert indices.\n3. **Mask widening after expert selection** – If `reputation_score` widens the mask, the selected expert indices from `router(hidden)` may become out-of-ssync with the actual loaded expert set, leading to expert-id mismatch or activation of un-zero expert.\n4. **Expert buffer reuse without barrier** – Reper buffers for missing experts may be overwritten by another concurrent decode step, causing silent correctness corruption.\n\n5. **Missing expert weight consistency** – The expert weights loaded from SSD may not be fully consistent with the ongoing decode step's hidden state, leading to partial computation or wrong expert output.\n\n6. **Mask widening without expert availability check** – The mask may widens to include experts that are not yet loaded, causing the decode step to access un-zero expert buffers or stale expert weights.\n\n7. **Expert index mismatch after mask widening** – The expert indices from `router(hidden)` may become out-of-ssync with the mask after widening, leading to expert-id mismatch or activation of un-zero expert.\n\n8. **Missing expert loading without synchronization** – The missing experts loaded from SSD may not be fully visible to the decode step's expert buffers, leading to partial computation or wrong expert output.\n\n9. **Reputation score widening without expert availability check** – The mask may widens to include experts that are not yet loaded, causing the decode step to access un-zero expert buffers or stale expert weights.\n\n10. **Expert buffer reuse without barrier** – Reper buffers for missing experts may be overwritten by another concurrent decode step, causing silent correctness corruption.\n\n11. **Missing expert weight consistency** – The expert weights loaded from SSD may not be fully consistent with the ongoing decode step's hidden state, leading to partial computation or wrong expert output.\n\n12. **Mask widening without expert availability check** – The mask may widens to include experts that are not yet loaded, causing the decode step to access un-zero expert buffers or stale expert weights.\n\n13. **"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

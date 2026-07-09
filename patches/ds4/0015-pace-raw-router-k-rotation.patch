@@ -1,0 +1,202 @@
+diff --git a/ds4.c b/ds4.c
+index f72a05d..7812d10 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7436,6 +7436,9 @@ static struct {
+     int      prefill_apply;
+     int      prefill_wait_wrap;
+     int      exchange_observe;
++    int      rotate_on;          /* DS4_PACE_ROTATE: K-constant raw-router mask rotation */
++    uint32_t rotate_every;       /* rotate at most once every N decode tokens */
++    double   rotate_decay;       /* per-layer EWMA decay for raw router probabilities */
+
+     /* --- runtime state --- */
+     ds4_pace_phase phase;
+@@ -7447,6 +7450,7 @@ static struct {
+     int      sensor_armed;
+     int      cur_keep;         /* keep-K currently applied (0 = no mask) */
+     uint32_t stable_since;     /* token of last keep change (tighten gate) */
++    uint32_t last_rotate_tok;    /* last K-constant rotation token */
+
+     /* n-gram ring of decode token-ids */
+     int      ring[DS4_PACE_NGRAM_MAX];
+@@ -7468,6 +7472,10 @@ static struct {
+     /* gate-mass accumulator (learn): mass[layer][expert] */
+     double  *mass;             /* [DS4_MAX_LAYER*DS4_MAX_EXPERT], lazy alloc */
+     uint32_t mass_rows;
++    /* raw router probability accumulator for K-constant rotation */
++    double  *rmass;
++    uint32_t rmass_rows;
++    uint64_t rotate_events;
+     /* breath re-learn window accumulator */
+     double  *bmass;
+     uint32_t bmass_rows;
+@@ -12813,6 +12821,12 @@ static void ds4_pace_init(void) {
+     g_pace.prefill_apply = pace_env_i("DS4_PACE_PREFILL_APPLY", 1);
+     g_pace.prefill_wait_wrap = pace_env_i("DS4_PACE_PREFILL_WAIT_WRAP", 1);
+     g_pace.exchange_observe = pace_env_i("DS4_PACE_EXCHANGE_OBSERVE", 0);
++    g_pace.rotate_on = pace_env_i("DS4_PACE_ROTATE", 0);
++    g_pace.rotate_every = (uint32_t)pace_env_i("DS4_PACE_ROTATE_EVERY", 32);
++    if (g_pace.rotate_every == 0) g_pace.rotate_every = 1;
++    g_pace.rotate_decay = pace_env_d("DS4_PACE_ROTATE_DECAY", 0.98);
++    if (g_pace.rotate_decay < 0.0) g_pace.rotate_decay = 0.0;
++    if (g_pace.rotate_decay > 1.0) g_pace.rotate_decay = 1.0;
+
+     g_pace.phase = PACE_WARMUP;
+     g_pace.in_prefill = 0;
+@@ -12820,13 +12834,17 @@ static void ds4_pace_init(void) {
+     g_pace.cur_keep = 0;
+     g_pace.last_breath_end_tok = 0;
+     g_pace.last_prebreath_tok = 0;
++    g_pace.last_rotate_tok = 0;
+     g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++    if (g_pace.rotate_on)
++        g_pace.rmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+
+     fprintf(stderr,
+         "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
+         "drift=%.2f rel=%.2f hyst=%u breath(every=%u,len=%u,keep=%d,relearn=%d) "
+         "prebreath(on=%d,drift=%.2f,every=%u,max=%d) "
+-        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d\n",
++        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d "
++        "rotate(on=%d,every=%u,decay=%.3f)\n",
+         g_pace.warmup, g_pace.keep, g_pace.keep_min, g_pace.keep_max,
+         g_pace.keep_step, g_pace.ngram_n, g_pace.ngram_window,
+         g_pace.drift, g_pace.release, g_pace.hyst, g_pace.breath_every,
+@@ -12835,7 +12853,8 @@ static void ds4_pace_init(void) {
+         g_pace.prebreath_every, g_pace.prebreath_keep_max,
+         g_pace.anneal_warm, g_pace.wrap_on, g_pace.cache_flush,
+         g_pace.prefill_apply, g_pace.prefill_wait_wrap, g_pace.s1_on,
+-        g_pace.exchange_observe);
++        g_pace.exchange_observe, g_pace.rotate_on, g_pace.rotate_every,
++        g_pace.rotate_decay);
+ }
+
+ static inline int ds4_pace_active(void) {
+@@ -12892,6 +12911,25 @@ static void ds4_pace_note_selected_batch(uint32_t il,
+     }
+ }
+
++static inline int ds4_pace_rotate_wants_router(void) {
++    if (!ds4_pace_active()) return 0;
++    return g_pace.rotate_on && g_pace.rmass && !g_pace.in_prefill &&
++           g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0;
++}
++
++static void ds4_pace_note_router_probs(uint32_t il, const float *probs) {
++    if (!probs || il >= DS4_MAX_LAYER || !ds4_pace_rotate_wants_router()) return;
++    double *row = &g_pace.rmass[(size_t)il * DS4_MAX_EXPERT];
++    const double decay = g_pace.rotate_decay;
++    double any = 0.0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++        const double v = (double)probs[e];
++        row[e] = row[e] * decay + v;
++        any += v;
++    }
++    if (any > 0.0) g_pace.rmass_rows++;
++}
++
+ /* ---- learn keep-set from an accumulator into g_reap_mask_pruned ---- *
+  * top-keep experts per layer by accumulated mass are KEPT; rest pruned. */
+ static void ds4_pace_learn_mask(const double *acc, int keep) {
+@@ -12997,14 +13035,14 @@ static void ds4_pace_exchange_observe(
+     }
+ }
+
+-static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weights,
+-                                int keep, const char *why) {
++static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *weights,
++                                    const double *acc, int keep, const char *why) {
+     uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+     int old_keep = g_pace.cur_keep;
+     if (g_pace.exchange_observe) {
+         memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
+     }
+-    ds4_pace_learn_mask(g_pace.mass, keep);
++    ds4_pace_learn_mask(acc ? acc : g_pace.mass, keep);
+     if (g_pace.exchange_observe) {
+         ds4_pace_exchange_observe(why, old_keep, keep, old_pruned);
+     }
+@@ -13018,6 +13056,11 @@ static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weigh
+         ds4_reap_prefetch_working_set(model, weights);   /* 0013 WRAP */
+ }
+
++static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weights,
++                                int keep, const char *why) {
++    ds4_pace_apply_keep_acc(model, weights, g_pace.mass, keep, why);
++}
++
+ static void ds4_pace_unmask(const ds4_model *model, const ds4_weights *weights) {
+     uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+     int old_keep = g_pace.cur_keep;
+@@ -13051,14 +13094,21 @@ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+         memset(g_pace.bmass, 0,
+                (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
+     }
++    if (g_pace.rmass) {
++        memset(g_pace.rmass, 0,
++               (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++    }
+     g_pace.mass_rows = 0;
+     g_pace.bmass_rows = 0;
++    g_pace.rmass_rows = 0;
++    g_pace.rotate_events = 0;
+     g_pace.phase = PACE_WARMUP;
+     g_pace.in_prefill = 1;
+     g_pace.tok = 0;
+     g_pace.phase_start_tok = 0;
+     g_pace.last_breath_end_tok = 0;
+     g_pace.last_prebreath_tok = 0;
++    g_pace.last_rotate_tok = 0;
+     g_pace.sensor_armed = 1;
+     g_pace.cur_keep = 0;
+     g_pace.stable_since = 0;
+@@ -13158,6 +13208,21 @@ static void ds4_pace_tune_cadence(void) {
+         g_pace.breath_every += 50;
+ }
+
++static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weights) {
++    if (!g_pace.rotate_on || !g_pace.rmass || g_pace.phase != PACE_HOLD ||
++        g_pace.cur_keep <= 0 || g_pace.rmass_rows == 0) {
++        return 0;
++    }
++    const uint32_t last_change = g_pace.last_rotate_tok > g_pace.stable_since
++        ? g_pace.last_rotate_tok : g_pace.stable_since;
++    if (g_pace.tok - last_change < g_pace.rotate_every) return 0;
++    ds4_pace_apply_keep_acc(model, weights, g_pace.rmass, g_pace.cur_keep, "rotate");
++    g_pace.last_rotate_tok = g_pace.tok;
++    g_pace.rotate_events++;
++    ds4_pace_emit("rotate", g_pace.ema_ngram, g_pace.ema_hit);
++    return 1;
++}
++
+ /* ---- per-decode-token driver tick ---- */
+ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                           int token) {
+@@ -13222,6 +13287,10 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+             }
+         }
+
++        if (!clock_due && !sensor_due && ds4_pace_rotate_maybe(model, weights)) {
++            break;
++        }
++
+         if (clock_due || sensor_due) {
+             g_pace.sensor_armed = 0;
+             g_pace.breaths++;
+@@ -16008,6 +16077,15 @@ static void metal_graph_spex_note_selected(
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
+     metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
++    /* PACE rotate: optional raw-router probability readback for K-constant
++     * mask refresh. This stays off unless DS4_PACE_ROTATE=1. */
++    if (g && g->router_probs && ds4_pace_rotate_wants_router()) {
++        float probs[DS4_MAX_EXPERT];
++        if (ds4_gpu_tensor_read(g->router_probs, 0, probs,
++                                (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
++            ds4_pace_note_router_probs(il, probs);
++        }
++    }
+     /* PACE (0014): in-memory gate-mass + hit-rate, including prefill. */
+     if (g && selected_ids && n_selected > 0 && n_selected <= DS4_MAX_EXPERT_USED)
+         ds4_pace_note_selected(il, selected_ids, n_selected);

@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Codex – Negozio di Programmazione AI</title>\n    <style>\n        * {\n        margin: 0;\n        padding: 0;\n        box-sizing: border-box;\n        font-family: 'system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica, sans-serif';\n        scroll-behavior: smooth;\n    }\n\n        body {\n            background: radial-gradient circle at center, #0d0f0d 0%, #1a1e1a 100%;\n            color: #e0f0e0;\n            min-height: 100vh;\n            display: flex;\n            flex-direction: column;\n            align-items: center;\n            justify-content: center;\n            padding: 2rem 1rem;\n        }\n\n        .card {\n            max-width: 900px;\n            width: 100%;\n            background: rgba(10, 12, 10, 0.9);\n            border: 1px solid #3faf3f;\n            border-radius: 24px;\n            padding: 2rem 1.5rem;\n            box-shadow: 0 0 40px rgba(0, 255, 100, 0.2);\n            backdrop-filter: blur(4px);\n        }\n\n        header {\n            text-align: center;\n            margin-bottom: 2rem;\n        }\n\n        header h1 {\n            font-size: 2.8rem;\n            font-weight: 900;\n            letter-spacing: 2px;\n            text-transform: uppercase;\n            background: linear-gradient 90deg, #lime, #cyan;\n            background: linear-gradient(90deg, #lime, #cyan);\n            -webkit-background-clip: text;\n            -webkit-text-fil: transparent;\n            background-clip: text;\n            color: transparent;\n            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0;\n            margin-bottom: 0.5rem;\n        }\n\n        header p {\n            color: #b0f0b0;\n            font-size: 1.2rem;\n            border-bottom: 1px dashed #3faf3f;\n            padding-bottom: 0.8rem;\n        }\n\n        .grid {\n            display: grid;\n            grid-template-columns: 1fr 1fr;\n            gap: 2rem 1.5rem;\n        }\n\n        .card-item {\n            background: #1e2e1e;\n            border: 1px solid #2faf2f;\n            border-radius: 16px;\n            padding: 1.5rem 1.2rem;\n            transition: 0.3s;\n            box-shadow: 0 0 10px rgba(0, 255, 0, 0.1);\n        }\n\n        .card-item:hover {\n            border-color: #9fef9f;\n            box-shadow: 0 0 20px #0f0;\n        }\n\n        .card-item h3 {\n            font-size: 1.4rem;\n            margin-bottom: 0.8rem;\n            color: #cfcfcf;\n        }\n\n        .card-item p {\n            color: #b0d0b0;\n            margin-bottom: 1rem;\n        }\n\n        .price {\n            font-size: 1.6rem;\n            font-weight"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

@@ -1,0 +1,115 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop - Cyberpunk</title>
+    <style>
+        * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Courier', monospace;
+        scroll-behavior: smooth;
+    }
+
+    body {
+        background: #000;
+        color: #00ffff;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20;
+    }
+
+    .container {
+        max-width: 120;
+        width: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        border: 2 solid #0f0;
+        border-radius: 12;
+        padding: 2rem;
+        box-shadow: 0 0 40 #0f0, 0 0 20 #0f0 inset;
+        backdrop-filter: blur(2);
+        transition: 0.3;
+    }
+
+    header {
+        text-align: center;
+        border-bottom: 2 dashed #0f0;
+        padding-bottom: 1rem;
+        margin-bottom: 2rem;
+    }
+
+    header h1 {
+        font-size: 2.5rem;
+        text-shadow: 0 0 10 #0f0, 0 0 20 #0f0;
+        letter-spacing: 4;
+        margin: 0;
+        color: #fff;
+        background: linear-gradient(90deg, #0f0, #f0f);
+        -webkit-back-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    header p {
+        color: #0f0;
+        font-size: 1.2rem;
+        margin-top: 0.5;
+    }
+
+    .hero {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 2rem;
+        margin-bottom: 2rem;
+    }
+
+    .hero-text {
+        text-align: center;
+        font-size: 1.1rem;
+        line-height: 1.6;
+        color: #lime;
+        border: 1 solid #f0f;
+        padding: 1rem;
+        border-radius: 8;
+        background: #000;
+        box-shadow: 0 0 10 #f0f inset;
+    }
+
+    .hero-text span {
+        color: #f0f;
+        font-weight: bold;
+    }
+
+    .cta-button {
+        background: #000;
+        border: 2 solid #0f0;
+        color: #0f0;
+        padding: 0.8 2.5;
+        font-size: 1.4rem;
+        text-transform: uppercase;
+        letter-spacing: 2;
+        cursor: pointer;
+        transition: 0.2;
+        box-shadow: 0 0 10 #0f0;
+        border-radius: 4;
+        text-decoration: none;
+        display: inline-block;
+    }
+
+    .cta-button:hover {
+        background: #0f0;
+        color: #000;
+        box-shadow: 0 0 20 #0f0, 0 0 40 #0f0;
+        transform: scale(1.05);
+    }
+
+    .features {
+        display: grid;
+        grid-template-columns: repeat(auto-fit

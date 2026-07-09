@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783600268,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described.\n\n**Main Correctness Risks**\n\n1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode loop may proceed with un-zero (or stale expert weights before the first token"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 64,
+    "total_tokens": 125,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  }
+}

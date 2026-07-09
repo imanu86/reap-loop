@@ -1,0 +1,32 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described.
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode loop may proceed with un-zero (or stale expert weights before the first token uses them.
+2. **Reputation score widening before stale experts** – `reputation_score` may widen the mask after experts are not yet fully materialized, causing tokens to be routed to experts that have stale weights.
+3. **Mask widening after expert activation** – Widning the mask after expert activation leads to tokens that are routed to experts that have stale weights.
+3. **Mask widening after expert activation** – Widning the mask after expert activation leads to tokens that are routed to experts that have stale weights.
+
+**Minimal Patch Plan**
+
+1. **Synchronize expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after expert loading before mask widening: `bar()` after expert loading before mask widening.
+
+2. **Sensure expert loading before mask widening** – Insert a barrier after
