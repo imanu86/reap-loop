@@ -1,0 +1,112 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Store - Cyberpunk</title>
+    <style>
+        /* Reset base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'system-ui, 'Segoe UI, Roboto, 'Helvetica, sans-serif';
+        }
+
+        body {
+            background: radial-gradient circle at center, #0d0d0d 0%, #120020 100%, #000 100%;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            color: #e0e0e0;
+        }
+
+        .card {
+            max-width: 380px;
+            width: 100%;
+            background: rgba(10, 10, 20, 0.9);
+            backdrop-filter: blur(12px);
+            border: 1px solid #0ff;
+            box-shadow: 0 0 40px #0ff4, 0 0 60px #0ff2;
+            border-radius: 24px;
+            padding: 2rem 1.8rem;
+            transition: 0.3s;
+}
+
+        .header {
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .header h1 {
+            font-size: 2.2rem;
+            font-weight: 700;
+            background: linear-gradient 45deg, #0ff, #f0e0ff;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 0 0 20px #0ff;
+            letter-spacing: 2px;
+            margin: 0 0 0.2rem 0;
+        }
+
+        .header p {
+            color: #b0b0ff;
+            font-size: 0.9rem;
+            border-bottom: 1px dashed #0ff8;
+            padding-bottom: 0.8rem;
+        }
+
+        .logo {
+            font-size: 3rem;
+            margin-bottom: 0.5rem;
+            filter: drop-shadow 0 0 20px #0ff;
+        }
+
+        .features {
+            display: flex;
+            flex-direction: column;
+            gap: 0.8rem;
+            margin: 1.5rem 0;
+        }
+
+        .feature-item {
+            background: #0a0a20;
+            border: 1px solid #0ff3;
+            border-radius: 12px;
+            padding: 0.8rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.8rem;
+            transition: 0.2s;
+        }
+
+        .feature-item:hover {
+            background: #0ff1;
+            border-color: #0ff;
+            box-shadow: 0 0 10px #0ff4;
+        }
+
+        .feature-item span {
+            font-size: 1.2rem;
+        }
+
+        .feature-item p {
+            margin: 0;
+            font-size: 0.9rem;
+            color: #ddd;
+        }
+
+        .form {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .form label {
+            font-size: 0.9rem;
+            color: #

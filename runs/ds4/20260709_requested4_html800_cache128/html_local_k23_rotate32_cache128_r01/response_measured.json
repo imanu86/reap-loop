@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.1\">\n    <title>AI Code Store - Cyberpunk</title>\n    <style>\n        /* Reset base */\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n            font-family: 'system-ui, 'Segoe UI, Roboto, 'Helvetica, sans-serif';\n        }\n\n        body {\n            background: radial-gradient circle at center, #0d0d0d 0%, #120020 100%, #000 100%;\n            min-height: 100vh;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            padding: 20px;\n            color: #e0e0e0;\n        }\n\n        .card {\n            max-width: 380px;\n            width: 100%;\n            background: rgba(10, 10, 20, 0.9);\n            backdrop-filter: blur(12px);\n            border: 1px solid #0ff;\n            box-shadow: 0 0 40px #0ff4, 0 0 60px #0ff2;\n            border-radius: 24px;\n            padding: 2rem 1.8rem;\n            transition: 0.3s;\n}\n\n        .header {\n            text-align: center;\n            margin-bottom: 1.5rem;\n        }\n\n        .header h1 {\n            font-size: 2.2rem;\n            font-weight: 700;\n            background: linear-gradient 45deg, #0ff, #f0e0ff;\n            -webkit-background-clip: text;\n            -webkit-text-fill-color: transparent;\n            text-shadow: 0 0 20px #0ff;\n            letter-spacing: 2px;\n            margin: 0 0 0.2rem 0;\n        }\n\n        .header p {\n            color: #b0b0ff;\n            font-size: 0.9rem;\n            border-bottom: 1px dashed #0ff8;\n            padding-bottom: 0.8rem;\n        }\n\n        .logo {\n            font-size: 3rem;\n            margin-bottom: 0.5rem;\n            filter: drop-shadow 0 0 20px #0ff;\n        }\n\n        .features {\n            display: flex;\n            flex-direction: column;\n            gap: 0.8rem;\n            margin: 1.5rem 0;\n        }\n\n        .feature-item {\n            background: #0a0a20;\n            border: 1px solid #0ff3;\n            border-radius: 12px;\n            padding: 0.8rem 1rem;\n            display: flex;\n            align-items: center;\n            gap: 0.8rem;\n            transition: 0.2s;\n        }\n\n        .feature-item:hover {\n            background: #0ff1;\n            border-color: #0ff;\n            box-shadow: 0 0 10px #0ff4;\n        }\n\n        .feature-item span {\n            font-size: 1.2rem;\n        }\n\n        .feature-item p {\n            margin: 0;\n            font-size: 0.9rem;\n            color: #ddd;\n        }\n\n        .form {\n            display: flex;\n            flex-direction: column;\n            gap: 1rem;\n        }\n\n        .form label {\n            font-size: 0.9rem;\n            color: #"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

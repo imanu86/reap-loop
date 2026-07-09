@@ -1,0 +1,110 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Store - Cyberpunk</title>
+    <style>
+        /* Reset base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'system-ui, 'Segoe UI, Roboto, 'Helvetica, sans-serif;
+        }
+
+        body {
+            background: radial-gradient circle at center, #0d0c15 0, #000 100);
+            color: #l Lime;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .page {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            box-shadow: 0 0 20px #0f0, 0 0 40px #0f0;
+            padding: 2rem 1.5rem;
+            border-radius: 12px;
+            backdrop-filter: blur(4px);
+            transition: 0.3s;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            text-shadow: 0 0 10px ##0f0, 0 0 20px #0f0;
+            margin: 0 0 0.5rem;
+        }
+
+        header p {
+            color: #b0f0b0;
+            font-size: 1.2rem;
+            border-bottom: 1px dashed #0f0;
+            padding-bottom: 0.5rem;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+        }
+
+        .card {
+            background: #0a0a0a;
+            border: 1px solid #0f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            box-shadow: 0 0 5px #0f0 inset;
+        }
+
+        .card h2 {
+            font-size: 1.8rem;
+            margin: 0 0 1rem;
+            text-shadow: 0 0 5px #0f0;
+        }
+
+        .card p {
+            line-height: 1.6;
+            color: #ccffcc;
+        }
+
+        .btn {
+            display: inline-block;
+            background: #0f0;
+            color: #000;
+            font-weight: bold;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.2s;
+            box-shadow: 0 0 5px #0f0;
+        }
+
+        .btn:hover {
+            background: #l Lime;
+            box-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group

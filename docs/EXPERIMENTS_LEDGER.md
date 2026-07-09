@@ -506,3 +506,21 @@ penalized. For the 3060 launcher, treat 128 as the current throughput candidate
 and 258 as the low-eviction/quality-safety candidate; do not use 64 as a default
 except for constrained-pod fallback. See
 `runs/ds4/20260709_local_cache_sweep_k23_RESULTS.md`.
+
+Operational note after J42: the user-requested four-test A/B was finally run as
+specified, then repeated with cache256. Same HTML prompt, K0 first 50 tokens,
+then K23. Breath K0->K23 and breath K96->K23 both produced zero useful
+post-return tokens by the repeat detector: degeneration happened before or
+during breath. Static K23 was fast but looped early. K23 raw-router rotate32 was
+the only tested actuator that reached 800 streamed tokens without the triple
+repeat detector firing, at a throughput cost. Cache128 rotation was faster than
+cache256 rotation in this run (3.03 vs 2.61 t/s). See
+`runs/ds4/20260709_requested_breath_rotation_RESULTS.md`.
+
+Operational note after J43: top-expert higher precision is a valid next test,
+but it is not a runtime flag with current assets. `ds4-staticQ4.gguf` does not
+contain Q4 routed experts: routed `ffn_gate_exps`/`ffn_up_exps` remain
+`iq2_xxs`, routed `ffn_down_exps` remains `q2_k`; only static tensors such as
+`ffn_gate_inp` differ. Testing "top1 expert per layer at int4/Q4" requires a
+hybrid GGUF or sidecar with selected routed experts in a higher-precision
+format.

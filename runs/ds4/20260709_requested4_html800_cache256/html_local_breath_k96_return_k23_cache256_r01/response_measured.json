@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.1\">\n    <title>AI Codex – Negozio di Programmazione AI</title>\n    <style>\n    /* CripStyle */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @font-face {\n    /* fonts */\n    @"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

@@ -1,0 +1,69 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 1.958s
+ds4: cuda backend initialized for graph diagnostics
+0709 18:17:25 ds4-server: context buffers 151.57 MiB (ctx=6144, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1538)
+0709 18:17:25 ds4-server: listening on http://127.0.0.1:8022
+0709 18:17:26 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE on - warmup=50 keep=23[23..96] step=0 ngram(n=3,win=120) drift=0.25 rel=0.15 hyst=200 breath(every=999999,len=80,keep=96,relearn=0) prebreath(on=0,drift=0.18,every=64,max=96) anneal_warm=300 wrap=1 cache_flush=0 prefill_apply=0 prefill_wait_wrap=0 s1=0 exchange=0 rotate(on=0,every=32,decay=0.980)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+0709 18:18:06 ds4-server: chat ctx=0..78:78 prompt done 39.469s
+ds4: CUDA loading model tensors 1.62 GiB cached
+ds4: PACE learned      tok=50 phase=2 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: CUDA loading model tensors 7.86 GiB cached
+0709 18:18:53 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=1.05 t/s avg=1.05 t/s 47.843s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE descent      tok=51 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2511 range, 6.07 GiB touched in 547 ms (16 thread, mlock)
+0709 18:18:59 ds4-server: chat ctx=128..142:14 gen=64 decoding chunk=2.55 t/s avg=1.20 t/s 53.324s
+0709 18:18:59 ds4-server: chat ctx=0..78:78 gen=64 finish=length 92.796s
+0709 18:18:59 ds4-server: live kv cache miss live=142 prompt=78 common=78 reason=token-mismatch
+0709 18:18:59 ds4-server: chat ctx=0..78:78 prompt start
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+0709 18:19:18 ds4-server: chat ctx=0..78:78 prompt done 19.472s
+ds4: PACE learned      tok=50 phase=2 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: CUDA loading model tensors 7.86 GiB cached
+0709 18:19:39 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=2.39 t/s avg=2.39 t/s 20.886s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE descent      tok=51 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2511 range, 6.07 GiB touched in 204 ms (16 thread, mlock)
+0709 18:19:56 ds4-server: chat ctx=128..178:50 gen=100 decoding chunk=2.98 t/s avg=2.66 t/s 37.639s
+0709 18:20:12 ds4-server: chat ctx=178..228:50 gen=150 decoding chunk=3.11 t/s avg=2.79 t/s 53.707s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE breath(ngram) tok=151 phase=4 keep=96 ngram=0.256 hit=1.000 breaths=1
+ds4: REAP prefetch (fattorino): 40 layer, 3840 expert, 7047 range, 25.34 GiB touched in 2252 ms (16 thread, mlock)
+0709 18:20:28 ds4-server: chat ctx=228..278:50 gen=200 decoding chunk=3.17 t/s avg=2.88 t/s 69.463s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE breath_end   tok=231 phase=3 keep=23 ngram=0.887 hit=1.000 breaths=1
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2511 range, 6.07 GiB touched in 195 ms (16 thread, mlock)
+0709 18:20:43 ds4-server: chat ctx=278..328:50 gen=250 decoding chunk=3.25 t/s avg=2.95 t/s 84.831s
+0709 18:20:59 ds4-server: chat ctx=328..378:50 gen=300 decoding chunk=3.18 t/s avg=2.98 t/s 100.573s
+0709 18:21:14 ds4-server: chat ctx=378..428:50 gen=350 decoding chunk=3.27 t/s avg=3.02 t/s 115.884s
+0709 18:21:30 ds4-server: chat ctx=428..478:50 gen=400 decoding chunk=3.22 t/s avg=3.04 t/s 131.401s
+0709 18:21:45 ds4-server: chat ctx=478..528:50 gen=450 decoding chunk=3.27 t/s avg=3.07 t/s 146.708s
+0709 18:22:01 ds4-server: chat ctx=528..578:50 gen=500 decoding chunk=3.21 t/s avg=3.08 t/s 162.265s
+0709 18:22:16 ds4-server: chat ctx=578..628:50 gen=550 decoding chunk=3.26 t/s avg=3.10 t/s 177.583s
+0709 18:22:31 ds4-server: chat ctx=628..678:50 gen=600 decoding chunk=3.21 t/s avg=3.11 t/s 193.145s
+0709 18:22:47 ds4-server: chat ctx=678..728:50 gen=650 decoding chunk=3.25 t/s avg=3.12 t/s 208.546s
+0709 18:23:02 ds4-server: chat ctx=728..778:50 gen=700 decoding chunk=3.21 t/s avg=3.12 t/s 224.144s
+0709 18:23:18 ds4-server: chat ctx=778..828:50 gen=750 decoding chunk=3.24 t/s avg=3.13 t/s 239.569s
+0709 18:23:33 ds4-server: chat ctx=828..878:50 gen=800 decoding chunk=3.21 t/s avg=3.14 t/s 255.143s
+0709 18:23:33 ds4-server: chat ctx=0..78:78 gen=800 finish=length 274.618s
+0709 18:23:34 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=37238 selected_experts=231384 cache_hits=0 cache_misses=524 hit_rate=0.0000 miss_per_expert=0.0023 direct_loads=231372 copy_calls=695688 copied=1565298.00 MiB copy_ms=259191.331 copy_ms_per_batch=6.960 sync_calls=695688 sync_ms=79267.117 sync_ms_per_batch=2.129
+ds4: expert tiering observe summary batches=37238 slots=263160 compact=231384 hit_rate=0.0000 hits=0 misses=12 direct=231372 evictions=0 direct=1561761.00 MiB compact=1561842.00 MiB
+ds4: expert tiering observe layer=1 batches=866 slots=6120 compact=5596 hit_rate=0.0000 misses=0 direct=5596 evictions=0 cap=0 top=46:241,42:172,184:171,252:171,183:168,133:167
+ds4: expert tiering observe layer=2 batches=866 slots=6120 compact=5590 hit_rate=0.0000 misses=0 direct=5590 evictions=0 cap=0 top=164:250,29:174,162:173,7:170,130:167,179:162
+ds4: expert tiering observe layer=0 batches=866 slots=6120 compact=5584 hit_rate=0.0000 misses=12 direct=5572 evictions=0 cap=171 top=99:322,109:256,248:241,156:177,163:170,152:169
+ds4: expert tiering observe layer=19 batches=866 slots=6120 compact=5420 hit_rate=0.0000 misses=0 direct=5420 evictions=0 cap=0 top=10:668,213:630,136:491,116:483,173:455,111:422
+ds4: expert tiering observe layer=3 batches=866 slots=6120 compact=5404 hit_rate=0.0000 misses=0 direct=5404 evictions=0 cap=0 top=60:769,45:698,63:628,74:529,150:466,212:403
