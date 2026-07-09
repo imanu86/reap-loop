@@ -8,20 +8,20 @@ The requested tests were run twice: first with cache 128, then with cache 256.
 
 ## Results
 
-| cache | test | wall s | avg t/s | breath | breath end | tokens after breath end | last non-repeat token est | useful tokens after return est | repeat | notes |
+| cache | test | wall s | avg t/s | breath | breath end | tokens after breath end | coherent until token est | useful tokens after return est | repeat | notes |
 |---:|---|---:|---:|---|---|---:|---:|---:|---:|---|
-| 128 | breath K0 -> K23 | 407.314 | 2.28 | tok 170 -> K0 | tok 250 -> K23 | 550 | 244 | 0 | 1 | K0 breath did not recover before return to K23. |
-| 128 | breath K96 -> K23 | 311.644 | 2.92 | tok 170 -> K96 | tok 250 -> K23 | 550 | 156 | 0 | 1 | Degeneration was already visible before breath. |
-| 128 | K23 static, no breath | 245.958 | 3.39 | - | - | - | 116 | - | 1 | Fast but loops early. |
+| 128 | breath K0 -> K23 | 407.314 | 2.28 | tok 170 -> K0 | tok 250 -> K23 | 550 | 244 | 0 | 1 | Coherent only until about tok 244; after return to K23, 0 useful tokens measured. |
+| 128 | breath K96 -> K23 | 311.644 | 2.92 | tok 170 -> K96 | tok 250 -> K23 | 550 | 156 | 0 | 1 | Coherent only until about tok 156, before breath fired. |
+| 128 | K23 static, no breath | 245.958 | 3.39 | - | - | - | 116 | - | 1 | Coherent only until about tok 116. |
 | 128 | K23 rotate32, no breath | 274.447 | 3.03 | - | - | - | 800 | - | 0 | 23 rotations; no triple-repeat loop detected through 800 tokens. |
-| 256 | breath K0 -> K23 | 399.099 | 2.36 | tok 194 -> K0 | tok 274 -> K23 | 526 | 198 | 0 | 1 | A few useful tokens during breath, none after return. |
-| 256 | breath K96 -> K23 | 274.638 | 3.14 | tok 151 -> K96 | tok 231 -> K23 | 569 | 95 | 0 | 1 | Degeneration was already visible before breath. |
-| 256 | K23 static, no breath | 271.796 | 3.06 | - | - | - | 116 | - | 1 | Same early-loop shape as cache128 static. |
+| 256 | breath K0 -> K23 | 399.099 | 2.36 | tok 194 -> K0 | tok 274 -> K23 | 526 | 198 | 0 | 1 | Coherent only until about tok 198; after return to K23, 0 useful tokens measured. |
+| 256 | breath K96 -> K23 | 274.638 | 3.14 | tok 151 -> K96 | tok 231 -> K23 | 569 | 95 | 0 | 1 | Coherent only until about tok 95, before breath fired. |
+| 256 | K23 static, no breath | 271.796 | 3.06 | - | - | - | 116 | - | 1 | Coherent only until about tok 116. |
 | 256 | K23 rotate32, no breath | 318.003 | 2.61 | - | - | - | 800 | - | 0 | 23 rotations; no triple-repeat loop detected through 800 tokens, slower than cache128. |
 
-`last non-repeat token est` is derived from the first detected triple repeated
+`coherent until token est` is derived from the first detected triple repeated
 span in the generated text and mapped back to the 800 streamed content events.
-It is a reproducible repeat detector, not a human quality grade. The raw
+It is a reproducible token-level proxy for coherence, not a human quality grade. The raw
 content, request/response JSON, stream events, env, and server logs are kept in:
 
 - `runs/ds4/20260709_requested4_html800_cache128`
