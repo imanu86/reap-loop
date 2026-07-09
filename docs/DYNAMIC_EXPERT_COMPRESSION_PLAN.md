@@ -7,9 +7,12 @@ expert ids`) behind `DS4_EXPERT_TIERING_LOG_IDS=1`. Compression, sidecars,
 and lossy cold formats are still design/open work. Metadata-only dynamic
 promotion simulation, including prompt-derived preloading, exists in
 `scripts/analyze_tiering_observe.py`; DS4 commit `e3167cc` adds the matching
-runtime observe policy behind `DS4_EXPERT_TIER_POLICY=observe_promote`. Do not
-treat any speed, RAM, or quality benefit below as a claim until the local/pod
-tests in this document pass.
+runtime observe policy behind `DS4_EXPERT_TIER_POLICY=observe_promote`. DS4
+commit `859d3db` adds an optional lossless cold-RAM sidecar path behind
+`DS4_EXPERT_COLD_RAM_LOSSLESS=1`; it stores exact native quantized bytes and is
+for correctness/plumbing, not a speed claim. Do not treat any speed, RAM, or
+quality benefit below as a claim until the local/pod tests in this document
+pass.
 
 ## Goal
 
@@ -272,6 +275,13 @@ Implementation status as of 2026-07-08:
   batches, preloaded hotset size, decode hot hits, promotions, evictions, and
   hot count in the existing tiering JSONL rows. Smoke confirms prompt:43 and
   decode:86 phases on a 2-token local request.
+- J34 adds the first real cold payload path, but still lossless: exact native
+  expert bytes are materialized into RAM blobs and copied H->D before falling
+  back to GGUF/mmap. Correctness smoke with `DS4_EXPERT_COLD_RAM_PREFILL=1` and
+  `VERIFY=1` returned OK with zero failures, but duplicated 12.393 GiB for a
+  tiny prompt and made prompt time 158.896s. This is useful proof of addressing
+  and fallback only; the final cold tier must be smaller than native and must be
+  prompt-preloaded/asynchronous.
 - Important implication: do not build an on-demand-only decompressor first.
   The runtime prototype should preload from prompt/router observations, then
   promote misses asynchronously. Otherwise the decompressor lands on the token
@@ -423,7 +433,13 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    Runtime path timing still requires real observe JSONL.
 3. ~~Add metadata-only DS4 runtime observe-promote policy.~~ Done in `/root/ds4`
    commit `e3167cc`; it does not alter tensors or speed path yet.
-4. Add exact native sidecar pack/unpack with checksum and GGUF fallback.
-5. Wire cold miss promotion into the existing cache miss path.
-6. Add one lossy cold format for a tiny opt-in subset, then run pod quality
+4. ~~Add exact native sidecar pack/unpack with checksum and GGUF fallback.~~
+   Done as an optional in-process RAM sidecar in `/root/ds4` commit `859d3db`.
+   It is intentionally off by default and is not the performance format.
+5. Replace the lossless RAM blob payload with one smaller cold format for a tiny
+   opt-in subset, then run quality gates.
+6. Wire prompt-preloaded/asynchronous promotion into the existing cache miss
+   path without using prefill-wide native lossless materialization.
+7. Add frozen SSD fallback only after cold RAM proves useful, then run pod
+   quality
    gates before wider enablement.
