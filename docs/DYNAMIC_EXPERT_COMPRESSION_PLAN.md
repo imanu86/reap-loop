@@ -14,8 +14,11 @@ for correctness/plumbing, not a speed claim. J35 adds dependency-free GGUF
 compression probes in `scripts/gguf_inspect_ds4.py` and
 `scripts/ds4_cold_codec_lab.py`: generic lossless compression of native routed
 expert bytes is effectively useless, so the first smaller cold payload candidate
-is a lossy sign+scale CQ1 sidecar. Do not treat any speed, RAM, or quality
-benefit below as a claim until the local/pod tests in this document pass.
+is a lossy sign+scale CQ1 sidecar. DS4 commit `809218d` adds the first CQ1
+cold-RAM sidecar prototype behind `DS4_EXPERT_COLD_FORMAT=cq1g32|cq1g64|cq1g256`;
+this is a plumbing/correctness milestone, not a usable speed or quality profile.
+Do not treat any speed, RAM, or quality benefit below as a claim until the
+local/pod tests in this document pass.
 
 ## Goal
 
@@ -66,6 +69,19 @@ aggressive all-cold format. Use hot native plus cold CQ1:
   RAM.
 - `down-only:cq1g64` keeps more native quality but estimates about 59-61 GiB at
   1024-2048 hot native, leaving little room for OS/cache/KV overhead.
+
+Runtime note after J36: the first DS4 CQ1 prototype can materialize real CQ1
+sidecar entries and repack them to native selected/cache buffers, but broad
+prompt/prefill CQ1 is a negative result. With
+`DS4_EXPERT_COLD_FORMAT=cq1g32`, `DS4_EXPERT_COLD_RAM_PREFILL=1`, and verify on
+a tiny RTX 3060 smoke, the sidecar materialized 1017 entries, used about
+4576.50 MiB compressed CQ1, repacked about 12190.50 MiB native bytes, and
+reported zero materialization/copy/verify/repack failures. Output degraded to
+`????` and latency was very high. With the conservative prefill/cache guard
+enabled, the same launcher kept CQ1 entries/copies at zero, protecting normal
+runs. Next work must be phase-aware: prompt/prefill and the first
+quality-critical generated tokens stay native, then cold CQ1 is admitted only
+after a prompt-derived hot native set exists.
 
 ## Current DS4 Facts To Preserve
 
@@ -188,7 +204,7 @@ Use env flags so the stock behavior remains the default.
 | `DS4_EXPERT_TIERING_LOG_IDS` | `0` | Implemented optional ID trace: appends `selected` and `compact_ids` arrays to observe JSONL rows for offline policy simulation. |
 | `DS4_EXPERT_TIERING_SUMMARY_EVERY` | `0` | Implemented optional stderr summary interval by observed batches. |
 | `DS4_EXPERT_TIER_POLICY` | `observe` | Planned future policy: `observe`, `warm-only`, `cold-sidecar`, `frozen-ssd`. |
-| `DS4_EXPERT_COLD_FORMAT` | `native` | `native`, `q4`, `q2`, `q1`, `pack`. MVP starts with `native`/metadata only. |
+| `DS4_EXPERT_COLD_FORMAT` | `native` | Implemented: `native`/`lossless`, `cq1g32`, `cq1g64`, `cq1g256`. CQ1 is experimental and must stay behind explicit test flags. |
 | `DS4_EXPERT_COLD_RAM_MB` | `0` | RAM budget for cold sidecar cache; 0 disables RAM cold cache. |
 | `DS4_EXPERT_FROZEN_DIR` | unset | Directory for SSD sidecar packs. Unset disables frozen tier. |
 | `DS4_EXPERT_DEMOTE_GRACE_TOKENS` | `256` | Tokens after leaving hot/keep before demotion is eligible. |
@@ -362,6 +378,8 @@ CQ1 kernels if the quality and miss-rate justify it. Gate:
 - functional eval remains at the same L-grade on selected tasks;
 - per-token decompression latency is bounded and reported;
 - RAM saved is measured after metadata/alignment, not theoretical.
+- prompt/prefill and first quality-critical generated tokens remain native
+  unless an explicit destructive test flag is set.
 
 ### Step 4: frozen SSD tier
 
@@ -468,10 +486,13 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
 4. ~~Add exact native sidecar pack/unpack with checksum and GGUF fallback.~~
    Done as an optional in-process RAM sidecar in `/root/ds4` commit `859d3db`.
    It is intentionally off by default and is not the performance format.
-5. Replace the lossless RAM blob payload with one smaller cold format for a tiny
-   opt-in subset. First candidate: `DS4_EXPERT_COLD_FORMAT=cq1g32` with
-   `DS4_EXPERT_COLD_HOT_CAP=1024` or `2048`, repacking cold CQ1 to native
-   selected/cache buffers on demand. Then run quality gates.
+5. ~~Replace the lossless RAM blob payload with one smaller cold format for a
+   tiny opt-in subset.~~ First CQ1 plumbing is in `/root/ds4` commit `809218d`
+   via `DS4_EXPERT_COLD_FORMAT=cq1g32|cq1g64|cq1g256`, repacking cold CQ1 to
+   native selected/cache buffers on demand. Broad/prefill CQ1 is a quality and
+   latency negative, so the next implementation must add phase-aware admission:
+   native prompt/warmup plus a prompt-derived hot native cap such as 1024 or
+   2048 before cold CQ1 is allowed.
 6. Wire prompt-preloaded/asynchronous promotion into the existing cache miss
    path without using prefill-wide native lossless materialization.
 7. Add frozen SSD fallback only after cold RAM proves useful, then run pod
