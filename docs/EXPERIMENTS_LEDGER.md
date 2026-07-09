@@ -623,3 +623,42 @@ tighten stability gate from ever maturing. Next code fix: split "mask refresh"
 from "keep change" so raw-router rotate/rebuild does not reset the tighten
 timer, or add an explicit `relearn_on_tighten` path that rebuilds the target K
 mask at the same token as the tighten.
+
+Operational note J50: prepared the runtime fix and the follow-up matrix for the
+"relearn mask at every downward step" hypothesis. Patch
+`patches/ds4/0016-pace-rebuild-on-tighten.patch` is designed to apply after
+`0015-pace-raw-router-k-rotation.patch` and adds two env-gated behaviors:
+`DS4_PACE_ROTATE_PRESERVE_STABLE=1` keeps K-constant raw-router refreshes from
+resetting the tighten stability timer, and `DS4_PACE_RELEARN_ON_TIGHTEN=1`
+rebuilds the target-K mask from raw-router `rmass` exactly when a tighten step
+fires. This is the correct actuator for K64 -> K56 -> ... -> K23 with a fresh
+mask at every intermediate K. The current `/root/ds4/ds4-server` binary already
+contains an advanced PACE build, but the matching advanced `ds4.c` source was
+not found under `/root` or the local repos; rebuilding DS4 therefore requires
+first re-applying/rebasing the tracked patch stack instead of compiling the
+current upstream-looking `/root/ds4/ds4.c`. Runner variants added for the next
+matrix: `local_stepdown_64_to23_stale_cache256` (control),
+`local_stepdown_64_to23_rotate20_cache256` (current-runtime boundary test),
+`local_stepdown_64_to23_relearn_on_tighten_cache256` (0016 primary test), and
+`local_stepdown_64_to23_rotate4_noreset_cache256` (0016 stress test). The parser
+now records `PACE prebreath_relearn` and `PACE tighten_relearn` separately so
+"mask was actually rebuilt" is a CSV field, not a manual grep.
+
+Operational note J51: current-runtime boundary tests completed. First,
+`local_stepdown_64_to23_rotate20_cache256` (HTML, cache256, 400 tokens) proved
+that rotation cadence longer than the 16-token tighten gate allows the old
+step-down to proceed but does not rebuild masks during descent. Measured events:
+K64 at tok 51; tighten K56/K48/K40/K32/K24/K23 at tok 67/83/99/115/131/147;
+first rotate only at tok 167, already at K23. Runtime was slow and degraded:
+prompt 63.779s, finish 400.863s, avg 1.19 t/s, 12 rotates, 148.62 GiB touched,
+34.156s prefetch time, repeat_flag=1, output tail collapsed into repeated
+`#` tokens. Second, `local_stepdown_64_to23_raw_collect_cache256` (same schedule,
+300 tokens, `DS4_PACE_ROTATE=1`, `ROTATE_EVERY=999999`) measured raw-router
+readback/accumulation without applying rotate. It performed the same six
+tightens and zero rotates, finishing in 358.632s at 1.15 t/s with 7 prefetches
+(75.78 GiB touched, 3.351s prefetch). Output still degenerated, this time into
+repeated `href=https://fa5.min?...`. Conclusion: with the current binary,
+configuration alone cannot do "fresh mask at each downward step": frequent
+rotate blocks tighten, slow rotate arrives after the descent, and raw collect
+without tighten-time apply only adds cost. Patch 0016 is required for the
+meaningful next A/B.

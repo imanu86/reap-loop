@@ -683,6 +683,106 @@ QUICK_VARIANTS = [
         cache_experts=256,
     ),
     Variant(
+        "local_stepdown_64_to23_rotate20_cache256",
+        {
+            "DS4_PACE_KEEP": "64",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "8",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_STABLE": "16",
+            "DS4_PACE_ANNEAL_WARM": "50",
+            "DS4_PACE_TIGHTEN_LO": "1.0",
+            "DS4_PACE_HIT_HI": "0.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "20",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "Current-runtime boundary test: rotate cadence is longer than the 16-token tighten gate, so tighten should happen but rotation should be postponed until after K reaches 23.",
+        cache_experts=256,
+    ),
+    Variant(
+        "local_stepdown_64_to23_relearn_on_tighten_cache256",
+        {
+            "DS4_PACE_KEEP": "64",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "8",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_STABLE": "16",
+            "DS4_PACE_ANNEAL_WARM": "50",
+            "DS4_PACE_TIGHTEN_LO": "1.0",
+            "DS4_PACE_HIT_HI": "0.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "999999",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_RELEARN_ON_TIGHTEN": "1",
+            "DS4_PACE_ROTATE_PRESERVE_STABLE": "1",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "Requires DS4 patch 0016: collect raw-router rmass during HOLD and rebuild the mask from rmass exactly when each K64->...->K23 tighten step fires.",
+        cache_experts=256,
+    ),
+    Variant(
+        "local_stepdown_64_to23_raw_collect_cache256",
+        {
+            "DS4_PACE_KEEP": "64",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "8",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_STABLE": "16",
+            "DS4_PACE_ANNEAL_WARM": "50",
+            "DS4_PACE_TIGHTEN_LO": "1.0",
+            "DS4_PACE_HIT_HI": "0.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "999999",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "Current-runtime cost probe: collect raw-router rmass during the forced K64->K23 step-down but never apply periodic rotate; estimates readback overhead for patch 0016 relearn_on_tighten.",
+        cache_experts=256,
+    ),
+    Variant(
+        "local_stepdown_64_to23_rotate4_noreset_cache256",
+        {
+            "DS4_PACE_KEEP": "64",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "8",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_STABLE": "16",
+            "DS4_PACE_ANNEAL_WARM": "50",
+            "DS4_PACE_TIGHTEN_LO": "1.0",
+            "DS4_PACE_HIT_HI": "0.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "4",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_ROTATE_PRESERVE_STABLE": "1",
+            "DS4_PACE_RELEARN_ON_TIGHTEN": "1",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "Requires DS4 patch 0016: stress test frequent K-constant raw-router refresh without resetting the tighten stability timer, plus raw-router rebuild at each tighten.",
+        cache_experts=256,
+    ),
+    Variant(
         "local_prebreath_adapt_n010_relearn_weighted_cache768",
         {
             "DS4_PACE_KEEP": "23",
@@ -1429,6 +1529,7 @@ def parse_server_log(path: pathlib.Path) -> dict:
             "pace_breaths": 0,
             "pace_breath_ends": 0,
             "pace_tightens": 0,
+            "pace_tighten_relearns": 0,
             "pace_rotates": 0,
             "first_learned_tok": None,
             "first_descent_tok": None,
@@ -1481,7 +1582,7 @@ def parse_server_log(path: pathlib.Path) -> dict:
             current["exchange_promote"] += int(m.group(2))
             current["exchange_demote"] += int(m.group(3))
         m = re.search(
-            r"PACE (learned|descent|prebreath_relearn|prebreath|breath\([^)]*\)|breath_end|tighten|rotate)\s+"
+            r"PACE (learned|descent|prebreath_relearn|prebreath|breath\([^)]*\)|breath_end|tighten_relearn|tighten|rotate)\s+"
             r"tok=(\d+)\s+phase=\d+\s+keep=(\d+)",
             line,
         )
@@ -1523,6 +1624,8 @@ def parse_server_log(path: pathlib.Path) -> dict:
                         current["first_breath_keep"] = keep
             elif event == "tighten":
                 current["pace_tightens"] += 1
+            elif event == "tighten_relearn":
+                current["pace_tighten_relearns"] += 1
             elif event == "rotate":
                 current["pace_rotates"] += 1
                 if current["first_rotate_tok"] is None:
