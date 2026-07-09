@@ -1,0 +1,13 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed with un-zeroed/exe tensors before the load completes.
+2. **Reputation score widening without mask consistency** – `re repetition_score` may widen the mask after expert loading, but the loaded experts may not be used for the new mask indices, causing expert index mismatch.
+3. **Router selected vs loaded expert mismatch** – `selected` from `router(hidden``)` may be used before expert loading, causing the loaded experts to be used for the new mask indices, causing expert index mismatch.
+4. **Mask widening after expert loading** – `re repetition_score` may widen the mask after expert loading, but the loaded experts may not be used for the new mask indices, causing expert index mismatch.
+4. **Expert loading after mask widening** – `re repetition_score` may widen the mask after expert loading, but the loaded experts may not be used for the new mask indices, causing expert index mismatch.
+
+**Minimal Patch Plan**
+
+1. **Ensure expert loading before mask widening

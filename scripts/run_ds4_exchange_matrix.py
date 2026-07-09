@@ -135,6 +135,11 @@ class Variant:
     name: str
     env: dict[str, str] = field(default_factory=dict)
     rationale: str = ""
+    cache_experts: int | None = None
+
+
+def effective_cache_experts(variant: Variant, args: argparse.Namespace) -> int:
+    return variant.cache_experts if variant.cache_experts is not None else args.cache_experts
 
 
 QUICK_VARIANTS = [
@@ -168,6 +173,60 @@ QUICK_VARIANTS = [
             "DS4_PACE_ROTATE": "0",
         },
         "Control for rotation: 50-token full warmup, then fixed K23 for the whole decode; no prebreath and no n-gram/clock breath.",
+    ),
+    Variant(
+        "local_k23_cache64",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "64",
+        },
+        "Local cache sweep: fixed K23 after 50-token K0 warmup, no breath/prebreath/rotation, server expert cache and PACE target both set to 64.",
+        cache_experts=64,
+    ),
+    Variant(
+        "local_k23_cache128",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "128",
+        },
+        "Local cache sweep: fixed K23 after 50-token K0 warmup, no breath/prebreath/rotation, server expert cache and PACE target both set to 128.",
+        cache_experts=128,
+    ),
+    Variant(
+        "local_k23_cache258",
+        {
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "0",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "258",
+        },
+        "Local cache sweep: fixed K23 after 50-token K0 warmup, no breath/prebreath/rotation, server expert cache and PACE target both set to 258.",
+        cache_experts=258,
     ),
     Variant(
         "k23_rotate_every16",
@@ -643,7 +702,8 @@ def write_manifest(
             "model": args.model,
             "ctx": args.ctx,
             "server_max_tokens": args.server_max_tokens,
-            "cache_experts": args.cache_experts,
+            "cache_experts": effective_cache_experts(variant, args),
+            "cache_experts_default": args.cache_experts,
             "prefill_chunk": args.prefill_chunk,
             "port": args.port,
             "request_max_tokens": args.max_tokens,
@@ -964,6 +1024,7 @@ def start_server(
     port: int,
     args: argparse.Namespace,
 ) -> subprocess.Popen:
+    cache_experts = effective_cache_experts(variant, args)
     env_prefix = " ".join(f"{k}={json.dumps(v)}" for k, v in sorted(env.items()))
     trace_path = env.get("DS4_SPEX_TRACE_ROUTING")
     trace_rm = f"rm -f {json.dumps(trace_path)} && " if trace_path else ""
@@ -973,7 +1034,7 @@ def start_server(
         f"{trace_rm}"
         f"{env_prefix} /root/ds4/ds4-server "
         f"-m {args.model} --cuda --ssd-streaming "
-        f"--ssd-streaming-cache-experts {args.cache_experts} "
+        f"--ssd-streaming-cache-experts {cache_experts} "
         f"--prefill-chunk {args.prefill_chunk} "
         f"-c {args.ctx} -n {args.server_max_tokens} "
         f"--host 127.0.0.1 --port {port} --cors"

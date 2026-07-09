@@ -1,0 +1,117 @@
+{
+  "runner_id": "html_local_k23_cache64_r01",
+  "created_utc": "2026-07-09T14:53:50.291583+00:00",
+  "profile": "SOTA_LOCAL_3060_TIMED",
+  "variant": "local_k23_cache64",
+  "variant_rationale": "Local cache sweep: fixed K23 after 50-token K0 warmup, no breath/prebreath/rotation, server expert cache and PACE target both set to 64.",
+  "prompt": {
+    "name": "html",
+    "sha256_16": "f1d3118e6edf41bd",
+    "chars": 199
+  },
+  "contamination_controls": [
+    "Base profile mirrors the local RTX 3060 UI launcher knobs, with file-heavy diagnostics off unless the variant explicitly enables them.",
+    "DS4_PACE_EXCHANGE_OBSERVE=0: exchange delta logging is diagnostic, not part of this timing A/B.",
+    "DS4_EXPERT_TIERING_LOG is empty and DS4_EXPERT_TIERING_LOG_IDS=0: avoid per-expert residency file churn during timed runs.",
+    "SPEX hidden GPU load/score/prefetch are disabled: hidden SPEX is not the variable under test.",
+    "Routing CSV is disabled in the control and enabled only in the trace_on variant."
+  ],
+  "evidence_policy": {
+    "measured": "Use only values copied from DS4 logs, HTTP usage, generated files, or direct file stats as benchmark data.",
+    "derived": "Allowed only when calculated directly from measured fields kept in this run directory.",
+    "hypothesis": "May be written in notes, but must not be promoted to benchmark data without a follow-up measurement."
+  },
+  "server": {
+    "model": "/root/models/ds4-2bit.gguf",
+    "ctx": 6144,
+    "server_max_tokens": 2048,
+    "cache_experts": 64,
+    "cache_experts_default": 258,
+    "prefill_chunk": 512,
+    "port": 8021,
+    "request_max_tokens": 320,
+    "warmups": 1,
+    "warmup_tokens": 64
+  },
+  "trace": {
+    "routing_csv": null,
+    "weights": false,
+    "scope_replay_note": "Open Scope with this CSV only for diagnostic replay; do not compare directly with trace_off timing unless trace overhead is accepted."
+  },
+  "source_artifacts": {
+    "server_stderr": "server.stderr.log",
+    "server_stdout": "server.stdout.log",
+    "request_measured": "request_measured.json",
+    "response_measured": "response_measured.json",
+    "content_measured": "content_measured.txt",
+    "server_env": "server_env.json"
+  },
+  "env_delta_from_profile": {
+    "DS4_PACE_CACHE_TARGET_SLOTS": {
+      "base": "258",
+      "effective": "64"
+    },
+    "DS4_PACE_DRIFT": {
+      "base": "0.25",
+      "effective": "1.0"
+    },
+    "DS4_PACE_KEEP_STEP": {
+      "base": "8",
+      "effective": "0"
+    },
+    "DS4_PACE_LOG": {
+      "base": null,
+      "effective": "/root/ds4_matrix_local_k23_cache64.jsonl"
+    }
+  },
+  "env_effective": {
+    "DS4_CUDA_NO_DIRECT_IO": "1",
+    "DS4_CUDA_KEEP_MODEL_PAGES": "1",
+    "DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB": "0.25",
+    "DS4_PACE": "1",
+    "DS4_PACE_WARMUP": "50",
+    "DS4_PACE_KEEP": "23",
+    "DS4_PACE_KEEP_MIN": "23",
+    "DS4_PACE_KEEP_MAX": "96",
+    "DS4_PACE_KEEP_STEP": "0",
+    "DS4_PACE_BREATH_EVERY": "999999",
+    "DS4_PACE_BREATH_KEEP": "96",
+    "DS4_PACE_BREATH_LEN": "80",
+    "DS4_PACE_RELEARN": "0",
+    "DS4_PACE_DRIFT": "1.0",
+    "DS4_PACE_PREBREATH": "0",
+    "DS4_PACE_PREBREATH_DRIFT": "0.18",
+    "DS4_PACE_PREBREATH_EVERY": "64",
+    "DS4_PACE_PREBREATH_KEEP_MAX": "96",
+    "DS4_PACE_WRAP": "1",
+    "DS4_PACE_DEBUG": "1",
+    "DS4_PACE_CACHE_FLOOR": "1",
+    "DS4_PACE_CACHE_TARGET_SLOTS": "64",
+    "DS4_PACE_CACHE_FLUSH": "0",
+    "DS4_PACE_PREFILL_APPLY": "0",
+    "DS4_PACE_PREFILL_WAIT_WRAP": "0",
+    "DS4_PACE_EXCHANGE_OBSERVE": "0",
+    "DS4_PACE_ROTATE": "0",
+    "DS4_PACE_ROTATE_EVERY": "32",
+    "DS4_PACE_ROTATE_DECAY": "0.98",
+    "DS4_SPEX_STATS": "1",
+    "DS4_SPEX_HIDDEN_PREFETCH": "0",
+    "DS4_SPEX_HIDDEN_GPU_LOAD": "0",
+    "DS4_SPEX_HIDDEN_GPU_SCORE": "0",
+    "DS4_SPEX_HIDDEN_GPU_PREFETCH": "0",
+    "DS4_SPEX_HIDDEN_GPU_PREFETCH_DRY_RUN": "0",
+    "DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS": "0",
+    "DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS_EVERY": "256",
+    "DS4_SPEX_HIDDEN_CAP": "6",
+    "DS4_SPEX_PREFETCH_PROFILE": "0",
+    "DS4_SPEX_TRACE_ROUTING": "",
+    "DS4_SPEX_TRACE_ROUTING_WEIGHTS": "0",
+    "DS4_EXPERT_TIERING": "observe",
+    "DS4_EXPERT_TIERING_LOG": "",
+    "DS4_EXPERT_TIERING_LOG_IDS": "0",
+    "DS4_CUDA_NO_Q8_F16_CACHE": "1",
+    "DS4_REAP_PREFETCH_THREADS": "16",
+    "DS4_REAP_PREFETCH_LOCK": "1",
+    "DS4_PACE_LOG": "/root/ds4_matrix_local_k23_cache64.jsonl"
+  }
+}

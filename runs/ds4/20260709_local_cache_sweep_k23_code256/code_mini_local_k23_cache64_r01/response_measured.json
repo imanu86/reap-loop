@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 259,
+  "stream_content_events": 256,
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 256,
+    "total_tokens": 317,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:\n\n**Main Correctness Risks**\n\n1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed with stale or zero data before the load completes.\n2. **Reputation score widening without synchronization** – `re repetition_score` may widen the mask after expert loading, causing the mask to be used before the expert is fully materialized.\n3. **Mask consistency across expert loading** – The mask used for expert selection may be updated after expert loading, causing the selected expert IDs to be used before the expert is fully materialized.\n4. **Expert weight staleness** – If expert weights are loaded from SSD, the decode step may proceed with stale expert weights before the load completes.\n\n**Minimal Patch Plan**\n\n1. **Insert a barrier after expert loading** – Ensure that the expert loading from SSD completes before the decode step.\n2. **Reorder mask widening** – Move `re repetition_score` widening after expert loading, so the mask is used after the expert is fully materialized.\n3. **Add a fence after expert loading** – Ensure that the expert loading from SSD completes before the decode step.\n\n"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

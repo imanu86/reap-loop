@@ -492,3 +492,17 @@ the repeat detector. On code_mini, rotate32 had no quality win and cost speed
 (2.77 vs 2.93 t/s). Keep `DS4_PACE_ROTATE=0` by default; next step is
 quality-triggered rotation based on raw out-of-mask mass / n-gram risk, not
 periodic rotation forever. See `docs/DS4_K23_ROTATION_POD_RESULTS_20260709.md`.
+
+Operational note after J41: local RTX 3060 cache sweep isolated
+`--ssd-streaming-cache-experts` from pod/local confusion. Fixed setup:
+K0 warmup 50 -> K23, no breath, no prebreath, no rotation, one 64-token warmup,
+routing trace off. HTML320 and code_mini256 were run in forward/reverse order.
+`cache64` is consistently too small (HTML avg 1.78/1.85 t/s, code avg
+2.31/1.69 t/s, ~82k-99k tier evictions). `cache128` was the best measured warm
+point (HTML 3.03/3.34 t/s, code 3.23/3.29 t/s). `cache258` removes almost all
+tier evictions (12 misses / 0 evictions in these runs) and is close when warm
+(HTML 3.23 t/s, code 3.07 t/s), but cold first-in-order rows are heavily
+penalized. For the 3060 launcher, treat 128 as the current throughput candidate
+and 258 as the low-eviction/quality-safety candidate; do not use 64 as a default
+except for constrained-pod fallback. See
+`runs/ds4/20260709_local_cache_sweep_k23_RESULTS.md`.

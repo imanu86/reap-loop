@@ -1,0 +1,11 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed with stale or zero data before the load completes.
+2. **Reputation score widening without synchronization** – `re repetition_score` may widen the mask after expert loading, causing the mask to include experts that are not yet materialized, leading to out-of-bread or wrong hidden states.
+3. **Router hidden stalant** – `selected` from `router(hidden``)``` may be used before the expert weights are not fully loaded, causing incorrect expert selection.
+
+**Minimal Patch Plan**
+
+1. **Synchronize expert loading before router** – Insert a barrier after `router(hidden`)````: `hidden```````````````````````````````````````````````````````````````````````
