@@ -1,0 +1,13 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1=chi">
+    <title>AI Shop – Richiesta inviata</title>
+    <style>
+    /* cyberpunk */
+    @font-face {
+    @import url('https.googleapis.com/css2?family=Neon+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++

@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-2",
+  "object": "chat.completion",
+  "created": 1783582428,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI CyberShop</title>\n    <style>\n    /* reset e cyberpunk */\n    * {\n    margin: 0, padding: 0, border/0, body/0, html/0, body/0, a/0, button/0, input/0, textarea/0, form/0, p/0, h1/0, h2/0, ul/0, li/0, img/0, div/0, span/0, section/0, header/0, footer/0, main/0, nav/0, aside/0, article/0, figure/0, blockquote/0, code/0, pre/0"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 220,
+    "total_tokens": 298,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}
