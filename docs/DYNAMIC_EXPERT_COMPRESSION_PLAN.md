@@ -10,9 +10,12 @@ promotion simulation, including prompt-derived preloading, exists in
 runtime observe policy behind `DS4_EXPERT_TIER_POLICY=observe_promote`. DS4
 commit `859d3db` adds an optional lossless cold-RAM sidecar path behind
 `DS4_EXPERT_COLD_RAM_LOSSLESS=1`; it stores exact native quantized bytes and is
-for correctness/plumbing, not a speed claim. Do not treat any speed, RAM, or
-quality benefit below as a claim until the local/pod tests in this document
-pass.
+for correctness/plumbing, not a speed claim. J35 adds dependency-free GGUF
+compression probes in `scripts/gguf_inspect_ds4.py` and
+`scripts/ds4_cold_codec_lab.py`: generic lossless compression of native routed
+expert bytes is effectively useless, so the first smaller cold payload candidate
+is a lossy sign+scale CQ1 sidecar. Do not treat any speed, RAM, or quality
+benefit below as a claim until the local/pod tests in this document pass.
 
 ## Goal
 
@@ -38,6 +41,31 @@ promotion, not on-demand-only decompression. On J31 run2, cap1024 with
 prompt-derived preload and immediate compressed demotion reached 0.8489 hot-hit
 with 0.1511 runtime promotion-rate and about 13.13 GiB scaled expert footprint
 under an x0.33 cold-RAM assumption.
+
+Updated local target after J35: the current DS4 Flash routed experts are already
+`IQ2_XXS` for gate/up and `Q2_K` for down, 6.75 MiB per expert and about 72.56
+GiB for all 11008 routed experts. Sampling real GGUF expert blobs showed
+entropy around 7.95 bits/byte; zlib/lzma/bz2 saved less than 1% or expanded the
+data. `ds4-staticQ4.gguf` does not provide smaller routed experts; it has the
+same routed expert formats. A dependency-free CQ1 lab, using sign bits plus one
+fp16 scale per group, gives the first plausible smaller cold format:
+
+- `cq1g256`: about 3.188 MiB/expert, 34.27 GiB for all routed experts.
+- `cq1g64`: about 3.750 MiB/expert, 40.31 GiB for all routed experts.
+- `cq1g32`: about 4.500 MiB/expert, 48.38 GiB for all routed experts.
+- On a 768-block random sample, CQ1 dot error against Q8-like vectors was about
+  0.029 normalized MAE across `IQ2_XXS` and `Q2_K` blocks. Weight nRMSE is high
+  (~0.58), so this is only a candidate; quality must be tested end-to-end.
+
+For the 3060/62GiB WSL target, the safer first prototype is not the most
+aggressive all-cold format. Use hot native plus cold CQ1:
+
+- `1024` hot native + cold `all:cq1g32` estimates about 50.62 GiB routed-expert
+  RAM.
+- `2048` hot native + cold `all:cq1g32` estimates about 52.88 GiB routed-expert
+  RAM.
+- `down-only:cq1g64` keeps more native quality but estimates about 59-61 GiB at
+  1024-2048 hot native, leaving little room for OS/cache/KV overhead.
 
 ## Current DS4 Facts To Preserve
 
@@ -114,7 +142,8 @@ footprint for experts unlikely to be used soon, with exact fallback available."
 | native pack | hot/warm baseline | Current DS4 slabs copied unchanged. This is the correctness fallback. |
 | Q4 pack | warm/cold for models or layers where native is higher bpw | Useful if testing Q4/fuller variants. For current Flash routed experts already near 2-bit, Q4 is not a compression win. |
 | Q2 pack | cold baseline for higher-bpw source, or native Flash mirror | Flash already uses IQ2_XXS/Q2_K routed experts, so "Q2 cold" may mostly mean sidecar repack/indexing, not smaller tensors. |
-| Q1/1-bit pack | experimental cold/frozen | Only behind flags. Requires quality tests because router-selected expert outputs may degrade sharply. |
+| CQ1 sign+scale pack | experimental cold/frozen for current Flash | Candidate after J35. Stores one sign bit per value plus fp16 group scale. `cq1g32` is the first 3060 target because it leaves RAM margin while avoiding the most aggressive CQ1 group size. |
+| Q1/1-bit pack | experimental cold/frozen | Only behind flags. Existing DS4 quantizer names IQ1 types but cannot emit them (`can_quantize=false`), so IQ1 is not an immediate implementation path. |
 | sparse/delta pack | cold/frozen research | Possible later: store residual from native/Q2 or per-channel scale deltas. Not MVP. |
 
 For the current Flash IQ2/Q2 model, the MVP should assume the original GGUF
@@ -324,8 +353,11 @@ lossy quantization. Gate:
 
 ### Step 3: one experimental cold format
 
-Add one lossy cold format behind `DS4_EXPERT_COLD_FORMAT`, preferably for a
-small layer/expert subset first. Gate:
+Add one lossy cold format behind `DS4_EXPERT_COLD_FORMAT`, preferably
+`cq1g32` for a small layer/expert subset first. The first DS4 prototype should
+store CQ1 in RAM and repack/decode to native selected/cache buffers on miss,
+because that reuses the existing CUDA kernels. A later version can add direct
+CQ1 kernels if the quality and miss-rate justify it. Gate:
 
 - functional eval remains at the same L-grade on selected tasks;
 - per-token decompression latency is bounded and reported;
@@ -437,7 +469,9 @@ commit, run logs, JSONL tier events, stats summary, and graded outputs.
    Done as an optional in-process RAM sidecar in `/root/ds4` commit `859d3db`.
    It is intentionally off by default and is not the performance format.
 5. Replace the lossless RAM blob payload with one smaller cold format for a tiny
-   opt-in subset, then run quality gates.
+   opt-in subset. First candidate: `DS4_EXPERT_COLD_FORMAT=cq1g32` with
+   `DS4_EXPERT_COLD_HOT_CAP=1024` or `2048`, repacking cold CQ1 to native
+   selected/cache buffers on demand. Then run quality gates.
 6. Wire prompt-preloaded/asynchronous promotion into the existing cache miss
    path without using prefill-wide native lossless materialization.
 7. Add frozen SSD fallback only after cold RAM proves useful, then run pod
