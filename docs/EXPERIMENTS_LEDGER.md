@@ -524,3 +524,102 @@ contain Q4 routed experts: routed `ffn_gate_exps`/`ffn_up_exps` remain
 `ffn_gate_inp` differ. Testing "top1 expert per layer at int4/Q4" requires a
 hybrid GGUF or sidecar with selected routed experts in a higher-precision
 format.
+
+Operational note after J44: add a future "safe transition / sanitize"
+experiment before drawing conclusions from two-phase warmup sweeps. Prior
+cache1024 W-sweep evidence suggests some failed HTML runs were document
+restarts, not monotonic W degradation: the phase-2 prompt re-prefilled
+`[original instruction] + [partial HTML]`, and when W cut the prefix inside a
+CSS declaration the model often emitted a second ```html / `<!DOCTYPE html>`
+instead of continuing. TODO: (1) freeze only at safe structural boundaries
+(`}`, `;`, `>`, code-fence boundary) when doing offline two-phase tests; (2)
+prefer single-process observe -> freeze -> continue on the same KV when
+available, so the model is not re-shown "write the full document" at mid-file;
+(3) later test a recovery/sanitization actuator for breath: rewind or trim a
+small window before the first degeneration marker, briefly re-prefill the clean
+prefix under a wider mask, and continue. Treat this as a measured recovery
+experiment, not as evidence yet.
+
+Operational note after J45: local cache512 isolated the weighted-mask
+regression. Same HTML prompt, W=50 full warmup -> fixed K23, no breath, no
+prebreath, no relearn, no rotation. Weighted warmup ranking
+(`DS4_PACE_WEIGHTED_WARMUP=1`) took 105.773s prompt time, finished 800 tokens in
+487.157s at 2.10 t/s, and degenerated into 233 empty CSS comments; first clear
+comment-loop marker was token 108. The paired unit-count ranking
+(`weighted(warmup=0,relearn=0)`) took 18.338s prompt time, finished in 373.931s
+at 2.25 t/s, and avoided the empty-comment loop but still degenerated into 130
+`inherit: inherit` repetitions; first `inherit: inherit` x3 marker was token
+163. The cache512 setting itself is not enough to rescue fixed K23 HTML quality,
+and weighted selected-mass ranking is worse than unit-count in this measured
+case. Keep weighted ranking experimental/off by default. The best measured
+quality actuator in the nearby set remains raw-router K-constant rotation
+(`local_k23_rotate32_cache256`, repeat_flag=0), despite its prefetch cost.
+
+Operational note after J46: the paired cache256 re-run confirmed the same
+direction without the cache512 prefill anomaly. Same prompt and schedule:
+unit-count K23 cache256 finished in 280.578s at 2.98 t/s, then repeated
+`font-v` 79 times with the first 10x marker at token 243. Weighted warmup K23
+cache256 finished in 322.623s at 2.57 t/s, then repeated `option` 339 times
+with the first 10x marker at token 141. Both had `repeat_flag=1`; weighted was
+slower and degraded earlier. Do not spend more local time on selected-slot
+weighted warmup as a quality actuator unless the ranking formula changes
+substantially. Use cache256/unit-count as the speed baseline and raw-router
+rotation or a raw-router quality trigger as the next meaningful quality path.
+
+Operational note after J47: immediate descent-breath was measured, and the
+trigger intuition is correct but incomplete. Same HTML prompt, cache256, W=50
+K0/full warmup, K23 descent at tok=51, hard breath and rotation disabled.
+`local_descent_prebreath_step1_every4_cache256` started widening at tok=52
+(K24) and reached K96 at tok=340; it was too slow, max ngram reached 0.8983 and
+the output repeated `box-sizing: border` / `border: 0` dozens of times. It
+finished 800 tokens in 351.310s at about 2.35 t/s, with 73 prebreath events.
+`local_descent_prebreath_step2_every4_cache256` also started at tok=52 (K25)
+but reached K96 at tok=196; this kept max event ngram to 0.0756 through the
+critical window, confirming that waiting for ngram 0.07-0.10 is late. However
+quality still degraded into a different malformed CSS pattern (`#0-0-0...`),
+and the run was expensive: 37 prebreaths, 595.07 GiB touched, 24.786s prefetch
+time, 417.959s finish, 2.22 t/s. Conclusion: breath should begin at the K0->K23
+change, but simple monotonic widening is not enough; the next actuator should
+combine immediate widening with raw-router rotation/relearn so the widening
+brings in the right experts, not just more experts from a stale mask.
+
+Operational note after J48: immediate descent-breath with per-step prebreath
+relearn was measured. Variant
+`local_descent_prebreath_step2_relearn_cache256`, artifacts under
+`runs/ds4/20260709_descent_prebreath_step2_relearn_retry_cache256_html800/`.
+Configuration matched J47 step2 (`W=50`, K23 at tok 51, +2K every 4 tokens to
+K96, no hard breath, cache256) but enabled
+`DS4_PACE_PREBREATH_RELEARN=1`. The log confirms the mechanism: every widening
+step emitted `PACE prebreath_relearn` immediately before `PACE prebreath`
+(example: tok 52 keep 23 -> K25, tok 56 keep 25 -> K27, continuing to K96 at
+tok 196). Result: prompt 92.819s, finish 433.253s, avg 2.35 t/s, last chunk
+2.91 t/s, 37 prebreaths, 38 prefetches, 601.67 GiB touched, 23.970s prefetch
+time. Compared to stale J47 step2, catastrophic `#0-0-0...` repetition
+disappeared and `repeat_flag` was 0, but the HTML was still invalid/incomplete:
+one `<!DOCTYPE>`/`<html`, no `</html>`, no `<form>`, no `<script>`, and a long
+repetition of background CSS declarations. Finding: per-step relearn helps
+avoid one bad attractor, but low n-gram plus wider K does not imply code
+quality. The relearn path is still selected-expert/visible-mask driven, not a
+true raw-router rebuild over all pruned experts.
+
+Operational note after J49: the historical step-down test was partially
+repeated to answer whether the old K64->K23 "gradini in discesa" runs were
+relearning masks. Variant `local_stepdown_64_to23_stale_cache256`, artifacts
+under `runs/ds4/20260709_stepdown_rebuild_cache256_html400/`, used the J13-like
+schedule: W=50 K0 warmup, K64 at tok 51, forced tighten by 8 experts every 16
+stable tokens (`TIGHTEN_LO=1.0`, `HIT_HI=0.0`, `ANNEAL_WARM=50`) until K23.
+Measured events: K56 tok 67, K48 tok 83, K40 tok 99, K32 tok 115, K24 tok 131,
+K23 tok 147. It finished 400 tokens in 187.612s server time, avg 2.57 t/s, but
+the output was not good HTML: no closing `</html>`, no form/script, and the tail
+collapsed into 126 `Courier` tokens. The paired raw-router rotate4 attempt
+(`local_stepdown_64_to23_rotate4_cache256`) is intentionally marked invalid as
+a K64->K23 A/B: it emitted 87 `PACE rotate` events at tok 55/59/63/.../399 but
+never emitted `PACE tighten` and stayed at K64. It did finish server-side
+(400 tokens, 315.717s, avg 1.32 t/s), but the runner was stopped before the
+HTTP response/content artifacts were saved, so use it only as scheduler/cost
+evidence. Root cause from measured behavior and the rotation patch: rotation
+applies a mask and resets `stable_since`, so frequent rotation prevents the
+tighten stability gate from ever maturing. Next code fix: split "mask refresh"
+from "keep change" so raw-router rotate/rebuild does not reset the tighten
+timer, or add an explicit `relearn_on_tighten` path that rebuilds the target K
+mask at the same token as the tighten.
