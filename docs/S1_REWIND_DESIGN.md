@@ -438,8 +438,12 @@ benchmark**, not a straw man.
   JSONL record. It anchors to the live-tree (md5 `771a39a8`) and
   `git apply --check`s clean on the full chain `0020→0021→0026→0027`.
   **Smoke procedure (GPU agent, when the card is free):**
-  1. build the chain (base live-tree + `0020`→`0021`→`0026`→`0027`), **MTP
-     enabled** (the harness reuses the `spec_*` frontier buffers);
+  1. build the chain (base live-tree + `0020`→`0021`→`0026`→`0027`) with **MTP
+     enabled at build** so the `spec_*` frontier buffers exist, but run the
+     decode with **speculative multi-token drafting OFF** (`mtp_draft_tokens ≤
+     1`): the harness reuses those buffers, and the N≥2 speculative-verify path
+     is the only other caller of `spec_frontier_snapshot`, so it would clobber
+     the checkpoint between `p` and `p+k` if left on;
   2. run the **coffee-shop `W50` static** prompt (static mask — the harness does
      **not** checkpoint `g_reap_mask_pruned`, so a dynamic mask is out of scope)
      with `DS4_REWIND_TEST=400,200 DS4_REWIND_TEST_LOG=rewind_test.jsonl`;
