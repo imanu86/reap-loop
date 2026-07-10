@@ -1,0 +1,141 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AI CYBER • NEGOZIO PROGRAMMAZIONE</title>
+  <style>
+    *{margin:0;padding:0;box-sizing:border-box;font-family:'Segoe UI',system-ui,monospace}
+    body{background:radial-gradient(ellipse at center,#000 0,##gray 100%);min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20}
+    .scene{max-width:960;width:100;background:#0a0f1e;border:2px solid #00f0ff;border-radius:20;padding:20 30 30;box-shadow:0 0 40 #0cf;position:relative;backdrop-filter:blur(4}
+    .hero{text-align:center;padding:20 0 10}
+    .hero h1{font-size:2.3rem;color:#0cf;text-shadow:0 0 10 #0cf,0 0 20 #0cf;letter-spacing: -1px}
+    .hero p{color:#b0d0d0;margin:10 0 20;font-size:1.1rem}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax 180);gap:20;margin:20 0}
+    .card{background:#0e1a2a;border:1px solid #0cf;padding:20;border-radius:12;text-align:center;transition:.2s;box-shadow:0 0 10 rgba(0,255,255,.2)}
+    .card:hover{background:#1a2a3a;border-color:#f0f;box-shadow:0 0 20 #f0f}
+    .card h3{color:#f0f;margin-bottom:8}
+    .card p{color:#b0e0e0;font-size:.9rem}
+    .btn{background:#0cf;border:none;padding:10 20;border-radius:8;font-weight:bold;color:#000;cursor:pointer;font-size:1rem;box-shadow:0 0 10 #0cf;transition:.2s}
+    .btn:hover{background:#f0f;box-shadow:0 0 20 #f0f;color:#fff}
+    .form{display:flex;flex-direction:column;gap:10;max-width:300;margin:20 auto}
+    .form input,.form textarea{background:#0e1a2a;border:1px solid #0cf;padding:10;border-radius:8;color:#fff;font-size:.9rem}
+    .form input:focus,.form textarea:focus{outline:2 solid #f0f;border-color:#f0f}
+    .footer{text-align:center;color:#6a8a8a;font-size:.8rem;margin-top:20}
+    .popup-overlay{position:fixed;top:0;left:0;width:100;height:100;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;visibility:hidden;opacity:0;transition:.3s}
+    .popup-overlay.show{visibility:visible;opacity:1}
+    .popup{background:#0e1a2a;border:2 solid #0cf;border-radius:20;padding:20 40;text-align:center;box-shadow:0 0 40 #0cf;max-width:280}
+    .popup h2{color:#0cf;margin-bottom:10}
+    .popup p{color:#b0d0d0;margin-bottom:20}
+    .close{background:#f0f;border:none;padding:8 16;border-radius:8;color:#fff;font-weight:bold;cursor:pointer;font-size:1rem}
+    .close:hover{background:#0cf;color:#000}
+    @media (max-width: 600px){.hero h1{font-size:1.6}}
+  </style>
+<script>
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /* js */
+  /*

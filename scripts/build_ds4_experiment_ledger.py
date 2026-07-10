@@ -646,6 +646,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         if r["suite"] in (
             "20260710_w100_direct_k23_cache256_html2000",
             "20260710_w100_rotate32_k23_cache256_html2000",
+            "20260710_w100_rotate32_k23_cache256_html2000_compact_prompt",
         )
     ]
     cache_sweep = [
@@ -677,6 +678,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- Best current 3060-local stability candidate in the requested HTML800 A/B is still `K23 rotate32`: it reached 800 streamed tokens without the repeat detector, but it is slower than static K23 and still needs render/functional grading.",
         "- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.",
         "- W100+rotate32 at cache256 avoided the early loop through 2000 tokens and rendered a visible page. The run allocated most of the available budget to detailed CSS and reached body markup around token 1904; missing form/script/html close should be treated as token-budget-limited, not as degeneration.",
+        "- The compact budget-aware prompt did not improve this A/B: it reached `<script>` earlier but entered a repeated `/* js */` placeholder loop, with first bad event around 961 and conclusive repetition around 977.",
         "- Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.",
         "- Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.",
         "- Tighten-time relearn and rotation plumbing are useful actuator milestones. Blind step-down and frequent periodic rotate are too expensive; next tests should be trigger/delta based.",

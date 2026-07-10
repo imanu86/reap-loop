@@ -1,0 +1,9 @@
+{
+  "coherent_until_token_est": 960,
+  "first_bad_token_est": 961,
+  "repeat_conclusive_token_est": 977,
+  "manual_abort_event_est": 1379,
+  "failure_mode": "Compact budget-aware prompt reached <script> but entered a repeated placeholder JS comment loop (/* js */). This is a true degeneration, unlike the previous visually renderable token-limited CSS-heavy run.",
+  "verdict": "fail_js_comment_loop_after_compact_budget_prompt",
+  "method": "Measured live from stream_events_measured.jsonl. First /* js */ repeat at event 961; fifth repeat at event 977; manual abort at event 1379 / gen about 1379."
+}

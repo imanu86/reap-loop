@@ -1,0 +1,1379 @@
+{"event_index": 1, "t_s": 87.986279, "delta": "", "delta_chars": 0, "content_chars": 0, "finish_reason": null, "usage": null}
+{"event_index": 2, "t_s": 160.730278, "delta": "```", "delta_chars": 3, "content_chars": 3, "finish_reason": null, "usage": null}
+{"event_index": 3, "t_s": 167.478932, "delta": "html", "delta_chars": 4, "content_chars": 7, "finish_reason": null, "usage": null}
+{"event_index": 4, "t_s": 173.482851, "delta": "\n", "delta_chars": 1, "content_chars": 8, "finish_reason": null, "usage": null}
+{"event_index": 5, "t_s": 179.180136, "delta": "<!", "delta_chars": 2, "content_chars": 10, "finish_reason": null, "usage": null}
+{"event_index": 6, "t_s": 186.93657, "delta": "DOCTYPE", "delta_chars": 7, "content_chars": 17, "finish_reason": null, "usage": null}
+{"event_index": 7, "t_s": 192.609409, "delta": " html", "delta_chars": 5, "content_chars": 22, "finish_reason": null, "usage": null}
+{"event_index": 8, "t_s": 199.474422, "delta": ">\n", "delta_chars": 2, "content_chars": 24, "finish_reason": null, "usage": null}
+{"event_index": 9, "t_s": 204.066416, "delta": "<html", "delta_chars": 5, "content_chars": 29, "finish_reason": null, "usage": null}
+{"event_index": 10, "t_s": 211.894164, "delta": " lang", "delta_chars": 5, "content_chars": 34, "finish_reason": null, "usage": null}
+{"event_index": 11, "t_s": 220.195858, "delta": "=\"", "delta_chars": 2, "content_chars": 36, "finish_reason": null, "usage": null}
+{"event_index": 12, "t_s": 226.176439, "delta": "it", "delta_chars": 2, "content_chars": 38, "finish_reason": null, "usage": null}
+{"event_index": 13, "t_s": 229.866185, "delta": "\">\n", "delta_chars": 3, "content_chars": 41, "finish_reason": null, "usage": null}
+{"event_index": 14, "t_s": 234.668227, "delta": "<head", "delta_chars": 5, "content_chars": 46, "finish_reason": null, "usage": null}
+{"event_index": 15, "t_s": 238.392248, "delta": ">\n", "delta_chars": 2, "content_chars": 48, "finish_reason": null, "usage": null}
+{"event_index": 16, "t_s": 243.220856, "delta": " ", "delta_chars": 1, "content_chars": 49, "finish_reason": null, "usage": null}
+{"event_index": 17, "t_s": 248.521132, "delta": " <", "delta_chars": 2, "content_chars": 51, "finish_reason": null, "usage": null}
+{"event_index": 18, "t_s": 253.706136, "delta": "meta", "delta_chars": 4, "content_chars": 55, "finish_reason": null, "usage": null}
+{"event_index": 19, "t_s": 258.513236, "delta": " charset", "delta_chars": 8, "content_chars": 63, "finish_reason": null, "usage": null}
+{"event_index": 20, "t_s": 263.687851, "delta": "=\"", "delta_chars": 2, "content_chars": 65, "finish_reason": null, "usage": null}
+{"event_index": 21, "t_s": 268.766338, "delta": "UTF", "delta_chars": 3, "content_chars": 68, "finish_reason": null, "usage": null}
+{"event_index": 22, "t_s": 273.669739, "delta": "-", "delta_chars": 1, "content_chars": 69, "finish_reason": null, "usage": null}
+{"event_index": 23, "t_s": 278.837121, "delta": "8", "delta_chars": 1, "content_chars": 70, "finish_reason": null, "usage": null}
+{"event_index": 24, "t_s": 281.634867, "delta": "\">\n", "delta_chars": 3, "content_chars": 73, "finish_reason": null, "usage": null}
+{"event_index": 25, "t_s": 285.201563, "delta": " ", "delta_chars": 1, "content_chars": 74, "finish_reason": null, "usage": null}
+{"event_index": 26, "t_s": 288.919082, "delta": " <", "delta_chars": 2, "content_chars": 76, "finish_reason": null, "usage": null}
+{"event_index": 27, "t_s": 293.545133, "delta": "meta", "delta_chars": 4, "content_chars": 80, "finish_reason": null, "usage": null}
+{"event_index": 28, "t_s": 296.866349, "delta": " name", "delta_chars": 5, "content_chars": 85, "finish_reason": null, "usage": null}
+{"event_index": 29, "t_s": 299.037632, "delta": "=\"", "delta_chars": 2, "content_chars": 87, "finish_reason": null, "usage": null}
+{"event_index": 30, "t_s": 304.153161, "delta": "viewport", "delta_chars": 8, "content_chars": 95, "finish_reason": null, "usage": null}
+{"event_index": 31, "t_s": 309.716984, "delta": "\"", "delta_chars": 1, "content_chars": 96, "finish_reason": null, "usage": null}
+{"event_index": 32, "t_s": 314.185476, "delta": " content", "delta_chars": 8, "content_chars": 104, "finish_reason": null, "usage": null}
+{"event_index": 33, "t_s": 317.564564, "delta": "=\"", "delta_chars": 2, "content_chars": 106, "finish_reason": null, "usage": null}
+{"event_index": 34, "t_s": 321.625246, "delta": "width", "delta_chars": 5, "content_chars": 111, "finish_reason": null, "usage": null}
+{"event_index": 35, "t_s": 325.16131, "delta": "=device", "delta_chars": 7, "content_chars": 118, "finish_reason": null, "usage": null}
+{"event_index": 36, "t_s": 328.739508, "delta": "-width", "delta_chars": 6, "content_chars": 124, "finish_reason": null, "usage": null}
+{"event_index": 37, "t_s": 331.679452, "delta": ",", "delta_chars": 1, "content_chars": 125, "finish_reason": null, "usage": null}
+{"event_index": 38, "t_s": 337.833568, "delta": " initial", "delta_chars": 8, "content_chars": 133, "finish_reason": null, "usage": null}
+{"event_index": 39, "t_s": 340.39112, "delta": "-scale", "delta_chars": 6, "content_chars": 139, "finish_reason": null, "usage": null}
+{"event_index": 40, "t_s": 343.102376, "delta": "=", "delta_chars": 1, "content_chars": 140, "finish_reason": null, "usage": null}
+{"event_index": 41, "t_s": 346.444256, "delta": "1", "delta_chars": 1, "content_chars": 141, "finish_reason": null, "usage": null}
+{"event_index": 42, "t_s": 348.035614, "delta": "\">\n", "delta_chars": 3, "content_chars": 144, "finish_reason": null, "usage": null}
+{"event_index": 43, "t_s": 350.056521, "delta": " ", "delta_chars": 1, "content_chars": 145, "finish_reason": null, "usage": null}
+{"event_index": 44, "t_s": 352.110176, "delta": " <", "delta_chars": 2, "content_chars": 147, "finish_reason": null, "usage": null}
+{"event_index": 45, "t_s": 354.793149, "delta": "title", "delta_chars": 5, "content_chars": 152, "finish_reason": null, "usage": null}
+{"event_index": 46, "t_s": 356.930688, "delta": ">", "delta_chars": 1, "content_chars": 153, "finish_reason": null, "usage": null}
+{"event_index": 47, "t_s": 359.880275, "delta": "AI", "delta_chars": 2, "content_chars": 155, "finish_reason": null, "usage": null}
+{"event_index": 48, "t_s": 363.956784, "delta": " CY", "delta_chars": 3, "content_chars": 158, "finish_reason": null, "usage": null}
+{"event_index": 49, "t_s": 366.520323, "delta": "BER", "delta_chars": 3, "content_chars": 161, "finish_reason": null, "usage": null}
+{"event_index": 50, "t_s": 369.155961, "delta": " •", "delta_chars": 2, "content_chars": 163, "finish_reason": null, "usage": null}
+{"event_index": 51, "t_s": 371.847343, "delta": " N", "delta_chars": 2, "content_chars": 165, "finish_reason": null, "usage": null}
+{"event_index": 52, "t_s": 374.374646, "delta": "EG", "delta_chars": 2, "content_chars": 167, "finish_reason": null, "usage": null}
+{"event_index": 53, "t_s": 376.632037, "delta": "O", "delta_chars": 1, "content_chars": 168, "finish_reason": null, "usage": null}
+{"event_index": 54, "t_s": 377.572377, "delta": "Z", "delta_chars": 1, "content_chars": 169, "finish_reason": null, "usage": null}
+{"event_index": 55, "t_s": 378.49282, "delta": "IO", "delta_chars": 2, "content_chars": 171, "finish_reason": null, "usage": null}
+{"event_index": 56, "t_s": 380.140315, "delta": " PROGRAM", "delta_chars": 8, "content_chars": 179, "finish_reason": null, "usage": null}
+{"event_index": 57, "t_s": 381.599344, "delta": "MA", "delta_chars": 2, "content_chars": 181, "finish_reason": null, "usage": null}
+{"event_index": 58, "t_s": 382.513319, "delta": "Z", "delta_chars": 1, "content_chars": 182, "finish_reason": null, "usage": null}
+{"event_index": 59, "t_s": 383.919608, "delta": "IONE", "delta_chars": 4, "content_chars": 186, "finish_reason": null, "usage": null}
+{"event_index": 60, "t_s": 386.007614, "delta": "</", "delta_chars": 2, "content_chars": 188, "finish_reason": null, "usage": null}
+{"event_index": 61, "t_s": 387.738322, "delta": "title", "delta_chars": 5, "content_chars": 193, "finish_reason": null, "usage": null}
+{"event_index": 62, "t_s": 388.584579, "delta": ">\n", "delta_chars": 2, "content_chars": 195, "finish_reason": null, "usage": null}
+{"event_index": 63, "t_s": 390.043249, "delta": " ", "delta_chars": 1, "content_chars": 196, "finish_reason": null, "usage": null}
+{"event_index": 64, "t_s": 390.787936, "delta": " <", "delta_chars": 2, "content_chars": 198, "finish_reason": null, "usage": null}
+{"event_index": 65, "t_s": 392.162259, "delta": "style", "delta_chars": 5, "content_chars": 203, "finish_reason": null, "usage": null}
+{"event_index": 66, "t_s": 393.561875, "delta": ">\n", "delta_chars": 2, "content_chars": 205, "finish_reason": null, "usage": null}
+{"event_index": 67, "t_s": 394.55052, "delta": "   ", "delta_chars": 3, "content_chars": 208, "finish_reason": null, "usage": null}
+{"event_index": 68, "t_s": 396.416367, "delta": " *", "delta_chars": 2, "content_chars": 210, "finish_reason": null, "usage": null}
+{"event_index": 69, "t_s": 398.730512, "delta": "{", "delta_chars": 1, "content_chars": 211, "finish_reason": null, "usage": null}
+{"event_index": 70, "t_s": 401.277579, "delta": "margin", "delta_chars": 6, "content_chars": 217, "finish_reason": null, "usage": null}
+{"event_index": 71, "t_s": 403.189815, "delta": ":", "delta_chars": 1, "content_chars": 218, "finish_reason": null, "usage": null}
+{"event_index": 72, "t_s": 406.814136, "delta": "0", "delta_chars": 1, "content_chars": 219, "finish_reason": null, "usage": null}
+{"event_index": 73, "t_s": 408.278722, "delta": ";", "delta_chars": 1, "content_chars": 220, "finish_reason": null, "usage": null}
+{"event_index": 74, "t_s": 409.929287, "delta": "padding", "delta_chars": 7, "content_chars": 227, "finish_reason": null, "usage": null}
+{"event_index": 75, "t_s": 412.016761, "delta": ":", "delta_chars": 1, "content_chars": 228, "finish_reason": null, "usage": null}
+{"event_index": 76, "t_s": 412.825384, "delta": "0", "delta_chars": 1, "content_chars": 229, "finish_reason": null, "usage": null}
+{"event_index": 77, "t_s": 413.705603, "delta": ";", "delta_chars": 1, "content_chars": 230, "finish_reason": null, "usage": null}
+{"event_index": 78, "t_s": 416.00892, "delta": "box", "delta_chars": 3, "content_chars": 233, "finish_reason": null, "usage": null}
+{"event_index": 79, "t_s": 417.482193, "delta": "-sizing", "delta_chars": 7, "content_chars": 240, "finish_reason": null, "usage": null}
+{"event_index": 80, "t_s": 418.390164, "delta": ":", "delta_chars": 1, "content_chars": 241, "finish_reason": null, "usage": null}
+{"event_index": 81, "t_s": 419.818034, "delta": "border", "delta_chars": 6, "content_chars": 247, "finish_reason": null, "usage": null}
+{"event_index": 82, "t_s": 421.647792, "delta": "-box", "delta_chars": 4, "content_chars": 251, "finish_reason": null, "usage": null}
+{"event_index": 83, "t_s": 422.373164, "delta": ";", "delta_chars": 1, "content_chars": 252, "finish_reason": null, "usage": null}
+{"event_index": 84, "t_s": 424.005856, "delta": "font", "delta_chars": 4, "content_chars": 256, "finish_reason": null, "usage": null}
+{"event_index": 85, "t_s": 425.096929, "delta": "-family", "delta_chars": 7, "content_chars": 263, "finish_reason": null, "usage": null}
+{"event_index": 86, "t_s": 426.669582, "delta": ":'", "delta_chars": 2, "content_chars": 265, "finish_reason": null, "usage": null}
+{"event_index": 87, "t_s": 429.263661, "delta": "Seg", "delta_chars": 3, "content_chars": 268, "finish_reason": null, "usage": null}
+{"event_index": 88, "t_s": 430.610891, "delta": "oe", "delta_chars": 2, "content_chars": 270, "finish_reason": null, "usage": null}
+{"event_index": 89, "t_s": 431.909827, "delta": " UI", "delta_chars": 3, "content_chars": 273, "finish_reason": null, "usage": null}
+{"event_index": 90, "t_s": 433.505047, "delta": "',", "delta_chars": 2, "content_chars": 275, "finish_reason": null, "usage": null}
+{"event_index": 91, "t_s": 434.537659, "delta": "system", "delta_chars": 6, "content_chars": 281, "finish_reason": null, "usage": null}
+{"event_index": 92, "t_s": 435.595334, "delta": "-ui", "delta_chars": 3, "content_chars": 284, "finish_reason": null, "usage": null}
+{"event_index": 93, "t_s": 436.799627, "delta": ",", "delta_chars": 1, "content_chars": 285, "finish_reason": null, "usage": null}
+{"event_index": 94, "t_s": 438.392407, "delta": "mon", "delta_chars": 3, "content_chars": 288, "finish_reason": null, "usage": null}
+{"event_index": 95, "t_s": 439.729285, "delta": "ospace", "delta_chars": 6, "content_chars": 294, "finish_reason": null, "usage": null}
+{"event_index": 96, "t_s": 440.937353, "delta": "}\n", "delta_chars": 2, "content_chars": 296, "finish_reason": null, "usage": null}
+{"event_index": 97, "t_s": 441.803263, "delta": "   ", "delta_chars": 3, "content_chars": 299, "finish_reason": null, "usage": null}
+{"event_index": 98, "t_s": 443.263733, "delta": " body", "delta_chars": 5, "content_chars": 304, "finish_reason": null, "usage": null}
+{"event_index": 99, "t_s": 444.156947, "delta": "{", "delta_chars": 1, "content_chars": 305, "finish_reason": null, "usage": null}
+{"event_index": 100, "t_s": 445.927937, "delta": "background", "delta_chars": 10, "content_chars": 315, "finish_reason": null, "usage": null}
+{"event_index": 101, "t_s": 447.169033, "delta": ":", "delta_chars": 1, "content_chars": 316, "finish_reason": null, "usage": null}
+{"event_index": 102, "t_s": 447.847803, "delta": "rad", "delta_chars": 3, "content_chars": 319, "finish_reason": null, "usage": null}
+{"event_index": 103, "t_s": 448.350169, "delta": "ial", "delta_chars": 3, "content_chars": 322, "finish_reason": null, "usage": null}
+{"event_index": 104, "t_s": 448.943813, "delta": "-gradient", "delta_chars": 9, "content_chars": 331, "finish_reason": null, "usage": null}
+{"event_index": 105, "t_s": 449.380189, "delta": "(", "delta_chars": 1, "content_chars": 332, "finish_reason": null, "usage": null}
+{"event_index": 106, "t_s": 449.977475, "delta": "ell", "delta_chars": 3, "content_chars": 335, "finish_reason": null, "usage": null}
+{"event_index": 107, "t_s": 450.551546, "delta": "ipse", "delta_chars": 4, "content_chars": 339, "finish_reason": null, "usage": null}
+{"event_index": 108, "t_s": 450.996141, "delta": " at", "delta_chars": 3, "content_chars": 342, "finish_reason": null, "usage": null}
+{"event_index": 109, "t_s": 451.393936, "delta": " center", "delta_chars": 7, "content_chars": 349, "finish_reason": null, "usage": null}
+{"event_index": 110, "t_s": 451.905492, "delta": ",#", "delta_chars": 2, "content_chars": 351, "finish_reason": null, "usage": null}
+{"event_index": 111, "t_s": 452.326262, "delta": "000", "delta_chars": 3, "content_chars": 354, "finish_reason": null, "usage": null}
+{"event_index": 112, "t_s": 452.682756, "delta": " ", "delta_chars": 1, "content_chars": 355, "finish_reason": null, "usage": null}
+{"event_index": 113, "t_s": 453.037512, "delta": "0", "delta_chars": 1, "content_chars": 356, "finish_reason": null, "usage": null}
+{"event_index": 114, "t_s": 453.389501, "delta": ",#", "delta_chars": 2, "content_chars": 358, "finish_reason": null, "usage": null}
+{"event_index": 115, "t_s": 453.935963, "delta": "#", "delta_chars": 1, "content_chars": 359, "finish_reason": null, "usage": null}
+{"event_index": 116, "t_s": 454.443513, "delta": "gray", "delta_chars": 4, "content_chars": 363, "finish_reason": null, "usage": null}
+{"event_index": 117, "t_s": 454.79373, "delta": " ", "delta_chars": 1, "content_chars": 364, "finish_reason": null, "usage": null}
+{"event_index": 118, "t_s": 455.141037, "delta": "100", "delta_chars": 3, "content_chars": 367, "finish_reason": null, "usage": null}
+{"event_index": 119, "t_s": 455.586907, "delta": "%);", "delta_chars": 3, "content_chars": 370, "finish_reason": null, "usage": null}
+{"event_index": 120, "t_s": 456.186876, "delta": "min", "delta_chars": 3, "content_chars": 373, "finish_reason": null, "usage": null}
+{"event_index": 121, "t_s": 456.640383, "delta": "-height", "delta_chars": 7, "content_chars": 380, "finish_reason": null, "usage": null}
+{"event_index": 122, "t_s": 456.995381, "delta": ":", "delta_chars": 1, "content_chars": 381, "finish_reason": null, "usage": null}
+{"event_index": 123, "t_s": 457.346265, "delta": "100", "delta_chars": 3, "content_chars": 384, "finish_reason": null, "usage": null}
+{"event_index": 124, "t_s": 457.763401, "delta": "vh", "delta_chars": 2, "content_chars": 386, "finish_reason": null, "usage": null}
+{"event_index": 125, "t_s": 458.115086, "delta": ";", "delta_chars": 1, "content_chars": 387, "finish_reason": null, "usage": null}
+{"event_index": 126, "t_s": 458.551818, "delta": "display", "delta_chars": 7, "content_chars": 394, "finish_reason": null, "usage": null}
+{"event_index": 127, "t_s": 458.89088, "delta": ":", "delta_chars": 1, "content_chars": 395, "finish_reason": null, "usage": null}
+{"event_index": 128, "t_s": 459.238978, "delta": "flex", "delta_chars": 4, "content_chars": 399, "finish_reason": null, "usage": null}
+{"event_index": 129, "t_s": 459.590676, "delta": ";", "delta_chars": 1, "content_chars": 400, "finish_reason": null, "usage": null}
+{"event_index": 130, "t_s": 460.099301, "delta": "align", "delta_chars": 5, "content_chars": 405, "finish_reason": null, "usage": null}
+{"event_index": 131, "t_s": 460.451782, "delta": "-items", "delta_chars": 6, "content_chars": 411, "finish_reason": null, "usage": null}
+{"event_index": 132, "t_s": 460.796844, "delta": ":", "delta_chars": 1, "content_chars": 412, "finish_reason": null, "usage": null}
+{"event_index": 133, "t_s": 461.173771, "delta": "center", "delta_chars": 6, "content_chars": 418, "finish_reason": null, "usage": null}
+{"event_index": 134, "t_s": 461.962373, "delta": ";", "delta_chars": 1, "content_chars": 419, "finish_reason": null, "usage": null}
+{"event_index": 135, "t_s": 463.139585, "delta": "just", "delta_chars": 4, "content_chars": 423, "finish_reason": null, "usage": null}
+{"event_index": 136, "t_s": 463.969545, "delta": "ify", "delta_chars": 3, "content_chars": 426, "finish_reason": null, "usage": null}
+{"event_index": 137, "t_s": 464.815161, "delta": "-content", "delta_chars": 8, "content_chars": 434, "finish_reason": null, "usage": null}
+{"event_index": 138, "t_s": 465.489583, "delta": ":", "delta_chars": 1, "content_chars": 435, "finish_reason": null, "usage": null}
+{"event_index": 139, "t_s": 466.253884, "delta": "center", "delta_chars": 6, "content_chars": 441, "finish_reason": null, "usage": null}
+{"event_index": 140, "t_s": 466.667935, "delta": ";", "delta_chars": 1, "content_chars": 442, "finish_reason": null, "usage": null}
+{"event_index": 141, "t_s": 467.229709, "delta": "padding", "delta_chars": 7, "content_chars": 449, "finish_reason": null, "usage": null}
+{"event_index": 142, "t_s": 467.710613, "delta": ":", "delta_chars": 1, "content_chars": 450, "finish_reason": null, "usage": null}
+{"event_index": 143, "t_s": 468.32489, "delta": "20", "delta_chars": 2, "content_chars": 452, "finish_reason": null, "usage": null}
+{"event_index": 144, "t_s": 469.026891, "delta": "}\n", "delta_chars": 2, "content_chars": 454, "finish_reason": null, "usage": null}
+{"event_index": 145, "t_s": 469.527846, "delta": "   ", "delta_chars": 3, "content_chars": 457, "finish_reason": null, "usage": null}
+{"event_index": 146, "t_s": 470.137737, "delta": " .", "delta_chars": 2, "content_chars": 459, "finish_reason": null, "usage": null}
+{"event_index": 147, "t_s": 470.619535, "delta": "scene", "delta_chars": 5, "content_chars": 464, "finish_reason": null, "usage": null}
+{"event_index": 148, "t_s": 471.15155, "delta": "{", "delta_chars": 1, "content_chars": 465, "finish_reason": null, "usage": null}
+{"event_index": 149, "t_s": 471.724776, "delta": "max", "delta_chars": 3, "content_chars": 468, "finish_reason": null, "usage": null}
+{"event_index": 150, "t_s": 472.112294, "delta": "-width", "delta_chars": 6, "content_chars": 474, "finish_reason": null, "usage": null}
+{"event_index": 151, "t_s": 472.503799, "delta": ":", "delta_chars": 1, "content_chars": 475, "finish_reason": null, "usage": null}
+{"event_index": 152, "t_s": 473.058678, "delta": "960", "delta_chars": 3, "content_chars": 478, "finish_reason": null, "usage": null}
+{"event_index": 153, "t_s": 473.411387, "delta": ";", "delta_chars": 1, "content_chars": 479, "finish_reason": null, "usage": null}
+{"event_index": 154, "t_s": 473.899277, "delta": "width", "delta_chars": 5, "content_chars": 484, "finish_reason": null, "usage": null}
+{"event_index": 155, "t_s": 474.289119, "delta": ":", "delta_chars": 1, "content_chars": 485, "finish_reason": null, "usage": null}
+{"event_index": 156, "t_s": 474.660291, "delta": "100", "delta_chars": 3, "content_chars": 488, "finish_reason": null, "usage": null}
+{"event_index": 157, "t_s": 475.068036, "delta": ";", "delta_chars": 1, "content_chars": 489, "finish_reason": null, "usage": null}
+{"event_index": 158, "t_s": 475.513792, "delta": "background", "delta_chars": 10, "content_chars": 499, "finish_reason": null, "usage": null}
+{"event_index": 159, "t_s": 475.903148, "delta": ":#", "delta_chars": 2, "content_chars": 501, "finish_reason": null, "usage": null}
+{"event_index": 160, "t_s": 476.294511, "delta": "0", "delta_chars": 1, "content_chars": 502, "finish_reason": null, "usage": null}
+{"event_index": 161, "t_s": 476.776303, "delta": "a", "delta_chars": 1, "content_chars": 503, "finish_reason": null, "usage": null}
+{"event_index": 162, "t_s": 477.227164, "delta": "0", "delta_chars": 1, "content_chars": 504, "finish_reason": null, "usage": null}
+{"event_index": 163, "t_s": 477.650008, "delta": "f", "delta_chars": 1, "content_chars": 505, "finish_reason": null, "usage": null}
+{"event_index": 164, "t_s": 478.036517, "delta": "1", "delta_chars": 1, "content_chars": 506, "finish_reason": null, "usage": null}
+{"event_index": 165, "t_s": 478.487179, "delta": "e", "delta_chars": 1, "content_chars": 507, "finish_reason": null, "usage": null}
+{"event_index": 166, "t_s": 479.064228, "delta": ";", "delta_chars": 1, "content_chars": 508, "finish_reason": null, "usage": null}
+{"event_index": 167, "t_s": 479.885004, "delta": "border", "delta_chars": 6, "content_chars": 514, "finish_reason": null, "usage": null}
+{"event_index": 168, "t_s": 480.267141, "delta": ":", "delta_chars": 1, "content_chars": 515, "finish_reason": null, "usage": null}
+{"event_index": 169, "t_s": 481.094934, "delta": "2", "delta_chars": 1, "content_chars": 516, "finish_reason": null, "usage": null}
+{"event_index": 170, "t_s": 481.670349, "delta": "px", "delta_chars": 2, "content_chars": 518, "finish_reason": null, "usage": null}
+{"event_index": 171, "t_s": 482.186043, "delta": " solid", "delta_chars": 6, "content_chars": 524, "finish_reason": null, "usage": null}
+{"event_index": 172, "t_s": 482.664881, "delta": " #", "delta_chars": 2, "content_chars": 526, "finish_reason": null, "usage": null}
+{"event_index": 173, "t_s": 483.354709, "delta": "00", "delta_chars": 2, "content_chars": 528, "finish_reason": null, "usage": null}
+{"event_index": 174, "t_s": 483.859145, "delta": "f", "delta_chars": 1, "content_chars": 529, "finish_reason": null, "usage": null}
+{"event_index": 175, "t_s": 484.277686, "delta": "0", "delta_chars": 1, "content_chars": 530, "finish_reason": null, "usage": null}
+{"event_index": 176, "t_s": 484.801998, "delta": "ff", "delta_chars": 2, "content_chars": 532, "finish_reason": null, "usage": null}
+{"event_index": 177, "t_s": 485.182719, "delta": ";", "delta_chars": 1, "content_chars": 533, "finish_reason": null, "usage": null}
+{"event_index": 178, "t_s": 485.659001, "delta": "border", "delta_chars": 6, "content_chars": 539, "finish_reason": null, "usage": null}
+{"event_index": 179, "t_s": 486.110244, "delta": "-radius", "delta_chars": 7, "content_chars": 546, "finish_reason": null, "usage": null}
+{"event_index": 180, "t_s": 486.5007, "delta": ":", "delta_chars": 1, "content_chars": 547, "finish_reason": null, "usage": null}
+{"event_index": 181, "t_s": 486.902746, "delta": "20", "delta_chars": 2, "content_chars": 549, "finish_reason": null, "usage": null}
+{"event_index": 182, "t_s": 487.326617, "delta": ";", "delta_chars": 1, "content_chars": 550, "finish_reason": null, "usage": null}
+{"event_index": 183, "t_s": 487.769201, "delta": "padding", "delta_chars": 7, "content_chars": 557, "finish_reason": null, "usage": null}
+{"event_index": 184, "t_s": 488.107032, "delta": ":", "delta_chars": 1, "content_chars": 558, "finish_reason": null, "usage": null}
+{"event_index": 185, "t_s": 488.509766, "delta": "20", "delta_chars": 2, "content_chars": 560, "finish_reason": null, "usage": null}
+{"event_index": 186, "t_s": 488.853429, "delta": " ", "delta_chars": 1, "content_chars": 561, "finish_reason": null, "usage": null}
+{"event_index": 187, "t_s": 489.246377, "delta": "30", "delta_chars": 2, "content_chars": 563, "finish_reason": null, "usage": null}
+{"event_index": 188, "t_s": 489.581775, "delta": " ", "delta_chars": 1, "content_chars": 564, "finish_reason": null, "usage": null}
+{"event_index": 189, "t_s": 489.944264, "delta": "30", "delta_chars": 2, "content_chars": 566, "finish_reason": null, "usage": null}
+{"event_index": 190, "t_s": 490.284694, "delta": ";", "delta_chars": 1, "content_chars": 567, "finish_reason": null, "usage": null}
+{"event_index": 191, "t_s": 490.63758, "delta": "box", "delta_chars": 3, "content_chars": 570, "finish_reason": null, "usage": null}
+{"event_index": 192, "t_s": 491.080632, "delta": "-shadow", "delta_chars": 7, "content_chars": 577, "finish_reason": null, "usage": null}
+{"event_index": 193, "t_s": 491.429416, "delta": ":", "delta_chars": 1, "content_chars": 578, "finish_reason": null, "usage": null}
+{"event_index": 194, "t_s": 491.775567, "delta": "0", "delta_chars": 1, "content_chars": 579, "finish_reason": null, "usage": null}
+{"event_index": 195, "t_s": 492.14089, "delta": " ", "delta_chars": 1, "content_chars": 580, "finish_reason": null, "usage": null}
+{"event_index": 196, "t_s": 492.493405, "delta": "0", "delta_chars": 1, "content_chars": 581, "finish_reason": null, "usage": null}
+{"event_index": 197, "t_s": 492.834917, "delta": " ", "delta_chars": 1, "content_chars": 582, "finish_reason": null, "usage": null}
+{"event_index": 198, "t_s": 493.95616, "delta": "40", "delta_chars": 2, "content_chars": 584, "finish_reason": null, "usage": null}
+{"event_index": 199, "t_s": 494.526113, "delta": " #", "delta_chars": 2, "content_chars": 586, "finish_reason": null, "usage": null}
+{"event_index": 200, "t_s": 495.14362, "delta": "0", "delta_chars": 1, "content_chars": 587, "finish_reason": null, "usage": null}
+{"event_index": 201, "t_s": 495.74472, "delta": "cf", "delta_chars": 2, "content_chars": 589, "finish_reason": null, "usage": null}
+{"event_index": 202, "t_s": 496.194864, "delta": ";", "delta_chars": 1, "content_chars": 590, "finish_reason": null, "usage": null}
+{"event_index": 203, "t_s": 496.539564, "delta": "position", "delta_chars": 8, "content_chars": 598, "finish_reason": null, "usage": null}
+{"event_index": 204, "t_s": 496.930076, "delta": ":", "delta_chars": 1, "content_chars": 599, "finish_reason": null, "usage": null}
+{"event_index": 205, "t_s": 497.298809, "delta": "relative", "delta_chars": 8, "content_chars": 607, "finish_reason": null, "usage": null}
+{"event_index": 206, "t_s": 497.647426, "delta": ";", "delta_chars": 1, "content_chars": 608, "finish_reason": null, "usage": null}
+{"event_index": 207, "t_s": 498.053716, "delta": "back", "delta_chars": 4, "content_chars": 612, "finish_reason": null, "usage": null}
+{"event_index": 208, "t_s": 498.446435, "delta": "drop", "delta_chars": 4, "content_chars": 616, "finish_reason": null, "usage": null}
+{"event_index": 209, "t_s": 498.904294, "delta": "-filter", "delta_chars": 7, "content_chars": 623, "finish_reason": null, "usage": null}
+{"event_index": 210, "t_s": 499.27734, "delta": ":", "delta_chars": 1, "content_chars": 624, "finish_reason": null, "usage": null}
+{"event_index": 211, "t_s": 499.787615, "delta": "bl", "delta_chars": 2, "content_chars": 626, "finish_reason": null, "usage": null}
+{"event_index": 212, "t_s": 500.220057, "delta": "ur", "delta_chars": 2, "content_chars": 628, "finish_reason": null, "usage": null}
+{"event_index": 213, "t_s": 500.568511, "delta": "(", "delta_chars": 1, "content_chars": 629, "finish_reason": null, "usage": null}
+{"event_index": 214, "t_s": 500.959142, "delta": "4", "delta_chars": 1, "content_chars": 630, "finish_reason": null, "usage": null}
+{"event_index": 215, "t_s": 501.297159, "delta": "}\n", "delta_chars": 2, "content_chars": 632, "finish_reason": null, "usage": null}
+{"event_index": 216, "t_s": 501.668396, "delta": "   ", "delta_chars": 3, "content_chars": 635, "finish_reason": null, "usage": null}
+{"event_index": 217, "t_s": 502.020462, "delta": " .", "delta_chars": 2, "content_chars": 637, "finish_reason": null, "usage": null}
+{"event_index": 218, "t_s": 502.371845, "delta": "hero", "delta_chars": 4, "content_chars": 641, "finish_reason": null, "usage": null}
+{"event_index": 219, "t_s": 502.71687, "delta": "{", "delta_chars": 1, "content_chars": 642, "finish_reason": null, "usage": null}
+{"event_index": 220, "t_s": 503.161916, "delta": "text", "delta_chars": 4, "content_chars": 646, "finish_reason": null, "usage": null}
+{"event_index": 221, "t_s": 503.548801, "delta": "-align", "delta_chars": 6, "content_chars": 652, "finish_reason": null, "usage": null}
+{"event_index": 222, "t_s": 503.897183, "delta": ":", "delta_chars": 1, "content_chars": 653, "finish_reason": null, "usage": null}
+{"event_index": 223, "t_s": 504.25171, "delta": "center", "delta_chars": 6, "content_chars": 659, "finish_reason": null, "usage": null}
+{"event_index": 224, "t_s": 504.593074, "delta": ";", "delta_chars": 1, "content_chars": 660, "finish_reason": null, "usage": null}
+{"event_index": 225, "t_s": 504.934376, "delta": "padding", "delta_chars": 7, "content_chars": 667, "finish_reason": null, "usage": null}
+{"event_index": 226, "t_s": 505.401378, "delta": ":", "delta_chars": 1, "content_chars": 668, "finish_reason": null, "usage": null}
+{"event_index": 227, "t_s": 505.744735, "delta": "20", "delta_chars": 2, "content_chars": 670, "finish_reason": null, "usage": null}
+{"event_index": 228, "t_s": 506.089647, "delta": " ", "delta_chars": 1, "content_chars": 671, "finish_reason": null, "usage": null}
+{"event_index": 229, "t_s": 506.435695, "delta": "0", "delta_chars": 1, "content_chars": 672, "finish_reason": null, "usage": null}
+{"event_index": 230, "t_s": 506.947121, "delta": " ", "delta_chars": 1, "content_chars": 673, "finish_reason": null, "usage": null}
+{"event_index": 231, "t_s": 507.470418, "delta": "10", "delta_chars": 2, "content_chars": 675, "finish_reason": null, "usage": null}
+{"event_index": 232, "t_s": 507.8736, "delta": "}\n", "delta_chars": 2, "content_chars": 677, "finish_reason": null, "usage": null}
+{"event_index": 233, "t_s": 508.33877, "delta": "   ", "delta_chars": 3, "content_chars": 680, "finish_reason": null, "usage": null}
+{"event_index": 234, "t_s": 508.712499, "delta": " .", "delta_chars": 2, "content_chars": 682, "finish_reason": null, "usage": null}
+{"event_index": 235, "t_s": 509.053831, "delta": "hero", "delta_chars": 4, "content_chars": 686, "finish_reason": null, "usage": null}
+{"event_index": 236, "t_s": 509.494101, "delta": " h", "delta_chars": 2, "content_chars": 688, "finish_reason": null, "usage": null}
+{"event_index": 237, "t_s": 510.128714, "delta": "1", "delta_chars": 1, "content_chars": 689, "finish_reason": null, "usage": null}
+{"event_index": 238, "t_s": 510.474848, "delta": "{", "delta_chars": 1, "content_chars": 690, "finish_reason": null, "usage": null}
+{"event_index": 239, "t_s": 510.91108, "delta": "font", "delta_chars": 4, "content_chars": 694, "finish_reason": null, "usage": null}
+{"event_index": 240, "t_s": 511.255087, "delta": "-size", "delta_chars": 5, "content_chars": 699, "finish_reason": null, "usage": null}
+{"event_index": 241, "t_s": 511.60867, "delta": ":", "delta_chars": 1, "content_chars": 700, "finish_reason": null, "usage": null}
+{"event_index": 242, "t_s": 511.954075, "delta": "2", "delta_chars": 1, "content_chars": 701, "finish_reason": null, "usage": null}
+{"event_index": 243, "t_s": 512.295407, "delta": ".", "delta_chars": 1, "content_chars": 702, "finish_reason": null, "usage": null}
+{"event_index": 244, "t_s": 512.740251, "delta": "3", "delta_chars": 1, "content_chars": 703, "finish_reason": null, "usage": null}
+{"event_index": 245, "t_s": 513.102207, "delta": "rem", "delta_chars": 3, "content_chars": 706, "finish_reason": null, "usage": null}
+{"event_index": 246, "t_s": 513.448255, "delta": ";", "delta_chars": 1, "content_chars": 707, "finish_reason": null, "usage": null}
+{"event_index": 247, "t_s": 513.814246, "delta": "color", "delta_chars": 5, "content_chars": 712, "finish_reason": null, "usage": null}
+{"event_index": 248, "t_s": 514.172448, "delta": ":#", "delta_chars": 2, "content_chars": 714, "finish_reason": null, "usage": null}
+{"event_index": 249, "t_s": 514.52728, "delta": "0", "delta_chars": 1, "content_chars": 715, "finish_reason": null, "usage": null}
+{"event_index": 250, "t_s": 514.894216, "delta": "cf", "delta_chars": 2, "content_chars": 717, "finish_reason": null, "usage": null}
+{"event_index": 251, "t_s": 515.238153, "delta": ";", "delta_chars": 1, "content_chars": 718, "finish_reason": null, "usage": null}
+{"event_index": 252, "t_s": 515.586237, "delta": "text", "delta_chars": 4, "content_chars": 722, "finish_reason": null, "usage": null}
+{"event_index": 253, "t_s": 515.976964, "delta": "-shadow", "delta_chars": 7, "content_chars": 729, "finish_reason": null, "usage": null}
+{"event_index": 254, "t_s": 516.316013, "delta": ":", "delta_chars": 1, "content_chars": 730, "finish_reason": null, "usage": null}
+{"event_index": 255, "t_s": 516.665902, "delta": "0", "delta_chars": 1, "content_chars": 731, "finish_reason": null, "usage": null}
+{"event_index": 256, "t_s": 517.011299, "delta": " ", "delta_chars": 1, "content_chars": 732, "finish_reason": null, "usage": null}
+{"event_index": 257, "t_s": 517.354873, "delta": "0", "delta_chars": 1, "content_chars": 733, "finish_reason": null, "usage": null}
+{"event_index": 258, "t_s": 517.741507, "delta": " ", "delta_chars": 1, "content_chars": 734, "finish_reason": null, "usage": null}
+{"event_index": 259, "t_s": 518.084924, "delta": "10", "delta_chars": 2, "content_chars": 736, "finish_reason": null, "usage": null}
+{"event_index": 260, "t_s": 518.470046, "delta": " #", "delta_chars": 2, "content_chars": 738, "finish_reason": null, "usage": null}
+{"event_index": 261, "t_s": 518.83109, "delta": "0", "delta_chars": 1, "content_chars": 739, "finish_reason": null, "usage": null}
+{"event_index": 262, "t_s": 519.249092, "delta": "cf", "delta_chars": 2, "content_chars": 741, "finish_reason": null, "usage": null}
+{"event_index": 263, "t_s": 519.765507, "delta": ",", "delta_chars": 1, "content_chars": 742, "finish_reason": null, "usage": null}
+{"event_index": 264, "t_s": 520.216922, "delta": "0", "delta_chars": 1, "content_chars": 743, "finish_reason": null, "usage": null}
+{"event_index": 265, "t_s": 520.645366, "delta": " ", "delta_chars": 1, "content_chars": 744, "finish_reason": null, "usage": null}
+{"event_index": 266, "t_s": 521.120435, "delta": "0", "delta_chars": 1, "content_chars": 745, "finish_reason": null, "usage": null}
+{"event_index": 267, "t_s": 521.556941, "delta": " ", "delta_chars": 1, "content_chars": 746, "finish_reason": null, "usage": null}
+{"event_index": 268, "t_s": 521.964595, "delta": "20", "delta_chars": 2, "content_chars": 748, "finish_reason": null, "usage": null}
+{"event_index": 269, "t_s": 522.352399, "delta": " #", "delta_chars": 2, "content_chars": 750, "finish_reason": null, "usage": null}
+{"event_index": 270, "t_s": 522.704948, "delta": "0", "delta_chars": 1, "content_chars": 751, "finish_reason": null, "usage": null}
+{"event_index": 271, "t_s": 523.10118, "delta": "cf", "delta_chars": 2, "content_chars": 753, "finish_reason": null, "usage": null}
+{"event_index": 272, "t_s": 523.509064, "delta": ";", "delta_chars": 1, "content_chars": 754, "finish_reason": null, "usage": null}
+{"event_index": 273, "t_s": 523.920206, "delta": "letter", "delta_chars": 6, "content_chars": 760, "finish_reason": null, "usage": null}
+{"event_index": 274, "t_s": 524.302345, "delta": "-sp", "delta_chars": 3, "content_chars": 763, "finish_reason": null, "usage": null}
+{"event_index": 275, "t_s": 524.70487, "delta": "acing", "delta_chars": 5, "content_chars": 768, "finish_reason": null, "usage": null}
+{"event_index": 276, "t_s": 525.092111, "delta": ":", "delta_chars": 1, "content_chars": 769, "finish_reason": null, "usage": null}
+{"event_index": 277, "t_s": 525.551982, "delta": " -", "delta_chars": 2, "content_chars": 771, "finish_reason": null, "usage": null}
+{"event_index": 278, "t_s": 525.95936, "delta": "1", "delta_chars": 1, "content_chars": 772, "finish_reason": null, "usage": null}
+{"event_index": 279, "t_s": 526.319552, "delta": "px", "delta_chars": 2, "content_chars": 774, "finish_reason": null, "usage": null}
+{"event_index": 280, "t_s": 526.666587, "delta": "}\n", "delta_chars": 2, "content_chars": 776, "finish_reason": null, "usage": null}
+{"event_index": 281, "t_s": 527.04676, "delta": "   ", "delta_chars": 3, "content_chars": 779, "finish_reason": null, "usage": null}
+{"event_index": 282, "t_s": 527.39352, "delta": " .", "delta_chars": 2, "content_chars": 781, "finish_reason": null, "usage": null}
+{"event_index": 283, "t_s": 527.760507, "delta": "hero", "delta_chars": 4, "content_chars": 785, "finish_reason": null, "usage": null}
+{"event_index": 284, "t_s": 528.105091, "delta": " p", "delta_chars": 2, "content_chars": 787, "finish_reason": null, "usage": null}
+{"event_index": 285, "t_s": 528.483503, "delta": "{", "delta_chars": 1, "content_chars": 788, "finish_reason": null, "usage": null}
+{"event_index": 286, "t_s": 528.825957, "delta": "color", "delta_chars": 5, "content_chars": 793, "finish_reason": null, "usage": null}
+{"event_index": 287, "t_s": 529.171416, "delta": ":#", "delta_chars": 2, "content_chars": 795, "finish_reason": null, "usage": null}
+{"event_index": 288, "t_s": 529.599065, "delta": "b", "delta_chars": 1, "content_chars": 796, "finish_reason": null, "usage": null}
+{"event_index": 289, "t_s": 529.939052, "delta": "0", "delta_chars": 1, "content_chars": 797, "finish_reason": null, "usage": null}
+{"event_index": 290, "t_s": 530.302689, "delta": "d", "delta_chars": 1, "content_chars": 798, "finish_reason": null, "usage": null}
+{"event_index": 291, "t_s": 530.648649, "delta": "0", "delta_chars": 1, "content_chars": 799, "finish_reason": null, "usage": null}
+{"event_index": 292, "t_s": 530.993236, "delta": "d", "delta_chars": 1, "content_chars": 800, "finish_reason": null, "usage": null}
+{"event_index": 293, "t_s": 531.337713, "delta": "0", "delta_chars": 1, "content_chars": 801, "finish_reason": null, "usage": null}
+{"event_index": 294, "t_s": 531.747181, "delta": ";", "delta_chars": 1, "content_chars": 802, "finish_reason": null, "usage": null}
+{"event_index": 295, "t_s": 532.168025, "delta": "margin", "delta_chars": 6, "content_chars": 808, "finish_reason": null, "usage": null}
+{"event_index": 296, "t_s": 532.591697, "delta": ":", "delta_chars": 1, "content_chars": 809, "finish_reason": null, "usage": null}
+{"event_index": 297, "t_s": 532.980952, "delta": "10", "delta_chars": 2, "content_chars": 811, "finish_reason": null, "usage": null}
+{"event_index": 298, "t_s": 533.36873, "delta": " ", "delta_chars": 1, "content_chars": 812, "finish_reason": null, "usage": null}
+{"event_index": 299, "t_s": 533.711267, "delta": "0", "delta_chars": 1, "content_chars": 813, "finish_reason": null, "usage": null}
+{"event_index": 300, "t_s": 534.147586, "delta": " ", "delta_chars": 1, "content_chars": 814, "finish_reason": null, "usage": null}
+{"event_index": 301, "t_s": 534.513538, "delta": "20", "delta_chars": 2, "content_chars": 816, "finish_reason": null, "usage": null}
+{"event_index": 302, "t_s": 534.857526, "delta": ";", "delta_chars": 1, "content_chars": 817, "finish_reason": null, "usage": null}
+{"event_index": 303, "t_s": 535.231553, "delta": "font", "delta_chars": 4, "content_chars": 821, "finish_reason": null, "usage": null}
+{"event_index": 304, "t_s": 535.581957, "delta": "-size", "delta_chars": 5, "content_chars": 826, "finish_reason": null, "usage": null}
+{"event_index": 305, "t_s": 535.944104, "delta": ":", "delta_chars": 1, "content_chars": 827, "finish_reason": null, "usage": null}
+{"event_index": 306, "t_s": 536.291542, "delta": "1", "delta_chars": 1, "content_chars": 828, "finish_reason": null, "usage": null}
+{"event_index": 307, "t_s": 536.635851, "delta": ".", "delta_chars": 1, "content_chars": 829, "finish_reason": null, "usage": null}
+{"event_index": 308, "t_s": 537.030581, "delta": "1", "delta_chars": 1, "content_chars": 830, "finish_reason": null, "usage": null}
+{"event_index": 309, "t_s": 537.426734, "delta": "rem", "delta_chars": 3, "content_chars": 833, "finish_reason": null, "usage": null}
+{"event_index": 310, "t_s": 537.791092, "delta": "}\n", "delta_chars": 2, "content_chars": 835, "finish_reason": null, "usage": null}
+{"event_index": 311, "t_s": 538.133837, "delta": "   ", "delta_chars": 3, "content_chars": 838, "finish_reason": null, "usage": null}
+{"event_index": 312, "t_s": 538.501678, "delta": " .", "delta_chars": 2, "content_chars": 840, "finish_reason": null, "usage": null}
+{"event_index": 313, "t_s": 538.895728, "delta": "grid", "delta_chars": 4, "content_chars": 844, "finish_reason": null, "usage": null}
+{"event_index": 314, "t_s": 539.239352, "delta": "{", "delta_chars": 1, "content_chars": 845, "finish_reason": null, "usage": null}
+{"event_index": 315, "t_s": 539.625582, "delta": "display", "delta_chars": 7, "content_chars": 852, "finish_reason": null, "usage": null}
+{"event_index": 316, "t_s": 539.981573, "delta": ":", "delta_chars": 1, "content_chars": 853, "finish_reason": null, "usage": null}
+{"event_index": 317, "t_s": 540.331391, "delta": "grid", "delta_chars": 4, "content_chars": 857, "finish_reason": null, "usage": null}
+{"event_index": 318, "t_s": 540.685607, "delta": ";", "delta_chars": 1, "content_chars": 858, "finish_reason": null, "usage": null}
+{"event_index": 319, "t_s": 541.023998, "delta": "grid", "delta_chars": 4, "content_chars": 862, "finish_reason": null, "usage": null}
+{"event_index": 320, "t_s": 541.405074, "delta": "-template", "delta_chars": 9, "content_chars": 871, "finish_reason": null, "usage": null}
+{"event_index": 321, "t_s": 541.794433, "delta": "-column", "delta_chars": 7, "content_chars": 878, "finish_reason": null, "usage": null}
+{"event_index": 322, "t_s": 542.137892, "delta": "s", "delta_chars": 1, "content_chars": 879, "finish_reason": null, "usage": null}
+{"event_index": 323, "t_s": 542.480451, "delta": ":", "delta_chars": 1, "content_chars": 880, "finish_reason": null, "usage": null}
+{"event_index": 324, "t_s": 542.832904, "delta": "repeat", "delta_chars": 6, "content_chars": 886, "finish_reason": null, "usage": null}
+{"event_index": 325, "t_s": 543.209352, "delta": "(auto", "delta_chars": 5, "content_chars": 891, "finish_reason": null, "usage": null}
+{"event_index": 326, "t_s": 543.792255, "delta": "-fit", "delta_chars": 4, "content_chars": 895, "finish_reason": null, "usage": null}
+{"event_index": 327, "t_s": 544.206036, "delta": ",", "delta_chars": 1, "content_chars": 896, "finish_reason": null, "usage": null}
+{"event_index": 328, "t_s": 544.653446, "delta": "min", "delta_chars": 3, "content_chars": 899, "finish_reason": null, "usage": null}
+{"event_index": 329, "t_s": 545.362977, "delta": "max", "delta_chars": 3, "content_chars": 902, "finish_reason": null, "usage": null}
+{"event_index": 330, "t_s": 545.722956, "delta": " ", "delta_chars": 1, "content_chars": 903, "finish_reason": null, "usage": null}
+{"event_index": 331, "t_s": 546.067857, "delta": "180", "delta_chars": 3, "content_chars": 906, "finish_reason": null, "usage": null}
+{"event_index": 332, "t_s": 546.411489, "delta": ");", "delta_chars": 2, "content_chars": 908, "finish_reason": null, "usage": null}
+{"event_index": 333, "t_s": 546.890345, "delta": "gap", "delta_chars": 3, "content_chars": 911, "finish_reason": null, "usage": null}
+{"event_index": 334, "t_s": 547.27281, "delta": ":", "delta_chars": 1, "content_chars": 912, "finish_reason": null, "usage": null}
+{"event_index": 335, "t_s": 547.663924, "delta": "20", "delta_chars": 2, "content_chars": 914, "finish_reason": null, "usage": null}
+{"event_index": 336, "t_s": 548.047685, "delta": ";", "delta_chars": 1, "content_chars": 915, "finish_reason": null, "usage": null}
+{"event_index": 337, "t_s": 548.442503, "delta": "margin", "delta_chars": 6, "content_chars": 921, "finish_reason": null, "usage": null}
+{"event_index": 338, "t_s": 548.821156, "delta": ":", "delta_chars": 1, "content_chars": 922, "finish_reason": null, "usage": null}
+{"event_index": 339, "t_s": 549.185914, "delta": "20", "delta_chars": 2, "content_chars": 924, "finish_reason": null, "usage": null}
+{"event_index": 340, "t_s": 549.532895, "delta": " ", "delta_chars": 1, "content_chars": 925, "finish_reason": null, "usage": null}
+{"event_index": 341, "t_s": 549.8785, "delta": "0", "delta_chars": 1, "content_chars": 926, "finish_reason": null, "usage": null}
+{"event_index": 342, "t_s": 550.261209, "delta": "}\n", "delta_chars": 2, "content_chars": 928, "finish_reason": null, "usage": null}
+{"event_index": 343, "t_s": 550.622129, "delta": "   ", "delta_chars": 3, "content_chars": 931, "finish_reason": null, "usage": null}
+{"event_index": 344, "t_s": 550.9647, "delta": " .", "delta_chars": 2, "content_chars": 933, "finish_reason": null, "usage": null}
+{"event_index": 345, "t_s": 551.307188, "delta": "card", "delta_chars": 4, "content_chars": 937, "finish_reason": null, "usage": null}
+{"event_index": 346, "t_s": 551.65468, "delta": "{", "delta_chars": 1, "content_chars": 938, "finish_reason": null, "usage": null}
+{"event_index": 347, "t_s": 551.999076, "delta": "background", "delta_chars": 10, "content_chars": 948, "finish_reason": null, "usage": null}
+{"event_index": 348, "t_s": 552.343842, "delta": ":#", "delta_chars": 2, "content_chars": 950, "finish_reason": null, "usage": null}
+{"event_index": 349, "t_s": 552.685096, "delta": "0", "delta_chars": 1, "content_chars": 951, "finish_reason": null, "usage": null}
+{"event_index": 350, "t_s": 553.030438, "delta": "e", "delta_chars": 1, "content_chars": 952, "finish_reason": null, "usage": null}
+{"event_index": 351, "t_s": 553.378854, "delta": "1", "delta_chars": 1, "content_chars": 953, "finish_reason": null, "usage": null}
+{"event_index": 352, "t_s": 553.731307, "delta": "a", "delta_chars": 1, "content_chars": 954, "finish_reason": null, "usage": null}
+{"event_index": 353, "t_s": 554.077141, "delta": "2", "delta_chars": 1, "content_chars": 955, "finish_reason": null, "usage": null}
+{"event_index": 354, "t_s": 554.431565, "delta": "a", "delta_chars": 1, "content_chars": 956, "finish_reason": null, "usage": null}
+{"event_index": 355, "t_s": 554.774606, "delta": ";", "delta_chars": 1, "content_chars": 957, "finish_reason": null, "usage": null}
+{"event_index": 356, "t_s": 555.121131, "delta": "border", "delta_chars": 6, "content_chars": 963, "finish_reason": null, "usage": null}
+{"event_index": 357, "t_s": 555.473775, "delta": ":", "delta_chars": 1, "content_chars": 964, "finish_reason": null, "usage": null}
+{"event_index": 358, "t_s": 555.831726, "delta": "1", "delta_chars": 1, "content_chars": 965, "finish_reason": null, "usage": null}
+{"event_index": 359, "t_s": 556.227655, "delta": "px", "delta_chars": 2, "content_chars": 967, "finish_reason": null, "usage": null}
+{"event_index": 360, "t_s": 556.631285, "delta": " solid", "delta_chars": 6, "content_chars": 973, "finish_reason": null, "usage": null}
+{"event_index": 361, "t_s": 556.989943, "delta": " #", "delta_chars": 2, "content_chars": 975, "finish_reason": null, "usage": null}
+{"event_index": 362, "t_s": 557.394255, "delta": "0", "delta_chars": 1, "content_chars": 976, "finish_reason": null, "usage": null}
+{"event_index": 363, "t_s": 557.740159, "delta": "cf", "delta_chars": 2, "content_chars": 978, "finish_reason": null, "usage": null}
+{"event_index": 364, "t_s": 558.105792, "delta": ";", "delta_chars": 1, "content_chars": 979, "finish_reason": null, "usage": null}
+{"event_index": 365, "t_s": 558.499314, "delta": "padding", "delta_chars": 7, "content_chars": 986, "finish_reason": null, "usage": null}
+{"event_index": 366, "t_s": 558.877472, "delta": ":", "delta_chars": 1, "content_chars": 987, "finish_reason": null, "usage": null}
+{"event_index": 367, "t_s": 559.239083, "delta": "20", "delta_chars": 2, "content_chars": 989, "finish_reason": null, "usage": null}
+{"event_index": 368, "t_s": 559.620857, "delta": ";", "delta_chars": 1, "content_chars": 990, "finish_reason": null, "usage": null}
+{"event_index": 369, "t_s": 560.122533, "delta": "border", "delta_chars": 6, "content_chars": 996, "finish_reason": null, "usage": null}
+{"event_index": 370, "t_s": 560.487943, "delta": "-radius", "delta_chars": 7, "content_chars": 1003, "finish_reason": null, "usage": null}
+{"event_index": 371, "t_s": 560.848495, "delta": ":", "delta_chars": 1, "content_chars": 1004, "finish_reason": null, "usage": null}
+{"event_index": 372, "t_s": 561.208944, "delta": "12", "delta_chars": 2, "content_chars": 1006, "finish_reason": null, "usage": null}
+{"event_index": 373, "t_s": 561.563394, "delta": ";", "delta_chars": 1, "content_chars": 1007, "finish_reason": null, "usage": null}
+{"event_index": 374, "t_s": 561.9188, "delta": "text", "delta_chars": 4, "content_chars": 1011, "finish_reason": null, "usage": null}
+{"event_index": 375, "t_s": 562.259811, "delta": "-align", "delta_chars": 6, "content_chars": 1017, "finish_reason": null, "usage": null}
+{"event_index": 376, "t_s": 562.617684, "delta": ":", "delta_chars": 1, "content_chars": 1018, "finish_reason": null, "usage": null}
+{"event_index": 377, "t_s": 562.962101, "delta": "center", "delta_chars": 6, "content_chars": 1024, "finish_reason": null, "usage": null}
+{"event_index": 378, "t_s": 563.312, "delta": ";", "delta_chars": 1, "content_chars": 1025, "finish_reason": null, "usage": null}
+{"event_index": 379, "t_s": 563.702086, "delta": "transition", "delta_chars": 10, "content_chars": 1035, "finish_reason": null, "usage": null}
+{"event_index": 380, "t_s": 564.049512, "delta": ":.", "delta_chars": 2, "content_chars": 1037, "finish_reason": null, "usage": null}
+{"event_index": 381, "t_s": 564.403698, "delta": "2", "delta_chars": 1, "content_chars": 1038, "finish_reason": null, "usage": null}
+{"event_index": 382, "t_s": 564.749411, "delta": "s", "delta_chars": 1, "content_chars": 1039, "finish_reason": null, "usage": null}
+{"event_index": 383, "t_s": 565.082338, "delta": ";", "delta_chars": 1, "content_chars": 1040, "finish_reason": null, "usage": null}
+{"event_index": 384, "t_s": 565.42312, "delta": "box", "delta_chars": 3, "content_chars": 1043, "finish_reason": null, "usage": null}
+{"event_index": 385, "t_s": 565.762769, "delta": "-shadow", "delta_chars": 7, "content_chars": 1050, "finish_reason": null, "usage": null}
+{"event_index": 386, "t_s": 566.109451, "delta": ":", "delta_chars": 1, "content_chars": 1051, "finish_reason": null, "usage": null}
+{"event_index": 387, "t_s": 566.458632, "delta": "0", "delta_chars": 1, "content_chars": 1052, "finish_reason": null, "usage": null}
+{"event_index": 388, "t_s": 566.802782, "delta": " ", "delta_chars": 1, "content_chars": 1053, "finish_reason": null, "usage": null}
+{"event_index": 389, "t_s": 567.15444, "delta": "0", "delta_chars": 1, "content_chars": 1054, "finish_reason": null, "usage": null}
+{"event_index": 390, "t_s": 567.605867, "delta": " ", "delta_chars": 1, "content_chars": 1055, "finish_reason": null, "usage": null}
+{"event_index": 391, "t_s": 567.99028, "delta": "10", "delta_chars": 2, "content_chars": 1057, "finish_reason": null, "usage": null}
+{"event_index": 392, "t_s": 568.495407, "delta": " rgba", "delta_chars": 5, "content_chars": 1062, "finish_reason": null, "usage": null}
+{"event_index": 393, "t_s": 568.87926, "delta": "(", "delta_chars": 1, "content_chars": 1063, "finish_reason": null, "usage": null}
+{"event_index": 394, "t_s": 569.292577, "delta": "0", "delta_chars": 1, "content_chars": 1064, "finish_reason": null, "usage": null}
+{"event_index": 395, "t_s": 569.643713, "delta": ",", "delta_chars": 1, "content_chars": 1065, "finish_reason": null, "usage": null}
+{"event_index": 396, "t_s": 570.039878, "delta": "255", "delta_chars": 3, "content_chars": 1068, "finish_reason": null, "usage": null}
+{"event_index": 397, "t_s": 570.443737, "delta": ",", "delta_chars": 1, "content_chars": 1069, "finish_reason": null, "usage": null}
+{"event_index": 398, "t_s": 570.804023, "delta": "255", "delta_chars": 3, "content_chars": 1072, "finish_reason": null, "usage": null}
+{"event_index": 399, "t_s": 571.161023, "delta": ",.", "delta_chars": 2, "content_chars": 1074, "finish_reason": null, "usage": null}
+{"event_index": 400, "t_s": 571.514387, "delta": "2", "delta_chars": 1, "content_chars": 1075, "finish_reason": null, "usage": null}
+{"event_index": 401, "t_s": 571.863893, "delta": ")}\n", "delta_chars": 3, "content_chars": 1078, "finish_reason": null, "usage": null}
+{"event_index": 402, "t_s": 572.202526, "delta": "   ", "delta_chars": 3, "content_chars": 1081, "finish_reason": null, "usage": null}
+{"event_index": 403, "t_s": 572.548783, "delta": " .", "delta_chars": 2, "content_chars": 1083, "finish_reason": null, "usage": null}
+{"event_index": 404, "t_s": 572.891042, "delta": "card", "delta_chars": 4, "content_chars": 1087, "finish_reason": null, "usage": null}
+{"event_index": 405, "t_s": 573.238328, "delta": ":hover", "delta_chars": 6, "content_chars": 1093, "finish_reason": null, "usage": null}
+{"event_index": 406, "t_s": 573.586013, "delta": "{", "delta_chars": 1, "content_chars": 1094, "finish_reason": null, "usage": null}
+{"event_index": 407, "t_s": 573.944232, "delta": "background", "delta_chars": 10, "content_chars": 1104, "finish_reason": null, "usage": null}
+{"event_index": 408, "t_s": 574.289124, "delta": ":#", "delta_chars": 2, "content_chars": 1106, "finish_reason": null, "usage": null}
+{"event_index": 409, "t_s": 574.644572, "delta": "1", "delta_chars": 1, "content_chars": 1107, "finish_reason": null, "usage": null}
+{"event_index": 410, "t_s": 574.992606, "delta": "a", "delta_chars": 1, "content_chars": 1108, "finish_reason": null, "usage": null}
+{"event_index": 411, "t_s": 575.336284, "delta": "2", "delta_chars": 1, "content_chars": 1109, "finish_reason": null, "usage": null}
+{"event_index": 412, "t_s": 575.683749, "delta": "a", "delta_chars": 1, "content_chars": 1110, "finish_reason": null, "usage": null}
+{"event_index": 413, "t_s": 576.030755, "delta": "3", "delta_chars": 1, "content_chars": 1111, "finish_reason": null, "usage": null}
+{"event_index": 414, "t_s": 576.381384, "delta": "a", "delta_chars": 1, "content_chars": 1112, "finish_reason": null, "usage": null}
+{"event_index": 415, "t_s": 576.728983, "delta": ";", "delta_chars": 1, "content_chars": 1113, "finish_reason": null, "usage": null}
+{"event_index": 416, "t_s": 577.069781, "delta": "border", "delta_chars": 6, "content_chars": 1119, "finish_reason": null, "usage": null}
+{"event_index": 417, "t_s": 577.42109, "delta": "-color", "delta_chars": 6, "content_chars": 1125, "finish_reason": null, "usage": null}
+{"event_index": 418, "t_s": 577.768517, "delta": ":#", "delta_chars": 2, "content_chars": 1127, "finish_reason": null, "usage": null}
+{"event_index": 419, "t_s": 578.108577, "delta": "f", "delta_chars": 1, "content_chars": 1128, "finish_reason": null, "usage": null}
+{"event_index": 420, "t_s": 578.45483, "delta": "0", "delta_chars": 1, "content_chars": 1129, "finish_reason": null, "usage": null}
+{"event_index": 421, "t_s": 578.793856, "delta": "f", "delta_chars": 1, "content_chars": 1130, "finish_reason": null, "usage": null}
+{"event_index": 422, "t_s": 579.330907, "delta": ";", "delta_chars": 1, "content_chars": 1131, "finish_reason": null, "usage": null}
+{"event_index": 423, "t_s": 579.824276, "delta": "box", "delta_chars": 3, "content_chars": 1134, "finish_reason": null, "usage": null}
+{"event_index": 424, "t_s": 580.215853, "delta": "-shadow", "delta_chars": 7, "content_chars": 1141, "finish_reason": null, "usage": null}
+{"event_index": 425, "t_s": 580.566799, "delta": ":", "delta_chars": 1, "content_chars": 1142, "finish_reason": null, "usage": null}
+{"event_index": 426, "t_s": 580.960019, "delta": "0", "delta_chars": 1, "content_chars": 1143, "finish_reason": null, "usage": null}
+{"event_index": 427, "t_s": 581.311424, "delta": " ", "delta_chars": 1, "content_chars": 1144, "finish_reason": null, "usage": null}
+{"event_index": 428, "t_s": 581.670717, "delta": "0", "delta_chars": 1, "content_chars": 1145, "finish_reason": null, "usage": null}
+{"event_index": 429, "t_s": 582.018283, "delta": " ", "delta_chars": 1, "content_chars": 1146, "finish_reason": null, "usage": null}
+{"event_index": 430, "t_s": 582.3676, "delta": "20", "delta_chars": 2, "content_chars": 1148, "finish_reason": null, "usage": null}
+{"event_index": 431, "t_s": 582.809166, "delta": " #", "delta_chars": 2, "content_chars": 1150, "finish_reason": null, "usage": null}
+{"event_index": 432, "t_s": 583.326626, "delta": "f", "delta_chars": 1, "content_chars": 1151, "finish_reason": null, "usage": null}
+{"event_index": 433, "t_s": 583.676662, "delta": "0", "delta_chars": 1, "content_chars": 1152, "finish_reason": null, "usage": null}
+{"event_index": 434, "t_s": 584.017404, "delta": "f", "delta_chars": 1, "content_chars": 1153, "finish_reason": null, "usage": null}
+{"event_index": 435, "t_s": 584.424662, "delta": "}\n", "delta_chars": 2, "content_chars": 1155, "finish_reason": null, "usage": null}
+{"event_index": 436, "t_s": 584.767728, "delta": "   ", "delta_chars": 3, "content_chars": 1158, "finish_reason": null, "usage": null}
+{"event_index": 437, "t_s": 585.107536, "delta": " .", "delta_chars": 2, "content_chars": 1160, "finish_reason": null, "usage": null}
+{"event_index": 438, "t_s": 585.494008, "delta": "card", "delta_chars": 4, "content_chars": 1164, "finish_reason": null, "usage": null}
+{"event_index": 439, "t_s": 585.843518, "delta": " h", "delta_chars": 2, "content_chars": 1166, "finish_reason": null, "usage": null}
+{"event_index": 440, "t_s": 586.186971, "delta": "3", "delta_chars": 1, "content_chars": 1167, "finish_reason": null, "usage": null}
+{"event_index": 441, "t_s": 586.535952, "delta": "{", "delta_chars": 1, "content_chars": 1168, "finish_reason": null, "usage": null}
+{"event_index": 442, "t_s": 586.881713, "delta": "color", "delta_chars": 5, "content_chars": 1173, "finish_reason": null, "usage": null}
+{"event_index": 443, "t_s": 587.223157, "delta": ":#", "delta_chars": 2, "content_chars": 1175, "finish_reason": null, "usage": null}
+{"event_index": 444, "t_s": 587.574602, "delta": "f", "delta_chars": 1, "content_chars": 1176, "finish_reason": null, "usage": null}
+{"event_index": 445, "t_s": 587.925049, "delta": "0", "delta_chars": 1, "content_chars": 1177, "finish_reason": null, "usage": null}
+{"event_index": 446, "t_s": 588.264701, "delta": "f", "delta_chars": 1, "content_chars": 1178, "finish_reason": null, "usage": null}
+{"event_index": 447, "t_s": 588.61271, "delta": ";", "delta_chars": 1, "content_chars": 1179, "finish_reason": null, "usage": null}
+{"event_index": 448, "t_s": 588.95236, "delta": "margin", "delta_chars": 6, "content_chars": 1185, "finish_reason": null, "usage": null}
+{"event_index": 449, "t_s": 589.300424, "delta": "-bottom", "delta_chars": 7, "content_chars": 1192, "finish_reason": null, "usage": null}
+{"event_index": 450, "t_s": 589.64512, "delta": ":", "delta_chars": 1, "content_chars": 1193, "finish_reason": null, "usage": null}
+{"event_index": 451, "t_s": 589.987474, "delta": "8", "delta_chars": 1, "content_chars": 1194, "finish_reason": null, "usage": null}
+{"event_index": 452, "t_s": 590.337911, "delta": "}\n", "delta_chars": 2, "content_chars": 1196, "finish_reason": null, "usage": null}
+{"event_index": 453, "t_s": 590.683983, "delta": "   ", "delta_chars": 3, "content_chars": 1199, "finish_reason": null, "usage": null}
+{"event_index": 454, "t_s": 591.104655, "delta": " .", "delta_chars": 2, "content_chars": 1201, "finish_reason": null, "usage": null}
+{"event_index": 455, "t_s": 591.450622, "delta": "card", "delta_chars": 4, "content_chars": 1205, "finish_reason": null, "usage": null}
+{"event_index": 456, "t_s": 591.792318, "delta": " p", "delta_chars": 2, "content_chars": 1207, "finish_reason": null, "usage": null}
+{"event_index": 457, "t_s": 592.195315, "delta": "{", "delta_chars": 1, "content_chars": 1208, "finish_reason": null, "usage": null}
+{"event_index": 458, "t_s": 592.543851, "delta": "color", "delta_chars": 5, "content_chars": 1213, "finish_reason": null, "usage": null}
+{"event_index": 459, "t_s": 592.884571, "delta": ":#", "delta_chars": 2, "content_chars": 1215, "finish_reason": null, "usage": null}
+{"event_index": 460, "t_s": 593.286626, "delta": "b", "delta_chars": 1, "content_chars": 1216, "finish_reason": null, "usage": null}
+{"event_index": 461, "t_s": 593.62392, "delta": "0", "delta_chars": 1, "content_chars": 1217, "finish_reason": null, "usage": null}
+{"event_index": 462, "t_s": 593.980859, "delta": "e", "delta_chars": 1, "content_chars": 1218, "finish_reason": null, "usage": null}
+{"event_index": 463, "t_s": 594.359585, "delta": "0", "delta_chars": 1, "content_chars": 1219, "finish_reason": null, "usage": null}
+{"event_index": 464, "t_s": 594.739209, "delta": "e", "delta_chars": 1, "content_chars": 1220, "finish_reason": null, "usage": null}
+{"event_index": 465, "t_s": 595.083409, "delta": "0", "delta_chars": 1, "content_chars": 1221, "finish_reason": null, "usage": null}
+{"event_index": 466, "t_s": 595.483184, "delta": ";", "delta_chars": 1, "content_chars": 1222, "finish_reason": null, "usage": null}
+{"event_index": 467, "t_s": 595.847091, "delta": "font", "delta_chars": 4, "content_chars": 1226, "finish_reason": null, "usage": null}
+{"event_index": 468, "t_s": 596.299278, "delta": "-size", "delta_chars": 5, "content_chars": 1231, "finish_reason": null, "usage": null}
+{"event_index": 469, "t_s": 596.660783, "delta": ":.", "delta_chars": 2, "content_chars": 1233, "finish_reason": null, "usage": null}
+{"event_index": 470, "t_s": 597.057458, "delta": "9", "delta_chars": 1, "content_chars": 1234, "finish_reason": null, "usage": null}
+{"event_index": 471, "t_s": 597.424969, "delta": "rem", "delta_chars": 3, "content_chars": 1237, "finish_reason": null, "usage": null}
+{"event_index": 472, "t_s": 597.88794, "delta": "}\n", "delta_chars": 2, "content_chars": 1239, "finish_reason": null, "usage": null}
+{"event_index": 473, "t_s": 598.226019, "delta": "   ", "delta_chars": 3, "content_chars": 1242, "finish_reason": null, "usage": null}
+{"event_index": 474, "t_s": 598.613612, "delta": " .", "delta_chars": 2, "content_chars": 1244, "finish_reason": null, "usage": null}
+{"event_index": 475, "t_s": 598.959051, "delta": "btn", "delta_chars": 3, "content_chars": 1247, "finish_reason": null, "usage": null}
+{"event_index": 476, "t_s": 599.302942, "delta": "{", "delta_chars": 1, "content_chars": 1248, "finish_reason": null, "usage": null}
+{"event_index": 477, "t_s": 599.664169, "delta": "background", "delta_chars": 10, "content_chars": 1258, "finish_reason": null, "usage": null}
+{"event_index": 478, "t_s": 600.004672, "delta": ":#", "delta_chars": 2, "content_chars": 1260, "finish_reason": null, "usage": null}
+{"event_index": 479, "t_s": 600.35594, "delta": "0", "delta_chars": 1, "content_chars": 1261, "finish_reason": null, "usage": null}
+{"event_index": 480, "t_s": 600.707628, "delta": "cf", "delta_chars": 2, "content_chars": 1263, "finish_reason": null, "usage": null}
+{"event_index": 481, "t_s": 601.049576, "delta": ";", "delta_chars": 1, "content_chars": 1264, "finish_reason": null, "usage": null}
+{"event_index": 482, "t_s": 601.398893, "delta": "border", "delta_chars": 6, "content_chars": 1270, "finish_reason": null, "usage": null}
+{"event_index": 483, "t_s": 601.780762, "delta": ":n", "delta_chars": 2, "content_chars": 1272, "finish_reason": null, "usage": null}
+{"event_index": 484, "t_s": 602.122896, "delta": "one", "delta_chars": 3, "content_chars": 1275, "finish_reason": null, "usage": null}
+{"event_index": 485, "t_s": 602.471155, "delta": ";", "delta_chars": 1, "content_chars": 1276, "finish_reason": null, "usage": null}
+{"event_index": 486, "t_s": 602.935742, "delta": "padding", "delta_chars": 7, "content_chars": 1283, "finish_reason": null, "usage": null}
+{"event_index": 487, "t_s": 603.317023, "delta": ":", "delta_chars": 1, "content_chars": 1284, "finish_reason": null, "usage": null}
+{"event_index": 488, "t_s": 603.750496, "delta": "10", "delta_chars": 2, "content_chars": 1286, "finish_reason": null, "usage": null}
+{"event_index": 489, "t_s": 604.143388, "delta": " ", "delta_chars": 1, "content_chars": 1287, "finish_reason": null, "usage": null}
+{"event_index": 490, "t_s": 604.541622, "delta": "20", "delta_chars": 2, "content_chars": 1289, "finish_reason": null, "usage": null}
+{"event_index": 491, "t_s": 604.886304, "delta": ";", "delta_chars": 1, "content_chars": 1290, "finish_reason": null, "usage": null}
+{"event_index": 492, "t_s": 605.310471, "delta": "border", "delta_chars": 6, "content_chars": 1296, "finish_reason": null, "usage": null}
+{"event_index": 493, "t_s": 605.70253, "delta": "-radius", "delta_chars": 7, "content_chars": 1303, "finish_reason": null, "usage": null}
+{"event_index": 494, "t_s": 606.043594, "delta": ":", "delta_chars": 1, "content_chars": 1304, "finish_reason": null, "usage": null}
+{"event_index": 495, "t_s": 606.390907, "delta": "8", "delta_chars": 1, "content_chars": 1305, "finish_reason": null, "usage": null}
+{"event_index": 496, "t_s": 606.734836, "delta": ";", "delta_chars": 1, "content_chars": 1306, "finish_reason": null, "usage": null}
+{"event_index": 497, "t_s": 607.079508, "delta": "font", "delta_chars": 4, "content_chars": 1310, "finish_reason": null, "usage": null}
+{"event_index": 498, "t_s": 607.468391, "delta": "-weight", "delta_chars": 7, "content_chars": 1317, "finish_reason": null, "usage": null}
+{"event_index": 499, "t_s": 607.896459, "delta": ":", "delta_chars": 1, "content_chars": 1318, "finish_reason": null, "usage": null}
+{"event_index": 500, "t_s": 608.267572, "delta": "bold", "delta_chars": 4, "content_chars": 1322, "finish_reason": null, "usage": null}
+{"event_index": 501, "t_s": 608.652946, "delta": ";", "delta_chars": 1, "content_chars": 1323, "finish_reason": null, "usage": null}
+{"event_index": 502, "t_s": 608.994271, "delta": "color", "delta_chars": 5, "content_chars": 1328, "finish_reason": null, "usage": null}
+{"event_index": 503, "t_s": 609.380952, "delta": ":#", "delta_chars": 2, "content_chars": 1330, "finish_reason": null, "usage": null}
+{"event_index": 504, "t_s": 609.72048, "delta": "000", "delta_chars": 3, "content_chars": 1333, "finish_reason": null, "usage": null}
+{"event_index": 505, "t_s": 610.066301, "delta": ";", "delta_chars": 1, "content_chars": 1334, "finish_reason": null, "usage": null}
+{"event_index": 506, "t_s": 610.441674, "delta": "cursor", "delta_chars": 6, "content_chars": 1340, "finish_reason": null, "usage": null}
+{"event_index": 507, "t_s": 610.786661, "delta": ":", "delta_chars": 1, "content_chars": 1341, "finish_reason": null, "usage": null}
+{"event_index": 508, "t_s": 611.128615, "delta": "pointer", "delta_chars": 7, "content_chars": 1348, "finish_reason": null, "usage": null}
+{"event_index": 509, "t_s": 611.472344, "delta": ";", "delta_chars": 1, "content_chars": 1349, "finish_reason": null, "usage": null}
+{"event_index": 510, "t_s": 611.849489, "delta": "font", "delta_chars": 4, "content_chars": 1353, "finish_reason": null, "usage": null}
+{"event_index": 511, "t_s": 612.195008, "delta": "-size", "delta_chars": 5, "content_chars": 1358, "finish_reason": null, "usage": null}
+{"event_index": 512, "t_s": 612.544464, "delta": ":", "delta_chars": 1, "content_chars": 1359, "finish_reason": null, "usage": null}
+{"event_index": 513, "t_s": 612.893713, "delta": "1", "delta_chars": 1, "content_chars": 1360, "finish_reason": null, "usage": null}
+{"event_index": 514, "t_s": 613.272746, "delta": "rem", "delta_chars": 3, "content_chars": 1363, "finish_reason": null, "usage": null}
+{"event_index": 515, "t_s": 613.62378, "delta": ";", "delta_chars": 1, "content_chars": 1364, "finish_reason": null, "usage": null}
+{"event_index": 516, "t_s": 613.971642, "delta": "box", "delta_chars": 3, "content_chars": 1367, "finish_reason": null, "usage": null}
+{"event_index": 517, "t_s": 614.313296, "delta": "-shadow", "delta_chars": 7, "content_chars": 1374, "finish_reason": null, "usage": null}
+{"event_index": 518, "t_s": 614.950795, "delta": ":", "delta_chars": 1, "content_chars": 1375, "finish_reason": null, "usage": null}
+{"event_index": 519, "t_s": 615.427167, "delta": "0", "delta_chars": 1, "content_chars": 1376, "finish_reason": null, "usage": null}
+{"event_index": 520, "t_s": 615.883815, "delta": " ", "delta_chars": 1, "content_chars": 1377, "finish_reason": null, "usage": null}
+{"event_index": 521, "t_s": 616.447152, "delta": "0", "delta_chars": 1, "content_chars": 1378, "finish_reason": null, "usage": null}
+{"event_index": 522, "t_s": 616.853048, "delta": " ", "delta_chars": 1, "content_chars": 1379, "finish_reason": null, "usage": null}
+{"event_index": 523, "t_s": 617.207427, "delta": "10", "delta_chars": 2, "content_chars": 1381, "finish_reason": null, "usage": null}
+{"event_index": 524, "t_s": 617.571298, "delta": " #", "delta_chars": 2, "content_chars": 1383, "finish_reason": null, "usage": null}
+{"event_index": 525, "t_s": 617.966416, "delta": "0", "delta_chars": 1, "content_chars": 1384, "finish_reason": null, "usage": null}
+{"event_index": 526, "t_s": 618.352349, "delta": "cf", "delta_chars": 2, "content_chars": 1386, "finish_reason": null, "usage": null}
+{"event_index": 527, "t_s": 618.700227, "delta": ";", "delta_chars": 1, "content_chars": 1387, "finish_reason": null, "usage": null}
+{"event_index": 528, "t_s": 619.046346, "delta": "transition", "delta_chars": 10, "content_chars": 1397, "finish_reason": null, "usage": null}
+{"event_index": 529, "t_s": 619.47655, "delta": ":.", "delta_chars": 2, "content_chars": 1399, "finish_reason": null, "usage": null}
+{"event_index": 530, "t_s": 619.821873, "delta": "2", "delta_chars": 1, "content_chars": 1400, "finish_reason": null, "usage": null}
+{"event_index": 531, "t_s": 620.172606, "delta": "s", "delta_chars": 1, "content_chars": 1401, "finish_reason": null, "usage": null}
+{"event_index": 532, "t_s": 620.530771, "delta": "}\n", "delta_chars": 2, "content_chars": 1403, "finish_reason": null, "usage": null}
+{"event_index": 533, "t_s": 620.883251, "delta": "   ", "delta_chars": 3, "content_chars": 1406, "finish_reason": null, "usage": null}
+{"event_index": 534, "t_s": 621.270784, "delta": " .", "delta_chars": 2, "content_chars": 1408, "finish_reason": null, "usage": null}
+{"event_index": 535, "t_s": 621.623942, "delta": "btn", "delta_chars": 3, "content_chars": 1411, "finish_reason": null, "usage": null}
+{"event_index": 536, "t_s": 621.981641, "delta": ":hover", "delta_chars": 6, "content_chars": 1417, "finish_reason": null, "usage": null}
+{"event_index": 537, "t_s": 622.326562, "delta": "{", "delta_chars": 1, "content_chars": 1418, "finish_reason": null, "usage": null}
+{"event_index": 538, "t_s": 622.666066, "delta": "background", "delta_chars": 10, "content_chars": 1428, "finish_reason": null, "usage": null}
+{"event_index": 539, "t_s": 623.015221, "delta": ":#", "delta_chars": 2, "content_chars": 1430, "finish_reason": null, "usage": null}
+{"event_index": 540, "t_s": 623.419732, "delta": "f", "delta_chars": 1, "content_chars": 1431, "finish_reason": null, "usage": null}
+{"event_index": 541, "t_s": 623.772088, "delta": "0", "delta_chars": 1, "content_chars": 1432, "finish_reason": null, "usage": null}
+{"event_index": 542, "t_s": 624.113824, "delta": "f", "delta_chars": 1, "content_chars": 1433, "finish_reason": null, "usage": null}
+{"event_index": 543, "t_s": 624.456607, "delta": ";", "delta_chars": 1, "content_chars": 1434, "finish_reason": null, "usage": null}
+{"event_index": 544, "t_s": 624.801242, "delta": "box", "delta_chars": 3, "content_chars": 1437, "finish_reason": null, "usage": null}
+{"event_index": 545, "t_s": 625.149629, "delta": "-shadow", "delta_chars": 7, "content_chars": 1444, "finish_reason": null, "usage": null}
+{"event_index": 546, "t_s": 625.497325, "delta": ":", "delta_chars": 1, "content_chars": 1445, "finish_reason": null, "usage": null}
+{"event_index": 547, "t_s": 625.842847, "delta": "0", "delta_chars": 1, "content_chars": 1446, "finish_reason": null, "usage": null}
+{"event_index": 548, "t_s": 626.185248, "delta": " ", "delta_chars": 1, "content_chars": 1447, "finish_reason": null, "usage": null}
+{"event_index": 549, "t_s": 626.539837, "delta": "0", "delta_chars": 1, "content_chars": 1448, "finish_reason": null, "usage": null}
+{"event_index": 550, "t_s": 626.985788, "delta": " ", "delta_chars": 1, "content_chars": 1449, "finish_reason": null, "usage": null}
+{"event_index": 551, "t_s": 627.331801, "delta": "20", "delta_chars": 2, "content_chars": 1451, "finish_reason": null, "usage": null}
+{"event_index": 552, "t_s": 627.719749, "delta": " #", "delta_chars": 2, "content_chars": 1453, "finish_reason": null, "usage": null}
+{"event_index": 553, "t_s": 628.119063, "delta": "f", "delta_chars": 1, "content_chars": 1454, "finish_reason": null, "usage": null}
+{"event_index": 554, "t_s": 628.510826, "delta": "0", "delta_chars": 1, "content_chars": 1455, "finish_reason": null, "usage": null}
+{"event_index": 555, "t_s": 628.854429, "delta": "f", "delta_chars": 1, "content_chars": 1456, "finish_reason": null, "usage": null}
+{"event_index": 556, "t_s": 629.197184, "delta": ";", "delta_chars": 1, "content_chars": 1457, "finish_reason": null, "usage": null}
+{"event_index": 557, "t_s": 629.563274, "delta": "color", "delta_chars": 5, "content_chars": 1462, "finish_reason": null, "usage": null}
+{"event_index": 558, "t_s": 629.908664, "delta": ":#", "delta_chars": 2, "content_chars": 1464, "finish_reason": null, "usage": null}
+{"event_index": 559, "t_s": 630.255925, "delta": "fff", "delta_chars": 3, "content_chars": 1467, "finish_reason": null, "usage": null}
+{"event_index": 560, "t_s": 630.628636, "delta": "}\n", "delta_chars": 2, "content_chars": 1469, "finish_reason": null, "usage": null}
+{"event_index": 561, "t_s": 631.01728, "delta": "   ", "delta_chars": 3, "content_chars": 1472, "finish_reason": null, "usage": null}
+{"event_index": 562, "t_s": 631.436111, "delta": " .", "delta_chars": 2, "content_chars": 1474, "finish_reason": null, "usage": null}
+{"event_index": 563, "t_s": 631.78069, "delta": "form", "delta_chars": 4, "content_chars": 1478, "finish_reason": null, "usage": null}
+{"event_index": 564, "t_s": 632.18134, "delta": "{", "delta_chars": 1, "content_chars": 1479, "finish_reason": null, "usage": null}
+{"event_index": 565, "t_s": 632.528759, "delta": "display", "delta_chars": 7, "content_chars": 1486, "finish_reason": null, "usage": null}
+{"event_index": 566, "t_s": 632.873709, "delta": ":", "delta_chars": 1, "content_chars": 1487, "finish_reason": null, "usage": null}
+{"event_index": 567, "t_s": 633.22799, "delta": "flex", "delta_chars": 4, "content_chars": 1491, "finish_reason": null, "usage": null}
+{"event_index": 568, "t_s": 633.582995, "delta": ";", "delta_chars": 1, "content_chars": 1492, "finish_reason": null, "usage": null}
+{"event_index": 569, "t_s": 633.925409, "delta": "flex", "delta_chars": 4, "content_chars": 1496, "finish_reason": null, "usage": null}
+{"event_index": 570, "t_s": 634.268388, "delta": "-direction", "delta_chars": 10, "content_chars": 1506, "finish_reason": null, "usage": null}
+{"event_index": 571, "t_s": 634.622801, "delta": ":", "delta_chars": 1, "content_chars": 1507, "finish_reason": null, "usage": null}
+{"event_index": 572, "t_s": 634.964856, "delta": "column", "delta_chars": 6, "content_chars": 1513, "finish_reason": null, "usage": null}
+{"event_index": 573, "t_s": 635.310343, "delta": ";", "delta_chars": 1, "content_chars": 1514, "finish_reason": null, "usage": null}
+{"event_index": 574, "t_s": 635.659474, "delta": "gap", "delta_chars": 3, "content_chars": 1517, "finish_reason": null, "usage": null}
+{"event_index": 575, "t_s": 636.003836, "delta": ":", "delta_chars": 1, "content_chars": 1518, "finish_reason": null, "usage": null}
+{"event_index": 576, "t_s": 636.352804, "delta": "10", "delta_chars": 2, "content_chars": 1520, "finish_reason": null, "usage": null}
+{"event_index": 577, "t_s": 636.696723, "delta": ";", "delta_chars": 1, "content_chars": 1521, "finish_reason": null, "usage": null}
+{"event_index": 578, "t_s": 637.035178, "delta": "max", "delta_chars": 3, "content_chars": 1524, "finish_reason": null, "usage": null}
+{"event_index": 579, "t_s": 637.379007, "delta": "-width", "delta_chars": 6, "content_chars": 1530, "finish_reason": null, "usage": null}
+{"event_index": 580, "t_s": 637.727626, "delta": ":", "delta_chars": 1, "content_chars": 1531, "finish_reason": null, "usage": null}
+{"event_index": 581, "t_s": 638.074315, "delta": "300", "delta_chars": 3, "content_chars": 1534, "finish_reason": null, "usage": null}
+{"event_index": 582, "t_s": 638.519846, "delta": ";", "delta_chars": 1, "content_chars": 1535, "finish_reason": null, "usage": null}
+{"event_index": 583, "t_s": 638.961065, "delta": "margin", "delta_chars": 6, "content_chars": 1541, "finish_reason": null, "usage": null}
+{"event_index": 584, "t_s": 639.333968, "delta": ":", "delta_chars": 1, "content_chars": 1542, "finish_reason": null, "usage": null}
+{"event_index": 585, "t_s": 639.822539, "delta": "20", "delta_chars": 2, "content_chars": 1544, "finish_reason": null, "usage": null}
+{"event_index": 586, "t_s": 640.258952, "delta": " auto", "delta_chars": 5, "content_chars": 1549, "finish_reason": null, "usage": null}
+{"event_index": 587, "t_s": 640.619492, "delta": "}\n", "delta_chars": 2, "content_chars": 1551, "finish_reason": null, "usage": null}
+{"event_index": 588, "t_s": 641.016442, "delta": "   ", "delta_chars": 3, "content_chars": 1554, "finish_reason": null, "usage": null}
+{"event_index": 589, "t_s": 641.41161, "delta": " .", "delta_chars": 2, "content_chars": 1556, "finish_reason": null, "usage": null}
+{"event_index": 590, "t_s": 641.879186, "delta": "form", "delta_chars": 4, "content_chars": 1560, "finish_reason": null, "usage": null}
+{"event_index": 591, "t_s": 642.293845, "delta": " input", "delta_chars": 6, "content_chars": 1566, "finish_reason": null, "usage": null}
+{"event_index": 592, "t_s": 642.653852, "delta": ",.", "delta_chars": 2, "content_chars": 1568, "finish_reason": null, "usage": null}
+{"event_index": 593, "t_s": 642.997612, "delta": "form", "delta_chars": 4, "content_chars": 1572, "finish_reason": null, "usage": null}
+{"event_index": 594, "t_s": 643.348712, "delta": " text", "delta_chars": 5, "content_chars": 1577, "finish_reason": null, "usage": null}
+{"event_index": 595, "t_s": 643.689223, "delta": "area", "delta_chars": 4, "content_chars": 1581, "finish_reason": null, "usage": null}
+{"event_index": 596, "t_s": 644.033742, "delta": "{", "delta_chars": 1, "content_chars": 1582, "finish_reason": null, "usage": null}
+{"event_index": 597, "t_s": 644.383317, "delta": "background", "delta_chars": 10, "content_chars": 1592, "finish_reason": null, "usage": null}
+{"event_index": 598, "t_s": 644.726276, "delta": ":#", "delta_chars": 2, "content_chars": 1594, "finish_reason": null, "usage": null}
+{"event_index": 599, "t_s": 645.074409, "delta": "0", "delta_chars": 1, "content_chars": 1595, "finish_reason": null, "usage": null}
+{"event_index": 600, "t_s": 645.422945, "delta": "e", "delta_chars": 1, "content_chars": 1596, "finish_reason": null, "usage": null}
+{"event_index": 601, "t_s": 645.770889, "delta": "1", "delta_chars": 1, "content_chars": 1597, "finish_reason": null, "usage": null}
+{"event_index": 602, "t_s": 646.155742, "delta": "a", "delta_chars": 1, "content_chars": 1598, "finish_reason": null, "usage": null}
+{"event_index": 603, "t_s": 646.501599, "delta": "2", "delta_chars": 1, "content_chars": 1599, "finish_reason": null, "usage": null}
+{"event_index": 604, "t_s": 646.862818, "delta": "a", "delta_chars": 1, "content_chars": 1600, "finish_reason": null, "usage": null}
+{"event_index": 605, "t_s": 647.204747, "delta": ";", "delta_chars": 1, "content_chars": 1601, "finish_reason": null, "usage": null}
+{"event_index": 606, "t_s": 647.555986, "delta": "border", "delta_chars": 6, "content_chars": 1607, "finish_reason": null, "usage": null}
+{"event_index": 607, "t_s": 647.898211, "delta": ":", "delta_chars": 1, "content_chars": 1608, "finish_reason": null, "usage": null}
+{"event_index": 608, "t_s": 648.240774, "delta": "1", "delta_chars": 1, "content_chars": 1609, "finish_reason": null, "usage": null}
+{"event_index": 609, "t_s": 648.613296, "delta": "px", "delta_chars": 2, "content_chars": 1611, "finish_reason": null, "usage": null}
+{"event_index": 610, "t_s": 648.960879, "delta": " solid", "delta_chars": 6, "content_chars": 1617, "finish_reason": null, "usage": null}
+{"event_index": 611, "t_s": 649.300847, "delta": " #", "delta_chars": 2, "content_chars": 1619, "finish_reason": null, "usage": null}
+{"event_index": 612, "t_s": 649.646807, "delta": "0", "delta_chars": 1, "content_chars": 1620, "finish_reason": null, "usage": null}
+{"event_index": 613, "t_s": 649.991025, "delta": "cf", "delta_chars": 2, "content_chars": 1622, "finish_reason": null, "usage": null}
+{"event_index": 614, "t_s": 650.481509, "delta": ";", "delta_chars": 1, "content_chars": 1623, "finish_reason": null, "usage": null}
+{"event_index": 615, "t_s": 650.831044, "delta": "padding", "delta_chars": 7, "content_chars": 1630, "finish_reason": null, "usage": null}
+{"event_index": 616, "t_s": 651.227249, "delta": ":", "delta_chars": 1, "content_chars": 1631, "finish_reason": null, "usage": null}
+{"event_index": 617, "t_s": 651.599072, "delta": "10", "delta_chars": 2, "content_chars": 1633, "finish_reason": null, "usage": null}
+{"event_index": 618, "t_s": 651.962127, "delta": ";", "delta_chars": 1, "content_chars": 1634, "finish_reason": null, "usage": null}
+{"event_index": 619, "t_s": 652.315265, "delta": "border", "delta_chars": 6, "content_chars": 1640, "finish_reason": null, "usage": null}
+{"event_index": 620, "t_s": 652.684445, "delta": "-radius", "delta_chars": 7, "content_chars": 1647, "finish_reason": null, "usage": null}
+{"event_index": 621, "t_s": 653.121127, "delta": ":", "delta_chars": 1, "content_chars": 1648, "finish_reason": null, "usage": null}
+{"event_index": 622, "t_s": 653.517216, "delta": "8", "delta_chars": 1, "content_chars": 1649, "finish_reason": null, "usage": null}
+{"event_index": 623, "t_s": 653.876107, "delta": ";", "delta_chars": 1, "content_chars": 1650, "finish_reason": null, "usage": null}
+{"event_index": 624, "t_s": 654.226418, "delta": "color", "delta_chars": 5, "content_chars": 1655, "finish_reason": null, "usage": null}
+{"event_index": 625, "t_s": 654.584464, "delta": ":#", "delta_chars": 2, "content_chars": 1657, "finish_reason": null, "usage": null}
+{"event_index": 626, "t_s": 654.933537, "delta": "fff", "delta_chars": 3, "content_chars": 1660, "finish_reason": null, "usage": null}
+{"event_index": 627, "t_s": 655.290403, "delta": ";", "delta_chars": 1, "content_chars": 1661, "finish_reason": null, "usage": null}
+{"event_index": 628, "t_s": 655.65367, "delta": "font", "delta_chars": 4, "content_chars": 1665, "finish_reason": null, "usage": null}
+{"event_index": 629, "t_s": 656.002877, "delta": "-size", "delta_chars": 5, "content_chars": 1670, "finish_reason": null, "usage": null}
+{"event_index": 630, "t_s": 656.346643, "delta": ":.", "delta_chars": 2, "content_chars": 1672, "finish_reason": null, "usage": null}
+{"event_index": 631, "t_s": 656.689554, "delta": "9", "delta_chars": 1, "content_chars": 1673, "finish_reason": null, "usage": null}
+{"event_index": 632, "t_s": 657.039156, "delta": "rem", "delta_chars": 3, "content_chars": 1676, "finish_reason": null, "usage": null}
+{"event_index": 633, "t_s": 657.383036, "delta": "}\n", "delta_chars": 2, "content_chars": 1678, "finish_reason": null, "usage": null}
+{"event_index": 634, "t_s": 657.72132, "delta": "   ", "delta_chars": 3, "content_chars": 1681, "finish_reason": null, "usage": null}
+{"event_index": 635, "t_s": 658.122397, "delta": " .", "delta_chars": 2, "content_chars": 1683, "finish_reason": null, "usage": null}
+{"event_index": 636, "t_s": 658.485688, "delta": "form", "delta_chars": 4, "content_chars": 1687, "finish_reason": null, "usage": null}
+{"event_index": 637, "t_s": 658.847893, "delta": " input", "delta_chars": 6, "content_chars": 1693, "finish_reason": null, "usage": null}
+{"event_index": 638, "t_s": 659.206777, "delta": ":", "delta_chars": 1, "content_chars": 1694, "finish_reason": null, "usage": null}
+{"event_index": 639, "t_s": 659.601303, "delta": "focus", "delta_chars": 5, "content_chars": 1699, "finish_reason": null, "usage": null}
+{"event_index": 640, "t_s": 659.948788, "delta": ",.", "delta_chars": 2, "content_chars": 1701, "finish_reason": null, "usage": null}
+{"event_index": 641, "t_s": 660.297719, "delta": "form", "delta_chars": 4, "content_chars": 1705, "finish_reason": null, "usage": null}
+{"event_index": 642, "t_s": 660.651137, "delta": " text", "delta_chars": 5, "content_chars": 1710, "finish_reason": null, "usage": null}
+{"event_index": 643, "t_s": 660.99732, "delta": "area", "delta_chars": 4, "content_chars": 1714, "finish_reason": null, "usage": null}
+{"event_index": 644, "t_s": 661.338973, "delta": ":", "delta_chars": 1, "content_chars": 1715, "finish_reason": null, "usage": null}
+{"event_index": 645, "t_s": 661.690968, "delta": "focus", "delta_chars": 5, "content_chars": 1720, "finish_reason": null, "usage": null}
+{"event_index": 646, "t_s": 662.063288, "delta": "{", "delta_chars": 1, "content_chars": 1721, "finish_reason": null, "usage": null}
+{"event_index": 647, "t_s": 662.465816, "delta": "out", "delta_chars": 3, "content_chars": 1724, "finish_reason": null, "usage": null}
+{"event_index": 648, "t_s": 662.811641, "delta": "line", "delta_chars": 4, "content_chars": 1728, "finish_reason": null, "usage": null}
+{"event_index": 649, "t_s": 663.239153, "delta": ":", "delta_chars": 1, "content_chars": 1729, "finish_reason": null, "usage": null}
+{"event_index": 650, "t_s": 663.675502, "delta": "2", "delta_chars": 1, "content_chars": 1730, "finish_reason": null, "usage": null}
+{"event_index": 651, "t_s": 664.043259, "delta": " solid", "delta_chars": 6, "content_chars": 1736, "finish_reason": null, "usage": null}
+{"event_index": 652, "t_s": 664.416288, "delta": " #", "delta_chars": 2, "content_chars": 1738, "finish_reason": null, "usage": null}
+{"event_index": 653, "t_s": 664.773908, "delta": "f", "delta_chars": 1, "content_chars": 1739, "finish_reason": null, "usage": null}
+{"event_index": 654, "t_s": 665.169366, "delta": "0", "delta_chars": 1, "content_chars": 1740, "finish_reason": null, "usage": null}
+{"event_index": 655, "t_s": 665.532748, "delta": "f", "delta_chars": 1, "content_chars": 1741, "finish_reason": null, "usage": null}
+{"event_index": 656, "t_s": 665.89143, "delta": ";", "delta_chars": 1, "content_chars": 1742, "finish_reason": null, "usage": null}
+{"event_index": 657, "t_s": 666.269982, "delta": "border", "delta_chars": 6, "content_chars": 1748, "finish_reason": null, "usage": null}
+{"event_index": 658, "t_s": 666.625966, "delta": "-color", "delta_chars": 6, "content_chars": 1754, "finish_reason": null, "usage": null}
+{"event_index": 659, "t_s": 667.016769, "delta": ":#", "delta_chars": 2, "content_chars": 1756, "finish_reason": null, "usage": null}
+{"event_index": 660, "t_s": 667.40757, "delta": "f", "delta_chars": 1, "content_chars": 1757, "finish_reason": null, "usage": null}
+{"event_index": 661, "t_s": 667.753892, "delta": "0", "delta_chars": 1, "content_chars": 1758, "finish_reason": null, "usage": null}
+{"event_index": 662, "t_s": 668.097826, "delta": "f", "delta_chars": 1, "content_chars": 1759, "finish_reason": null, "usage": null}
+{"event_index": 663, "t_s": 668.476968, "delta": "}\n", "delta_chars": 2, "content_chars": 1761, "finish_reason": null, "usage": null}
+{"event_index": 664, "t_s": 668.81894, "delta": "   ", "delta_chars": 3, "content_chars": 1764, "finish_reason": null, "usage": null}
+{"event_index": 665, "t_s": 669.17035, "delta": " .", "delta_chars": 2, "content_chars": 1766, "finish_reason": null, "usage": null}
+{"event_index": 666, "t_s": 669.518161, "delta": "footer", "delta_chars": 6, "content_chars": 1772, "finish_reason": null, "usage": null}
+{"event_index": 667, "t_s": 669.863518, "delta": "{", "delta_chars": 1, "content_chars": 1773, "finish_reason": null, "usage": null}
+{"event_index": 668, "t_s": 670.21283, "delta": "text", "delta_chars": 4, "content_chars": 1777, "finish_reason": null, "usage": null}
+{"event_index": 669, "t_s": 670.559422, "delta": "-align", "delta_chars": 6, "content_chars": 1783, "finish_reason": null, "usage": null}
+{"event_index": 670, "t_s": 670.902328, "delta": ":", "delta_chars": 1, "content_chars": 1784, "finish_reason": null, "usage": null}
+{"event_index": 671, "t_s": 671.24447, "delta": "center", "delta_chars": 6, "content_chars": 1790, "finish_reason": null, "usage": null}
+{"event_index": 672, "t_s": 671.627353, "delta": ";", "delta_chars": 1, "content_chars": 1791, "finish_reason": null, "usage": null}
+{"event_index": 673, "t_s": 671.977291, "delta": "color", "delta_chars": 5, "content_chars": 1796, "finish_reason": null, "usage": null}
+{"event_index": 674, "t_s": 672.368153, "delta": ":#", "delta_chars": 2, "content_chars": 1798, "finish_reason": null, "usage": null}
+{"event_index": 675, "t_s": 672.719011, "delta": "6", "delta_chars": 1, "content_chars": 1799, "finish_reason": null, "usage": null}
+{"event_index": 676, "t_s": 673.061866, "delta": "a", "delta_chars": 1, "content_chars": 1800, "finish_reason": null, "usage": null}
+{"event_index": 677, "t_s": 673.41366, "delta": "8", "delta_chars": 1, "content_chars": 1801, "finish_reason": null, "usage": null}
+{"event_index": 678, "t_s": 673.803181, "delta": "a", "delta_chars": 1, "content_chars": 1802, "finish_reason": null, "usage": null}
+{"event_index": 679, "t_s": 674.201263, "delta": "8", "delta_chars": 1, "content_chars": 1803, "finish_reason": null, "usage": null}
+{"event_index": 680, "t_s": 674.559808, "delta": "a", "delta_chars": 1, "content_chars": 1804, "finish_reason": null, "usage": null}
+{"event_index": 681, "t_s": 674.911237, "delta": ";", "delta_chars": 1, "content_chars": 1805, "finish_reason": null, "usage": null}
+{"event_index": 682, "t_s": 675.278606, "delta": "font", "delta_chars": 4, "content_chars": 1809, "finish_reason": null, "usage": null}
+{"event_index": 683, "t_s": 675.631337, "delta": "-size", "delta_chars": 5, "content_chars": 1814, "finish_reason": null, "usage": null}
+{"event_index": 684, "t_s": 676.004741, "delta": ":.", "delta_chars": 2, "content_chars": 1816, "finish_reason": null, "usage": null}
+{"event_index": 685, "t_s": 676.382005, "delta": "8", "delta_chars": 1, "content_chars": 1817, "finish_reason": null, "usage": null}
+{"event_index": 686, "t_s": 676.75444, "delta": "rem", "delta_chars": 3, "content_chars": 1820, "finish_reason": null, "usage": null}
+{"event_index": 687, "t_s": 677.109018, "delta": ";", "delta_chars": 1, "content_chars": 1821, "finish_reason": null, "usage": null}
+{"event_index": 688, "t_s": 677.469603, "delta": "margin", "delta_chars": 6, "content_chars": 1827, "finish_reason": null, "usage": null}
+{"event_index": 689, "t_s": 677.824536, "delta": "-top", "delta_chars": 4, "content_chars": 1831, "finish_reason": null, "usage": null}
+{"event_index": 690, "t_s": 678.184779, "delta": ":", "delta_chars": 1, "content_chars": 1832, "finish_reason": null, "usage": null}
+{"event_index": 691, "t_s": 678.550203, "delta": "20", "delta_chars": 2, "content_chars": 1834, "finish_reason": null, "usage": null}
+{"event_index": 692, "t_s": 678.907083, "delta": "}\n", "delta_chars": 2, "content_chars": 1836, "finish_reason": null, "usage": null}
+{"event_index": 693, "t_s": 679.265499, "delta": "   ", "delta_chars": 3, "content_chars": 1839, "finish_reason": null, "usage": null}
+{"event_index": 694, "t_s": 679.627502, "delta": " .", "delta_chars": 2, "content_chars": 1841, "finish_reason": null, "usage": null}
+{"event_index": 695, "t_s": 679.986046, "delta": "pop", "delta_chars": 3, "content_chars": 1844, "finish_reason": null, "usage": null}
+{"event_index": 696, "t_s": 680.381801, "delta": "up", "delta_chars": 2, "content_chars": 1846, "finish_reason": null, "usage": null}
+{"event_index": 697, "t_s": 680.72962, "delta": "-over", "delta_chars": 5, "content_chars": 1851, "finish_reason": null, "usage": null}
+{"event_index": 698, "t_s": 681.072458, "delta": "lay", "delta_chars": 3, "content_chars": 1854, "finish_reason": null, "usage": null}
+{"event_index": 699, "t_s": 681.427227, "delta": "{", "delta_chars": 1, "content_chars": 1855, "finish_reason": null, "usage": null}
+{"event_index": 700, "t_s": 681.781749, "delta": "position", "delta_chars": 8, "content_chars": 1863, "finish_reason": null, "usage": null}
+{"event_index": 701, "t_s": 682.13338, "delta": ":", "delta_chars": 1, "content_chars": 1864, "finish_reason": null, "usage": null}
+{"event_index": 702, "t_s": 682.47793, "delta": "fixed", "delta_chars": 5, "content_chars": 1869, "finish_reason": null, "usage": null}
+{"event_index": 703, "t_s": 682.823801, "delta": ";", "delta_chars": 1, "content_chars": 1870, "finish_reason": null, "usage": null}
+{"event_index": 704, "t_s": 683.173294, "delta": "top", "delta_chars": 3, "content_chars": 1873, "finish_reason": null, "usage": null}
+{"event_index": 705, "t_s": 683.521383, "delta": ":", "delta_chars": 1, "content_chars": 1874, "finish_reason": null, "usage": null}
+{"event_index": 706, "t_s": 683.887205, "delta": "0", "delta_chars": 1, "content_chars": 1875, "finish_reason": null, "usage": null}
+{"event_index": 707, "t_s": 684.229671, "delta": ";", "delta_chars": 1, "content_chars": 1876, "finish_reason": null, "usage": null}
+{"event_index": 708, "t_s": 684.640323, "delta": "left", "delta_chars": 4, "content_chars": 1880, "finish_reason": null, "usage": null}
+{"event_index": 709, "t_s": 684.998769, "delta": ":", "delta_chars": 1, "content_chars": 1881, "finish_reason": null, "usage": null}
+{"event_index": 710, "t_s": 685.439119, "delta": "0", "delta_chars": 1, "content_chars": 1882, "finish_reason": null, "usage": null}
+{"event_index": 711, "t_s": 685.861563, "delta": ";", "delta_chars": 1, "content_chars": 1883, "finish_reason": null, "usage": null}
+{"event_index": 712, "t_s": 686.338003, "delta": "width", "delta_chars": 5, "content_chars": 1888, "finish_reason": null, "usage": null}
+{"event_index": 713, "t_s": 686.848212, "delta": ":", "delta_chars": 1, "content_chars": 1889, "finish_reason": null, "usage": null}
+{"event_index": 714, "t_s": 687.194788, "delta": "100", "delta_chars": 3, "content_chars": 1892, "finish_reason": null, "usage": null}
+{"event_index": 715, "t_s": 687.5417, "delta": ";", "delta_chars": 1, "content_chars": 1893, "finish_reason": null, "usage": null}
+{"event_index": 716, "t_s": 687.891769, "delta": "height", "delta_chars": 6, "content_chars": 1899, "finish_reason": null, "usage": null}
+{"event_index": 717, "t_s": 688.237162, "delta": ":", "delta_chars": 1, "content_chars": 1900, "finish_reason": null, "usage": null}
+{"event_index": 718, "t_s": 688.594047, "delta": "100", "delta_chars": 3, "content_chars": 1903, "finish_reason": null, "usage": null}
+{"event_index": 719, "t_s": 688.95376, "delta": ";", "delta_chars": 1, "content_chars": 1904, "finish_reason": null, "usage": null}
+{"event_index": 720, "t_s": 689.301822, "delta": "background", "delta_chars": 10, "content_chars": 1914, "finish_reason": null, "usage": null}
+{"event_index": 721, "t_s": 689.65341, "delta": ":", "delta_chars": 1, "content_chars": 1915, "finish_reason": null, "usage": null}
+{"event_index": 722, "t_s": 690.00621, "delta": "rg", "delta_chars": 2, "content_chars": 1917, "finish_reason": null, "usage": null}
+{"event_index": 723, "t_s": 690.416394, "delta": "ba", "delta_chars": 2, "content_chars": 1919, "finish_reason": null, "usage": null}
+{"event_index": 724, "t_s": 690.76148, "delta": "(", "delta_chars": 1, "content_chars": 1920, "finish_reason": null, "usage": null}
+{"event_index": 725, "t_s": 691.120096, "delta": "0", "delta_chars": 1, "content_chars": 1921, "finish_reason": null, "usage": null}
+{"event_index": 726, "t_s": 691.479742, "delta": ",", "delta_chars": 1, "content_chars": 1922, "finish_reason": null, "usage": null}
+{"event_index": 727, "t_s": 691.827307, "delta": "0", "delta_chars": 1, "content_chars": 1923, "finish_reason": null, "usage": null}
+{"event_index": 728, "t_s": 692.177108, "delta": ",", "delta_chars": 1, "content_chars": 1924, "finish_reason": null, "usage": null}
+{"event_index": 729, "t_s": 692.532756, "delta": "0", "delta_chars": 1, "content_chars": 1925, "finish_reason": null, "usage": null}
+{"event_index": 730, "t_s": 692.873629, "delta": ",.", "delta_chars": 2, "content_chars": 1927, "finish_reason": null, "usage": null}
+{"event_index": 731, "t_s": 693.212054, "delta": "7", "delta_chars": 1, "content_chars": 1928, "finish_reason": null, "usage": null}
+{"event_index": 732, "t_s": 693.556752, "delta": ");", "delta_chars": 2, "content_chars": 1930, "finish_reason": null, "usage": null}
+{"event_index": 733, "t_s": 693.904145, "delta": "display", "delta_chars": 7, "content_chars": 1937, "finish_reason": null, "usage": null}
+{"event_index": 734, "t_s": 694.253322, "delta": ":", "delta_chars": 1, "content_chars": 1938, "finish_reason": null, "usage": null}
+{"event_index": 735, "t_s": 694.601083, "delta": "flex", "delta_chars": 4, "content_chars": 1942, "finish_reason": null, "usage": null}
+{"event_index": 736, "t_s": 694.946048, "delta": ";", "delta_chars": 1, "content_chars": 1943, "finish_reason": null, "usage": null}
+{"event_index": 737, "t_s": 695.288883, "delta": "align", "delta_chars": 5, "content_chars": 1948, "finish_reason": null, "usage": null}
+{"event_index": 738, "t_s": 695.65191, "delta": "-items", "delta_chars": 6, "content_chars": 1954, "finish_reason": null, "usage": null}
+{"event_index": 739, "t_s": 696.051097, "delta": ":", "delta_chars": 1, "content_chars": 1955, "finish_reason": null, "usage": null}
+{"event_index": 740, "t_s": 696.395283, "delta": "center", "delta_chars": 6, "content_chars": 1961, "finish_reason": null, "usage": null}
+{"event_index": 741, "t_s": 696.742855, "delta": ";", "delta_chars": 1, "content_chars": 1962, "finish_reason": null, "usage": null}
+{"event_index": 742, "t_s": 697.249022, "delta": "just", "delta_chars": 4, "content_chars": 1966, "finish_reason": null, "usage": null}
+{"event_index": 743, "t_s": 697.606305, "delta": "ify", "delta_chars": 3, "content_chars": 1969, "finish_reason": null, "usage": null}
+{"event_index": 744, "t_s": 698.346052, "delta": "-content", "delta_chars": 8, "content_chars": 1977, "finish_reason": null, "usage": null}
+{"event_index": 745, "t_s": 698.766613, "delta": ":", "delta_chars": 1, "content_chars": 1978, "finish_reason": null, "usage": null}
+{"event_index": 746, "t_s": 699.208462, "delta": "center", "delta_chars": 6, "content_chars": 1984, "finish_reason": null, "usage": null}
+{"event_index": 747, "t_s": 699.717644, "delta": ";", "delta_chars": 1, "content_chars": 1985, "finish_reason": null, "usage": null}
+{"event_index": 748, "t_s": 700.179445, "delta": "visibility", "delta_chars": 10, "content_chars": 1995, "finish_reason": null, "usage": null}
+{"event_index": 749, "t_s": 700.557828, "delta": ":h", "delta_chars": 2, "content_chars": 1997, "finish_reason": null, "usage": null}
+{"event_index": 750, "t_s": 700.904903, "delta": "idden", "delta_chars": 5, "content_chars": 2002, "finish_reason": null, "usage": null}
+{"event_index": 751, "t_s": 701.261917, "delta": ";", "delta_chars": 1, "content_chars": 2003, "finish_reason": null, "usage": null}
+{"event_index": 752, "t_s": 701.608197, "delta": "op", "delta_chars": 2, "content_chars": 2005, "finish_reason": null, "usage": null}
+{"event_index": 753, "t_s": 702.003532, "delta": "acity", "delta_chars": 5, "content_chars": 2010, "finish_reason": null, "usage": null}
+{"event_index": 754, "t_s": 702.369336, "delta": ":", "delta_chars": 1, "content_chars": 2011, "finish_reason": null, "usage": null}
+{"event_index": 755, "t_s": 702.714151, "delta": "0", "delta_chars": 1, "content_chars": 2012, "finish_reason": null, "usage": null}
+{"event_index": 756, "t_s": 703.06803, "delta": ";", "delta_chars": 1, "content_chars": 2013, "finish_reason": null, "usage": null}
+{"event_index": 757, "t_s": 703.416278, "delta": "transition", "delta_chars": 10, "content_chars": 2023, "finish_reason": null, "usage": null}
+{"event_index": 758, "t_s": 703.76367, "delta": ":.", "delta_chars": 2, "content_chars": 2025, "finish_reason": null, "usage": null}
+{"event_index": 759, "t_s": 704.115726, "delta": "3", "delta_chars": 1, "content_chars": 2026, "finish_reason": null, "usage": null}
+{"event_index": 760, "t_s": 704.470275, "delta": "s", "delta_chars": 1, "content_chars": 2027, "finish_reason": null, "usage": null}
+{"event_index": 761, "t_s": 704.814197, "delta": "}\n", "delta_chars": 2, "content_chars": 2029, "finish_reason": null, "usage": null}
+{"event_index": 762, "t_s": 705.164888, "delta": "   ", "delta_chars": 3, "content_chars": 2032, "finish_reason": null, "usage": null}
+{"event_index": 763, "t_s": 705.522256, "delta": " .", "delta_chars": 2, "content_chars": 2034, "finish_reason": null, "usage": null}
+{"event_index": 764, "t_s": 705.867208, "delta": "pop", "delta_chars": 3, "content_chars": 2037, "finish_reason": null, "usage": null}
+{"event_index": 765, "t_s": 706.215846, "delta": "up", "delta_chars": 2, "content_chars": 2039, "finish_reason": null, "usage": null}
+{"event_index": 766, "t_s": 706.571553, "delta": "-over", "delta_chars": 5, "content_chars": 2044, "finish_reason": null, "usage": null}
+{"event_index": 767, "t_s": 706.921621, "delta": "lay", "delta_chars": 3, "content_chars": 2047, "finish_reason": null, "usage": null}
+{"event_index": 768, "t_s": 707.271173, "delta": ".show", "delta_chars": 5, "content_chars": 2052, "finish_reason": null, "usage": null}
+{"event_index": 769, "t_s": 707.620587, "delta": "{", "delta_chars": 1, "content_chars": 2053, "finish_reason": null, "usage": null}
+{"event_index": 770, "t_s": 707.966301, "delta": "visibility", "delta_chars": 10, "content_chars": 2063, "finish_reason": null, "usage": null}
+{"event_index": 771, "t_s": 708.309781, "delta": ":", "delta_chars": 1, "content_chars": 2064, "finish_reason": null, "usage": null}
+{"event_index": 772, "t_s": 708.663229, "delta": "visible", "delta_chars": 7, "content_chars": 2071, "finish_reason": null, "usage": null}
+{"event_index": 773, "t_s": 709.012268, "delta": ";", "delta_chars": 1, "content_chars": 2072, "finish_reason": null, "usage": null}
+{"event_index": 774, "t_s": 709.488074, "delta": "op", "delta_chars": 2, "content_chars": 2074, "finish_reason": null, "usage": null}
+{"event_index": 775, "t_s": 710.027615, "delta": "acity", "delta_chars": 5, "content_chars": 2079, "finish_reason": null, "usage": null}
+{"event_index": 776, "t_s": 710.381611, "delta": ":", "delta_chars": 1, "content_chars": 2080, "finish_reason": null, "usage": null}
+{"event_index": 777, "t_s": 710.760399, "delta": "1", "delta_chars": 1, "content_chars": 2081, "finish_reason": null, "usage": null}
+{"event_index": 778, "t_s": 711.172416, "delta": "}\n", "delta_chars": 2, "content_chars": 2083, "finish_reason": null, "usage": null}
+{"event_index": 779, "t_s": 711.557441, "delta": "   ", "delta_chars": 3, "content_chars": 2086, "finish_reason": null, "usage": null}
+{"event_index": 780, "t_s": 711.905168, "delta": " .", "delta_chars": 2, "content_chars": 2088, "finish_reason": null, "usage": null}
+{"event_index": 781, "t_s": 712.251646, "delta": "pop", "delta_chars": 3, "content_chars": 2091, "finish_reason": null, "usage": null}
+{"event_index": 782, "t_s": 712.602814, "delta": "up", "delta_chars": 2, "content_chars": 2093, "finish_reason": null, "usage": null}
+{"event_index": 783, "t_s": 712.945412, "delta": "{", "delta_chars": 1, "content_chars": 2094, "finish_reason": null, "usage": null}
+{"event_index": 784, "t_s": 713.340193, "delta": "background", "delta_chars": 10, "content_chars": 2104, "finish_reason": null, "usage": null}
+{"event_index": 785, "t_s": 713.690807, "delta": ":#", "delta_chars": 2, "content_chars": 2106, "finish_reason": null, "usage": null}
+{"event_index": 786, "t_s": 714.036172, "delta": "0", "delta_chars": 1, "content_chars": 2107, "finish_reason": null, "usage": null}
+{"event_index": 787, "t_s": 714.42502, "delta": "e", "delta_chars": 1, "content_chars": 2108, "finish_reason": null, "usage": null}
+{"event_index": 788, "t_s": 714.766522, "delta": "1", "delta_chars": 1, "content_chars": 2109, "finish_reason": null, "usage": null}
+{"event_index": 789, "t_s": 715.140189, "delta": "a", "delta_chars": 1, "content_chars": 2110, "finish_reason": null, "usage": null}
+{"event_index": 790, "t_s": 715.499921, "delta": "2", "delta_chars": 1, "content_chars": 2111, "finish_reason": null, "usage": null}
+{"event_index": 791, "t_s": 715.84632, "delta": "a", "delta_chars": 1, "content_chars": 2112, "finish_reason": null, "usage": null}
+{"event_index": 792, "t_s": 716.202587, "delta": ";", "delta_chars": 1, "content_chars": 2113, "finish_reason": null, "usage": null}
+{"event_index": 793, "t_s": 716.60412, "delta": "border", "delta_chars": 6, "content_chars": 2119, "finish_reason": null, "usage": null}
+{"event_index": 794, "t_s": 716.967489, "delta": ":", "delta_chars": 1, "content_chars": 2120, "finish_reason": null, "usage": null}
+{"event_index": 795, "t_s": 717.35222, "delta": "2", "delta_chars": 1, "content_chars": 2121, "finish_reason": null, "usage": null}
+{"event_index": 796, "t_s": 717.698605, "delta": " solid", "delta_chars": 6, "content_chars": 2127, "finish_reason": null, "usage": null}
+{"event_index": 797, "t_s": 718.04847, "delta": " #", "delta_chars": 2, "content_chars": 2129, "finish_reason": null, "usage": null}
+{"event_index": 798, "t_s": 718.402402, "delta": "0", "delta_chars": 1, "content_chars": 2130, "finish_reason": null, "usage": null}
+{"event_index": 799, "t_s": 718.751953, "delta": "cf", "delta_chars": 2, "content_chars": 2132, "finish_reason": null, "usage": null}
+{"event_index": 800, "t_s": 719.09797, "delta": ";", "delta_chars": 1, "content_chars": 2133, "finish_reason": null, "usage": null}
+{"event_index": 801, "t_s": 719.451669, "delta": "border", "delta_chars": 6, "content_chars": 2139, "finish_reason": null, "usage": null}
+{"event_index": 802, "t_s": 719.798921, "delta": "-radius", "delta_chars": 7, "content_chars": 2146, "finish_reason": null, "usage": null}
+{"event_index": 803, "t_s": 720.147391, "delta": ":", "delta_chars": 1, "content_chars": 2147, "finish_reason": null, "usage": null}
+{"event_index": 804, "t_s": 720.494937, "delta": "20", "delta_chars": 2, "content_chars": 2149, "finish_reason": null, "usage": null}
+{"event_index": 805, "t_s": 720.836117, "delta": ";", "delta_chars": 1, "content_chars": 2150, "finish_reason": null, "usage": null}
+{"event_index": 806, "t_s": 721.353685, "delta": "padding", "delta_chars": 7, "content_chars": 2157, "finish_reason": null, "usage": null}
+{"event_index": 807, "t_s": 721.7079, "delta": ":", "delta_chars": 1, "content_chars": 2158, "finish_reason": null, "usage": null}
+{"event_index": 808, "t_s": 722.144204, "delta": "20", "delta_chars": 2, "content_chars": 2160, "finish_reason": null, "usage": null}
+{"event_index": 809, "t_s": 722.568557, "delta": " ", "delta_chars": 1, "content_chars": 2161, "finish_reason": null, "usage": null}
+{"event_index": 810, "t_s": 722.904955, "delta": "40", "delta_chars": 2, "content_chars": 2163, "finish_reason": null, "usage": null}
+{"event_index": 811, "t_s": 723.303142, "delta": ";", "delta_chars": 1, "content_chars": 2164, "finish_reason": null, "usage": null}
+{"event_index": 812, "t_s": 723.681952, "delta": "text", "delta_chars": 4, "content_chars": 2168, "finish_reason": null, "usage": null}
+{"event_index": 813, "t_s": 724.020758, "delta": "-align", "delta_chars": 6, "content_chars": 2174, "finish_reason": null, "usage": null}
+{"event_index": 814, "t_s": 724.363287, "delta": ":", "delta_chars": 1, "content_chars": 2175, "finish_reason": null, "usage": null}
+{"event_index": 815, "t_s": 724.71321, "delta": "center", "delta_chars": 6, "content_chars": 2181, "finish_reason": null, "usage": null}
+{"event_index": 816, "t_s": 725.085147, "delta": ";", "delta_chars": 1, "content_chars": 2182, "finish_reason": null, "usage": null}
+{"event_index": 817, "t_s": 725.467801, "delta": "box", "delta_chars": 3, "content_chars": 2185, "finish_reason": null, "usage": null}
+{"event_index": 818, "t_s": 725.8073, "delta": "-shadow", "delta_chars": 7, "content_chars": 2192, "finish_reason": null, "usage": null}
+{"event_index": 819, "t_s": 726.194163, "delta": ":", "delta_chars": 1, "content_chars": 2193, "finish_reason": null, "usage": null}
+{"event_index": 820, "t_s": 726.583731, "delta": "0", "delta_chars": 1, "content_chars": 2194, "finish_reason": null, "usage": null}
+{"event_index": 821, "t_s": 726.932953, "delta": " ", "delta_chars": 1, "content_chars": 2195, "finish_reason": null, "usage": null}
+{"event_index": 822, "t_s": 727.293751, "delta": "0", "delta_chars": 1, "content_chars": 2196, "finish_reason": null, "usage": null}
+{"event_index": 823, "t_s": 727.683951, "delta": " ", "delta_chars": 1, "content_chars": 2197, "finish_reason": null, "usage": null}
+{"event_index": 824, "t_s": 728.036324, "delta": "40", "delta_chars": 2, "content_chars": 2199, "finish_reason": null, "usage": null}
+{"event_index": 825, "t_s": 728.385467, "delta": " #", "delta_chars": 2, "content_chars": 2201, "finish_reason": null, "usage": null}
+{"event_index": 826, "t_s": 728.736178, "delta": "0", "delta_chars": 1, "content_chars": 2202, "finish_reason": null, "usage": null}
+{"event_index": 827, "t_s": 729.077729, "delta": "cf", "delta_chars": 2, "content_chars": 2204, "finish_reason": null, "usage": null}
+{"event_index": 828, "t_s": 729.420307, "delta": ";", "delta_chars": 1, "content_chars": 2205, "finish_reason": null, "usage": null}
+{"event_index": 829, "t_s": 729.768124, "delta": "max", "delta_chars": 3, "content_chars": 2208, "finish_reason": null, "usage": null}
+{"event_index": 830, "t_s": 730.118761, "delta": "-width", "delta_chars": 6, "content_chars": 2214, "finish_reason": null, "usage": null}
+{"event_index": 831, "t_s": 730.46526, "delta": ":", "delta_chars": 1, "content_chars": 2215, "finish_reason": null, "usage": null}
+{"event_index": 832, "t_s": 730.810311, "delta": "280", "delta_chars": 3, "content_chars": 2218, "finish_reason": null, "usage": null}
+{"event_index": 833, "t_s": 731.16138, "delta": "}\n", "delta_chars": 2, "content_chars": 2220, "finish_reason": null, "usage": null}
+{"event_index": 834, "t_s": 731.517136, "delta": "   ", "delta_chars": 3, "content_chars": 2223, "finish_reason": null, "usage": null}
+{"event_index": 835, "t_s": 731.862004, "delta": " .", "delta_chars": 2, "content_chars": 2225, "finish_reason": null, "usage": null}
+{"event_index": 836, "t_s": 732.203788, "delta": "pop", "delta_chars": 3, "content_chars": 2228, "finish_reason": null, "usage": null}
+{"event_index": 837, "t_s": 732.55803, "delta": "up", "delta_chars": 2, "content_chars": 2230, "finish_reason": null, "usage": null}
+{"event_index": 838, "t_s": 733.014155, "delta": " h", "delta_chars": 2, "content_chars": 2232, "finish_reason": null, "usage": null}
+{"event_index": 839, "t_s": 733.365044, "delta": "2", "delta_chars": 1, "content_chars": 2233, "finish_reason": null, "usage": null}
+{"event_index": 840, "t_s": 733.755081, "delta": "{", "delta_chars": 1, "content_chars": 2234, "finish_reason": null, "usage": null}
+{"event_index": 841, "t_s": 734.099207, "delta": "color", "delta_chars": 5, "content_chars": 2239, "finish_reason": null, "usage": null}
+{"event_index": 842, "t_s": 734.47028, "delta": ":#", "delta_chars": 2, "content_chars": 2241, "finish_reason": null, "usage": null}
+{"event_index": 843, "t_s": 734.815253, "delta": "0", "delta_chars": 1, "content_chars": 2242, "finish_reason": null, "usage": null}
+{"event_index": 844, "t_s": 735.200036, "delta": "cf", "delta_chars": 2, "content_chars": 2244, "finish_reason": null, "usage": null}
+{"event_index": 845, "t_s": 735.541823, "delta": ";", "delta_chars": 1, "content_chars": 2245, "finish_reason": null, "usage": null}
+{"event_index": 846, "t_s": 735.88264, "delta": "margin", "delta_chars": 6, "content_chars": 2251, "finish_reason": null, "usage": null}
+{"event_index": 847, "t_s": 736.234138, "delta": "-bottom", "delta_chars": 7, "content_chars": 2258, "finish_reason": null, "usage": null}
+{"event_index": 848, "t_s": 736.599221, "delta": ":", "delta_chars": 1, "content_chars": 2259, "finish_reason": null, "usage": null}
+{"event_index": 849, "t_s": 736.946822, "delta": "10", "delta_chars": 2, "content_chars": 2261, "finish_reason": null, "usage": null}
+{"event_index": 850, "t_s": 737.308948, "delta": "}\n", "delta_chars": 2, "content_chars": 2263, "finish_reason": null, "usage": null}
+{"event_index": 851, "t_s": 737.670356, "delta": "   ", "delta_chars": 3, "content_chars": 2266, "finish_reason": null, "usage": null}
+{"event_index": 852, "t_s": 738.065156, "delta": " .", "delta_chars": 2, "content_chars": 2268, "finish_reason": null, "usage": null}
+{"event_index": 853, "t_s": 738.433586, "delta": "pop", "delta_chars": 3, "content_chars": 2271, "finish_reason": null, "usage": null}
+{"event_index": 854, "t_s": 738.783954, "delta": "up", "delta_chars": 2, "content_chars": 2273, "finish_reason": null, "usage": null}
+{"event_index": 855, "t_s": 739.132497, "delta": " p", "delta_chars": 2, "content_chars": 2275, "finish_reason": null, "usage": null}
+{"event_index": 856, "t_s": 739.482415, "delta": "{", "delta_chars": 1, "content_chars": 2276, "finish_reason": null, "usage": null}
+{"event_index": 857, "t_s": 739.830729, "delta": "color", "delta_chars": 5, "content_chars": 2281, "finish_reason": null, "usage": null}
+{"event_index": 858, "t_s": 740.171419, "delta": ":#", "delta_chars": 2, "content_chars": 2283, "finish_reason": null, "usage": null}
+{"event_index": 859, "t_s": 740.56096, "delta": "b", "delta_chars": 1, "content_chars": 2284, "finish_reason": null, "usage": null}
+{"event_index": 860, "t_s": 740.909401, "delta": "0", "delta_chars": 1, "content_chars": 2285, "finish_reason": null, "usage": null}
+{"event_index": 861, "t_s": 741.252862, "delta": "d", "delta_chars": 1, "content_chars": 2286, "finish_reason": null, "usage": null}
+{"event_index": 862, "t_s": 741.611394, "delta": "0", "delta_chars": 1, "content_chars": 2287, "finish_reason": null, "usage": null}
+{"event_index": 863, "t_s": 741.97947, "delta": "d", "delta_chars": 1, "content_chars": 2288, "finish_reason": null, "usage": null}
+{"event_index": 864, "t_s": 742.331295, "delta": "0", "delta_chars": 1, "content_chars": 2289, "finish_reason": null, "usage": null}
+{"event_index": 865, "t_s": 742.688768, "delta": ";", "delta_chars": 1, "content_chars": 2290, "finish_reason": null, "usage": null}
+{"event_index": 866, "t_s": 743.042375, "delta": "margin", "delta_chars": 6, "content_chars": 2296, "finish_reason": null, "usage": null}
+{"event_index": 867, "t_s": 743.389698, "delta": "-bottom", "delta_chars": 7, "content_chars": 2303, "finish_reason": null, "usage": null}
+{"event_index": 868, "t_s": 743.735424, "delta": ":", "delta_chars": 1, "content_chars": 2304, "finish_reason": null, "usage": null}
+{"event_index": 869, "t_s": 744.084067, "delta": "20", "delta_chars": 2, "content_chars": 2306, "finish_reason": null, "usage": null}
+{"event_index": 870, "t_s": 744.566707, "delta": "}\n", "delta_chars": 2, "content_chars": 2308, "finish_reason": null, "usage": null}
+{"event_index": 871, "t_s": 744.966026, "delta": "   ", "delta_chars": 3, "content_chars": 2311, "finish_reason": null, "usage": null}
+{"event_index": 872, "t_s": 745.343405, "delta": " .", "delta_chars": 2, "content_chars": 2313, "finish_reason": null, "usage": null}
+{"event_index": 873, "t_s": 745.72268, "delta": "close", "delta_chars": 5, "content_chars": 2318, "finish_reason": null, "usage": null}
+{"event_index": 874, "t_s": 746.144958, "delta": "{", "delta_chars": 1, "content_chars": 2319, "finish_reason": null, "usage": null}
+{"event_index": 875, "t_s": 746.543393, "delta": "background", "delta_chars": 10, "content_chars": 2329, "finish_reason": null, "usage": null}
+{"event_index": 876, "t_s": 746.90198, "delta": ":#", "delta_chars": 2, "content_chars": 2331, "finish_reason": null, "usage": null}
+{"event_index": 877, "t_s": 747.247386, "delta": "f", "delta_chars": 1, "content_chars": 2332, "finish_reason": null, "usage": null}
+{"event_index": 878, "t_s": 747.642223, "delta": "0", "delta_chars": 1, "content_chars": 2333, "finish_reason": null, "usage": null}
+{"event_index": 879, "t_s": 747.998012, "delta": "f", "delta_chars": 1, "content_chars": 2334, "finish_reason": null, "usage": null}
+{"event_index": 880, "t_s": 748.365933, "delta": ";", "delta_chars": 1, "content_chars": 2335, "finish_reason": null, "usage": null}
+{"event_index": 881, "t_s": 748.714849, "delta": "border", "delta_chars": 6, "content_chars": 2341, "finish_reason": null, "usage": null}
+{"event_index": 882, "t_s": 749.068566, "delta": ":n", "delta_chars": 2, "content_chars": 2343, "finish_reason": null, "usage": null}
+{"event_index": 883, "t_s": 749.421876, "delta": "one", "delta_chars": 3, "content_chars": 2346, "finish_reason": null, "usage": null}
+{"event_index": 884, "t_s": 749.782193, "delta": ";", "delta_chars": 1, "content_chars": 2347, "finish_reason": null, "usage": null}
+{"event_index": 885, "t_s": 750.132727, "delta": "padding", "delta_chars": 7, "content_chars": 2354, "finish_reason": null, "usage": null}
+{"event_index": 886, "t_s": 750.477458, "delta": ":", "delta_chars": 1, "content_chars": 2355, "finish_reason": null, "usage": null}
+{"event_index": 887, "t_s": 750.824666, "delta": "8", "delta_chars": 1, "content_chars": 2356, "finish_reason": null, "usage": null}
+{"event_index": 888, "t_s": 751.167549, "delta": " ", "delta_chars": 1, "content_chars": 2357, "finish_reason": null, "usage": null}
+{"event_index": 889, "t_s": 751.521609, "delta": "16", "delta_chars": 2, "content_chars": 2359, "finish_reason": null, "usage": null}
+{"event_index": 890, "t_s": 751.869949, "delta": ";", "delta_chars": 1, "content_chars": 2360, "finish_reason": null, "usage": null}
+{"event_index": 891, "t_s": 752.223099, "delta": "border", "delta_chars": 6, "content_chars": 2366, "finish_reason": null, "usage": null}
+{"event_index": 892, "t_s": 752.570571, "delta": "-radius", "delta_chars": 7, "content_chars": 2373, "finish_reason": null, "usage": null}
+{"event_index": 893, "t_s": 752.987146, "delta": ":", "delta_chars": 1, "content_chars": 2374, "finish_reason": null, "usage": null}
+{"event_index": 894, "t_s": 753.33248, "delta": "8", "delta_chars": 1, "content_chars": 2375, "finish_reason": null, "usage": null}
+{"event_index": 895, "t_s": 753.680469, "delta": ";", "delta_chars": 1, "content_chars": 2376, "finish_reason": null, "usage": null}
+{"event_index": 896, "t_s": 754.034124, "delta": "color", "delta_chars": 5, "content_chars": 2381, "finish_reason": null, "usage": null}
+{"event_index": 897, "t_s": 754.397365, "delta": ":#", "delta_chars": 2, "content_chars": 2383, "finish_reason": null, "usage": null}
+{"event_index": 898, "t_s": 754.757438, "delta": "fff", "delta_chars": 3, "content_chars": 2386, "finish_reason": null, "usage": null}
+{"event_index": 899, "t_s": 755.108037, "delta": ";", "delta_chars": 1, "content_chars": 2387, "finish_reason": null, "usage": null}
+{"event_index": 900, "t_s": 755.464006, "delta": "font", "delta_chars": 4, "content_chars": 2391, "finish_reason": null, "usage": null}
+{"event_index": 901, "t_s": 755.818861, "delta": "-weight", "delta_chars": 7, "content_chars": 2398, "finish_reason": null, "usage": null}
+{"event_index": 902, "t_s": 756.329384, "delta": ":", "delta_chars": 1, "content_chars": 2399, "finish_reason": null, "usage": null}
+{"event_index": 903, "t_s": 756.761762, "delta": "bold", "delta_chars": 4, "content_chars": 2403, "finish_reason": null, "usage": null}
+{"event_index": 904, "t_s": 757.161058, "delta": ";", "delta_chars": 1, "content_chars": 2404, "finish_reason": null, "usage": null}
+{"event_index": 905, "t_s": 757.628217, "delta": "cursor", "delta_chars": 6, "content_chars": 2410, "finish_reason": null, "usage": null}
+{"event_index": 906, "t_s": 758.027421, "delta": ":", "delta_chars": 1, "content_chars": 2411, "finish_reason": null, "usage": null}
+{"event_index": 907, "t_s": 758.379511, "delta": "pointer", "delta_chars": 7, "content_chars": 2418, "finish_reason": null, "usage": null}
+{"event_index": 908, "t_s": 758.731703, "delta": ";", "delta_chars": 1, "content_chars": 2419, "finish_reason": null, "usage": null}
+{"event_index": 909, "t_s": 759.129628, "delta": "font", "delta_chars": 4, "content_chars": 2423, "finish_reason": null, "usage": null}
+{"event_index": 910, "t_s": 759.637446, "delta": "-size", "delta_chars": 5, "content_chars": 2428, "finish_reason": null, "usage": null}
+{"event_index": 911, "t_s": 760.006251, "delta": ":", "delta_chars": 1, "content_chars": 2429, "finish_reason": null, "usage": null}
+{"event_index": 912, "t_s": 760.450172, "delta": "1", "delta_chars": 1, "content_chars": 2430, "finish_reason": null, "usage": null}
+{"event_index": 913, "t_s": 760.812742, "delta": "rem", "delta_chars": 3, "content_chars": 2433, "finish_reason": null, "usage": null}
+{"event_index": 914, "t_s": 761.171107, "delta": "}\n", "delta_chars": 2, "content_chars": 2435, "finish_reason": null, "usage": null}
+{"event_index": 915, "t_s": 761.533048, "delta": "   ", "delta_chars": 3, "content_chars": 2438, "finish_reason": null, "usage": null}
+{"event_index": 916, "t_s": 761.930006, "delta": " .", "delta_chars": 2, "content_chars": 2440, "finish_reason": null, "usage": null}
+{"event_index": 917, "t_s": 762.271877, "delta": "close", "delta_chars": 5, "content_chars": 2445, "finish_reason": null, "usage": null}
+{"event_index": 918, "t_s": 762.629272, "delta": ":hover", "delta_chars": 6, "content_chars": 2451, "finish_reason": null, "usage": null}
+{"event_index": 919, "t_s": 762.982427, "delta": "{", "delta_chars": 1, "content_chars": 2452, "finish_reason": null, "usage": null}
+{"event_index": 920, "t_s": 763.356214, "delta": "background", "delta_chars": 10, "content_chars": 2462, "finish_reason": null, "usage": null}
+{"event_index": 921, "t_s": 763.702932, "delta": ":#", "delta_chars": 2, "content_chars": 2464, "finish_reason": null, "usage": null}
+{"event_index": 922, "t_s": 764.058992, "delta": "0", "delta_chars": 1, "content_chars": 2465, "finish_reason": null, "usage": null}
+{"event_index": 923, "t_s": 764.42388, "delta": "cf", "delta_chars": 2, "content_chars": 2467, "finish_reason": null, "usage": null}
+{"event_index": 924, "t_s": 764.778923, "delta": ";", "delta_chars": 1, "content_chars": 2468, "finish_reason": null, "usage": null}
+{"event_index": 925, "t_s": 765.1235, "delta": "color", "delta_chars": 5, "content_chars": 2473, "finish_reason": null, "usage": null}
+{"event_index": 926, "t_s": 765.477595, "delta": ":#", "delta_chars": 2, "content_chars": 2475, "finish_reason": null, "usage": null}
+{"event_index": 927, "t_s": 765.819327, "delta": "000", "delta_chars": 3, "content_chars": 2478, "finish_reason": null, "usage": null}
+{"event_index": 928, "t_s": 766.158232, "delta": "}\n", "delta_chars": 2, "content_chars": 2480, "finish_reason": null, "usage": null}
+{"event_index": 929, "t_s": 766.508959, "delta": "   ", "delta_chars": 3, "content_chars": 2483, "finish_reason": null, "usage": null}
+{"event_index": 930, "t_s": 766.84821, "delta": " @", "delta_chars": 2, "content_chars": 2485, "finish_reason": null, "usage": null}
+{"event_index": 931, "t_s": 767.199461, "delta": "media", "delta_chars": 5, "content_chars": 2490, "finish_reason": null, "usage": null}
+{"event_index": 932, "t_s": 767.554727, "delta": " (", "delta_chars": 2, "content_chars": 2492, "finish_reason": null, "usage": null}
+{"event_index": 933, "t_s": 767.897683, "delta": "max", "delta_chars": 3, "content_chars": 2495, "finish_reason": null, "usage": null}
+{"event_index": 934, "t_s": 768.26463, "delta": "-width", "delta_chars": 6, "content_chars": 2501, "finish_reason": null, "usage": null}
+{"event_index": 935, "t_s": 768.694804, "delta": ":", "delta_chars": 1, "content_chars": 2502, "finish_reason": null, "usage": null}
+{"event_index": 936, "t_s": 769.101802, "delta": " ", "delta_chars": 1, "content_chars": 2503, "finish_reason": null, "usage": null}
+{"event_index": 937, "t_s": 769.463898, "delta": "600", "delta_chars": 3, "content_chars": 2506, "finish_reason": null, "usage": null}
+{"event_index": 938, "t_s": 769.872081, "delta": "px", "delta_chars": 2, "content_chars": 2508, "finish_reason": null, "usage": null}
+{"event_index": 939, "t_s": 770.225806, "delta": "){", "delta_chars": 2, "content_chars": 2510, "finish_reason": null, "usage": null}
+{"event_index": 940, "t_s": 770.588463, "delta": ".", "delta_chars": 1, "content_chars": 2511, "finish_reason": null, "usage": null}
+{"event_index": 941, "t_s": 770.939092, "delta": "hero", "delta_chars": 4, "content_chars": 2515, "finish_reason": null, "usage": null}
+{"event_index": 942, "t_s": 771.29257, "delta": " h", "delta_chars": 2, "content_chars": 2517, "finish_reason": null, "usage": null}
+{"event_index": 943, "t_s": 771.644421, "delta": "1", "delta_chars": 1, "content_chars": 2518, "finish_reason": null, "usage": null}
+{"event_index": 944, "t_s": 772.05906, "delta": "{", "delta_chars": 1, "content_chars": 2519, "finish_reason": null, "usage": null}
+{"event_index": 945, "t_s": 772.465625, "delta": "font", "delta_chars": 4, "content_chars": 2523, "finish_reason": null, "usage": null}
+{"event_index": 946, "t_s": 772.810801, "delta": "-size", "delta_chars": 5, "content_chars": 2528, "finish_reason": null, "usage": null}
+{"event_index": 947, "t_s": 773.167259, "delta": ":", "delta_chars": 1, "content_chars": 2529, "finish_reason": null, "usage": null}
+{"event_index": 948, "t_s": 773.527472, "delta": "1", "delta_chars": 1, "content_chars": 2530, "finish_reason": null, "usage": null}
+{"event_index": 949, "t_s": 773.882831, "delta": ".", "delta_chars": 1, "content_chars": 2531, "finish_reason": null, "usage": null}
+{"event_index": 950, "t_s": 774.231848, "delta": "6", "delta_chars": 1, "content_chars": 2532, "finish_reason": null, "usage": null}
+{"event_index": 951, "t_s": 774.631868, "delta": "}}\n", "delta_chars": 3, "content_chars": 2535, "finish_reason": null, "usage": null}
+{"event_index": 952, "t_s": 774.992193, "delta": " ", "delta_chars": 1, "content_chars": 2536, "finish_reason": null, "usage": null}
+{"event_index": 953, "t_s": 775.361531, "delta": " </", "delta_chars": 3, "content_chars": 2539, "finish_reason": null, "usage": null}
+{"event_index": 954, "t_s": 775.721728, "delta": "style", "delta_chars": 5, "content_chars": 2544, "finish_reason": null, "usage": null}
+{"event_index": 955, "t_s": 776.103728, "delta": ">\n", "delta_chars": 2, "content_chars": 2546, "finish_reason": null, "usage": null}
+{"event_index": 956, "t_s": 776.455725, "delta": "<script", "delta_chars": 7, "content_chars": 2553, "finish_reason": null, "usage": null}
+{"event_index": 957, "t_s": 776.801816, "delta": ">\n", "delta_chars": 2, "content_chars": 2555, "finish_reason": null, "usage": null}
+{"event_index": 958, "t_s": 777.152776, "delta": " ", "delta_chars": 1, "content_chars": 2556, "finish_reason": null, "usage": null}
+{"event_index": 959, "t_s": 777.50676, "delta": " /*", "delta_chars": 3, "content_chars": 2559, "finish_reason": null, "usage": null}
+{"event_index": 960, "t_s": 777.851554, "delta": " js", "delta_chars": 3, "content_chars": 2562, "finish_reason": null, "usage": null}
+{"event_index": 961, "t_s": 778.195329, "delta": " */\n", "delta_chars": 4, "content_chars": 2566, "finish_reason": null, "usage": null}
+{"event_index": 962, "t_s": 778.550179, "delta": " ", "delta_chars": 1, "content_chars": 2567, "finish_reason": null, "usage": null}
+{"event_index": 963, "t_s": 778.897696, "delta": " /*", "delta_chars": 3, "content_chars": 2570, "finish_reason": null, "usage": null}
+{"event_index": 964, "t_s": 779.242904, "delta": " js", "delta_chars": 3, "content_chars": 2573, "finish_reason": null, "usage": null}
+{"event_index": 965, "t_s": 779.602372, "delta": " */\n", "delta_chars": 4, "content_chars": 2577, "finish_reason": null, "usage": null}
+{"event_index": 966, "t_s": 780.108183, "delta": " ", "delta_chars": 1, "content_chars": 2578, "finish_reason": null, "usage": null}
+{"event_index": 967, "t_s": 780.526785, "delta": " /*", "delta_chars": 3, "content_chars": 2581, "finish_reason": null, "usage": null}
+{"event_index": 968, "t_s": 780.876233, "delta": " js", "delta_chars": 3, "content_chars": 2584, "finish_reason": null, "usage": null}
+{"event_index": 969, "t_s": 781.282459, "delta": " */\n", "delta_chars": 4, "content_chars": 2588, "finish_reason": null, "usage": null}
+{"event_index": 970, "t_s": 781.6679, "delta": " ", "delta_chars": 1, "content_chars": 2589, "finish_reason": null, "usage": null}
+{"event_index": 971, "t_s": 782.025341, "delta": " /*", "delta_chars": 3, "content_chars": 2592, "finish_reason": null, "usage": null}
+{"event_index": 972, "t_s": 782.37978, "delta": " js", "delta_chars": 3, "content_chars": 2595, "finish_reason": null, "usage": null}
+{"event_index": 973, "t_s": 782.740563, "delta": " */\n", "delta_chars": 4, "content_chars": 2599, "finish_reason": null, "usage": null}
+{"event_index": 974, "t_s": 783.096231, "delta": " ", "delta_chars": 1, "content_chars": 2600, "finish_reason": null, "usage": null}
+{"event_index": 975, "t_s": 783.468811, "delta": " /*", "delta_chars": 3, "content_chars": 2603, "finish_reason": null, "usage": null}
+{"event_index": 976, "t_s": 783.819968, "delta": " js", "delta_chars": 3, "content_chars": 2606, "finish_reason": null, "usage": null}
+{"event_index": 977, "t_s": 784.168093, "delta": " */\n", "delta_chars": 4, "content_chars": 2610, "finish_reason": null, "usage": null}
+{"event_index": 978, "t_s": 784.522582, "delta": " ", "delta_chars": 1, "content_chars": 2611, "finish_reason": null, "usage": null}
+{"event_index": 979, "t_s": 784.874924, "delta": " /*", "delta_chars": 3, "content_chars": 2614, "finish_reason": null, "usage": null}
+{"event_index": 980, "t_s": 785.227648, "delta": " js", "delta_chars": 3, "content_chars": 2617, "finish_reason": null, "usage": null}
+{"event_index": 981, "t_s": 785.585743, "delta": " */\n", "delta_chars": 4, "content_chars": 2621, "finish_reason": null, "usage": null}
+{"event_index": 982, "t_s": 785.927299, "delta": " ", "delta_chars": 1, "content_chars": 2622, "finish_reason": null, "usage": null}
+{"event_index": 983, "t_s": 786.272927, "delta": " /*", "delta_chars": 3, "content_chars": 2625, "finish_reason": null, "usage": null}
+{"event_index": 984, "t_s": 786.622194, "delta": " js", "delta_chars": 3, "content_chars": 2628, "finish_reason": null, "usage": null}
+{"event_index": 985, "t_s": 786.970213, "delta": " */\n", "delta_chars": 4, "content_chars": 2632, "finish_reason": null, "usage": null}
+{"event_index": 986, "t_s": 787.322473, "delta": " ", "delta_chars": 1, "content_chars": 2633, "finish_reason": null, "usage": null}
+{"event_index": 987, "t_s": 787.671045, "delta": " /*", "delta_chars": 3, "content_chars": 2636, "finish_reason": null, "usage": null}
+{"event_index": 988, "t_s": 788.030317, "delta": " js", "delta_chars": 3, "content_chars": 2639, "finish_reason": null, "usage": null}
+{"event_index": 989, "t_s": 788.397808, "delta": " */\n", "delta_chars": 4, "content_chars": 2643, "finish_reason": null, "usage": null}
+{"event_index": 990, "t_s": 788.80323, "delta": " ", "delta_chars": 1, "content_chars": 2644, "finish_reason": null, "usage": null}
+{"event_index": 991, "t_s": 789.151496, "delta": " /*", "delta_chars": 3, "content_chars": 2647, "finish_reason": null, "usage": null}
+{"event_index": 992, "t_s": 789.502915, "delta": " js", "delta_chars": 3, "content_chars": 2650, "finish_reason": null, "usage": null}
+{"event_index": 993, "t_s": 789.848045, "delta": " */\n", "delta_chars": 4, "content_chars": 2654, "finish_reason": null, "usage": null}
+{"event_index": 994, "t_s": 790.197835, "delta": " ", "delta_chars": 1, "content_chars": 2655, "finish_reason": null, "usage": null}
+{"event_index": 995, "t_s": 790.544874, "delta": " /*", "delta_chars": 3, "content_chars": 2658, "finish_reason": null, "usage": null}
+{"event_index": 996, "t_s": 790.880125, "delta": " js", "delta_chars": 3, "content_chars": 2661, "finish_reason": null, "usage": null}
+{"event_index": 997, "t_s": 791.220297, "delta": " */\n", "delta_chars": 4, "content_chars": 2665, "finish_reason": null, "usage": null}
+{"event_index": 998, "t_s": 792.028909, "delta": " ", "delta_chars": 1, "content_chars": 2666, "finish_reason": null, "usage": null}
+{"event_index": 999, "t_s": 793.196222, "delta": " /*", "delta_chars": 3, "content_chars": 2669, "finish_reason": null, "usage": null}
+{"event_index": 1000, "t_s": 794.257512, "delta": " js", "delta_chars": 3, "content_chars": 2672, "finish_reason": null, "usage": null}
+{"event_index": 1001, "t_s": 794.891037, "delta": " */\n", "delta_chars": 4, "content_chars": 2676, "finish_reason": null, "usage": null}
+{"event_index": 1002, "t_s": 795.26881, "delta": " ", "delta_chars": 1, "content_chars": 2677, "finish_reason": null, "usage": null}
+{"event_index": 1003, "t_s": 795.659622, "delta": " /*", "delta_chars": 3, "content_chars": 2680, "finish_reason": null, "usage": null}
+{"event_index": 1004, "t_s": 796.047225, "delta": " js", "delta_chars": 3, "content_chars": 2683, "finish_reason": null, "usage": null}
+{"event_index": 1005, "t_s": 796.424972, "delta": " */\n", "delta_chars": 4, "content_chars": 2687, "finish_reason": null, "usage": null}
+{"event_index": 1006, "t_s": 796.956303, "delta": " ", "delta_chars": 1, "content_chars": 2688, "finish_reason": null, "usage": null}
+{"event_index": 1007, "t_s": 797.396856, "delta": " /*", "delta_chars": 3, "content_chars": 2691, "finish_reason": null, "usage": null}
+{"event_index": 1008, "t_s": 797.745325, "delta": " js", "delta_chars": 3, "content_chars": 2694, "finish_reason": null, "usage": null}
+{"event_index": 1009, "t_s": 798.146209, "delta": " */\n", "delta_chars": 4, "content_chars": 2698, "finish_reason": null, "usage": null}
+{"event_index": 1010, "t_s": 798.495203, "delta": " ", "delta_chars": 1, "content_chars": 2699, "finish_reason": null, "usage": null}
+{"event_index": 1011, "t_s": 798.842033, "delta": " /*", "delta_chars": 3, "content_chars": 2702, "finish_reason": null, "usage": null}
+{"event_index": 1012, "t_s": 799.181522, "delta": " js", "delta_chars": 3, "content_chars": 2705, "finish_reason": null, "usage": null}
+{"event_index": 1013, "t_s": 799.534943, "delta": " */\n", "delta_chars": 4, "content_chars": 2709, "finish_reason": null, "usage": null}
+{"event_index": 1014, "t_s": 800.016555, "delta": " ", "delta_chars": 1, "content_chars": 2710, "finish_reason": null, "usage": null}
+{"event_index": 1015, "t_s": 800.363072, "delta": " /*", "delta_chars": 3, "content_chars": 2713, "finish_reason": null, "usage": null}
+{"event_index": 1016, "t_s": 800.716442, "delta": " js", "delta_chars": 3, "content_chars": 2716, "finish_reason": null, "usage": null}
+{"event_index": 1017, "t_s": 801.061295, "delta": " */\n", "delta_chars": 4, "content_chars": 2720, "finish_reason": null, "usage": null}
+{"event_index": 1018, "t_s": 801.49537, "delta": " ", "delta_chars": 1, "content_chars": 2721, "finish_reason": null, "usage": null}
+{"event_index": 1019, "t_s": 801.884038, "delta": " /*", "delta_chars": 3, "content_chars": 2724, "finish_reason": null, "usage": null}
+{"event_index": 1020, "t_s": 802.271386, "delta": " js", "delta_chars": 3, "content_chars": 2727, "finish_reason": null, "usage": null}
+{"event_index": 1021, "t_s": 802.62083, "delta": " */\n", "delta_chars": 4, "content_chars": 2731, "finish_reason": null, "usage": null}
+{"event_index": 1022, "t_s": 802.972205, "delta": " ", "delta_chars": 1, "content_chars": 2732, "finish_reason": null, "usage": null}
+{"event_index": 1023, "t_s": 803.321729, "delta": " /*", "delta_chars": 3, "content_chars": 2735, "finish_reason": null, "usage": null}
+{"event_index": 1024, "t_s": 803.700745, "delta": " js", "delta_chars": 3, "content_chars": 2738, "finish_reason": null, "usage": null}
+{"event_index": 1025, "t_s": 804.045438, "delta": " */\n", "delta_chars": 4, "content_chars": 2742, "finish_reason": null, "usage": null}
+{"event_index": 1026, "t_s": 804.397651, "delta": " ", "delta_chars": 1, "content_chars": 2743, "finish_reason": null, "usage": null}
+{"event_index": 1027, "t_s": 804.833281, "delta": " /*", "delta_chars": 3, "content_chars": 2746, "finish_reason": null, "usage": null}
+{"event_index": 1028, "t_s": 805.192756, "delta": " js", "delta_chars": 3, "content_chars": 2749, "finish_reason": null, "usage": null}
+{"event_index": 1029, "t_s": 805.583306, "delta": " */\n", "delta_chars": 4, "content_chars": 2753, "finish_reason": null, "usage": null}
+{"event_index": 1030, "t_s": 806.196241, "delta": " ", "delta_chars": 1, "content_chars": 2754, "finish_reason": null, "usage": null}
+{"event_index": 1031, "t_s": 807.016869, "delta": " /*", "delta_chars": 3, "content_chars": 2757, "finish_reason": null, "usage": null}
+{"event_index": 1032, "t_s": 807.699293, "delta": " js", "delta_chars": 3, "content_chars": 2760, "finish_reason": null, "usage": null}
+{"event_index": 1033, "t_s": 808.108791, "delta": " */\n", "delta_chars": 4, "content_chars": 2764, "finish_reason": null, "usage": null}
+{"event_index": 1034, "t_s": 808.494977, "delta": " ", "delta_chars": 1, "content_chars": 2765, "finish_reason": null, "usage": null}
+{"event_index": 1035, "t_s": 808.925307, "delta": " /*", "delta_chars": 3, "content_chars": 2768, "finish_reason": null, "usage": null}
+{"event_index": 1036, "t_s": 809.279261, "delta": " js", "delta_chars": 3, "content_chars": 2771, "finish_reason": null, "usage": null}
+{"event_index": 1037, "t_s": 809.678019, "delta": " */\n", "delta_chars": 4, "content_chars": 2775, "finish_reason": null, "usage": null}
+{"event_index": 1038, "t_s": 810.153191, "delta": " ", "delta_chars": 1, "content_chars": 2776, "finish_reason": null, "usage": null}
+{"event_index": 1039, "t_s": 810.529721, "delta": " /*", "delta_chars": 3, "content_chars": 2779, "finish_reason": null, "usage": null}
+{"event_index": 1040, "t_s": 810.91051, "delta": " js", "delta_chars": 3, "content_chars": 2782, "finish_reason": null, "usage": null}
+{"event_index": 1041, "t_s": 811.307845, "delta": " */\n", "delta_chars": 4, "content_chars": 2786, "finish_reason": null, "usage": null}
+{"event_index": 1042, "t_s": 811.688937, "delta": " ", "delta_chars": 1, "content_chars": 2787, "finish_reason": null, "usage": null}
+{"event_index": 1043, "t_s": 812.038845, "delta": " /*", "delta_chars": 3, "content_chars": 2790, "finish_reason": null, "usage": null}
+{"event_index": 1044, "t_s": 812.440365, "delta": " js", "delta_chars": 3, "content_chars": 2793, "finish_reason": null, "usage": null}
+{"event_index": 1045, "t_s": 812.792426, "delta": " */\n", "delta_chars": 4, "content_chars": 2797, "finish_reason": null, "usage": null}
+{"event_index": 1046, "t_s": 813.14752, "delta": " ", "delta_chars": 1, "content_chars": 2798, "finish_reason": null, "usage": null}
+{"event_index": 1047, "t_s": 813.502044, "delta": " /*", "delta_chars": 3, "content_chars": 2801, "finish_reason": null, "usage": null}
+{"event_index": 1048, "t_s": 813.84701, "delta": " js", "delta_chars": 3, "content_chars": 2804, "finish_reason": null, "usage": null}
+{"event_index": 1049, "t_s": 814.199948, "delta": " */\n", "delta_chars": 4, "content_chars": 2808, "finish_reason": null, "usage": null}
+{"event_index": 1050, "t_s": 814.557452, "delta": " ", "delta_chars": 1, "content_chars": 2809, "finish_reason": null, "usage": null}
+{"event_index": 1051, "t_s": 814.967478, "delta": " /*", "delta_chars": 3, "content_chars": 2812, "finish_reason": null, "usage": null}
+{"event_index": 1052, "t_s": 815.365174, "delta": " js", "delta_chars": 3, "content_chars": 2815, "finish_reason": null, "usage": null}
+{"event_index": 1053, "t_s": 815.71632, "delta": " */\n", "delta_chars": 4, "content_chars": 2819, "finish_reason": null, "usage": null}
+{"event_index": 1054, "t_s": 816.083906, "delta": " ", "delta_chars": 1, "content_chars": 2820, "finish_reason": null, "usage": null}
+{"event_index": 1055, "t_s": 816.432982, "delta": " /*", "delta_chars": 3, "content_chars": 2823, "finish_reason": null, "usage": null}
+{"event_index": 1056, "t_s": 816.774083, "delta": " js", "delta_chars": 3, "content_chars": 2826, "finish_reason": null, "usage": null}
+{"event_index": 1057, "t_s": 817.124931, "delta": " */\n", "delta_chars": 4, "content_chars": 2830, "finish_reason": null, "usage": null}
+{"event_index": 1058, "t_s": 817.4768, "delta": " ", "delta_chars": 1, "content_chars": 2831, "finish_reason": null, "usage": null}
+{"event_index": 1059, "t_s": 817.823723, "delta": " /*", "delta_chars": 3, "content_chars": 2834, "finish_reason": null, "usage": null}
+{"event_index": 1060, "t_s": 818.164565, "delta": " js", "delta_chars": 3, "content_chars": 2837, "finish_reason": null, "usage": null}
+{"event_index": 1061, "t_s": 818.51499, "delta": " */\n", "delta_chars": 4, "content_chars": 2841, "finish_reason": null, "usage": null}
+{"event_index": 1062, "t_s": 818.937682, "delta": " ", "delta_chars": 1, "content_chars": 2842, "finish_reason": null, "usage": null}
+{"event_index": 1063, "t_s": 819.724014, "delta": " /*", "delta_chars": 3, "content_chars": 2845, "finish_reason": null, "usage": null}
+{"event_index": 1064, "t_s": 820.510741, "delta": " js", "delta_chars": 3, "content_chars": 2848, "finish_reason": null, "usage": null}
+{"event_index": 1065, "t_s": 821.00776, "delta": " */\n", "delta_chars": 4, "content_chars": 2852, "finish_reason": null, "usage": null}
+{"event_index": 1066, "t_s": 821.360664, "delta": " ", "delta_chars": 1, "content_chars": 2853, "finish_reason": null, "usage": null}
+{"event_index": 1067, "t_s": 821.772483, "delta": " /*", "delta_chars": 3, "content_chars": 2856, "finish_reason": null, "usage": null}
+{"event_index": 1068, "t_s": 822.122526, "delta": " js", "delta_chars": 3, "content_chars": 2859, "finish_reason": null, "usage": null}
+{"event_index": 1069, "t_s": 822.47529, "delta": " */\n", "delta_chars": 4, "content_chars": 2863, "finish_reason": null, "usage": null}
+{"event_index": 1070, "t_s": 822.821262, "delta": " ", "delta_chars": 1, "content_chars": 2864, "finish_reason": null, "usage": null}
+{"event_index": 1071, "t_s": 823.164814, "delta": " /*", "delta_chars": 3, "content_chars": 2867, "finish_reason": null, "usage": null}
+{"event_index": 1072, "t_s": 823.572482, "delta": " js", "delta_chars": 3, "content_chars": 2870, "finish_reason": null, "usage": null}
+{"event_index": 1073, "t_s": 823.916173, "delta": " */\n", "delta_chars": 4, "content_chars": 2874, "finish_reason": null, "usage": null}
+{"event_index": 1074, "t_s": 824.262479, "delta": " ", "delta_chars": 1, "content_chars": 2875, "finish_reason": null, "usage": null}
+{"event_index": 1075, "t_s": 824.634022, "delta": " /*", "delta_chars": 3, "content_chars": 2878, "finish_reason": null, "usage": null}
+{"event_index": 1076, "t_s": 824.985857, "delta": " js", "delta_chars": 3, "content_chars": 2881, "finish_reason": null, "usage": null}
+{"event_index": 1077, "t_s": 825.331647, "delta": " */\n", "delta_chars": 4, "content_chars": 2885, "finish_reason": null, "usage": null}
+{"event_index": 1078, "t_s": 825.67156, "delta": " ", "delta_chars": 1, "content_chars": 2886, "finish_reason": null, "usage": null}
+{"event_index": 1079, "t_s": 826.034469, "delta": " /*", "delta_chars": 3, "content_chars": 2889, "finish_reason": null, "usage": null}
+{"event_index": 1080, "t_s": 826.381115, "delta": " js", "delta_chars": 3, "content_chars": 2892, "finish_reason": null, "usage": null}
+{"event_index": 1081, "t_s": 826.733169, "delta": " */\n", "delta_chars": 4, "content_chars": 2896, "finish_reason": null, "usage": null}
+{"event_index": 1082, "t_s": 827.123406, "delta": " ", "delta_chars": 1, "content_chars": 2897, "finish_reason": null, "usage": null}
+{"event_index": 1083, "t_s": 827.520202, "delta": " /*", "delta_chars": 3, "content_chars": 2900, "finish_reason": null, "usage": null}
+{"event_index": 1084, "t_s": 827.867165, "delta": " js", "delta_chars": 3, "content_chars": 2903, "finish_reason": null, "usage": null}
+{"event_index": 1085, "t_s": 828.219638, "delta": " */\n", "delta_chars": 4, "content_chars": 2907, "finish_reason": null, "usage": null}
+{"event_index": 1086, "t_s": 828.61665, "delta": " ", "delta_chars": 1, "content_chars": 2908, "finish_reason": null, "usage": null}
+{"event_index": 1087, "t_s": 828.960344, "delta": " /*", "delta_chars": 3, "content_chars": 2911, "finish_reason": null, "usage": null}
+{"event_index": 1088, "t_s": 829.305772, "delta": " js", "delta_chars": 3, "content_chars": 2914, "finish_reason": null, "usage": null}
+{"event_index": 1089, "t_s": 829.677519, "delta": " */\n", "delta_chars": 4, "content_chars": 2918, "finish_reason": null, "usage": null}
+{"event_index": 1090, "t_s": 830.058445, "delta": " ", "delta_chars": 1, "content_chars": 2919, "finish_reason": null, "usage": null}
+{"event_index": 1091, "t_s": 830.412672, "delta": " /*", "delta_chars": 3, "content_chars": 2922, "finish_reason": null, "usage": null}
+{"event_index": 1092, "t_s": 830.755944, "delta": " js", "delta_chars": 3, "content_chars": 2925, "finish_reason": null, "usage": null}
+{"event_index": 1093, "t_s": 831.145897, "delta": " */\n", "delta_chars": 4, "content_chars": 2929, "finish_reason": null, "usage": null}
+{"event_index": 1094, "t_s": 831.506045, "delta": " ", "delta_chars": 1, "content_chars": 2930, "finish_reason": null, "usage": null}
+{"event_index": 1095, "t_s": 831.926763, "delta": " /*", "delta_chars": 3, "content_chars": 2933, "finish_reason": null, "usage": null}
+{"event_index": 1096, "t_s": 832.393319, "delta": " js", "delta_chars": 3, "content_chars": 2936, "finish_reason": null, "usage": null}
+{"event_index": 1097, "t_s": 832.765687, "delta": " */\n", "delta_chars": 4, "content_chars": 2940, "finish_reason": null, "usage": null}
+{"event_index": 1098, "t_s": 833.11745, "delta": " ", "delta_chars": 1, "content_chars": 2941, "finish_reason": null, "usage": null}
+{"event_index": 1099, "t_s": 833.584652, "delta": " /*", "delta_chars": 3, "content_chars": 2944, "finish_reason": null, "usage": null}
+{"event_index": 1100, "t_s": 833.931125, "delta": " js", "delta_chars": 3, "content_chars": 2947, "finish_reason": null, "usage": null}
+{"event_index": 1101, "t_s": 834.281112, "delta": " */\n", "delta_chars": 4, "content_chars": 2951, "finish_reason": null, "usage": null}
+{"event_index": 1102, "t_s": 834.642497, "delta": " ", "delta_chars": 1, "content_chars": 2952, "finish_reason": null, "usage": null}
+{"event_index": 1103, "t_s": 835.049729, "delta": " /*", "delta_chars": 3, "content_chars": 2955, "finish_reason": null, "usage": null}
+{"event_index": 1104, "t_s": 835.420735, "delta": " js", "delta_chars": 3, "content_chars": 2958, "finish_reason": null, "usage": null}
+{"event_index": 1105, "t_s": 835.771711, "delta": " */\n", "delta_chars": 4, "content_chars": 2962, "finish_reason": null, "usage": null}
+{"event_index": 1106, "t_s": 836.128964, "delta": " ", "delta_chars": 1, "content_chars": 2963, "finish_reason": null, "usage": null}
+{"event_index": 1107, "t_s": 836.497262, "delta": " /*", "delta_chars": 3, "content_chars": 2966, "finish_reason": null, "usage": null}
+{"event_index": 1108, "t_s": 836.85055, "delta": " js", "delta_chars": 3, "content_chars": 2969, "finish_reason": null, "usage": null}
+{"event_index": 1109, "t_s": 837.194364, "delta": " */\n", "delta_chars": 4, "content_chars": 2973, "finish_reason": null, "usage": null}
+{"event_index": 1110, "t_s": 837.548584, "delta": " ", "delta_chars": 1, "content_chars": 2974, "finish_reason": null, "usage": null}
+{"event_index": 1111, "t_s": 837.911585, "delta": " /*", "delta_chars": 3, "content_chars": 2977, "finish_reason": null, "usage": null}
+{"event_index": 1112, "t_s": 838.282379, "delta": " js", "delta_chars": 3, "content_chars": 2980, "finish_reason": null, "usage": null}
+{"event_index": 1113, "t_s": 838.652862, "delta": " */\n", "delta_chars": 4, "content_chars": 2984, "finish_reason": null, "usage": null}
+{"event_index": 1114, "t_s": 839.0265, "delta": " ", "delta_chars": 1, "content_chars": 2985, "finish_reason": null, "usage": null}
+{"event_index": 1115, "t_s": 839.381406, "delta": " /*", "delta_chars": 3, "content_chars": 2988, "finish_reason": null, "usage": null}
+{"event_index": 1116, "t_s": 839.73877, "delta": " js", "delta_chars": 3, "content_chars": 2991, "finish_reason": null, "usage": null}
+{"event_index": 1117, "t_s": 840.081252, "delta": " */\n", "delta_chars": 4, "content_chars": 2995, "finish_reason": null, "usage": null}
+{"event_index": 1118, "t_s": 840.427506, "delta": " ", "delta_chars": 1, "content_chars": 2996, "finish_reason": null, "usage": null}
+{"event_index": 1119, "t_s": 840.775036, "delta": " /*", "delta_chars": 3, "content_chars": 2999, "finish_reason": null, "usage": null}
+{"event_index": 1120, "t_s": 841.124179, "delta": " js", "delta_chars": 3, "content_chars": 3002, "finish_reason": null, "usage": null}
+{"event_index": 1121, "t_s": 841.471967, "delta": " */\n", "delta_chars": 4, "content_chars": 3006, "finish_reason": null, "usage": null}
+{"event_index": 1122, "t_s": 841.858841, "delta": " ", "delta_chars": 1, "content_chars": 3007, "finish_reason": null, "usage": null}
+{"event_index": 1123, "t_s": 842.205454, "delta": " /*", "delta_chars": 3, "content_chars": 3010, "finish_reason": null, "usage": null}
+{"event_index": 1124, "t_s": 842.561186, "delta": " js", "delta_chars": 3, "content_chars": 3013, "finish_reason": null, "usage": null}
+{"event_index": 1125, "t_s": 842.906673, "delta": " */\n", "delta_chars": 4, "content_chars": 3017, "finish_reason": null, "usage": null}
+{"event_index": 1126, "t_s": 843.460802, "delta": " ", "delta_chars": 1, "content_chars": 3018, "finish_reason": null, "usage": null}
+{"event_index": 1127, "t_s": 844.034189, "delta": " /*", "delta_chars": 3, "content_chars": 3021, "finish_reason": null, "usage": null}
+{"event_index": 1128, "t_s": 844.432718, "delta": " js", "delta_chars": 3, "content_chars": 3024, "finish_reason": null, "usage": null}
+{"event_index": 1129, "t_s": 844.965117, "delta": " */\n", "delta_chars": 4, "content_chars": 3028, "finish_reason": null, "usage": null}
+{"event_index": 1130, "t_s": 845.315825, "delta": " ", "delta_chars": 1, "content_chars": 3029, "finish_reason": null, "usage": null}
+{"event_index": 1131, "t_s": 845.669237, "delta": " /*", "delta_chars": 3, "content_chars": 3032, "finish_reason": null, "usage": null}
+{"event_index": 1132, "t_s": 846.067671, "delta": " js", "delta_chars": 3, "content_chars": 3035, "finish_reason": null, "usage": null}
+{"event_index": 1133, "t_s": 846.423589, "delta": " */\n", "delta_chars": 4, "content_chars": 3039, "finish_reason": null, "usage": null}
+{"event_index": 1134, "t_s": 846.90657, "delta": " ", "delta_chars": 1, "content_chars": 3040, "finish_reason": null, "usage": null}
+{"event_index": 1135, "t_s": 847.258771, "delta": " /*", "delta_chars": 3, "content_chars": 3043, "finish_reason": null, "usage": null}
+{"event_index": 1136, "t_s": 847.614993, "delta": " js", "delta_chars": 3, "content_chars": 3046, "finish_reason": null, "usage": null}
+{"event_index": 1137, "t_s": 847.963606, "delta": " */\n", "delta_chars": 4, "content_chars": 3050, "finish_reason": null, "usage": null}
+{"event_index": 1138, "t_s": 848.314501, "delta": " ", "delta_chars": 1, "content_chars": 3051, "finish_reason": null, "usage": null}
+{"event_index": 1139, "t_s": 848.670007, "delta": " /*", "delta_chars": 3, "content_chars": 3054, "finish_reason": null, "usage": null}
+{"event_index": 1140, "t_s": 849.024619, "delta": " js", "delta_chars": 3, "content_chars": 3057, "finish_reason": null, "usage": null}
+{"event_index": 1141, "t_s": 849.386615, "delta": " */\n", "delta_chars": 4, "content_chars": 3061, "finish_reason": null, "usage": null}
+{"event_index": 1142, "t_s": 849.740421, "delta": " ", "delta_chars": 1, "content_chars": 3062, "finish_reason": null, "usage": null}
+{"event_index": 1143, "t_s": 850.087392, "delta": " /*", "delta_chars": 3, "content_chars": 3065, "finish_reason": null, "usage": null}
+{"event_index": 1144, "t_s": 850.448847, "delta": " js", "delta_chars": 3, "content_chars": 3068, "finish_reason": null, "usage": null}
+{"event_index": 1145, "t_s": 850.807367, "delta": " */\n", "delta_chars": 4, "content_chars": 3072, "finish_reason": null, "usage": null}
+{"event_index": 1146, "t_s": 851.149002, "delta": " ", "delta_chars": 1, "content_chars": 3073, "finish_reason": null, "usage": null}
+{"event_index": 1147, "t_s": 851.507198, "delta": " /*", "delta_chars": 3, "content_chars": 3076, "finish_reason": null, "usage": null}
+{"event_index": 1148, "t_s": 851.850191, "delta": " js", "delta_chars": 3, "content_chars": 3079, "finish_reason": null, "usage": null}
+{"event_index": 1149, "t_s": 852.202439, "delta": " */\n", "delta_chars": 4, "content_chars": 3083, "finish_reason": null, "usage": null}
+{"event_index": 1150, "t_s": 852.561916, "delta": " ", "delta_chars": 1, "content_chars": 3084, "finish_reason": null, "usage": null}
+{"event_index": 1151, "t_s": 852.909763, "delta": " /*", "delta_chars": 3, "content_chars": 3087, "finish_reason": null, "usage": null}
+{"event_index": 1152, "t_s": 853.261632, "delta": " js", "delta_chars": 3, "content_chars": 3090, "finish_reason": null, "usage": null}
+{"event_index": 1153, "t_s": 853.6205, "delta": " */\n", "delta_chars": 4, "content_chars": 3094, "finish_reason": null, "usage": null}
+{"event_index": 1154, "t_s": 853.975888, "delta": " ", "delta_chars": 1, "content_chars": 3095, "finish_reason": null, "usage": null}
+{"event_index": 1155, "t_s": 854.325658, "delta": " /*", "delta_chars": 3, "content_chars": 3098, "finish_reason": null, "usage": null}
+{"event_index": 1156, "t_s": 854.676745, "delta": " js", "delta_chars": 3, "content_chars": 3101, "finish_reason": null, "usage": null}
+{"event_index": 1157, "t_s": 855.026149, "delta": " */\n", "delta_chars": 4, "content_chars": 3105, "finish_reason": null, "usage": null}
+{"event_index": 1158, "t_s": 855.516987, "delta": " ", "delta_chars": 1, "content_chars": 3106, "finish_reason": null, "usage": null}
+{"event_index": 1159, "t_s": 855.893649, "delta": " /*", "delta_chars": 3, "content_chars": 3109, "finish_reason": null, "usage": null}
+{"event_index": 1160, "t_s": 856.653262, "delta": " js", "delta_chars": 3, "content_chars": 3112, "finish_reason": null, "usage": null}
+{"event_index": 1161, "t_s": 857.29084, "delta": " */\n", "delta_chars": 4, "content_chars": 3116, "finish_reason": null, "usage": null}
+{"event_index": 1162, "t_s": 857.762473, "delta": " ", "delta_chars": 1, "content_chars": 3117, "finish_reason": null, "usage": null}
+{"event_index": 1163, "t_s": 858.203596, "delta": " /*", "delta_chars": 3, "content_chars": 3120, "finish_reason": null, "usage": null}
+{"event_index": 1164, "t_s": 858.564571, "delta": " js", "delta_chars": 3, "content_chars": 3123, "finish_reason": null, "usage": null}
+{"event_index": 1165, "t_s": 858.916208, "delta": " */\n", "delta_chars": 4, "content_chars": 3127, "finish_reason": null, "usage": null}
+{"event_index": 1166, "t_s": 859.261766, "delta": " ", "delta_chars": 1, "content_chars": 3128, "finish_reason": null, "usage": null}
+{"event_index": 1167, "t_s": 859.637035, "delta": " /*", "delta_chars": 3, "content_chars": 3131, "finish_reason": null, "usage": null}
+{"event_index": 1168, "t_s": 859.986985, "delta": " js", "delta_chars": 3, "content_chars": 3134, "finish_reason": null, "usage": null}
+{"event_index": 1169, "t_s": 860.339886, "delta": " */\n", "delta_chars": 4, "content_chars": 3138, "finish_reason": null, "usage": null}
+{"event_index": 1170, "t_s": 860.727802, "delta": " ", "delta_chars": 1, "content_chars": 3139, "finish_reason": null, "usage": null}
+{"event_index": 1171, "t_s": 861.129356, "delta": " /*", "delta_chars": 3, "content_chars": 3142, "finish_reason": null, "usage": null}
+{"event_index": 1172, "t_s": 861.482189, "delta": " js", "delta_chars": 3, "content_chars": 3145, "finish_reason": null, "usage": null}
+{"event_index": 1173, "t_s": 861.842349, "delta": " */\n", "delta_chars": 4, "content_chars": 3149, "finish_reason": null, "usage": null}
+{"event_index": 1174, "t_s": 862.189037, "delta": " ", "delta_chars": 1, "content_chars": 3150, "finish_reason": null, "usage": null}
+{"event_index": 1175, "t_s": 862.537977, "delta": " /*", "delta_chars": 3, "content_chars": 3153, "finish_reason": null, "usage": null}
+{"event_index": 1176, "t_s": 862.882344, "delta": " js", "delta_chars": 3, "content_chars": 3156, "finish_reason": null, "usage": null}
+{"event_index": 1177, "t_s": 863.227743, "delta": " */\n", "delta_chars": 4, "content_chars": 3160, "finish_reason": null, "usage": null}
+{"event_index": 1178, "t_s": 863.581511, "delta": " ", "delta_chars": 1, "content_chars": 3161, "finish_reason": null, "usage": null}
+{"event_index": 1179, "t_s": 863.928887, "delta": " /*", "delta_chars": 3, "content_chars": 3164, "finish_reason": null, "usage": null}
+{"event_index": 1180, "t_s": 864.276815, "delta": " js", "delta_chars": 3, "content_chars": 3167, "finish_reason": null, "usage": null}
+{"event_index": 1181, "t_s": 864.645989, "delta": " */\n", "delta_chars": 4, "content_chars": 3171, "finish_reason": null, "usage": null}
+{"event_index": 1182, "t_s": 865.010191, "delta": " ", "delta_chars": 1, "content_chars": 3172, "finish_reason": null, "usage": null}
+{"event_index": 1183, "t_s": 865.371466, "delta": " /*", "delta_chars": 3, "content_chars": 3175, "finish_reason": null, "usage": null}
+{"event_index": 1184, "t_s": 865.714373, "delta": " js", "delta_chars": 3, "content_chars": 3178, "finish_reason": null, "usage": null}
+{"event_index": 1185, "t_s": 866.059641, "delta": " */\n", "delta_chars": 4, "content_chars": 3182, "finish_reason": null, "usage": null}
+{"event_index": 1186, "t_s": 866.413928, "delta": " ", "delta_chars": 1, "content_chars": 3183, "finish_reason": null, "usage": null}
+{"event_index": 1187, "t_s": 866.762403, "delta": " /*", "delta_chars": 3, "content_chars": 3186, "finish_reason": null, "usage": null}
+{"event_index": 1188, "t_s": 867.107536, "delta": " js", "delta_chars": 3, "content_chars": 3189, "finish_reason": null, "usage": null}
+{"event_index": 1189, "t_s": 867.455795, "delta": " */\n", "delta_chars": 4, "content_chars": 3193, "finish_reason": null, "usage": null}
+{"event_index": 1190, "t_s": 867.829999, "delta": " ", "delta_chars": 1, "content_chars": 3194, "finish_reason": null, "usage": null}
+{"event_index": 1191, "t_s": 868.297553, "delta": " /*", "delta_chars": 3, "content_chars": 3197, "finish_reason": null, "usage": null}
+{"event_index": 1192, "t_s": 868.801263, "delta": " js", "delta_chars": 3, "content_chars": 3200, "finish_reason": null, "usage": null}
+{"event_index": 1193, "t_s": 869.14577, "delta": " */\n", "delta_chars": 4, "content_chars": 3204, "finish_reason": null, "usage": null}
+{"event_index": 1194, "t_s": 869.589056, "delta": " ", "delta_chars": 1, "content_chars": 3205, "finish_reason": null, "usage": null}
+{"event_index": 1195, "t_s": 869.939099, "delta": " /*", "delta_chars": 3, "content_chars": 3208, "finish_reason": null, "usage": null}
+{"event_index": 1196, "t_s": 870.286999, "delta": " js", "delta_chars": 3, "content_chars": 3211, "finish_reason": null, "usage": null}
+{"event_index": 1197, "t_s": 870.636675, "delta": " */\n", "delta_chars": 4, "content_chars": 3215, "finish_reason": null, "usage": null}
+{"event_index": 1198, "t_s": 871.015775, "delta": " ", "delta_chars": 1, "content_chars": 3216, "finish_reason": null, "usage": null}
+{"event_index": 1199, "t_s": 871.370594, "delta": " /*", "delta_chars": 3, "content_chars": 3219, "finish_reason": null, "usage": null}
+{"event_index": 1200, "t_s": 871.724059, "delta": " js", "delta_chars": 3, "content_chars": 3222, "finish_reason": null, "usage": null}
+{"event_index": 1201, "t_s": 872.073213, "delta": " */\n", "delta_chars": 4, "content_chars": 3226, "finish_reason": null, "usage": null}
+{"event_index": 1202, "t_s": 872.427306, "delta": " ", "delta_chars": 1, "content_chars": 3227, "finish_reason": null, "usage": null}
+{"event_index": 1203, "t_s": 872.772326, "delta": " /*", "delta_chars": 3, "content_chars": 3230, "finish_reason": null, "usage": null}
+{"event_index": 1204, "t_s": 873.12427, "delta": " js", "delta_chars": 3, "content_chars": 3233, "finish_reason": null, "usage": null}
+{"event_index": 1205, "t_s": 873.50543, "delta": " */\n", "delta_chars": 4, "content_chars": 3237, "finish_reason": null, "usage": null}
+{"event_index": 1206, "t_s": 873.890363, "delta": " ", "delta_chars": 1, "content_chars": 3238, "finish_reason": null, "usage": null}
+{"event_index": 1207, "t_s": 874.240667, "delta": " /*", "delta_chars": 3, "content_chars": 3241, "finish_reason": null, "usage": null}
+{"event_index": 1208, "t_s": 874.582861, "delta": " js", "delta_chars": 3, "content_chars": 3244, "finish_reason": null, "usage": null}
+{"event_index": 1209, "t_s": 874.9731, "delta": " */\n", "delta_chars": 4, "content_chars": 3248, "finish_reason": null, "usage": null}
+{"event_index": 1210, "t_s": 875.318456, "delta": " ", "delta_chars": 1, "content_chars": 3249, "finish_reason": null, "usage": null}
+{"event_index": 1211, "t_s": 875.687054, "delta": " /*", "delta_chars": 3, "content_chars": 3252, "finish_reason": null, "usage": null}
+{"event_index": 1212, "t_s": 876.036892, "delta": " js", "delta_chars": 3, "content_chars": 3255, "finish_reason": null, "usage": null}
+{"event_index": 1213, "t_s": 876.382032, "delta": " */\n", "delta_chars": 4, "content_chars": 3259, "finish_reason": null, "usage": null}
+{"event_index": 1214, "t_s": 876.726925, "delta": " ", "delta_chars": 1, "content_chars": 3260, "finish_reason": null, "usage": null}
+{"event_index": 1215, "t_s": 877.074428, "delta": " /*", "delta_chars": 3, "content_chars": 3263, "finish_reason": null, "usage": null}
+{"event_index": 1216, "t_s": 877.426245, "delta": " js", "delta_chars": 3, "content_chars": 3266, "finish_reason": null, "usage": null}
+{"event_index": 1217, "t_s": 877.780325, "delta": " */\n", "delta_chars": 4, "content_chars": 3270, "finish_reason": null, "usage": null}
+{"event_index": 1218, "t_s": 878.175752, "delta": " ", "delta_chars": 1, "content_chars": 3271, "finish_reason": null, "usage": null}
+{"event_index": 1219, "t_s": 878.530769, "delta": " /*", "delta_chars": 3, "content_chars": 3274, "finish_reason": null, "usage": null}
+{"event_index": 1220, "t_s": 878.878477, "delta": " js", "delta_chars": 3, "content_chars": 3277, "finish_reason": null, "usage": null}
+{"event_index": 1221, "t_s": 879.229114, "delta": " */\n", "delta_chars": 4, "content_chars": 3281, "finish_reason": null, "usage": null}
+{"event_index": 1222, "t_s": 879.601394, "delta": " ", "delta_chars": 1, "content_chars": 3282, "finish_reason": null, "usage": null}
+{"event_index": 1223, "t_s": 880.026301, "delta": " /*", "delta_chars": 3, "content_chars": 3285, "finish_reason": null, "usage": null}
+{"event_index": 1224, "t_s": 880.412217, "delta": " js", "delta_chars": 3, "content_chars": 3288, "finish_reason": null, "usage": null}
+{"event_index": 1225, "t_s": 880.814402, "delta": " */\n", "delta_chars": 4, "content_chars": 3292, "finish_reason": null, "usage": null}
+{"event_index": 1226, "t_s": 881.204181, "delta": " ", "delta_chars": 1, "content_chars": 3293, "finish_reason": null, "usage": null}
+{"event_index": 1227, "t_s": 881.561858, "delta": " /*", "delta_chars": 3, "content_chars": 3296, "finish_reason": null, "usage": null}
+{"event_index": 1228, "t_s": 881.921647, "delta": " js", "delta_chars": 3, "content_chars": 3299, "finish_reason": null, "usage": null}
+{"event_index": 1229, "t_s": 882.348958, "delta": " */\n", "delta_chars": 4, "content_chars": 3303, "finish_reason": null, "usage": null}
+{"event_index": 1230, "t_s": 882.692541, "delta": " ", "delta_chars": 1, "content_chars": 3304, "finish_reason": null, "usage": null}
+{"event_index": 1231, "t_s": 883.085722, "delta": " /*", "delta_chars": 3, "content_chars": 3307, "finish_reason": null, "usage": null}
+{"event_index": 1232, "t_s": 883.445882, "delta": " js", "delta_chars": 3, "content_chars": 3310, "finish_reason": null, "usage": null}
+{"event_index": 1233, "t_s": 883.795848, "delta": " */\n", "delta_chars": 4, "content_chars": 3314, "finish_reason": null, "usage": null}
+{"event_index": 1234, "t_s": 884.144385, "delta": " ", "delta_chars": 1, "content_chars": 3315, "finish_reason": null, "usage": null}
+{"event_index": 1235, "t_s": 884.526827, "delta": " /*", "delta_chars": 3, "content_chars": 3318, "finish_reason": null, "usage": null}
+{"event_index": 1236, "t_s": 884.87171, "delta": " js", "delta_chars": 3, "content_chars": 3321, "finish_reason": null, "usage": null}
+{"event_index": 1237, "t_s": 885.220239, "delta": " */\n", "delta_chars": 4, "content_chars": 3325, "finish_reason": null, "usage": null}
+{"event_index": 1238, "t_s": 885.571302, "delta": " ", "delta_chars": 1, "content_chars": 3326, "finish_reason": null, "usage": null}
+{"event_index": 1239, "t_s": 885.984812, "delta": " /*", "delta_chars": 3, "content_chars": 3329, "finish_reason": null, "usage": null}
+{"event_index": 1240, "t_s": 886.336867, "delta": " js", "delta_chars": 3, "content_chars": 3332, "finish_reason": null, "usage": null}
+{"event_index": 1241, "t_s": 886.700444, "delta": " */\n", "delta_chars": 4, "content_chars": 3336, "finish_reason": null, "usage": null}
+{"event_index": 1242, "t_s": 887.066389, "delta": " ", "delta_chars": 1, "content_chars": 3337, "finish_reason": null, "usage": null}
+{"event_index": 1243, "t_s": 887.422451, "delta": " /*", "delta_chars": 3, "content_chars": 3340, "finish_reason": null, "usage": null}
+{"event_index": 1244, "t_s": 887.770688, "delta": " js", "delta_chars": 3, "content_chars": 3343, "finish_reason": null, "usage": null}
+{"event_index": 1245, "t_s": 888.118856, "delta": " */\n", "delta_chars": 4, "content_chars": 3347, "finish_reason": null, "usage": null}
+{"event_index": 1246, "t_s": 888.47845, "delta": " ", "delta_chars": 1, "content_chars": 3348, "finish_reason": null, "usage": null}
+{"event_index": 1247, "t_s": 888.833268, "delta": " /*", "delta_chars": 3, "content_chars": 3351, "finish_reason": null, "usage": null}
+{"event_index": 1248, "t_s": 889.180605, "delta": " js", "delta_chars": 3, "content_chars": 3354, "finish_reason": null, "usage": null}
+{"event_index": 1249, "t_s": 889.531597, "delta": " */\n", "delta_chars": 4, "content_chars": 3358, "finish_reason": null, "usage": null}
+{"event_index": 1250, "t_s": 889.878888, "delta": " ", "delta_chars": 1, "content_chars": 3359, "finish_reason": null, "usage": null}
+{"event_index": 1251, "t_s": 890.253675, "delta": " /*", "delta_chars": 3, "content_chars": 3362, "finish_reason": null, "usage": null}
+{"event_index": 1252, "t_s": 890.619462, "delta": " js", "delta_chars": 3, "content_chars": 3365, "finish_reason": null, "usage": null}
+{"event_index": 1253, "t_s": 890.975599, "delta": " */\n", "delta_chars": 4, "content_chars": 3369, "finish_reason": null, "usage": null}
+{"event_index": 1254, "t_s": 891.315371, "delta": " ", "delta_chars": 1, "content_chars": 3370, "finish_reason": null, "usage": null}
+{"event_index": 1255, "t_s": 891.670263, "delta": " /*", "delta_chars": 3, "content_chars": 3373, "finish_reason": null, "usage": null}
+{"event_index": 1256, "t_s": 892.027304, "delta": " js", "delta_chars": 3, "content_chars": 3376, "finish_reason": null, "usage": null}
+{"event_index": 1257, "t_s": 892.430449, "delta": " */\n", "delta_chars": 4, "content_chars": 3380, "finish_reason": null, "usage": null}
+{"event_index": 1258, "t_s": 892.80098, "delta": " ", "delta_chars": 1, "content_chars": 3381, "finish_reason": null, "usage": null}
+{"event_index": 1259, "t_s": 893.146768, "delta": " /*", "delta_chars": 3, "content_chars": 3384, "finish_reason": null, "usage": null}
+{"event_index": 1260, "t_s": 893.533661, "delta": " js", "delta_chars": 3, "content_chars": 3387, "finish_reason": null, "usage": null}
+{"event_index": 1261, "t_s": 893.881198, "delta": " */\n", "delta_chars": 4, "content_chars": 3391, "finish_reason": null, "usage": null}
+{"event_index": 1262, "t_s": 894.23021, "delta": " ", "delta_chars": 1, "content_chars": 3392, "finish_reason": null, "usage": null}
+{"event_index": 1263, "t_s": 894.579212, "delta": " /*", "delta_chars": 3, "content_chars": 3395, "finish_reason": null, "usage": null}
+{"event_index": 1264, "t_s": 894.92499, "delta": " js", "delta_chars": 3, "content_chars": 3398, "finish_reason": null, "usage": null}
+{"event_index": 1265, "t_s": 895.283835, "delta": " */\n", "delta_chars": 4, "content_chars": 3402, "finish_reason": null, "usage": null}
+{"event_index": 1266, "t_s": 895.654436, "delta": " ", "delta_chars": 1, "content_chars": 3403, "finish_reason": null, "usage": null}
+{"event_index": 1267, "t_s": 896.004473, "delta": " /*", "delta_chars": 3, "content_chars": 3406, "finish_reason": null, "usage": null}
+{"event_index": 1268, "t_s": 896.366205, "delta": " js", "delta_chars": 3, "content_chars": 3409, "finish_reason": null, "usage": null}
+{"event_index": 1269, "t_s": 896.71343, "delta": " */\n", "delta_chars": 4, "content_chars": 3413, "finish_reason": null, "usage": null}
+{"event_index": 1270, "t_s": 897.059975, "delta": " ", "delta_chars": 1, "content_chars": 3414, "finish_reason": null, "usage": null}
+{"event_index": 1271, "t_s": 897.409593, "delta": " /*", "delta_chars": 3, "content_chars": 3417, "finish_reason": null, "usage": null}
+{"event_index": 1272, "t_s": 897.763494, "delta": " js", "delta_chars": 3, "content_chars": 3420, "finish_reason": null, "usage": null}
+{"event_index": 1273, "t_s": 898.11509, "delta": " */\n", "delta_chars": 4, "content_chars": 3424, "finish_reason": null, "usage": null}
+{"event_index": 1274, "t_s": 898.46815, "delta": " ", "delta_chars": 1, "content_chars": 3425, "finish_reason": null, "usage": null}
+{"event_index": 1275, "t_s": 898.813367, "delta": " /*", "delta_chars": 3, "content_chars": 3428, "finish_reason": null, "usage": null}
+{"event_index": 1276, "t_s": 899.157321, "delta": " js", "delta_chars": 3, "content_chars": 3431, "finish_reason": null, "usage": null}
+{"event_index": 1277, "t_s": 899.506583, "delta": " */\n", "delta_chars": 4, "content_chars": 3435, "finish_reason": null, "usage": null}
+{"event_index": 1278, "t_s": 899.848369, "delta": " ", "delta_chars": 1, "content_chars": 3436, "finish_reason": null, "usage": null}
+{"event_index": 1279, "t_s": 900.191101, "delta": " /*", "delta_chars": 3, "content_chars": 3439, "finish_reason": null, "usage": null}
+{"event_index": 1280, "t_s": 900.53808, "delta": " js", "delta_chars": 3, "content_chars": 3442, "finish_reason": null, "usage": null}
+{"event_index": 1281, "t_s": 900.882354, "delta": " */\n", "delta_chars": 4, "content_chars": 3446, "finish_reason": null, "usage": null}
+{"event_index": 1282, "t_s": 901.224838, "delta": " ", "delta_chars": 1, "content_chars": 3447, "finish_reason": null, "usage": null}
+{"event_index": 1283, "t_s": 901.572836, "delta": " /*", "delta_chars": 3, "content_chars": 3450, "finish_reason": null, "usage": null}
+{"event_index": 1284, "t_s": 901.915727, "delta": " js", "delta_chars": 3, "content_chars": 3453, "finish_reason": null, "usage": null}
+{"event_index": 1285, "t_s": 902.260179, "delta": " */\n", "delta_chars": 4, "content_chars": 3457, "finish_reason": null, "usage": null}
+{"event_index": 1286, "t_s": 902.650131, "delta": " ", "delta_chars": 1, "content_chars": 3458, "finish_reason": null, "usage": null}
+{"event_index": 1287, "t_s": 903.110959, "delta": " /*", "delta_chars": 3, "content_chars": 3461, "finish_reason": null, "usage": null}
+{"event_index": 1288, "t_s": 903.591836, "delta": " js", "delta_chars": 3, "content_chars": 3464, "finish_reason": null, "usage": null}
+{"event_index": 1289, "t_s": 904.042789, "delta": " */\n", "delta_chars": 4, "content_chars": 3468, "finish_reason": null, "usage": null}
+{"event_index": 1290, "t_s": 904.389392, "delta": " ", "delta_chars": 1, "content_chars": 3469, "finish_reason": null, "usage": null}
+{"event_index": 1291, "t_s": 904.735355, "delta": " /*", "delta_chars": 3, "content_chars": 3472, "finish_reason": null, "usage": null}
+{"event_index": 1292, "t_s": 905.079606, "delta": " js", "delta_chars": 3, "content_chars": 3475, "finish_reason": null, "usage": null}
+{"event_index": 1293, "t_s": 905.432941, "delta": " */\n", "delta_chars": 4, "content_chars": 3479, "finish_reason": null, "usage": null}
+{"event_index": 1294, "t_s": 905.802168, "delta": " ", "delta_chars": 1, "content_chars": 3480, "finish_reason": null, "usage": null}
+{"event_index": 1295, "t_s": 906.154714, "delta": " /*", "delta_chars": 3, "content_chars": 3483, "finish_reason": null, "usage": null}
+{"event_index": 1296, "t_s": 906.53226, "delta": " js", "delta_chars": 3, "content_chars": 3486, "finish_reason": null, "usage": null}
+{"event_index": 1297, "t_s": 906.884344, "delta": " */\n", "delta_chars": 4, "content_chars": 3490, "finish_reason": null, "usage": null}
+{"event_index": 1298, "t_s": 907.230735, "delta": " ", "delta_chars": 1, "content_chars": 3491, "finish_reason": null, "usage": null}
+{"event_index": 1299, "t_s": 907.588877, "delta": " /*", "delta_chars": 3, "content_chars": 3494, "finish_reason": null, "usage": null}
+{"event_index": 1300, "t_s": 907.93949, "delta": " js", "delta_chars": 3, "content_chars": 3497, "finish_reason": null, "usage": null}
+{"event_index": 1301, "t_s": 908.283094, "delta": " */\n", "delta_chars": 4, "content_chars": 3501, "finish_reason": null, "usage": null}
+{"event_index": 1302, "t_s": 908.656838, "delta": " ", "delta_chars": 1, "content_chars": 3502, "finish_reason": null, "usage": null}
+{"event_index": 1303, "t_s": 909.00003, "delta": " /*", "delta_chars": 3, "content_chars": 3505, "finish_reason": null, "usage": null}
+{"event_index": 1304, "t_s": 909.345479, "delta": " js", "delta_chars": 3, "content_chars": 3508, "finish_reason": null, "usage": null}
+{"event_index": 1305, "t_s": 909.690185, "delta": " */\n", "delta_chars": 4, "content_chars": 3512, "finish_reason": null, "usage": null}
+{"event_index": 1306, "t_s": 910.037419, "delta": " ", "delta_chars": 1, "content_chars": 3513, "finish_reason": null, "usage": null}
+{"event_index": 1307, "t_s": 910.387862, "delta": " /*", "delta_chars": 3, "content_chars": 3516, "finish_reason": null, "usage": null}
+{"event_index": 1308, "t_s": 910.755216, "delta": " js", "delta_chars": 3, "content_chars": 3519, "finish_reason": null, "usage": null}
+{"event_index": 1309, "t_s": 911.138108, "delta": " */\n", "delta_chars": 4, "content_chars": 3523, "finish_reason": null, "usage": null}
+{"event_index": 1310, "t_s": 911.493135, "delta": " ", "delta_chars": 1, "content_chars": 3524, "finish_reason": null, "usage": null}
+{"event_index": 1311, "t_s": 911.879962, "delta": " /*", "delta_chars": 3, "content_chars": 3527, "finish_reason": null, "usage": null}
+{"event_index": 1312, "t_s": 912.250699, "delta": " js", "delta_chars": 3, "content_chars": 3530, "finish_reason": null, "usage": null}
+{"event_index": 1313, "t_s": 912.636615, "delta": " */\n", "delta_chars": 4, "content_chars": 3534, "finish_reason": null, "usage": null}
+{"event_index": 1314, "t_s": 912.999308, "delta": " ", "delta_chars": 1, "content_chars": 3535, "finish_reason": null, "usage": null}
+{"event_index": 1315, "t_s": 913.388731, "delta": " /*", "delta_chars": 3, "content_chars": 3538, "finish_reason": null, "usage": null}
+{"event_index": 1316, "t_s": 913.739595, "delta": " js", "delta_chars": 3, "content_chars": 3541, "finish_reason": null, "usage": null}
+{"event_index": 1317, "t_s": 914.088452, "delta": " */\n", "delta_chars": 4, "content_chars": 3545, "finish_reason": null, "usage": null}
+{"event_index": 1318, "t_s": 914.460631, "delta": " ", "delta_chars": 1, "content_chars": 3546, "finish_reason": null, "usage": null}
+{"event_index": 1319, "t_s": 914.804418, "delta": " /*", "delta_chars": 3, "content_chars": 3549, "finish_reason": null, "usage": null}
+{"event_index": 1320, "t_s": 915.157715, "delta": " js", "delta_chars": 3, "content_chars": 3552, "finish_reason": null, "usage": null}
+{"event_index": 1321, "t_s": 915.546215, "delta": " */\n", "delta_chars": 4, "content_chars": 3556, "finish_reason": null, "usage": null}
+{"event_index": 1322, "t_s": 915.888822, "delta": " ", "delta_chars": 1, "content_chars": 3557, "finish_reason": null, "usage": null}
+{"event_index": 1323, "t_s": 916.232314, "delta": " /*", "delta_chars": 3, "content_chars": 3560, "finish_reason": null, "usage": null}
+{"event_index": 1324, "t_s": 916.582917, "delta": " js", "delta_chars": 3, "content_chars": 3563, "finish_reason": null, "usage": null}
+{"event_index": 1325, "t_s": 916.988565, "delta": " */\n", "delta_chars": 4, "content_chars": 3567, "finish_reason": null, "usage": null}
+{"event_index": 1326, "t_s": 917.332825, "delta": " ", "delta_chars": 1, "content_chars": 3568, "finish_reason": null, "usage": null}
+{"event_index": 1327, "t_s": 917.67984, "delta": " /*", "delta_chars": 3, "content_chars": 3571, "finish_reason": null, "usage": null}
+{"event_index": 1328, "t_s": 918.02246, "delta": " js", "delta_chars": 3, "content_chars": 3574, "finish_reason": null, "usage": null}
+{"event_index": 1329, "t_s": 918.37327, "delta": " */\n", "delta_chars": 4, "content_chars": 3578, "finish_reason": null, "usage": null}
+{"event_index": 1330, "t_s": 918.77263, "delta": " ", "delta_chars": 1, "content_chars": 3579, "finish_reason": null, "usage": null}
+{"event_index": 1331, "t_s": 919.121199, "delta": " /*", "delta_chars": 3, "content_chars": 3582, "finish_reason": null, "usage": null}
+{"event_index": 1332, "t_s": 919.517271, "delta": " js", "delta_chars": 3, "content_chars": 3585, "finish_reason": null, "usage": null}
+{"event_index": 1333, "t_s": 919.906234, "delta": " */\n", "delta_chars": 4, "content_chars": 3589, "finish_reason": null, "usage": null}
+{"event_index": 1334, "t_s": 920.360401, "delta": " ", "delta_chars": 1, "content_chars": 3590, "finish_reason": null, "usage": null}
+{"event_index": 1335, "t_s": 920.786681, "delta": " /*", "delta_chars": 3, "content_chars": 3593, "finish_reason": null, "usage": null}
+{"event_index": 1336, "t_s": 921.162435, "delta": " js", "delta_chars": 3, "content_chars": 3596, "finish_reason": null, "usage": null}
+{"event_index": 1337, "t_s": 921.554315, "delta": " */\n", "delta_chars": 4, "content_chars": 3600, "finish_reason": null, "usage": null}
+{"event_index": 1338, "t_s": 921.929114, "delta": " ", "delta_chars": 1, "content_chars": 3601, "finish_reason": null, "usage": null}
+{"event_index": 1339, "t_s": 922.323748, "delta": " /*", "delta_chars": 3, "content_chars": 3604, "finish_reason": null, "usage": null}
+{"event_index": 1340, "t_s": 922.7447, "delta": " js", "delta_chars": 3, "content_chars": 3607, "finish_reason": null, "usage": null}
+{"event_index": 1341, "t_s": 923.139743, "delta": " */\n", "delta_chars": 4, "content_chars": 3611, "finish_reason": null, "usage": null}
+{"event_index": 1342, "t_s": 923.534296, "delta": " ", "delta_chars": 1, "content_chars": 3612, "finish_reason": null, "usage": null}
+{"event_index": 1343, "t_s": 923.944336, "delta": " /*", "delta_chars": 3, "content_chars": 3615, "finish_reason": null, "usage": null}
+{"event_index": 1344, "t_s": 924.333638, "delta": " js", "delta_chars": 3, "content_chars": 3618, "finish_reason": null, "usage": null}
+{"event_index": 1345, "t_s": 924.728217, "delta": " */\n", "delta_chars": 4, "content_chars": 3622, "finish_reason": null, "usage": null}
+{"event_index": 1346, "t_s": 925.103746, "delta": " ", "delta_chars": 1, "content_chars": 3623, "finish_reason": null, "usage": null}
+{"event_index": 1347, "t_s": 925.485226, "delta": " /*", "delta_chars": 3, "content_chars": 3626, "finish_reason": null, "usage": null}
+{"event_index": 1348, "t_s": 925.869872, "delta": " js", "delta_chars": 3, "content_chars": 3629, "finish_reason": null, "usage": null}
+{"event_index": 1349, "t_s": 926.264904, "delta": " */\n", "delta_chars": 4, "content_chars": 3633, "finish_reason": null, "usage": null}
+{"event_index": 1350, "t_s": 926.649156, "delta": " ", "delta_chars": 1, "content_chars": 3634, "finish_reason": null, "usage": null}
+{"event_index": 1351, "t_s": 927.015781, "delta": " /*", "delta_chars": 3, "content_chars": 3637, "finish_reason": null, "usage": null}
+{"event_index": 1352, "t_s": 927.481996, "delta": " js", "delta_chars": 3, "content_chars": 3640, "finish_reason": null, "usage": null}
+{"event_index": 1353, "t_s": 927.89609, "delta": " */\n", "delta_chars": 4, "content_chars": 3644, "finish_reason": null, "usage": null}
+{"event_index": 1354, "t_s": 928.260735, "delta": " ", "delta_chars": 1, "content_chars": 3645, "finish_reason": null, "usage": null}
+{"event_index": 1355, "t_s": 928.730072, "delta": " /*", "delta_chars": 3, "content_chars": 3648, "finish_reason": null, "usage": null}
+{"event_index": 1356, "t_s": 929.140745, "delta": " js", "delta_chars": 3, "content_chars": 3651, "finish_reason": null, "usage": null}
+{"event_index": 1357, "t_s": 929.508123, "delta": " */\n", "delta_chars": 4, "content_chars": 3655, "finish_reason": null, "usage": null}
+{"event_index": 1358, "t_s": 929.942105, "delta": " ", "delta_chars": 1, "content_chars": 3656, "finish_reason": null, "usage": null}
+{"event_index": 1359, "t_s": 930.29398, "delta": " /*", "delta_chars": 3, "content_chars": 3659, "finish_reason": null, "usage": null}
+{"event_index": 1360, "t_s": 930.666598, "delta": " js", "delta_chars": 3, "content_chars": 3662, "finish_reason": null, "usage": null}
+{"event_index": 1361, "t_s": 931.039193, "delta": " */\n", "delta_chars": 4, "content_chars": 3666, "finish_reason": null, "usage": null}
+{"event_index": 1362, "t_s": 931.425778, "delta": " ", "delta_chars": 1, "content_chars": 3667, "finish_reason": null, "usage": null}
+{"event_index": 1363, "t_s": 931.787895, "delta": " /*", "delta_chars": 3, "content_chars": 3670, "finish_reason": null, "usage": null}
+{"event_index": 1364, "t_s": 932.153349, "delta": " js", "delta_chars": 3, "content_chars": 3673, "finish_reason": null, "usage": null}
+{"event_index": 1365, "t_s": 932.523842, "delta": " */\n", "delta_chars": 4, "content_chars": 3677, "finish_reason": null, "usage": null}
+{"event_index": 1366, "t_s": 932.871334, "delta": " ", "delta_chars": 1, "content_chars": 3678, "finish_reason": null, "usage": null}
+{"event_index": 1367, "t_s": 933.223238, "delta": " /*", "delta_chars": 3, "content_chars": 3681, "finish_reason": null, "usage": null}
+{"event_index": 1368, "t_s": 933.576272, "delta": " js", "delta_chars": 3, "content_chars": 3684, "finish_reason": null, "usage": null}
+{"event_index": 1369, "t_s": 933.924449, "delta": " */\n", "delta_chars": 4, "content_chars": 3688, "finish_reason": null, "usage": null}
+{"event_index": 1370, "t_s": 934.277543, "delta": " ", "delta_chars": 1, "content_chars": 3689, "finish_reason": null, "usage": null}
+{"event_index": 1371, "t_s": 934.631057, "delta": " /*", "delta_chars": 3, "content_chars": 3692, "finish_reason": null, "usage": null}
+{"event_index": 1372, "t_s": 934.981246, "delta": " js", "delta_chars": 3, "content_chars": 3695, "finish_reason": null, "usage": null}
+{"event_index": 1373, "t_s": 935.326347, "delta": " */\n", "delta_chars": 4, "content_chars": 3699, "finish_reason": null, "usage": null}
+{"event_index": 1374, "t_s": 935.677782, "delta": " ", "delta_chars": 1, "content_chars": 3700, "finish_reason": null, "usage": null}
+{"event_index": 1375, "t_s": 936.035163, "delta": " /*", "delta_chars": 3, "content_chars": 3703, "finish_reason": null, "usage": null}
+{"event_index": 1376, "t_s": 936.400614, "delta": " js", "delta_chars": 3, "content_chars": 3706, "finish_reason": null, "usage": null}
+{"event_index": 1377, "t_s": 936.751611, "delta": " */\n", "delta_chars": 4, "content_chars": 3710, "finish_reason": null, "usage": null}
+{"event_index": 1378, "t_s": 937.10484, "delta": " ", "delta_chars": 1, "content_chars": 3711, "finish_reason": null, "usage": null}
+{"event_index": 1379, "t_s": 937.477737, "delta": " /*", "delta_chars": 3, "content_chars": 3714, "finish_reason": null, "usage": null}
