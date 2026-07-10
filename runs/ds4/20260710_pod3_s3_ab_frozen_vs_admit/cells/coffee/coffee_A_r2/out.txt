@@ -1,0 +1,33 @@
+Here a compact, complete HTML page for a coffee shop with all required features.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+margin:0 padding:0>
+<style>
+body font-family: Arial, sans-serif, line-height: 1.5, margin: 0, padding: 0, background: light background color, container max-width: 120, centered, padding: 20, nav links display: inline, spaced, hero section centered, button styled, form styled, minimal spacing, clean layout.
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a> <a href="#">Menu</a> <a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your fresh coffee every sip</p>
+<button id="order">Order Now</button>
+<form action="/submit">
+<input type="text" name="name" placeholder="Your name" required>
+<input type="email" name="email" placeholder="email@address" required>
+<button type="submit">Submit</button>
+</form>
+<script>
+document.getElementById("order").addEventListener("click", function() => alert("Thank you for your order!"); document.querySelector("form").addEventListener("submit", function() => event.preventDefault, alert("Confirmation: your order is placed")).
+</script>
+</body>
+</html>
+```

@@ -1,0 +1,48 @@
+Here a complete, compact HTML page for a coffee shop with all required features.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+font-family: sans-serif, margin 0; background: white;
+nav {
+background: brown; padding: 10px;
+a {
+margin 0 5px; color: white; text-decoration: none
+section {
+padding: 20px; text-align: center
+h1 {
+font-size: 2em; margin 0
+button {
+background: green; color: white; border: none; padding 10px 20px; font-size 1em; cursor pointer
+form {
+background: lightgray; padding 20px; display flex; flex-direction column; gap 10px
+input {
+padding 8px; border 1px solid gray
+submit {
+background: green; color: white; border: none; padding 10px 20px; cursor pointer
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a> <a href="#">Menu</a> <a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your coffee shop</p>
+<button id="order">Order Now</button>
+<form action="/submit" id="contactForm">
+<input type="text" name="name" placeholder="Your name" required>
+<input type="email" name="email" placeholder="Your email" required>
+<button type="submit">Send</button>
+</form>
+<script>
+document.getElementById('order').addEventListener('click', alert('Thank for your order!')
+document.getElementById('contactForm').addEventListener('submit', function(event => event.preventDefault() alert('Conf: ' + name.value + email.value))
+</script>
+</body>
+</html>
+```
