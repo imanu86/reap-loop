@@ -1,0 +1,197 @@
+{
+  "sources": {
+    "html_W130": {
+      "ntok": 129,
+      "phases": [
+        [
+          "head",
+          32
+        ],
+        [
+          "css",
+          97
+        ]
+      ]
+    },
+    "code_python-csv": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          37
+        ],
+        [
+          "code",
+          216
+        ]
+      ]
+    },
+    "code_js-debounce": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          153
+        ],
+        [
+          "code",
+          99
+        ]
+      ]
+    },
+    "code_sql-window": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          120
+        ],
+        [
+          "code",
+          118
+        ]
+      ]
+    },
+    "code_c-pointers": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          72
+        ],
+        [
+          "code",
+          140
+        ]
+      ]
+    },
+    "code_py-asyncio": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          28
+        ],
+        [
+          "code",
+          225
+        ]
+      ]
+    },
+    "code_regex-email": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          253
+        ]
+      ]
+    },
+    "code_git-rebase": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          107
+        ],
+        [
+          "code",
+          110
+        ]
+      ]
+    },
+    "code_docker-multi": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          35
+        ],
+        [
+          "code",
+          216
+        ]
+      ]
+    },
+    "code_rust-owner": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          107
+        ],
+        [
+          "code",
+          105
+        ]
+      ]
+    },
+    "code_api-paging": {
+      "ntok": 255,
+      "phases": [
+        [
+          "prose",
+          32
+        ],
+        [
+          "code",
+          221
+        ]
+      ]
+    },
+    "code_test-mock": {
+      "ntok": 52,
+      "phases": [
+        [
+          "prose",
+          52
+        ]
+      ]
+    }
+  },
+  "sess_w50_validation_jaccard_vs_computed_top23": 1.0,
+  "cross_run_sess_w50_on_W130": {
+    "head": 0.8026946933622743,
+    "css": 0.4975697441320623
+  },
+  "e1_temporal_reference_top1_overlap": 0.536,
+  "K23": {
+    "mean_gain_local_vs_frozen_postwarmup": 0.17595312759297752,
+    "n_phases": 17,
+    "mean_gain_fully_out_of_warmup": 0.34927043079222087,
+    "n_out": 5,
+    "mean_cov_warmup_frozen_postwarmup": 0.5636740521832702,
+    "mean_cov_local_postwarmup": 0.7396271797762476,
+    "mean_cov_prev_phase": 0.5206325964270457,
+    "crossphase_mask_jaccard": 0.2891715652580091,
+    "crossphase_churn_per_layer": 12.897499999999999,
+    "crossphase_delta_prefetch_mib": 3482.325,
+    "crossphase_dom_top1_overlap": 0.43999999999999995,
+    "withinphase_mask_jaccard": 0.4472264514929926,
+    "withinphase_splithalf_cov": 0.6397810580047577,
+    "withinphase_splithalf_covlocal": 0.7639646002855209,
+    "withinphase_dom_top1_overlap": 0.6874999999999999,
+    "tercile_mask_jaccard": 0.32639037119545344,
+    "tercile_dom_top1_overlap": 0.5437500000000001
+  },
+  "K38": {
+    "mean_gain_local_vs_frozen_postwarmup": 0.19058553517526036,
+    "n_phases": 17,
+    "mean_gain_fully_out_of_warmup": 0.38111573107909935,
+    "n_out": 5,
+    "mean_cov_warmup_frozen_postwarmup": 0.6529142952776195,
+    "mean_cov_local_postwarmup": 0.8434998304528799,
+    "mean_cov_prev_phase": 0.6115997532755869,
+    "crossphase_mask_jaccard": 0.31451197044735457,
+    "crossphase_churn_per_layer": 20.075000000000003,
+    "crossphase_delta_prefetch_mib": 5420.25,
+    "crossphase_dom_top1_overlap": 0.43999999999999995,
+    "withinphase_mask_jaccard": 0.4515956689815634,
+    "withinphase_splithalf_cov": 0.7284709058618907,
+    "withinphase_splithalf_covlocal": 0.8683196267519379,
+    "withinphase_dom_top1_overlap": 0.6874999999999999,
+    "tercile_mask_jaccard": 0.3399359567364726,
+    "tercile_dom_top1_overlap": 0.5437500000000001
+  },
+  "verdict": "POSITIVO: la mask per-fase guadagna 17.6 punti di copertura vs la warmup-frozen (K=23) e la struttura e' reale (stabilita' within-phase 0.45 vs cross-phase 0.29 Jaccard). Il design piecewise-static con relearn ai confini strutturali e' giustificato."
+}
