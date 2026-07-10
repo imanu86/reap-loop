@@ -1,0 +1,55 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f8f8f8; padding: 0 1rem; }
+        nav { background: #brown; padding: 1.1rem 0; display: flex; gap: 2.2rem; }
+        nav a { color: #dey; text-decoration: none; font-weight: bold; margin-right: 1.2rem; }
+        .hero { background: #ee; text-align: center; padding: 2rem 0; }
+        .hero h1 { font-size: 2.3rem; margin-bottom: 0.1; }
+        .hero p { font-size: 1.1rem; color: #gray; }
+        button#order { background: #gold; border: 0; padding: 1.1rem 2.2rem; font-size: 1.2rem; cursor: pointer; margin: 1.2rem 0; }
+        form { background: #white; padding: 2.2rem; max-width: 2.2rem; margin: 2.2rem auto; border: 1px solid #lightgray; }
+        form input { display: block; width: 100%; margin: 0.2rem 0; padding: 0.1rem; }
+        form input[type=submit { background: #blue; color: white; border: 0; padding: 1.1rem; }
+        footer { text-align: center; padding: 2.2rem; color: #gray; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted · every sip · cozy</p>
+        <button id="order">Order Now</button>
+    </section>
+
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Email address" required>
+        <input type="submit" value="Send message">
+    </form>
+
+    <footer>© 2023 Bean & Brew</footer>
+
+    <script>
+        document.getElementById("order").addEventListener("click", "click", function () {
+            alert("Thank you for your order!");
+        });
+
+        document.getElementById("contactForm").addEventListener("submit", function (e) {
+            e.preventDefault();
+            alert("We have been contacted — thanks!");
+        });
+    </script>
+</body>
+</html>

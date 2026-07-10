@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; <!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 1rem; }
+        nav { background: #ddd; padding: 0.1rem 0; }
+        nav a { margin: 0 1.1rem; }
+        section { margin: 2rem 0; }
+        h1 { margin: 0 0 0.1rem 0; }
+        .subheading { margin-bottom: 1rem; }
+        form input { display: block; margin: 0.1rem 0; }
+        button { margin-top: 0.1rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p class="subheading">Freshly roasted, locally breed.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Submit</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function() {
+            alert("Thank you for your order!");
+        });
+        document.querySelector("form").onssubmit = function(event) {
+            event.preventDefault();
+            alert("Confirmation: We will your message!");
+        };
+        document.querySelector("form").onssubmit = function(event) {
+            event.preventDefault();
+            alert("Confirmation: We will your message!");
+        };
+    </script>
+</body>
+</html>
