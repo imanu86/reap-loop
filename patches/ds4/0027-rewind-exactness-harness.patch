@@ -1,0 +1,271 @@
+From e9c07c5ef6a1c99bc53225b1d49e39b29ebb7995 Mon Sep 17 00:00:00 2001
+From: reap-loop <dev@reap-loop.local>
+Date: Fri, 10 Jul 2026 18:24:39 +0200
+Subject: [PATCH] pace: 0027 rewind-exactness diagnostic harness
+ (DS4_REWIND_TEST) - R1 gate for 0022
+
+ANCHORED TO LOCAL LIVE-TREE 2026-07-10 (post-0018 /root/ds4/ds4.c, 1314218
+bytes, md5 771a39a861e9512fed2fc4528780e080; applies after 0020-pace-s1-slope-
+trigger, 0021-pace-rotate-delta-prefetch and 0026-pace-demand-admission).
+Requires 0020+0021+0026; rebase needed after pace-series canonization (the
+filed 0015/0016/0018 do not apply on a clean base, see patches/README.md
+"Stato apply").
+
+DIAGNOSTIC ONLY - it authors no part of the 0022 actuator; it is the R1
+instrumentation smoke that docs/S1_REWIND_DESIGN.md section 5 makes BLOCKING
+before any rewind quality A/B is trusted: prove that an in-memory rewind to
+position p (spec_frontier_restore + ds4_session_rewind(p)) followed by a greedy
+resume regenerates token-ids BIT-IDENTICAL to the pre-rewind pass, at a depth k
+of 50-300 tokens - far past the 1-2 tokens MTP speculation ever exercises.
+
+Mechanism (off by default; DS4_REWIND_TEST="p,k"): at the first decode eval
+whose position reaches p, snapshot the compressor frontier via the existing
+spec_frontier_snapshot (reuses the MTP spec_* buffers -> the graph must be
+built MTP-enabled) plus the FULL PACE controller checkpoint - n-gram ring,
+EWMA/CUSUM accumulators (ema_ngram/ema_hit/ema_s1/s1_ring + admit CUSUM),
+mass[]/rmass[]/bmass[] gate-mass accumulators, and the token/phase clocks
+("sampler pos"), captured as a struct blob + heap-array copies. Record
+argmax(logits) for [p,p+k) (pass "pre"). At p+k: spec_frontier_restore +
+restore the PACE checkpoint + ds4_session_rewind(s,p) + replay the same k input
+tokens through ds4_session_eval_internal with MTP drafting OFF, recording
+argmax again (pass "post"). Both streams emit as one JSONL record
+(DS4_REWIND_TEST_LOG path, else stderr) for offline verdict by
+scripts/verify_rewind_exactness.py; a PASS/FAIL + first-divergence line also
+goes to stderr.
+
+NOT COVERED (documented in-code): temp>0/RNG (greedy argmax only, RNG is
+stateless here); MTP-on speculative multi-accept across a rewind (replay is
+single-token, probe_mtp=false); dynamic-mask actuation (g_reap_mask_pruned is
+NOT checkpointed - run under a STATIC mask, e.g. W50 static, so rotate/admit/
+breath do not mutate the mask inside the window). Fails safe (logs a reason and
+disarms) if the graph has no MTP frontier buffers or the snapshot fails; a
+plain no-op when DS4_REWIND_TEST is unset.
+
+Env:
+  DS4_REWIND_TEST="p,k"    arm the probe (rewind at p, depth k tokens; off)
+  DS4_REWIND_TEST_LOG=path optional JSONL sink (default stderr)
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c | 198 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 198 insertions(+)
+
+diff --git a/ds4.c b/ds4.c
+index 8e55dd6..a29b30f 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -30415,6 +30415,201 @@ int ds4_session_set_logits(ds4_session *s, const float *logits, int n) {
+     return 0;
+ }
+ 
++/* ============================================================================
++ * patch 0027: rewind-exactness diagnostic harness (DS4_REWIND_TEST) - R1 gate
++ *
++ * Proves the S1_REWIND_DESIGN Risk-R1 claim: an in-memory rewind to position p
++ * ( spec_frontier_restore + ds4_session_rewind(p) ) followed by a greedy resume
++ * regenerates token-ids BIT-IDENTICAL to the pre-rewind pass, at a depth k far
++ * beyond the 1-2 tokens MTP speculation ever exercises (design: 50-300 tok).
++ *
++ * Activated by DS4_REWIND_TEST="p,k" (off when unset). At the first decode eval
++ * whose position reaches p it snapshots (a) the compressor frontier via
++ * spec_frontier_snapshot() - which REUSES the MTP spec_* buffers, so the graph
++ * MUST be built with MTP enabled - and (b) the full PACE controller state: the
++ * n-gram ring, the EWMA/CUSUM accumulators (ema_ngram/ema_hit/ema_s1/s1_ring +
++ * admit CUSUM), the mass[]/rmass[]/bmass[] gate-mass accumulators, and the
++ * token/phase clocks ("sampler pos"). It records argmax(logits) for positions
++ * [p,p+k) (pass "pre"). When position reaches p+k it restores the frontier +
++ * PACE checkpoint, ds4_session_rewind(s,p), and REPLAYS the same k input tokens
++ * through ds4_session_eval_internal with MTP drafting OFF, recording argmax
++ * again (pass "post"). Both streams go to JSONL (DS4_REWIND_TEST_LOG, else
++ * stderr) so the bit-exact verdict is offline-checkable
++ * (scripts/verify_rewind_exactness.py).
++ *
++ * SCOPE / NOT COVERED (deliberate: a minimal engine-exactness probe):
++ *   - temp>0 / RNG sampling: greedy (argmax, temp=0) only; the sampler RNG is
++ *     stateless here so nothing is snapshotted for it.
++ *   - MTP-on speculative decode: the replay is driven single-token with
++ *     probe_mtp=false; the harness reuses (hence needs) the spec_* frontier
++ *     buffers but does not validate speculative multi-accept across a rewind.
++ *   - DYNAMIC-mask actuation: g_reap_mask_pruned itself is NOT checkpointed, so
++ *     run under a STATIC mask (e.g. W50 static, S1_REWIND_DESIGN section 5)
++ *     where rotate/admit/breath do not mutate the mask inside the window.
++ * ==========================================================================*/
++#ifndef DS4_NO_GPU
++#define DS4_REWIND_TEST_KMAX 512   /* max rewind depth exercised */
++
++static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
++                                     char *err, size_t errlen);
++
++static struct {
++    int      enabled;          /* -1 uninit, 0 off, 1 armed */
++    int      snapped, done, failed, replaying;
++    int      p, k, snap_pos;
++    FILE    *log;
++    ds4_spec_frontier frontier;
++    int      in_tok[DS4_REWIND_TEST_KMAX];   /* input ids fed over the window */
++    int      pre[DS4_REWIND_TEST_KMAX];      /* argmax stream, pre-rewind */
++    int      post[DS4_REWIND_TEST_KMAX];     /* argmax stream, post-rewind */
++    unsigned char pace_blob[sizeof(g_pace)]; /* scalars + inline rings */
++    double  *save_mass, *save_rmass, *save_bmass, *save_admit_cusum;
++    uint32_t *save_admit_persist_ct, *save_admit_last_tok;
++} g_rewind_test = { .enabled = -1 };
++
++static void ds4_rewind_test_init(void) {
++    g_rewind_test.enabled = 0;
++    const char *spec = getenv("DS4_REWIND_TEST");
++    if (!spec || !*spec) return;
++    int p = 0, k = 0;
++    if (sscanf(spec, "%d,%d", &p, &k) != 2 || p < 1 || k < 1) {
++        fprintf(stderr, "ds4: DS4_REWIND_TEST bad spec '%s' (want p,k)\n", spec);
++        return;
++    }
++    if (k > DS4_REWIND_TEST_KMAX) k = DS4_REWIND_TEST_KMAX;
++    g_rewind_test.p = p;
++    g_rewind_test.k = k;
++    const char *lp = getenv("DS4_REWIND_TEST_LOG");
++    g_rewind_test.log = (lp && *lp) ? fopen(lp, "w") : NULL;
++    if (!g_rewind_test.log) g_rewind_test.log = stderr;
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    if (g_pace.mass)         g_rewind_test.save_mass = xmalloc_zeroed(n, sizeof(double));
++    if (g_pace.rmass)        g_rewind_test.save_rmass = xmalloc_zeroed(n, sizeof(double));
++    if (g_pace.bmass)        g_rewind_test.save_bmass = xmalloc_zeroed(n, sizeof(double));
++    if (g_pace.admit_cusum)  g_rewind_test.save_admit_cusum = xmalloc_zeroed(n, sizeof(double));
++    if (g_pace.admit_persist_ct) g_rewind_test.save_admit_persist_ct = xmalloc_zeroed(n, sizeof(uint32_t));
++    if (g_pace.admit_last_tok)   g_rewind_test.save_admit_last_tok = xmalloc_zeroed(n, sizeof(uint32_t));
++    g_rewind_test.enabled = 1;
++    fprintf(stderr, "ds4: REWIND_TEST armed p=%d k=%d log=%s\n",
++            p, k, (lp && *lp) ? lp : "stderr");
++}
++
++/* Snapshot the PACE controller: whole struct (scalars + inline n-gram/s1 rings)
++ * plus the contents of the heap gate-mass / CUSUM arrays (their pointers, saved
++ * in the struct blob, are stable for the run so restoring them is a no-op). */
++static void ds4_rewind_test_save_pace(void) {
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    memcpy(g_rewind_test.pace_blob, &g_pace, sizeof(g_pace));
++    if (g_rewind_test.save_mass)  memcpy(g_rewind_test.save_mass,  g_pace.mass,  n * sizeof(double));
++    if (g_rewind_test.save_rmass) memcpy(g_rewind_test.save_rmass, g_pace.rmass, n * sizeof(double));
++    if (g_rewind_test.save_bmass) memcpy(g_rewind_test.save_bmass, g_pace.bmass, n * sizeof(double));
++    if (g_rewind_test.save_admit_cusum)
++        memcpy(g_rewind_test.save_admit_cusum, g_pace.admit_cusum, n * sizeof(double));
++    if (g_rewind_test.save_admit_persist_ct)
++        memcpy(g_rewind_test.save_admit_persist_ct, g_pace.admit_persist_ct, n * sizeof(uint32_t));
++    if (g_rewind_test.save_admit_last_tok)
++        memcpy(g_rewind_test.save_admit_last_tok, g_pace.admit_last_tok, n * sizeof(uint32_t));
++}
++
++static void ds4_rewind_test_restore_pace(void) {
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    memcpy(&g_pace, g_rewind_test.pace_blob, sizeof(g_pace));  /* scalars+rings+ptrs */
++    if (g_rewind_test.save_mass)  memcpy(g_pace.mass,  g_rewind_test.save_mass,  n * sizeof(double));
++    if (g_rewind_test.save_rmass) memcpy(g_pace.rmass, g_rewind_test.save_rmass, n * sizeof(double));
++    if (g_rewind_test.save_bmass) memcpy(g_pace.bmass, g_rewind_test.save_bmass, n * sizeof(double));
++    if (g_rewind_test.save_admit_cusum)
++        memcpy(g_pace.admit_cusum, g_rewind_test.save_admit_cusum, n * sizeof(double));
++    if (g_rewind_test.save_admit_persist_ct)
++        memcpy(g_pace.admit_persist_ct, g_rewind_test.save_admit_persist_ct, n * sizeof(uint32_t));
++    if (g_rewind_test.save_admit_last_tok)
++        memcpy(g_pace.admit_last_tok, g_rewind_test.save_admit_last_tok, n * sizeof(uint32_t));
++}
++
++static void ds4_rewind_test_emit(int replay_ok) {
++    FILE *f = g_rewind_test.log ? g_rewind_test.log : stderr;
++    int first_div = -1;
++    for (int i = 0; i < g_rewind_test.k; i++)
++        if (g_rewind_test.pre[i] != g_rewind_test.post[i]) { first_div = i; break; }
++    fprintf(f, "{\"ev\":\"rewind_test\",\"snap_pos\":%d,\"k\":%d,"
++               "\"replay_ok\":%d,\"first_div\":%d,\"pre\":[",
++            g_rewind_test.snap_pos, g_rewind_test.k, replay_ok, first_div);
++    for (int i = 0; i < g_rewind_test.k; i++)
++        fprintf(f, "%s%d", i ? "," : "", g_rewind_test.pre[i]);
++    fprintf(f, "],\"post\":[");
++    for (int i = 0; i < g_rewind_test.k; i++)
++        fprintf(f, "%s%d", i ? "," : "", g_rewind_test.post[i]);
++    fprintf(f, "]}\n");
++    fflush(f);
++    fprintf(stderr, "ds4: REWIND_TEST %s snap_pos=%d k=%d first_div=%d replay_ok=%d\n",
++            (replay_ok && first_div < 0) ? "PASS" : "FAIL",
++            g_rewind_test.snap_pos, g_rewind_test.k, first_div, replay_ok);
++}
++
++static void ds4_rewind_test_fail(const char *why) {
++    fprintf(stderr, "ds4: REWIND_TEST disabled: %s\n", why);
++    g_rewind_test.failed = 1;
++}
++
++/* Called once per decode token from ds4_session_eval_internal AFTER the eval
++ * has written s->logits for the just-decoded position and pushed the token
++ * (s->checkpoint.len == position + 1). Greedy (temp=0) semantics assumed. */
++static void ds4_rewind_test_hook(ds4_session *s) {
++    if (g_rewind_test.replaying) return;
++    if (g_rewind_test.enabled < 0) ds4_rewind_test_init();
++    if (g_rewind_test.enabled <= 0 || g_rewind_test.done || g_rewind_test.failed)
++        return;
++    if (!s->graph.mtp_enabled) {   /* spec_* frontier buffers are MTP-gated */
++        ds4_rewind_test_fail("mtp_disabled_no_frontier_buffers");
++        return;
++    }
++    const int len = s->checkpoint.len;
++
++    /* ARM: first decode eval whose position reaches p. Snapshot the engine
++     * frontier + PACE state as of prefix [0,len); this token is BEFORE the
++     * window so it is not recorded. */
++    if (!g_rewind_test.snapped) {
++        if (len < g_rewind_test.p) return;
++        g_rewind_test.snap_pos = len;
++        if (!spec_frontier_snapshot(&g_rewind_test.frontier, s)) {
++            ds4_rewind_test_fail("frontier_snapshot_failed");
++            return;
++        }
++        ds4_rewind_test_save_pace();
++        g_rewind_test.snapped = 1;
++        return;
++    }
++
++    /* RECORD pass "pre": argmax at the just-decoded position + its input id. */
++    const int off = (len - 1) - g_rewind_test.snap_pos;
++    if (off >= 0 && off < g_rewind_test.k) {
++        g_rewind_test.pre[off]    = sample_argmax(s->logits, DS4_N_VOCAB);
++        g_rewind_test.in_tok[off] = s->checkpoint.v[g_rewind_test.snap_pos + off];
++    }
++    if (len < g_rewind_test.snap_pos + g_rewind_test.k) return;
++
++    /* TRIGGER: restore frontier + PACE, rewind the logical position, replay the
++     * identical k inputs greedily and MTP-off, recording pass "post". */
++    (void)spec_frontier_restore(&g_rewind_test.frontier, s);
++    ds4_rewind_test_restore_pace();
++    ds4_session_rewind(s, g_rewind_test.snap_pos);
++
++    g_rewind_test.replaying = 1;
++    char err[256];
++    int replay_ok = 1;
++    for (int i = 0; i < g_rewind_test.k; i++) {
++        if (ds4_session_eval_internal(s, g_rewind_test.in_tok[i], false,
++                                      err, sizeof err) != 0) {
++            replay_ok = 0;
++            break;
++        }
++        g_rewind_test.post[i] = sample_argmax(s->logits, DS4_N_VOCAB);
++    }
++    g_rewind_test.replaying = 0;
++    g_rewind_test.done = 1;
++    ds4_rewind_test_emit(replay_ok);
++}
++#endif /* !DS4_NO_GPU */
++
+ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
+                                      char *err, size_t errlen) {
+     if (!s) return 1;
+@@ -30502,6 +30697,9 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
+             fprintf(stderr, "ds4: mtp probe draft failed\n");
+         }
+     }
++    /* patch 0027: rewind-exactness diagnostic probe (DS4_REWIND_TEST). No-op
++     * unless the env is set; drives its own MTP-off replay when it fires. */
++    ds4_rewind_test_hook(s);
+     return 0;
+ #endif
+ }
+-- 
+2.54.0.windows.1
+

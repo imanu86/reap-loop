@@ -428,6 +428,33 @@ benchmark**, not a straw man.
   match a **fresh** run truncated at `p` (temp=0). This proves the frontier +
   ring-slack rewind is exact before any quality A/B is trusted.
 
+  **Status: harness AUTHORED (patch `0027-rewind-exactness-harness.patch`),
+  pending GPU smoke.** The probe is env-gated (`DS4_REWIND_TEST="p,k"`) and
+  self-contained: at `p` it takes `spec_frontier_snapshot` + a full PACE
+  checkpoint (n-gram ring, EWMA/CUSUM, `mass`/`rmass`/`bmass`, the token/phase
+  clocks = "sampler pos"); at `p+k` it does `spec_frontier_restore` +
+  `ds4_session_rewind(p)` + replays the same `k` inputs greedily (MTP-off) and
+  logs both token-id streams (`pre` = pre-rewind, `post` = greedy resume) to one
+  JSONL record. It anchors to the live-tree (md5 `771a39a8`) and
+  `git apply --check`s clean on the full chain `0020→0021→0026→0027`.
+  **Smoke procedure (GPU agent, when the card is free):**
+  1. build the chain (base live-tree + `0020`→`0021`→`0026`→`0027`), **MTP
+     enabled** (the harness reuses the `spec_*` frontier buffers);
+  2. run the **coffee-shop `W50` static** prompt (static mask — the harness does
+     **not** checkpoint `g_reap_mask_pruned`, so a dynamic mask is out of scope)
+     with `DS4_REWIND_TEST=400,200 DS4_REWIND_TEST_LOG=rewind_test.jsonl`;
+  3. verdict: `python scripts/verify_rewind_exactness.py rewind_test.jsonl` →
+     PASS iff `post` reproduces `pre` bit-for-bit (exit 0). A FAIL prints the
+     first divergent window offset, which localises whether the frontier restore
+     (early divergence) or the raw-ring slack §1.5 bound (late divergence, near
+     offset `raw_cap − raw_window`) is the culprit.
+  4. sweep depth once PASS at 200: `DS4_REWIND_TEST=400,50` … `400,300` to map
+     the clean-rewind bound empirically against the §1.5 prediction (~640).
+
+  **Not covered by `0027`** (documented in-patch): temp>0/RNG (greedy only, the
+  argmax sampler is stateless here), MTP-on speculative multi-accept across a
+  rewind, and dynamic-mask actuation — those move to the `0022` actuator itself.
+
 ---
 
 ## 6. Prior art and honest positioning
