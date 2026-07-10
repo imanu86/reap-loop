@@ -1,5 +1,7 @@
 # REAP-loop v1 — verdetto novelty (per il paper, reviewer target: antirez)
 
+> **[SUPERSEDED in parte — 2026-07-07: l'asimmetria HOT/COLD citata sotto è stata RITRATTATA dalla replica multiseed N=3; per lo stato corrente dei claim vince docs/CLAIMS_CURRENT.md. La linea difendibile resta composizione closed-loop + segnale gate-mass-su-potati, SENZA il finding causale dell'asimmetria.]**
+
 > Novelty check avversariale a 3 fronti (workflow `w8ms2k2n1`). **Verdetto: PARZIALE.**
 > ✅ **CITAZIONI VERIFICATE (2026-07-06, WebFetch/WebSearch) — tutte REALI, nessuna confabulata**:
 > LoopGuard `2604.10044` ("Breaking Self-Reinforcing Attention Loops via Dynamic KV Cache Intervention"),

@@ -79,19 +79,28 @@ There is **no compute stream and no async token pipeline**. Consequences:
   premise). The mitigation is frequency, not concurrency: apply-on-change only.
 
 So PACE-controller-logic is clean under the blocking-sync. What the blocking-sync
-blocks is a *predictive/pipelined* controller — which we don't need, because the
-only live signal that works is reactive (below).
+blocks is a *predictive/pipelined* controller. The wired live trigger today is
+reactive (below); the measured predictive candidate, slope-S1, is not yet wired
+(see §4, "S1-slope trigger").
 
 ---
 
 ## 4. The control law (reactive, NOT predictive)
 
-Measured finding (moe-aggressive-commit ledger, control C; confirmed here in
-`reap_loop.py` NgramSensor/S1Sensor docstrings): **the router sensor is dead** —
-router lag-k / S1 pruned-mass does NOT anticipate degeneration. The **only**
-signal that anticipates is the **textual n-gram repetition detector**. PACE
-therefore drives breathing from n-gram, keeps S1 as an *optional* slow-drift
-diagnostic, never as the trigger.
+Measured finding (moe-aggressive-commit ledger, control C; confirmed in the
+historical sidecar `reap/reap_loop.py` NgramSensor/S1Sensor docstrings —
+sidecar not committed to either repo): **the router sensor is dead in
+absolute value** — router lag-k / the S1 pruned-mass *level* (chronically ~0.75)
+does NOT distinguish healthy from degenerate generation. PACE drives breathing
+from the **textual n-gram repetition detector**, but the 2026-07-09 sweeps bound
+what n-gram can do: it is a **trailing** detector, not an anticipating one.
+J47 measured that waiting for n-gram 0.07-0.10 is already late, and J48 that
+low n-gram + wider K does not imply code quality (EXPERIMENTS_LEDGER, notes
+J47/J48; `runs/ds4/20260709_descent_prebreath_*`,
+`runs/ds4/20260709_prebreath_target010*`): every measured breath/prebreath
+variant either fired after the damage or, when it kept n-gram low, still
+produced invalid code. The only signal with a measured pre-collapse rise is
+**slope-S1** (see "S1-slope trigger" below) — not yet wired as a trigger.
 
 ### State machine (mirrors the sidecar `LoopDriver`)
 
@@ -156,7 +165,22 @@ aggressive mask. **[to validate on 2 HW tiers — only 3060 available now].**
 
 PACE corrects **after** a sliver of damage (n-gram is a trailing detector over a
 short window). We keep windows SHORT so the sliver is small. This is the honest
-tradeoff vs a (dead) predictive sensor.
+tradeoff while no predictive trigger is wired; the one measured candidate is
+slope-S1 (below).
+
+### S1-slope trigger (to wire) [OPEN]
+
+The S1 *absolute* level is dead as a signal, but its **slope** is the only
+signal with a measured rise BEFORE collapse: locally S1 rose +0.058
+(0.722 → 0.781) entering the loop, consistent with the historical K91 trace
+(0.73 → 0.81, ~200-300 tokens of warning before the catastrophic collapse). CLAIM-011 (CLAIMS_CURRENT
+"FEEDBACK slope-S1") is OPEN: narrow band, lead-time to be confirmed. The
+sensor already exists (patch `0012-reap-sensor-s1`, moe-aggressive-commit
+`patches/ds4/`, branch `reap/k91-coding-vram`) and PACE already reads
+pruned-mass in memory (`DS4_PACE_S1`, monitor only) — what is missing is wiring
+the EWMA *slope* as a widen/rotate trigger (e.g. a `DS4_PACE_S1_TRIGGER` env;
+NEXT_STEPS_PLAN_20260710 lever L2). Until that A/B runs, n-gram stays the wired
+trigger and S1 stays a diagnostic.
 
 ---
 
@@ -187,7 +211,7 @@ tradeoff vs a (dead) predictive sensor.
 | `DS4_PACE_STABLE` | 120 | stable tokens before a tighten step |
 | `DS4_PACE_ANNEAL_WARM` | 300 | tokens before tightening unlocks |
 | `DS4_PACE_S1` | 0 | enable S1 diagnostic (monitor only) |
-| `DS4_PACE_WRAP` | 0 | run WRAP bulk page-in on mask change. **Off by default** — on the practical 3060 config prefetch *slows* t/s (0.82 vs 1.27, see CLAIMS_CURRENT §PREFETCH). Enable only when a probe proves a deeply SSD-bound regime. |
+| `DS4_PACE_WRAP` | 0 | run WRAP bulk page-in on mask change. **Off by default** — on the practical 3060 config prefetch *slows* t/s (0.82 vs 1.27, see CLAIMS_CURRENT §PREFETCH). Enable only when a probe proves a deeply SSD-bound regime. **Warning:** the matrix runner (`scripts/run_ds4_exchange_matrix.py`, `BASE_ENV`) sets `DS4_PACE_WRAP=1`, so matrix runs do NOT inherit this default (unless the variant overrides it, e.g. `pre_step8_nowrap` sets it back to 0) — account for the WRAP page-in cost when comparing matrix results against launcher/default runs. |
 | `DS4_PACE_WRAP_ROTATE` | 0 | allow WRAP bulk page-in on K-constant `rotate` mask refreshes. Default off after 2026-07-10 rotate4 measured 699.54 GiB / 65.6 s prefetch with no quality pass; K-changing tighten/breath/prebreath can still WRAP when `DS4_PACE_WRAP=1`. |
 | `DS4_PACE_PREFILL_APPLY` | 1 | learn the first mask from prompt routing and apply it after prefill, before decode token generation. This is a dynamic prompt mask, not a static domain mask. |
 | `DS4_PACE_PREFILL_WAIT_WRAP` | 1 | when WRAP is enabled, wait for the prefill-derived working set page-in before starting decode. Local 3060 smoke: 6.07 GiB touched in 445 ms, generation 2.83 t/s on a 19/24-token probe. |
