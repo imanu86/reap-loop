@@ -1,0 +1,2224 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index ad5dbec..253cb15 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -35,6 +35,7 @@ enum {
+     DS4_CUDA_ATTENTION_SCORE_CAP = 8192u,
+     DS4_CUDA_ATTENTION_RAW_SCORE_CAP = 256u,
+     DS4_CUDA_TOPK_MERGE_GROUP = 8u,
++    DS4_CUDA_ROUTED_EXPERTS_PER_TOKEN = 6u,
+     DS4_CUDA_STREAM_EXPERT_DEFAULT = 8u * 64u,
+     DS4_CUDA_STREAM_EXPERT_MAX = 61u * 384u
+ };
+@@ -45,6 +46,16 @@ struct ds4_gpu_tensor {
+     int owner;
+ };
+ 
++struct ds4_gpu_async_read {
++    void *host;
++    uint64_t bytes;
++    uint64_t pending_bytes;
++    cudaStream_t stream;
++    cudaEvent_t ready;
++    cudaEvent_t done;
++    int pending;
++};
++
+ typedef struct {
+     uint8_t scales[CUDA_QK_K / 16];
+     uint8_t qs[CUDA_QK_K / 4];
+@@ -111,6 +122,766 @@ static int g_spex_stats_enabled = -1;
+ static int g_spex_stats_atexit_registered;
+ static int g_spex_stats_printed;
+ 
++enum {
++    DS4_CUDA_TIERING_MAX_LAYER = 256u,
++    DS4_CUDA_TIERING_MAX_EXPERT = 512u
++};
++
++struct cuda_expert_tiering_layer_stats {
++    uint64_t batches;
++    uint64_t slot_requests;
++    uint64_t compact_experts;
++    uint64_t cache_hits;
++    uint64_t cache_misses;
++    uint64_t direct_loads;
++    uint64_t evictions;
++    uint64_t direct_bytes;
++    uint64_t compact_bytes;
++    uint32_t max_total_expert;
++    uint32_t max_cache_capacity;
++};
++
++struct cuda_expert_tiering_observe_stats {
++    uint64_t batches;
++    uint64_t slot_requests;
++    uint64_t compact_experts;
++    uint64_t cache_hits;
++    uint64_t cache_misses;
++    uint64_t direct_loads;
++    uint64_t evictions;
++    uint64_t direct_bytes;
++    uint64_t compact_bytes;
++    cuda_expert_tiering_layer_stats layers[DS4_CUDA_TIERING_MAX_LAYER];
++    uint64_t selected_hist[DS4_CUDA_TIERING_MAX_LAYER][DS4_CUDA_TIERING_MAX_EXPERT];
++};
++
++static cuda_expert_tiering_observe_stats g_expert_tiering_observe;
++static int g_expert_tiering_observe_enabled = -1;
++static int g_expert_tiering_observe_atexit_registered;
++static int g_expert_tiering_observe_notice_printed;
++static int g_expert_tiering_observe_log_failed;
++static FILE *g_expert_tiering_observe_log;
++
++struct cuda_expert_tier_promote_stats {
++    uint64_t prompt_batches;
++    uint64_t decode_batches;
++    uint64_t prompt_selected;
++    uint64_t requests;
++    uint64_t hot_hits;
++    uint64_t promotions;
++    uint64_t evictions;
++    uint64_t resets;
++    uint64_t finalized;
++    uint64_t total_preloaded;
++    uint64_t tick;
++    uint32_t cap;
++    uint32_t hot_count;
++    uint32_t preloaded;
++    int enabled;
++    int initialized;
++    int collecting_prompt;
++    int preload_ready;
++    int seen_any;
++    int notice_printed;
++    int verbose;
++    int last_layer;
++    uint32_t prompt_counts[DS4_CUDA_TIERING_MAX_LAYER][DS4_CUDA_TIERING_MAX_EXPERT];
++    uint8_t hot[DS4_CUDA_TIERING_MAX_LAYER][DS4_CUDA_TIERING_MAX_EXPERT];
++    uint64_t last_used[DS4_CUDA_TIERING_MAX_LAYER][DS4_CUDA_TIERING_MAX_EXPERT];
++};
++
++struct cuda_expert_tier_promote_batch {
++    int enabled;
++    int reset;
++    int finalized;
++    const char *phase;
++    uint32_t hot_hits;
++    uint32_t promotions;
++    uint32_t evictions;
++    uint32_t preloaded;
++    uint32_t hot_count;
++};
++
++static cuda_expert_tier_promote_stats g_expert_tier_promote;
++
++enum cuda_expert_cold_format {
++    CUDA_EXPERT_COLD_FORMAT_NONE = 0,
++    CUDA_EXPERT_COLD_FORMAT_LOSSLESS = 1,
++    CUDA_EXPERT_COLD_FORMAT_CQ1 = 2,
++};
++
++struct cuda_expert_cold_lossless_entry {
++    uint64_t key;
++    const void *model_map;
++    uint64_t model_size;
++    uint32_t layer;
++    uint32_t n_total_expert;
++    uint32_t expert;
++    uint64_t gate_offset;
++    uint64_t up_offset;
++    uint64_t down_offset;
++    uint64_t gate_expert_bytes;
++    uint64_t down_expert_bytes;
++    uint64_t blob_bytes;
++    uint64_t checksum;
++    uint32_t format;
++    uint32_t cq1_group;
++    char *blob;
++};
++
++struct cuda_expert_cold_lossless_stats {
++    int initialized;
++    int enabled;
++    int allow_prefill;
++    int allow_ungated;
++    int verify;
++    int verbose;
++    int notice_printed;
++    int atexit_registered;
++    uint32_t format;
++    uint32_t cq1_group;
++    uint32_t native_decode_tokens;
++    uint32_t native_decode_layers;
++    uint64_t materialized;
++    uint64_t reuses;
++    uint64_t copies;
++    uint64_t copy_failures;
++    uint64_t materialize_failures;
++    uint64_t verify_failures;
++    uint64_t policy_allowed;
++    uint64_t policy_skip_prompt;
++    uint64_t policy_skip_no_policy;
++    uint64_t policy_skip_no_hotset;
++    uint64_t policy_skip_warmup;
++    uint64_t policy_skip_hot;
++    uint64_t policy_skip_invalid;
++    uint64_t bytes_materialized;
++    uint64_t bytes_repacked;
++    uint64_t repack_failures;
++    char *scratch;
++    uint64_t scratch_bytes;
++    std::vector<cuda_expert_cold_lossless_entry> entries;
++    std::unordered_map<uint64_t, uint32_t> index;
++};
++
++static cuda_expert_cold_lossless_stats g_expert_cold_lossless;
++
++static int cuda_env_truthy(const char *v) {
++    if (!v || !v[0] || strcmp(v, "0") == 0 ||
++        strcmp(v, "false") == 0 || strcmp(v, "off") == 0 ||
++        strcmp(v, "no") == 0) {
++        return 0;
++    }
++    return 1;
++}
++
++static uint32_t cuda_env_u32(const char *name, uint32_t dflt, uint32_t max_value) {
++    const char *v = getenv(name);
++    if (!v || !v[0]) return dflt;
++    char *end = NULL;
++    unsigned long parsed = strtoul(v, &end, 10);
++    if (end == v || *end != '\0') return dflt;
++    if (parsed > (unsigned long)max_value) return max_value;
++    return (uint32_t)parsed;
++}
++
++static int cuda_expert_tiering_observe_is_enabled(void) {
++    if (g_expert_tiering_observe_enabled < 0) {
++        const char *mode = getenv("DS4_EXPERT_TIERING");
++        g_expert_tiering_observe_enabled =
++            (mode && strcmp(mode, "observe") == 0) ? 1 : 0;
++        if (!g_expert_tiering_observe_enabled && cuda_env_truthy(mode)) {
++            fprintf(stderr,
++                    "ds4: expert tiering mode '%s' ignored; only "
++                    "DS4_EXPERT_TIERING=observe is implemented\n",
++                    mode);
++        }
++    }
++    return g_expert_tiering_observe_enabled;
++}
++
++static int cuda_expert_tier_promote_is_enabled(void) {
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    if (!p->initialized) {
++        memset(p, 0, sizeof(*p));
++        p->initialized = 1;
++        p->enabled = 0;
++        p->last_layer = -1;
++        const char *policy = getenv("DS4_EXPERT_TIER_POLICY");
++        if (policy && (!strcmp(policy, "observe_promote") ||
++                       !strcmp(policy, "promote_observe"))) {
++            p->enabled = 1;
++        } else if (cuda_env_truthy(policy) && policy &&
++                   strcmp(policy, "observe") != 0) {
++            fprintf(stderr,
++                    "ds4: expert tier policy '%s' ignored; only "
++                    "DS4_EXPERT_TIER_POLICY=observe_promote is implemented\n",
++                    policy);
++        }
++        p->cap = cuda_env_u32("DS4_EXPERT_TIER_PROMOTE_CAP",
++                              1024u,
++                              DS4_CUDA_TIERING_MAX_LAYER *
++                                  DS4_CUDA_TIERING_MAX_EXPERT);
++        p->verbose = cuda_env_truthy(getenv("DS4_EXPERT_TIER_PROMOTE_VERBOSE"));
++    }
++    return p->enabled;
++}
++
++static void cuda_expert_tiering_observe_print_summary(void);
++
++static void cuda_expert_tiering_observe_atexit(void) {
++    cuda_expert_tiering_observe_print_summary();
++    if (g_expert_tiering_observe_log) {
++        fclose(g_expert_tiering_observe_log);
++        g_expert_tiering_observe_log = NULL;
++    }
++}
++
++static FILE *cuda_expert_tiering_observe_log_file(void) {
++    if (!cuda_expert_tiering_observe_is_enabled() ||
++        g_expert_tiering_observe_log_failed) {
++        return NULL;
++    }
++    if (g_expert_tiering_observe_log) return g_expert_tiering_observe_log;
++    const char *path = getenv("DS4_EXPERT_TIERING_LOG");
++    if (!path || !path[0]) return NULL;
++    g_expert_tiering_observe_log = fopen(path, "a");
++    if (!g_expert_tiering_observe_log) {
++        fprintf(stderr,
++                "ds4: expert tiering observe failed to open %s: %s\n",
++                path,
++                strerror(errno));
++        g_expert_tiering_observe_log_failed = 1;
++        return NULL;
++    }
++    return g_expert_tiering_observe_log;
++}
++
++static int cuda_expert_tiering_observe_log_ids_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        cached = cuda_env_truthy(getenv("DS4_EXPERT_TIERING_LOG_IDS"));
++    }
++    return cached;
++}
++
++static void cuda_expert_tier_promote_reset_prompt(void) {
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    memset(p->prompt_counts, 0, sizeof(p->prompt_counts));
++    memset(p->hot, 0, sizeof(p->hot));
++    memset(p->last_used, 0, sizeof(p->last_used));
++    p->collecting_prompt = 1;
++    p->preload_ready = 0;
++    p->seen_any = 0;
++    p->last_layer = -1;
++    p->hot_count = 0;
++    p->preloaded = 0;
++    p->tick = 0;
++    p->resets++;
++}
++
++static void cuda_expert_tier_promote_evict_one(
++        cuda_expert_tier_promote_batch *batch) {
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    uint64_t best_age = UINT64_MAX;
++    uint32_t best_layer = UINT32_MAX;
++    uint32_t best_expert = UINT32_MAX;
++    for (uint32_t layer = 0; layer < DS4_CUDA_TIERING_MAX_LAYER; layer++) {
++        for (uint32_t expert = 0; expert < DS4_CUDA_TIERING_MAX_EXPERT; expert++) {
++            if (!p->hot[layer][expert]) continue;
++            const uint64_t age = p->last_used[layer][expert];
++            if (age < best_age) {
++                best_age = age;
++                best_layer = layer;
++                best_expert = expert;
++            }
++        }
++    }
++    if (best_layer == UINT32_MAX) return;
++    p->hot[best_layer][best_expert] = 0;
++    p->last_used[best_layer][best_expert] = 0;
++    if (p->hot_count > 0) p->hot_count--;
++    p->evictions++;
++    if (batch) batch->evictions++;
++}
++
++static void cuda_expert_tier_promote_finalize_prompt(
++        cuda_expert_tier_promote_batch *batch) {
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    if (p->preload_ready) return;
++    p->collecting_prompt = 0;
++    p->preload_ready = 1;
++    p->finalized++;
++    if (batch) batch->finalized = 1;
++    const uint32_t cap = p->cap;
++    for (uint32_t rank = 0; rank < cap; rank++) {
++        uint32_t best_count = 0;
++        uint32_t best_layer = UINT32_MAX;
++        uint32_t best_expert = UINT32_MAX;
++        for (uint32_t layer = 0; layer < DS4_CUDA_TIERING_MAX_LAYER; layer++) {
++            for (uint32_t expert = 0; expert < DS4_CUDA_TIERING_MAX_EXPERT; expert++) {
++                if (p->hot[layer][expert]) continue;
++                const uint32_t count = p->prompt_counts[layer][expert];
++                if (count > best_count) {
++                    best_count = count;
++                    best_layer = layer;
++                    best_expert = expert;
++                }
++            }
++        }
++        if (best_layer == UINT32_MAX || best_count == 0) break;
++        p->hot[best_layer][best_expert] = 1;
++        p->last_used[best_layer][best_expert] = 0;
++        p->hot_count++;
++        p->preloaded++;
++        p->total_preloaded++;
++    }
++    if (batch) {
++        batch->preloaded = p->preloaded;
++        batch->hot_count = p->hot_count;
++    }
++    if (p->verbose) {
++        fprintf(stderr,
++                "ds4: expert tier promote preloaded=%u cap=%u prompt_batches=%llu\n",
++                p->preloaded,
++                p->cap,
++                (unsigned long long)p->prompt_batches);
++    }
++}
++
++static cuda_expert_tier_promote_batch cuda_expert_tier_promote_note_batch(
++        uint32_t       layer,
++        const int32_t *compact_ids,
++        const int32_t *slot_ids,
++        uint32_t       compact_count,
++        uint32_t       slot_count) {
++    cuda_expert_tier_promote_batch batch = {0};
++    batch.phase = "off";
++    if (!cuda_expert_tier_promote_is_enabled()) return batch;
++    batch.enabled = 1;
++    batch.phase = "idle";
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    if (!p->notice_printed) {
++        fprintf(stderr,
++                "ds4: expert tier policy observe_promote enabled cap=%u "
++                "(metadata plus optional cold-sidecar gate)\n",
++                p->cap);
++        p->notice_printed = 1;
++    }
++    if (!compact_ids || compact_count == 0 ||
++        layer >= DS4_CUDA_TIERING_MAX_LAYER) {
++        return batch;
++    }
++
++    const int prompt_like_batch = slot_count > DS4_CUDA_ROUTED_EXPERTS_PER_TOKEN;
++    if (prompt_like_batch && layer == 0 &&
++        (!p->collecting_prompt || p->preload_ready || !p->seen_any)) {
++        cuda_expert_tier_promote_reset_prompt();
++        batch.reset = 1;
++    }
++    if (!p->collecting_prompt && !p->preload_ready) {
++        cuda_expert_tier_promote_reset_prompt();
++        batch.reset = 1;
++    }
++    if (p->collecting_prompt && p->seen_any &&
++        (!prompt_like_batch || (int)layer <= p->last_layer)) {
++        cuda_expert_tier_promote_finalize_prompt(&batch);
++    }
++
++    if (p->collecting_prompt) {
++        batch.phase = "prompt";
++        p->prompt_batches++;
++        if (slot_ids) {
++            for (uint32_t i = 0; i < slot_count; i++) {
++                const int32_t slot = slot_ids[i];
++                if (slot < 0 || (uint32_t)slot >= compact_count) continue;
++                const int32_t expert = compact_ids[(uint32_t)slot];
++                if (expert < 0 ||
++                    (uint32_t)expert >= DS4_CUDA_TIERING_MAX_EXPERT) {
++                    continue;
++                }
++                p->prompt_counts[layer][(uint32_t)expert]++;
++                p->prompt_selected++;
++            }
++        }
++        p->seen_any = 1;
++        p->last_layer = (int)layer;
++        batch.hot_count = p->hot_count;
++        return batch;
++    }
++
++    if (!p->preload_ready) {
++        cuda_expert_tier_promote_finalize_prompt(&batch);
++    }
++
++    batch.phase = "decode";
++    p->decode_batches++;
++    for (uint32_t i = 0; i < compact_count; i++) {
++        const int32_t expert_i = compact_ids[i];
++        if (expert_i < 0 ||
++            (uint32_t)expert_i >= DS4_CUDA_TIERING_MAX_EXPERT) {
++            continue;
++        }
++        const uint32_t expert = (uint32_t)expert_i;
++        p->requests++;
++        if (p->hot[layer][expert]) {
++            p->hot_hits++;
++            batch.hot_hits++;
++        } else {
++            p->promotions++;
++            batch.promotions++;
++            if (p->cap != 0) {
++                p->hot[layer][expert] = 1;
++                p->hot_count++;
++            }
++        }
++        if (p->cap != 0) {
++            p->last_used[layer][expert] = ++p->tick;
++            while (p->hot_count > p->cap) {
++                cuda_expert_tier_promote_evict_one(&batch);
++            }
++        }
++    }
++    batch.hot_count = p->hot_count;
++    return batch;
++}
++
++static uint64_t cuda_expert_tiering_observe_summary_every(void) {
++    static int initialized;
++    static uint64_t value;
++    if (!initialized) {
++        initialized = 1;
++        const char *env = getenv("DS4_EXPERT_TIERING_SUMMARY_EVERY");
++        if (env && env[0]) {
++            char *end = NULL;
++            unsigned long long parsed = strtoull(env, &end, 10);
++            if (end && *end == '\0') value = (uint64_t)parsed;
++        }
++    }
++    return value;
++}
++
++static void cuda_expert_tiering_observe_append_top_experts(
++        char    *buf,
++        size_t   cap,
++        uint32_t layer,
++        uint32_t n_total_expert) {
++    if (!buf || cap == 0) return;
++    buf[0] = '\0';
++    if (layer >= DS4_CUDA_TIERING_MAX_LAYER) return;
++    if (n_total_expert > DS4_CUDA_TIERING_MAX_EXPERT) {
++        n_total_expert = DS4_CUDA_TIERING_MAX_EXPERT;
++    }
++    uint32_t chosen[6] = {0};
++    uint32_t chosen_count = 0;
++    size_t used = 0;
++    for (uint32_t rank = 0; rank < 6; rank++) {
++        uint64_t best = 0;
++        uint32_t best_expert = UINT32_MAX;
++        for (uint32_t e = 0; e < n_total_expert; e++) {
++            int already = 0;
++            for (uint32_t i = 0; i < chosen_count; i++) {
++                if (chosen[i] == e) {
++                    already = 1;
++                    break;
++                }
++            }
++            if (already) continue;
++            const uint64_t count =
++                g_expert_tiering_observe.selected_hist[layer][e];
++            if (count > best) {
++                best = count;
++                best_expert = e;
++            }
++        }
++        if (best_expert == UINT32_MAX || best == 0) break;
++        chosen[chosen_count++] = best_expert;
++        int n = snprintf(buf + used,
++                         used < cap ? cap - used : 0,
++                         "%s%u:%llu",
++                         used ? "," : "",
++                         best_expert,
++                         (unsigned long long)best);
++        if (n < 0) break;
++        used += (size_t)n;
++        if (used >= cap) {
++            buf[cap - 1] = '\0';
++            break;
++        }
++    }
++}
++
++static void cuda_expert_tiering_observe_print_summary(void) {
++    if (!cuda_expert_tiering_observe_is_enabled()) return;
++    const cuda_expert_tiering_observe_stats *s = &g_expert_tiering_observe;
++    if (s->batches == 0) return;
++    const uint64_t lookups = s->cache_hits + s->cache_misses;
++    const double hit_rate =
++        lookups ? (double)s->cache_hits / (double)lookups : 0.0;
++    fprintf(stderr,
++            "ds4: expert tiering observe summary batches=%llu slots=%llu "
++            "compact=%llu hit_rate=%.4f hits=%llu misses=%llu direct=%llu "
++            "evictions=%llu direct=%.2f MiB compact=%.2f MiB\n",
++            (unsigned long long)s->batches,
++            (unsigned long long)s->slot_requests,
++            (unsigned long long)s->compact_experts,
++            hit_rate,
++            (unsigned long long)s->cache_hits,
++            (unsigned long long)s->cache_misses,
++            (unsigned long long)s->direct_loads,
++            (unsigned long long)s->evictions,
++            (double)s->direct_bytes / 1048576.0,
++            (double)s->compact_bytes / 1048576.0);
++
++    uint32_t printed[5] = {0};
++    uint32_t printed_count = 0;
++    for (uint32_t rank = 0; rank < 5; rank++) {
++        uint64_t best_score = 0;
++        uint32_t best_layer = UINT32_MAX;
++        for (uint32_t layer = 0; layer < DS4_CUDA_TIERING_MAX_LAYER; layer++) {
++            const cuda_expert_tiering_layer_stats *ls = &s->layers[layer];
++            if (ls->batches == 0) continue;
++            int already = 0;
++            for (uint32_t i = 0; i < printed_count; i++) {
++                if (printed[i] == layer) {
++                    already = 1;
++                    break;
++                }
++            }
++            if (already) continue;
++            const uint64_t score =
++                ls->cache_misses + ls->direct_loads + ls->evictions;
++            if (score > best_score) {
++                best_score = score;
++                best_layer = layer;
++            }
++        }
++        if (best_layer == UINT32_MAX || best_score == 0) break;
++        printed[printed_count++] = best_layer;
++        const cuda_expert_tiering_layer_stats *ls = &s->layers[best_layer];
++        const uint64_t layer_lookups = ls->cache_hits + ls->cache_misses;
++        const double layer_hit_rate =
++            layer_lookups ?
++            (double)ls->cache_hits / (double)layer_lookups : 0.0;
++        char top[160];
++        cuda_expert_tiering_observe_append_top_experts(
++                top,
++                sizeof(top),
++                best_layer,
++                ls->max_total_expert);
++        fprintf(stderr,
++                "ds4: expert tiering observe layer=%u batches=%llu slots=%llu "
++                "compact=%llu hit_rate=%.4f misses=%llu direct=%llu "
++                "evictions=%llu cap=%u top=%s\n",
++                best_layer,
++                (unsigned long long)ls->batches,
++                (unsigned long long)ls->slot_requests,
++                (unsigned long long)ls->compact_experts,
++                layer_hit_rate,
++                (unsigned long long)ls->cache_misses,
++                (unsigned long long)ls->direct_loads,
++                (unsigned long long)ls->evictions,
++                ls->max_cache_capacity,
++                top[0] ? top : "-");
++    }
++
++    if (cuda_expert_tier_promote_is_enabled()) {
++        const cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++        const double hot_rate =
++            p->requests ? (double)p->hot_hits / (double)p->requests : 0.0;
++        const double promotion_rate =
++            p->requests ? (double)p->promotions / (double)p->requests : 0.0;
++        fprintf(stderr,
++                "ds4: expert tier promote summary cap=%u prompt_batches=%llu "
++                "decode_batches=%llu preloaded=%u hot_count=%u requests=%llu "
++                "hot_hit_rate=%.4f promotions=%llu promotion_rate=%.4f "
++                "evictions=%llu resets=%llu finalized=%llu\n",
++                p->cap,
++                (unsigned long long)p->prompt_batches,
++                (unsigned long long)p->decode_batches,
++                p->preloaded,
++                p->hot_count,
++                (unsigned long long)p->requests,
++                hot_rate,
++                (unsigned long long)p->promotions,
++                promotion_rate,
++                (unsigned long long)p->evictions,
++                (unsigned long long)p->resets,
++                (unsigned long long)p->finalized);
++    }
++}
++
++static void cuda_expert_tiering_observe_note_batch(
++        uint32_t       layer,
++        uint32_t       n_total_expert,
++        const int32_t *compact_ids,
++        const int32_t *slot_ids,
++        uint32_t       compact_count,
++        uint32_t       slot_count,
++        uint32_t       cache_capacity,
++        uint32_t       cache_count_before,
++        uint32_t       cache_count_after,
++        uint32_t       cache_hits,
++        uint32_t       cache_misses,
++        uint32_t       direct_loads,
++        uint32_t       evictions,
++        uint64_t       gate_expert_bytes,
++        uint64_t       down_expert_bytes,
++        const cuda_expert_tier_promote_batch *promote_batch_in) {
++    if (!cuda_expert_tiering_observe_is_enabled()) return;
++    if (!g_expert_tiering_observe_atexit_registered) {
++        atexit(cuda_expert_tiering_observe_atexit);
++        g_expert_tiering_observe_atexit_registered = 1;
++    }
++    if (!g_expert_tiering_observe_notice_printed) {
++        fprintf(stderr,
++                "ds4: expert tiering observe enabled "
++                "(DS4_EXPERT_TIERING=observe; log=%s)\n",
++                getenv("DS4_EXPERT_TIERING_LOG") ?
++                    getenv("DS4_EXPERT_TIERING_LOG") : "stderr-summary");
++        g_expert_tiering_observe_notice_printed = 1;
++    }
++
++    const uint64_t expert_bytes =
++        gate_expert_bytes > UINT64_MAX - gate_expert_bytes ||
++        gate_expert_bytes + gate_expert_bytes > UINT64_MAX - down_expert_bytes ?
++        0 : gate_expert_bytes + gate_expert_bytes + down_expert_bytes;
++    const uint64_t compact_bytes =
++        expert_bytes != 0 && compact_count <= UINT64_MAX / expert_bytes ?
++        (uint64_t)compact_count * expert_bytes : 0;
++    const uint64_t direct_bytes =
++        expert_bytes != 0 && direct_loads <= UINT64_MAX / expert_bytes ?
++        (uint64_t)direct_loads * expert_bytes : 0;
++    cuda_expert_tier_promote_batch promote_batch_fallback = {0};
++    const cuda_expert_tier_promote_batch *promote_batch = promote_batch_in;
++    if (!promote_batch) {
++        promote_batch_fallback =
++            cuda_expert_tier_promote_note_batch(layer,
++                                                compact_ids,
++                                                slot_ids,
++                                                compact_count,
++                                                slot_count);
++        promote_batch = &promote_batch_fallback;
++    }
++
++    cuda_expert_tiering_observe_stats *s = &g_expert_tiering_observe;
++    s->batches++;
++    s->slot_requests += slot_count;
++    s->compact_experts += compact_count;
++    s->cache_hits += cache_hits;
++    s->cache_misses += cache_misses;
++    s->direct_loads += direct_loads;
++    s->evictions += evictions;
++    s->direct_bytes += direct_bytes;
++    s->compact_bytes += compact_bytes;
++
++    if (layer < DS4_CUDA_TIERING_MAX_LAYER) {
++        cuda_expert_tiering_layer_stats *ls = &s->layers[layer];
++        ls->batches++;
++        ls->slot_requests += slot_count;
++        ls->compact_experts += compact_count;
++        ls->cache_hits += cache_hits;
++        ls->cache_misses += cache_misses;
++        ls->direct_loads += direct_loads;
++        ls->evictions += evictions;
++        ls->direct_bytes += direct_bytes;
++        ls->compact_bytes += compact_bytes;
++        if (n_total_expert > ls->max_total_expert) {
++            ls->max_total_expert = n_total_expert;
++        }
++        if (cache_capacity > ls->max_cache_capacity) {
++            ls->max_cache_capacity = cache_capacity;
++        }
++        if (compact_ids && slot_ids &&
++            n_total_expert <= DS4_CUDA_TIERING_MAX_EXPERT) {
++            for (uint32_t i = 0; i < slot_count; i++) {
++                const int32_t slot = slot_ids[i];
++                if (slot < 0 || (uint32_t)slot >= compact_count) continue;
++                const int32_t expert = compact_ids[(uint32_t)slot];
++                if (expert < 0 ||
++                    (uint32_t)expert >= DS4_CUDA_TIERING_MAX_EXPERT) {
++                    continue;
++                }
++                s->selected_hist[layer][(uint32_t)expert]++;
++            }
++        }
++    }
++
++    FILE *fp = cuda_expert_tiering_observe_log_file();
++    if (fp) {
++        const char *path = cache_capacity != 0 ? "resident" : "selected_direct";
++        fprintf(fp,
++                "{\"event\":\"tiering_observe\",\"time_unix\":%lld,"
++                "\"path\":\"%s\",\"layer\":%u,"
++                "\"slots\":%u,\"compact\":%u,\"n_total_expert\":%u,"
++                "\"cache_capacity\":%u,\"cache_before\":%u,"
++                "\"cache_after\":%u,\"hits\":%u,\"misses\":%u,"
++                "\"direct\":%u,\"evictions\":%u,"
++                "\"direct_bytes\":%llu,\"compact_bytes\":%llu",
++                (long long)time(NULL),
++                path,
++                layer,
++                slot_count,
++                compact_count,
++                n_total_expert,
++                cache_capacity,
++                cache_count_before,
++                cache_count_after,
++                cache_hits,
++                cache_misses,
++                direct_loads,
++                evictions,
++                (unsigned long long)direct_bytes,
++                (unsigned long long)compact_bytes);
++        if (promote_batch->enabled) {
++            fprintf(fp,
++                    ",\"tier_policy\":\"observe_promote\","
++                    "\"tier_policy_phase\":\"%s\","
++                    "\"tier_policy_reset\":%d,"
++                    "\"tier_policy_finalized\":%d,"
++                    "\"tier_policy_hot_hits\":%u,"
++                    "\"tier_policy_promotions\":%u,"
++                    "\"tier_policy_evictions\":%u,"
++                    "\"tier_policy_preloaded\":%u,"
++                    "\"tier_policy_hot_count\":%u",
++                    promote_batch->phase ? promote_batch->phase : "unknown",
++                    promote_batch->reset,
++                    promote_batch->finalized,
++                    promote_batch->hot_hits,
++                    promote_batch->promotions,
++                    promote_batch->evictions,
++                    promote_batch->preloaded,
++                    promote_batch->hot_count);
++        }
++        if (cuda_expert_tiering_observe_log_ids_enabled()) {
++            fputs(",\"selected\":[", fp);
++            for (uint32_t i = 0; i < slot_count; i++) {
++                int32_t expert = -1;
++                if (slot_ids && compact_ids) {
++                    const int32_t slot = slot_ids[i];
++                    if (slot >= 0 && (uint32_t)slot < compact_count) {
++                        expert = compact_ids[(uint32_t)slot];
++                    }
++                }
++                fprintf(fp, "%s%d", i ? "," : "", expert);
++            }
++            fputs("],\"compact_ids\":[", fp);
++            for (uint32_t i = 0; i < compact_count; i++) {
++                fprintf(fp, "%s%d", i ? "," : "",
++                        compact_ids ? compact_ids[i] : -1);
++            }
++            fputc(']', fp);
++        }
++        fputs("}\n", fp);
++        fflush(fp);
++    }
++
++    const uint64_t every = cuda_expert_tiering_observe_summary_every();
++    if (every != 0 && s->batches % every == 0) {
++        cuda_expert_tiering_observe_print_summary();
++    }
++}
++
+ static int cuda_spex_stats_is_enabled(void) {
+     if (g_spex_stats_enabled < 0) {
+         const char *v = getenv("DS4_SPEX_STATS");
+@@ -892,6 +1663,913 @@ static int cuda_ok(cudaError_t err, const char *what) {
+     return 0;
+ }
+ 
++static uint16_t cuda_expert_cold_f32_to_f16(float v) {
++    __half h = __float2half(v);
++    uint16_t bits = 0;
++    memcpy(&bits, &h, sizeof(bits));
++    return bits;
++}
++
++static float cuda_expert_cold_f16_to_f32(uint16_t bits) {
++    __half h;
++    memcpy(&h, &bits, sizeof(h));
++    return __half2float(h);
++}
++
++static uint64_t cuda_expert_cq1_block_bytes(uint32_t group) {
++    if (group != 32u && group != 64u && group != 256u) return 0;
++    return 32u + (uint64_t)(CUDA_QK_K / group) * sizeof(uint16_t);
++}
++
++static int cuda_expert_cq1_parse_format(const char *fmt, uint32_t *group_out) {
++    if (!fmt || !fmt[0]) return 0;
++    if (strcmp(fmt, "cq1") == 0 || strcmp(fmt, "cq1g32") == 0) {
++        if (group_out) *group_out = 32u;
++        return 1;
++    }
++    if (strcmp(fmt, "cq1g64") == 0) {
++        if (group_out) *group_out = 64u;
++        return 1;
++    }
++    if (strcmp(fmt, "cq1g256") == 0) {
++        if (group_out) *group_out = 256u;
++        return 1;
++    }
++    return 0;
++}
++
++static int cuda_expert_cq1_fetch_iq2_tables(uint64_t grid[256], uint8_t signs[128]) {
++    static uint64_t host_grid[256];
++    static uint8_t host_signs[128];
++    static int ready;
++    static int failed;
++    if (!ready && !failed) {
++        cudaError_t err = cudaMemcpyFromSymbol(host_grid,
++                                               cuda_iq2xxs_grid,
++                                               sizeof(host_grid));
++        if (err == cudaSuccess) {
++            err = cudaMemcpyFromSymbol(host_signs,
++                                       cuda_ksigns_iq2xs,
++                                       sizeof(host_signs));
++        }
++        if (err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: cold CQ1 failed to read IQ2 tables: %s\n",
++                    cudaGetErrorString(err));
++            (void)cudaGetLastError();
++            failed = 1;
++        } else {
++            ready = 1;
++        }
++    }
++    if (!ready) return 0;
++    memcpy(grid, host_grid, sizeof(host_grid));
++    memcpy(signs, host_signs, sizeof(host_signs));
++    return 1;
++}
++
++static void cuda_expert_cq1_write_sign_bit(uint8_t *signs, uint32_t idx, uint32_t negative) {
++    if (negative) signs[idx >> 3u] |= (uint8_t)(1u << (idx & 7u));
++}
++
++static uint32_t cuda_expert_cq1_read_sign_bit(const uint8_t *signs, uint32_t idx) {
++    return (uint32_t)((signs[idx >> 3u] >> (idx & 7u)) & 1u);
++}
++
++static void cuda_expert_cq1_write_f16_scale(char *dst, uint32_t group, float scale) {
++    const uint16_t h = cuda_expert_cold_f32_to_f16(scale);
++    memcpy(dst + (uint64_t)group * sizeof(uint16_t), &h, sizeof(h));
++}
++
++static float cuda_expert_cq1_read_f16_scale(const char *src, uint32_t group) {
++    uint16_t h = 0;
++    memcpy(&h, src + (uint64_t)group * sizeof(uint16_t), sizeof(h));
++    return cuda_expert_cold_f16_to_f32(h);
++}
++
++static int cuda_expert_cq1_encode_iq2_block(
++        const char *src,
++        char *dst,
++        uint32_t group,
++        const uint64_t grid[256],
++        const uint8_t signs_lut[128]) {
++    const uint64_t block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!block_bytes) return 0;
++    const uint32_t groups = CUDA_QK_K / group;
++    float sum_abs[8] = {0};
++    uint32_t count[8] = {0};
++    uint8_t sign_bytes[32];
++    memset(sign_bytes, 0, sizeof(sign_bytes));
++
++    uint16_t hd = 0;
++    memcpy(&hd, src, sizeof(hd));
++    const float d = cuda_expert_cold_f16_to_f32(hd);
++    const uint16_t *q2 = (const uint16_t *)(src + sizeof(uint16_t));
++    for (uint32_t ib32 = 0; ib32 < CUDA_QK_K / 32u; ib32++) {
++        const uint32_t aux0 = (uint32_t)q2[0] | ((uint32_t)q2[1] << 16u);
++        const uint32_t aux1 = (uint32_t)q2[2] | ((uint32_t)q2[3] << 16u);
++        q2 += 4;
++        const float ls = (float)(2u * (aux1 >> 28u) + 1u);
++        const uint8_t grid_idx[4] = {
++            (uint8_t)(aux0 & 0xffu),
++            (uint8_t)((aux0 >> 8u) & 0xffu),
++            (uint8_t)((aux0 >> 16u) & 0xffu),
++            (uint8_t)((aux0 >> 24u) & 0xffu),
++        };
++        const uint32_t sign_idx[4] = {
++            (aux1 >> 0u) & 127u,
++            (aux1 >> 7u) & 127u,
++            (aux1 >> 14u) & 127u,
++            (aux1 >> 21u) & 127u,
++        };
++        for (uint32_t sg = 0; sg < 4u; sg++) {
++            const uint64_t g = grid[grid_idx[sg]];
++            const uint8_t sign_mask = signs_lut[sign_idx[sg]];
++            for (uint32_t i = 0; i < 8u; i++) {
++                const uint32_t idx = ib32 * 32u + sg * 8u + i;
++                const uint32_t cqg = idx / group;
++                const uint8_t mag = (uint8_t)((g >> (8u * i)) & 0xffu);
++                sum_abs[cqg] += 0.125f * d * ls * (float)mag;
++                count[cqg]++;
++                cuda_expert_cq1_write_sign_bit(sign_bytes, idx, (sign_mask >> i) & 1u);
++            }
++        }
++    }
++    memset(dst, 0, (size_t)block_bytes);
++    for (uint32_t g = 0; g < groups; g++) {
++        const float scale = count[g] ? sum_abs[g] / (float)count[g] : 0.0f;
++        cuda_expert_cq1_write_f16_scale(dst, g, scale);
++    }
++    memcpy(dst + groups * sizeof(uint16_t), sign_bytes, sizeof(sign_bytes));
++    return 1;
++}
++
++static int cuda_expert_cq1_encode_q2_block(const char *src, char *dst, uint32_t group) {
++    const uint64_t block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!block_bytes) return 0;
++    const uint32_t groups = CUDA_QK_K / group;
++    const cuda_block_q2_K *x = (const cuda_block_q2_K *)src;
++    float sum_abs[8] = {0};
++    uint32_t count[8] = {0};
++    uint8_t sign_bytes[32];
++    memset(sign_bytes, 0, sizeof(sign_bytes));
++    const float d = cuda_expert_cold_f16_to_f32(x->d);
++    const float dmin = cuda_expert_cold_f16_to_f32(x->dmin);
++    for (uint32_t qg = 0; qg < 16u; qg++) {
++        const uint32_t half = qg / 8u;
++        const uint32_t within = qg % 8u;
++        const uint32_t qbase = half * 32u + ((within & 1u) ? 16u : 0u);
++        const uint32_t shift = (within / 2u) * 2u;
++        const uint32_t sc = x->scales[qg] & 0x0fu;
++        const uint32_t mn = x->scales[qg] >> 4u;
++        for (uint32_t i = 0; i < 16u; i++) {
++            const uint32_t idx = qg * 16u + i;
++            const uint32_t q = (x->qs[qbase + i] >> shift) & 0x03u;
++            const float v = d * (float)sc * (float)q - dmin * (float)mn;
++            sum_abs[idx / group] += fabsf(v);
++            count[idx / group]++;
++            cuda_expert_cq1_write_sign_bit(sign_bytes, idx, v < 0.0f);
++        }
++    }
++    memset(dst, 0, (size_t)block_bytes);
++    for (uint32_t g = 0; g < groups; g++) {
++        const float scale = count[g] ? sum_abs[g] / (float)count[g] : 0.0f;
++        cuda_expert_cq1_write_f16_scale(dst, g, scale);
++    }
++    memcpy(dst + groups * sizeof(uint16_t), sign_bytes, sizeof(sign_bytes));
++    return 1;
++}
++
++static int cuda_expert_cq1_decode_iq2_block(const char *src, char *dst, uint32_t group) {
++    const uint64_t block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!block_bytes) return 0;
++    const uint32_t groups = CUDA_QK_K / group;
++    const uint8_t *sign_bytes = (const uint8_t *)(src + groups * sizeof(uint16_t));
++    float scale32[CUDA_QK_K / 32u];
++    float max_scale = 0.0f;
++    for (uint32_t g32 = 0; g32 < CUDA_QK_K / 32u; g32++) {
++        const uint32_t cqg = (g32 * 32u) / group;
++        scale32[g32] = cuda_expert_cq1_read_f16_scale(src, cqg);
++        max_scale = fmaxf(max_scale, scale32[g32]);
++    }
++    cuda_block_iq2_xxs *out = (cuda_block_iq2_xxs *)dst;
++    memset(out, 0, sizeof(*out));
++    const float d = max_scale > 0.0f ? max_scale / 31.0f : 0.0f;
++    out->d = cuda_expert_cold_f32_to_f16(d);
++    uint16_t *q2 = out->qs;
++    for (uint32_t g32 = 0; g32 < CUDA_QK_K / 32u; g32++) {
++        uint32_t l = 0;
++        if (d > 0.0f) {
++            const float target = scale32[g32] / d;
++            int il = (int)lrintf((target - 1.0f) * 0.5f);
++            if (il < 0) il = 0;
++            if (il > 15) il = 15;
++            l = (uint32_t)il;
++        }
++        uint32_t aux1 = l << 28u;
++        for (uint32_t sg = 0; sg < 4u; sg++) {
++            uint32_t sign_idx = 0;
++            for (uint32_t i = 0; i < 7u; i++) {
++                const uint32_t idx = g32 * 32u + sg * 8u + i;
++                sign_idx |= cuda_expert_cq1_read_sign_bit(sign_bytes, idx) << i;
++            }
++            aux1 |= sign_idx << (sg * 7u);
++        }
++        const uint32_t aux0 = 0u; /* grid 0 = all unit magnitudes. */
++        q2[0] = (uint16_t)(aux0 & 0xffffu);
++        q2[1] = (uint16_t)(aux0 >> 16u);
++        q2[2] = (uint16_t)(aux1 & 0xffffu);
++        q2[3] = (uint16_t)(aux1 >> 16u);
++        q2 += 4;
++    }
++    return 1;
++}
++
++static int cuda_expert_cq1_decode_q2_block(const char *src, char *dst, uint32_t group) {
++    const uint64_t block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!block_bytes) return 0;
++    const uint32_t groups = CUDA_QK_K / group;
++    const uint8_t *sign_bytes = (const uint8_t *)(src + groups * sizeof(uint16_t));
++    float scale16[16];
++    float max_scale = 0.0f;
++    for (uint32_t g16 = 0; g16 < 16u; g16++) {
++        const uint32_t cqg = (g16 * 16u) / group;
++        scale16[g16] = cuda_expert_cq1_read_f16_scale(src, cqg);
++        max_scale = fmaxf(max_scale, scale16[g16]);
++    }
++    cuda_block_q2_K *out = (cuda_block_q2_K *)dst;
++    memset(out, 0, sizeof(*out));
++    const float unit = max_scale > 0.0f ? max_scale / 15.0f : 0.0f;
++    out->d = cuda_expert_cold_f32_to_f16(unit);
++    out->dmin = cuda_expert_cold_f32_to_f16(unit);
++    for (uint32_t g16 = 0; g16 < 16u; g16++) {
++        uint32_t sc = 0;
++        if (unit > 0.0f) {
++            int is = (int)lrintf(scale16[g16] / unit);
++            if (is < 0) is = 0;
++            if (is > 15) is = 15;
++            sc = (uint32_t)is;
++        }
++        out->scales[g16] = (uint8_t)(sc | (sc << 4u));
++        const uint32_t half = g16 / 8u;
++        const uint32_t within = g16 % 8u;
++        const uint32_t qbase = half * 32u + ((within & 1u) ? 16u : 0u);
++        const uint32_t shift = (within / 2u) * 2u;
++        for (uint32_t i = 0; i < 16u; i++) {
++            const uint32_t idx = g16 * 16u + i;
++            const uint32_t q = cuda_expert_cq1_read_sign_bit(sign_bytes, idx) ? 0u : 2u;
++            out->qs[qbase + i] |= (uint8_t)(q << shift);
++        }
++    }
++    return 1;
++}
++
++static int cuda_expert_cq1_encode_blocks(
++        const char *src,
++        uint64_t native_block_bytes,
++        uint64_t native_blocks,
++        char *dst,
++        uint32_t group,
++        int is_iq2,
++        const uint64_t grid[256],
++        const uint8_t signs[128]) {
++    const uint64_t cq1_block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!cq1_block_bytes || !native_block_bytes) return 0;
++    for (uint64_t i = 0; i < native_blocks; i++) {
++        const char *block_src = src + i * native_block_bytes;
++        char *block_dst = dst + i * cq1_block_bytes;
++        int ok = is_iq2 ?
++            cuda_expert_cq1_encode_iq2_block(block_src, block_dst, group, grid, signs) :
++            cuda_expert_cq1_encode_q2_block(block_src, block_dst, group);
++        if (!ok) return 0;
++    }
++    return 1;
++}
++
++static int cuda_expert_cq1_decode_blocks(
++        const char *src,
++        uint64_t native_block_bytes,
++        uint64_t native_blocks,
++        char *dst,
++        uint32_t group,
++        int is_iq2) {
++    const uint64_t cq1_block_bytes = cuda_expert_cq1_block_bytes(group);
++    if (!cq1_block_bytes || !native_block_bytes) return 0;
++    for (uint64_t i = 0; i < native_blocks; i++) {
++        const char *block_src = src + i * cq1_block_bytes;
++        char *block_dst = dst + i * native_block_bytes;
++        int ok = is_iq2 ?
++            cuda_expert_cq1_decode_iq2_block(block_src, block_dst, group) :
++            cuda_expert_cq1_decode_q2_block(block_src, block_dst, group);
++        if (!ok) return 0;
++    }
++    return 1;
++}
++
++static uint64_t cuda_expert_cold_lossless_mix(uint64_t h, uint64_t v) {
++    h ^= v;
++    h *= 1099511628211ull;
++    return h;
++}
++
++static uint64_t cuda_expert_cold_lossless_hash_bytes(
++        const char *ptr,
++        uint64_t bytes,
++        uint64_t seed) {
++    uint64_t h = seed ? seed : 1469598103934665603ull;
++    for (uint64_t i = 0; i < bytes; i++) {
++        h ^= (uint8_t)ptr[i];
++        h *= 1099511628211ull;
++    }
++    return h;
++}
++
++static uint64_t cuda_expert_cold_lossless_key(
++        const void *model_map,
++        uint32_t layer,
++        uint32_t expert,
++        uint64_t gate_offset,
++        uint64_t up_offset,
++        uint64_t down_offset,
++        uint64_t gate_expert_bytes,
++        uint64_t down_expert_bytes,
++        uint32_t format,
++        uint32_t cq1_group) {
++    uint64_t h = 1469598103934665603ull;
++    h = cuda_expert_cold_lossless_mix(h, (uint64_t)(uintptr_t)model_map);
++    h = cuda_expert_cold_lossless_mix(h, layer);
++    h = cuda_expert_cold_lossless_mix(h, expert);
++    h = cuda_expert_cold_lossless_mix(h, gate_offset);
++    h = cuda_expert_cold_lossless_mix(h, up_offset);
++    h = cuda_expert_cold_lossless_mix(h, down_offset);
++    h = cuda_expert_cold_lossless_mix(h, gate_expert_bytes);
++    h = cuda_expert_cold_lossless_mix(h, down_expert_bytes);
++    h = cuda_expert_cold_lossless_mix(h, format);
++    h = cuda_expert_cold_lossless_mix(h, cq1_group);
++    return h;
++}
++
++static void cuda_expert_cold_lossless_print_summary(void) {
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if (!s->enabled) return;
++    const char *fmt = s->format == CUDA_EXPERT_COLD_FORMAT_CQ1 ? "cq1" : "lossless";
++    fprintf(stderr,
++            "ds4: cold RAM sidecar summary format=%s group=%u entries=%zu materialized=%llu "
++            "reuses=%llu copies=%llu failures(mat=%llu copy=%llu verify=%llu) "
++            "bytes=%.2f MiB repacked=%.2f MiB repack_failures=%llu "
++            "prefill=%d ungated=%d native_tokens=%u verify=%d "
++            "policy(allow=%llu prompt=%llu no_policy=%llu no_hotset=%llu "
++            "warmup=%llu hot=%llu invalid=%llu)\n",
++            fmt,
++            s->cq1_group,
++            s->entries.size(),
++            (unsigned long long)s->materialized,
++            (unsigned long long)s->reuses,
++            (unsigned long long)s->copies,
++            (unsigned long long)s->materialize_failures,
++            (unsigned long long)s->copy_failures,
++            (unsigned long long)s->verify_failures,
++            (double)s->bytes_materialized / 1048576.0,
++            (double)s->bytes_repacked / 1048576.0,
++            (unsigned long long)s->repack_failures,
++            s->allow_prefill,
++            s->allow_ungated,
++            s->native_decode_tokens,
++            s->verify,
++            (unsigned long long)s->policy_allowed,
++            (unsigned long long)s->policy_skip_prompt,
++            (unsigned long long)s->policy_skip_no_policy,
++            (unsigned long long)s->policy_skip_no_hotset,
++            (unsigned long long)s->policy_skip_warmup,
++            (unsigned long long)s->policy_skip_hot,
++            (unsigned long long)s->policy_skip_invalid);
++}
++
++enum cuda_expert_cold_policy_reason {
++    CUDA_EXPERT_COLD_POLICY_ALLOW = 0,
++    CUDA_EXPERT_COLD_POLICY_PROMPT,
++    CUDA_EXPERT_COLD_POLICY_NO_POLICY,
++    CUDA_EXPERT_COLD_POLICY_NO_HOTSET,
++    CUDA_EXPERT_COLD_POLICY_WARMUP,
++    CUDA_EXPERT_COLD_POLICY_HOT,
++    CUDA_EXPERT_COLD_POLICY_INVALID,
++};
++
++static void cuda_expert_cold_policy_note(
++        cuda_expert_cold_lossless_stats *s,
++        int reason) {
++    switch (reason) {
++    case CUDA_EXPERT_COLD_POLICY_ALLOW:
++        s->policy_allowed++;
++        break;
++    case CUDA_EXPERT_COLD_POLICY_PROMPT:
++        s->policy_skip_prompt++;
++        break;
++    case CUDA_EXPERT_COLD_POLICY_NO_POLICY:
++        s->policy_skip_no_policy++;
++        break;
++    case CUDA_EXPERT_COLD_POLICY_NO_HOTSET:
++        s->policy_skip_no_hotset++;
++        break;
++    case CUDA_EXPERT_COLD_POLICY_WARMUP:
++        s->policy_skip_warmup++;
++        break;
++    case CUDA_EXPERT_COLD_POLICY_HOT:
++        s->policy_skip_hot++;
++        break;
++    default:
++        s->policy_skip_invalid++;
++        break;
++    }
++}
++
++static int cuda_expert_cold_cq1_policy_allows(
++        uint32_t layer,
++        uint32_t expert,
++        int prompt_like_batch,
++        uint32_t native_decode_tokens,
++        uint32_t native_decode_layers,
++        int *reason_out) {
++    if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_ALLOW;
++    if (prompt_like_batch) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_PROMPT;
++        return 0;
++    }
++    if (!cuda_expert_tier_promote_is_enabled()) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_NO_POLICY;
++        return 0;
++    }
++    cuda_expert_tier_promote_stats *p = &g_expert_tier_promote;
++    if (!p->preload_ready) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_NO_HOTSET;
++        return 0;
++    }
++    const uint32_t layers =
++        native_decode_layers != 0 ? native_decode_layers : 43u;
++    uint64_t warmup_batches = UINT64_MAX;
++    if (native_decode_tokens <= UINT64_MAX / (uint64_t)layers) {
++        warmup_batches = (uint64_t)native_decode_tokens * (uint64_t)layers;
++    }
++    if (warmup_batches != 0 && p->decode_batches < warmup_batches) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_WARMUP;
++        return 0;
++    }
++    if (layer >= DS4_CUDA_TIERING_MAX_LAYER ||
++        expert >= DS4_CUDA_TIERING_MAX_EXPERT) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_INVALID;
++        return 0;
++    }
++    if (p->hot[layer][expert]) {
++        if (reason_out) *reason_out = CUDA_EXPERT_COLD_POLICY_HOT;
++        return 0;
++    }
++    return 1;
++}
++
++static void cuda_expert_cold_lossless_atexit(void) {
++    cuda_expert_cold_lossless_print_summary();
++}
++
++static int cuda_expert_cold_lossless_is_enabled(void) {
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if (!s->initialized) {
++        s->initialized = 1;
++        const char *fmt = getenv("DS4_EXPERT_COLD_FORMAT");
++        uint32_t cq1_group = 0;
++        if (cuda_expert_cq1_parse_format(fmt, &cq1_group)) {
++            s->enabled = 1;
++            s->format = CUDA_EXPERT_COLD_FORMAT_CQ1;
++            s->cq1_group = cq1_group;
++        } else if (fmt && (strcmp(fmt, "lossless") == 0 || strcmp(fmt, "native") == 0)) {
++            s->enabled = 1;
++            s->format = CUDA_EXPERT_COLD_FORMAT_LOSSLESS;
++        } else {
++            s->enabled = cuda_env_truthy(getenv("DS4_EXPERT_COLD_RAM_LOSSLESS"));
++            s->format = s->enabled ? CUDA_EXPERT_COLD_FORMAT_LOSSLESS : CUDA_EXPERT_COLD_FORMAT_NONE;
++        }
++        s->allow_prefill = cuda_env_truthy(getenv("DS4_EXPERT_COLD_RAM_PREFILL"));
++        s->allow_ungated = cuda_env_truthy(getenv("DS4_EXPERT_COLD_ALLOW_UNGATED"));
++        s->native_decode_tokens = cuda_env_u32("DS4_EXPERT_COLD_NATIVE_TOKENS",
++                                               50u,
++                                               1000000u);
++        s->native_decode_layers = cuda_env_u32("DS4_EXPERT_COLD_NATIVE_LAYERS",
++                                               43u,
++                                               DS4_CUDA_TIERING_MAX_LAYER);
++        if (s->native_decode_layers == 0) s->native_decode_layers = 43u;
++        s->verify = cuda_env_truthy(getenv("DS4_EXPERT_COLD_RAM_VERIFY"));
++        s->verbose = cuda_env_truthy(getenv("DS4_EXPERT_COLD_RAM_VERBOSE"));
++        if (s->enabled && !s->atexit_registered) {
++            atexit(cuda_expert_cold_lossless_atexit);
++            s->atexit_registered = 1;
++        }
++    }
++    if (s->enabled && !s->notice_printed) {
++        const char *fmt = s->format == CUDA_EXPERT_COLD_FORMAT_CQ1 ? "cq1" : "lossless";
++        fprintf(stderr,
++                "ds4: cold RAM sidecar enabled "
++                "(format=%s group=%u prefill=%d ungated=%d native_tokens=%u "
++                "native_layers=%u verify=%d)\n",
++                fmt,
++                s->cq1_group,
++                s->allow_prefill,
++                s->allow_ungated,
++                s->native_decode_tokens,
++                s->native_decode_layers,
++                s->verify);
++        s->notice_printed = 1;
++    }
++    return s->enabled;
++}
++
++static uint64_t cuda_expert_cold_lossless_checksum(
++        const cuda_expert_cold_lossless_entry *entry) {
++    if (!entry || !entry->blob) return 0;
++    uint64_t h = cuda_expert_cold_lossless_hash_bytes(entry->blob,
++                                                      entry->blob_bytes,
++                                                      1469598103934665603ull);
++    h = cuda_expert_cold_lossless_mix(h, entry->format);
++    h = cuda_expert_cold_lossless_mix(h, entry->cq1_group);
++    return h;
++}
++
++static cuda_expert_cold_lossless_entry *cuda_expert_cold_lossless_find(
++        uint64_t key,
++        const void *model_map,
++        uint64_t model_size,
++        uint32_t layer,
++        uint32_t n_total_expert,
++        uint32_t expert,
++        uint64_t gate_offset,
++        uint64_t up_offset,
++        uint64_t down_offset,
++        uint64_t gate_expert_bytes,
++        uint64_t down_expert_bytes,
++        uint32_t format,
++        uint32_t cq1_group) {
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    std::unordered_map<uint64_t, uint32_t>::iterator it = s->index.find(key);
++    if (it == s->index.end()) return NULL;
++    if ((uint64_t)it->second >= s->entries.size()) return NULL;
++    cuda_expert_cold_lossless_entry *entry = &s->entries[it->second];
++    if (entry->key == key &&
++        entry->model_map == model_map &&
++        entry->model_size == model_size &&
++        entry->layer == layer &&
++        entry->n_total_expert == n_total_expert &&
++        entry->expert == expert &&
++        entry->gate_offset == gate_offset &&
++        entry->up_offset == up_offset &&
++        entry->down_offset == down_offset &&
++        entry->gate_expert_bytes == gate_expert_bytes &&
++        entry->down_expert_bytes == down_expert_bytes &&
++        entry->format == format &&
++        entry->cq1_group == cq1_group) {
++        return entry;
++    }
++    return NULL;
++}
++
++static cuda_expert_cold_lossless_entry *cuda_expert_cold_lossless_materialize(
++        const void *model_map,
++        uint64_t model_size,
++        uint32_t layer,
++        uint32_t n_total_expert,
++        uint32_t expert,
++        uint64_t gate_offset,
++        uint64_t up_offset,
++        uint64_t down_offset,
++        uint64_t gate_expert_bytes,
++        uint64_t down_expert_bytes) {
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if (!model_map || expert >= n_total_expert ||
++        gate_expert_bytes == 0 || down_expert_bytes == 0 ||
++        gate_expert_bytes > UINT64_MAX / 2u ||
++        gate_expert_bytes * 2u > UINT64_MAX - down_expert_bytes) {
++        s->materialize_failures++;
++        return NULL;
++    }
++    uint64_t blob_bytes = gate_expert_bytes * 2u + down_expert_bytes;
++    uint64_t gate_cq1_bytes = 0;
++    uint64_t down_cq1_bytes = 0;
++    uint64_t gate_blocks = 0;
++    uint64_t down_blocks = 0;
++    uint64_t cq1_block_bytes = 0;
++    if (s->format == CUDA_EXPERT_COLD_FORMAT_CQ1) {
++        cq1_block_bytes = cuda_expert_cq1_block_bytes(s->cq1_group);
++        if (!cq1_block_bytes ||
++            (gate_expert_bytes % sizeof(cuda_block_iq2_xxs)) != 0 ||
++            (down_expert_bytes % sizeof(cuda_block_q2_K)) != 0) {
++            s->materialize_failures++;
++            return NULL;
++        }
++        gate_blocks = gate_expert_bytes / sizeof(cuda_block_iq2_xxs);
++        down_blocks = down_expert_bytes / sizeof(cuda_block_q2_K);
++        if (gate_blocks > UINT64_MAX / cq1_block_bytes ||
++            down_blocks > UINT64_MAX / cq1_block_bytes) {
++            s->materialize_failures++;
++            return NULL;
++        }
++        gate_cq1_bytes = gate_blocks * cq1_block_bytes;
++        down_cq1_bytes = down_blocks * cq1_block_bytes;
++        if (gate_cq1_bytes > UINT64_MAX / 2u ||
++            gate_cq1_bytes * 2u > UINT64_MAX - down_cq1_bytes) {
++            s->materialize_failures++;
++            return NULL;
++        }
++        blob_bytes = gate_cq1_bytes * 2u + down_cq1_bytes;
++    }
++    if (blob_bytes > (uint64_t)SIZE_MAX) {
++        s->materialize_failures++;
++        return NULL;
++    }
++    const uint64_t gate_src = gate_offset + (uint64_t)expert * gate_expert_bytes;
++    const uint64_t up_src = up_offset + (uint64_t)expert * gate_expert_bytes;
++    const uint64_t down_src = down_offset + (uint64_t)expert * down_expert_bytes;
++    if (gate_src > model_size || up_src > model_size || down_src > model_size ||
++        gate_expert_bytes > model_size - gate_src ||
++        gate_expert_bytes > model_size - up_src ||
++        down_expert_bytes > model_size - down_src) {
++        s->materialize_failures++;
++        return NULL;
++    }
++    char *blob = (char *)malloc((size_t)blob_bytes);
++    if (!blob) {
++        s->materialize_failures++;
++        return NULL;
++    }
++    if (s->format == CUDA_EXPERT_COLD_FORMAT_CQ1) {
++        uint64_t iq2_grid[256];
++        uint8_t iq2_signs[128];
++        if (!cuda_expert_cq1_fetch_iq2_tables(iq2_grid, iq2_signs) ||
++            !cuda_expert_cq1_encode_blocks((const char *)model_map + gate_src,
++                                           sizeof(cuda_block_iq2_xxs),
++                                           gate_blocks,
++                                           blob,
++                                           s->cq1_group,
++                                           1,
++                                           iq2_grid,
++                                           iq2_signs) ||
++            !cuda_expert_cq1_encode_blocks((const char *)model_map + up_src,
++                                           sizeof(cuda_block_iq2_xxs),
++                                           gate_blocks,
++                                           blob + gate_cq1_bytes,
++                                           s->cq1_group,
++                                           1,
++                                           iq2_grid,
++                                           iq2_signs) ||
++            !cuda_expert_cq1_encode_blocks((const char *)model_map + down_src,
++                                           sizeof(cuda_block_q2_K),
++                                           down_blocks,
++                                           blob + gate_cq1_bytes * 2u,
++                                           s->cq1_group,
++                                           0,
++                                           iq2_grid,
++                                           iq2_signs)) {
++            free(blob);
++            s->materialize_failures++;
++            return NULL;
++        }
++    } else {
++        memcpy(blob, (const char *)model_map + gate_src, (size_t)gate_expert_bytes);
++        memcpy(blob + gate_expert_bytes,
++               (const char *)model_map + up_src,
++               (size_t)gate_expert_bytes);
++        memcpy(blob + gate_expert_bytes * 2u,
++               (const char *)model_map + down_src,
++               (size_t)down_expert_bytes);
++    }
++
++    cuda_expert_cold_lossless_entry entry;
++    memset(&entry, 0, sizeof(entry));
++    entry.key = cuda_expert_cold_lossless_key(model_map,
++                                              layer,
++                                              expert,
++                                              gate_offset,
++                                              up_offset,
++                                              down_offset,
++                                              gate_expert_bytes,
++                                              down_expert_bytes,
++                                              s->format,
++                                              s->cq1_group);
++    entry.model_map = model_map;
++    entry.model_size = model_size;
++    entry.layer = layer;
++    entry.n_total_expert = n_total_expert;
++    entry.expert = expert;
++    entry.gate_offset = gate_offset;
++    entry.up_offset = up_offset;
++    entry.down_offset = down_offset;
++    entry.gate_expert_bytes = gate_expert_bytes;
++    entry.down_expert_bytes = down_expert_bytes;
++    entry.blob_bytes = blob_bytes;
++    entry.format = s->format;
++    entry.cq1_group = s->cq1_group;
++    entry.blob = blob;
++    entry.checksum = cuda_expert_cold_lossless_checksum(&entry);
++    const uint32_t index = (uint32_t)s->entries.size();
++    s->entries.push_back(entry);
++    s->index[entry.key] = index;
++    s->materialized++;
++    s->bytes_materialized += blob_bytes;
++    return &s->entries[index];
++}
++
++static char *cuda_expert_cold_lossless_scratch(uint64_t bytes) {
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if (bytes == 0 || bytes > (uint64_t)SIZE_MAX) return NULL;
++    if (s->scratch && s->scratch_bytes >= bytes) return s->scratch;
++    char *next = (char *)realloc(s->scratch, (size_t)bytes);
++    if (!next) {
++        s->repack_failures++;
++        return NULL;
++    }
++    s->scratch = next;
++    s->scratch_bytes = bytes;
++    return s->scratch;
++}
++
++static int cuda_expert_cold_lossless_repack_cq1(
++        const cuda_expert_cold_lossless_entry *entry,
++        char **gate_src,
++        char **up_src,
++        char **down_src) {
++    if (!entry || !gate_src || !up_src || !down_src ||
++        entry->format != CUDA_EXPERT_COLD_FORMAT_CQ1) {
++        return 0;
++    }
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if ((entry->gate_expert_bytes % sizeof(cuda_block_iq2_xxs)) != 0 ||
++        (entry->down_expert_bytes % sizeof(cuda_block_q2_K)) != 0 ||
++        entry->gate_expert_bytes > UINT64_MAX / 2u ||
++        entry->gate_expert_bytes * 2u > UINT64_MAX - entry->down_expert_bytes) {
++        s->repack_failures++;
++        return 0;
++    }
++    const uint64_t native_bytes =
++        entry->gate_expert_bytes * 2u + entry->down_expert_bytes;
++    char *scratch = cuda_expert_cold_lossless_scratch(native_bytes);
++    if (!scratch) return 0;
++
++    const uint64_t cq1_block_bytes = cuda_expert_cq1_block_bytes(entry->cq1_group);
++    const uint64_t gate_blocks = entry->gate_expert_bytes / sizeof(cuda_block_iq2_xxs);
++    const uint64_t down_blocks = entry->down_expert_bytes / sizeof(cuda_block_q2_K);
++    const uint64_t gate_cq1_bytes = gate_blocks * cq1_block_bytes;
++    const uint64_t down_cq1_bytes = down_blocks * cq1_block_bytes;
++    if (!cq1_block_bytes ||
++        gate_cq1_bytes > entry->blob_bytes ||
++        gate_cq1_bytes * 2u > entry->blob_bytes ||
++        gate_cq1_bytes * 2u + down_cq1_bytes > entry->blob_bytes) {
++        s->repack_failures++;
++        return 0;
++    }
++
++    char *gate = scratch;
++    char *up = scratch + entry->gate_expert_bytes;
++    char *down = scratch + entry->gate_expert_bytes * 2u;
++    if (!cuda_expert_cq1_decode_blocks(entry->blob,
++                                       sizeof(cuda_block_iq2_xxs),
++                                       gate_blocks,
++                                       gate,
++                                       entry->cq1_group,
++                                       1) ||
++        !cuda_expert_cq1_decode_blocks(entry->blob + gate_cq1_bytes,
++                                       sizeof(cuda_block_iq2_xxs),
++                                       gate_blocks,
++                                       up,
++                                       entry->cq1_group,
++                                       1) ||
++        !cuda_expert_cq1_decode_blocks(entry->blob + gate_cq1_bytes * 2u,
++                                       sizeof(cuda_block_q2_K),
++                                       down_blocks,
++                                       down,
++                                       entry->cq1_group,
++                                       0)) {
++        s->repack_failures++;
++        return 0;
++    }
++    s->bytes_repacked += native_bytes;
++    *gate_src = gate;
++    *up_src = up;
++    *down_src = down;
++    return 1;
++}
++
++static int cuda_expert_cold_lossless_copy_to_device(
++        char *gate_dst,
++        char *up_dst,
++        char *down_dst,
++        const void *model_map,
++        uint64_t model_size,
++        uint32_t layer,
++        uint32_t n_total_expert,
++        uint32_t expert,
++        uint64_t gate_offset,
++        uint64_t up_offset,
++        uint64_t down_offset,
++        uint64_t gate_expert_bytes,
++        uint64_t down_expert_bytes,
++        int prompt_like_batch) {
++    if (!cuda_expert_cold_lossless_is_enabled()) return 0;
++    cuda_expert_cold_lossless_stats *s = &g_expert_cold_lossless;
++    if (prompt_like_batch && !s->allow_prefill) return 0;
++    if (s->format == CUDA_EXPERT_COLD_FORMAT_CQ1 &&
++        !s->allow_prefill &&
++        !s->allow_ungated) {
++        int reason = CUDA_EXPERT_COLD_POLICY_ALLOW;
++        if (!cuda_expert_cold_cq1_policy_allows(layer,
++                                                expert,
++                                                prompt_like_batch,
++                                                s->native_decode_tokens,
++                                                s->native_decode_layers,
++                                                &reason)) {
++            cuda_expert_cold_policy_note(s, reason);
++            return 0;
++        }
++        cuda_expert_cold_policy_note(s, CUDA_EXPERT_COLD_POLICY_ALLOW);
++    }
++    const uint64_t key = cuda_expert_cold_lossless_key(model_map,
++                                                       layer,
++                                                       expert,
++                                                       gate_offset,
++                                                       up_offset,
++                                                       down_offset,
++                                                       gate_expert_bytes,
++                                                       down_expert_bytes,
++                                                       s->format,
++                                                       s->cq1_group);
++    cuda_expert_cold_lossless_entry *entry =
++        cuda_expert_cold_lossless_find(key,
++                                       model_map,
++                                       model_size,
++                                       layer,
++                                       n_total_expert,
++                                       expert,
++                                       gate_offset,
++                                       up_offset,
++                                       down_offset,
++                                       gate_expert_bytes,
++                                       down_expert_bytes,
++                                       s->format,
++                                       s->cq1_group);
++    if (entry) {
++        s->reuses++;
++    } else {
++        entry = cuda_expert_cold_lossless_materialize(model_map,
++                                                      model_size,
++                                                      layer,
++                                                      n_total_expert,
++                                                      expert,
++                                                      gate_offset,
++                                                      up_offset,
++                                                      down_offset,
++                                                      gate_expert_bytes,
++                                                      down_expert_bytes);
++        if (!entry) return 0;
++    }
++    if (s->verify &&
++        cuda_expert_cold_lossless_checksum(entry) != entry->checksum) {
++        s->verify_failures++;
++        return 0;
++    }
++    char *repacked_gate = NULL;
++    char *repacked_up = NULL;
++    char *repacked_down = NULL;
++    const char *gate_src = entry->blob;
++    const char *up_src = entry->blob + entry->gate_expert_bytes;
++    const char *down_src = entry->blob + entry->gate_expert_bytes * 2u;
++    if (entry->format == CUDA_EXPERT_COLD_FORMAT_CQ1) {
++        if (!cuda_expert_cold_lossless_repack_cq1(entry,
++                                                  &repacked_gate,
++                                                  &repacked_up,
++                                                  &repacked_down)) {
++            return 0;
++        }
++        gate_src = repacked_gate;
++        up_src = repacked_up;
++        down_src = repacked_down;
++    }
++    if (!cuda_ok(cudaMemcpy(gate_dst,
++                            gate_src,
++                            (size_t)entry->gate_expert_bytes,
++                            cudaMemcpyHostToDevice),
++                 "cold lossless gate copy") ||
++        !cuda_ok(cudaMemcpy(up_dst,
++                            up_src,
++                            (size_t)entry->gate_expert_bytes,
++                            cudaMemcpyHostToDevice),
++                 "cold lossless up copy") ||
++        !cuda_ok(cudaMemcpy(down_dst,
++                            down_src,
++                            (size_t)entry->down_expert_bytes,
++                            cudaMemcpyHostToDevice),
++                 "cold lossless down copy")) {
++        s->copy_failures++;
++        return 0;
++    }
++    s->copies++;
++    return 1;
++}
++
+ static double cuda_wall_sec(void) {
+     struct timespec ts;
+     clock_gettime(CLOCK_MONOTONIC, &ts);
+@@ -2172,7 +3850,8 @@ static int cuda_stream_expert_cache_load_slot(
+         uint64_t down_offset,
+         uint64_t gate_expert_bytes,
+         uint64_t down_expert_bytes,
+-        int defer_upload_sync) {
++        int defer_upload_sync,
++        int prompt_like_batch) {
+     const uint64_t gate_src =
+         gate_offset + (uint64_t)expert * gate_expert_bytes;
+     const uint64_t up_src =
+@@ -2181,27 +3860,43 @@ static int cuda_stream_expert_cache_load_slot(
+         down_offset + (uint64_t)expert * down_expert_bytes;
+     const uint64_t gate_dst = (uint64_t)slot * gate_expert_bytes;
+     const uint64_t down_dst = (uint64_t)slot * down_expert_bytes;
+-    if (!cuda_model_copy_to_device_streamed(cache->gate_ptr + gate_dst,
+-                                            model_map,
+-                                            model_size,
+-                                            gate_src,
+-                                            gate_expert_bytes,
+-                                            "cached moe_gate",
+-                                            defer_upload_sync) ||
+-        !cuda_model_copy_to_device_streamed(cache->up_ptr + gate_dst,
+-                                            model_map,
+-                                            model_size,
+-                                            up_src,
+-                                            gate_expert_bytes,
+-                                            "cached moe_up",
+-                                            defer_upload_sync) ||
+-        !cuda_model_copy_to_device_streamed(cache->down_ptr + down_dst,
+-                                            model_map,
+-                                            model_size,
+-                                            down_src,
+-                                            down_expert_bytes,
+-                                            "cached moe_down",
+-                                            defer_upload_sync)) {
++    const int copied_from_cold =
++        cuda_expert_cold_lossless_copy_to_device(cache->gate_ptr + gate_dst,
++                                                 cache->up_ptr + gate_dst,
++                                                 cache->down_ptr + down_dst,
++                                                 model_map,
++                                                 model_size,
++                                                 layer,
++                                                 n_total_expert,
++                                                 expert,
++                                                 gate_offset,
++                                                 up_offset,
++                                                 down_offset,
++                                                 gate_expert_bytes,
++                                                 down_expert_bytes,
++                                                 prompt_like_batch);
++    if (!copied_from_cold &&
++        (!cuda_model_copy_to_device_streamed(cache->gate_ptr + gate_dst,
++                                             model_map,
++                                             model_size,
++                                             gate_src,
++                                             gate_expert_bytes,
++                                             "cached moe_gate",
++                                             defer_upload_sync) ||
++         !cuda_model_copy_to_device_streamed(cache->up_ptr + gate_dst,
++                                             model_map,
++                                             model_size,
++                                             up_src,
++                                             gate_expert_bytes,
++                                             "cached moe_up",
++                                             defer_upload_sync) ||
++         !cuda_model_copy_to_device_streamed(cache->down_ptr + down_dst,
++                                             model_map,
++                                             model_size,
++                                             down_src,
++                                             down_expert_bytes,
++                                             "cached moe_down",
++                                             defer_upload_sync))) {
+         return 0;
+     }
+     cuda_stream_expert_cache_slot &entry = cache->slots[slot];
+@@ -2263,7 +3958,8 @@ static int cuda_stream_expert_cache_seed_one(
+                                             down_offset,
+                                             gate_expert_bytes,
+                                             down_expert_bytes,
+-                                            defer_upload_sync)) {
++                                            defer_upload_sync,
++                                            0)) {
+         return 0;
+     }
+     if (append && cache->count < cache->capacity) cache->count++;
+@@ -2645,6 +4341,80 @@ extern "C" int ds4_gpu_tensor_read(const ds4_gpu_tensor *tensor, uint64_t offset
+     return cuda_ok(cudaMemcpy(data, (const char *)tensor->ptr + offset, (size_t)bytes, cudaMemcpyDeviceToHost), "tensor read");
+ }
+ 
++extern "C" ds4_gpu_async_read *ds4_gpu_async_read_alloc(uint64_t bytes) {
++    if (bytes == 0) bytes = 1;
++    ds4_gpu_async_read *r = (ds4_gpu_async_read *)calloc(1, sizeof(*r));
++    if (!r) return NULL;
++    r->bytes = bytes;
++    if (!cuda_ok(cudaHostAlloc(&r->host, (size_t)bytes, cudaHostAllocDefault),
++                 "async read host alloc") ||
++        !cuda_ok(cudaStreamCreateWithFlags(&r->stream, cudaStreamNonBlocking),
++                 "async read stream create") ||
++        !cuda_ok(cudaEventCreateWithFlags(&r->ready, cudaEventDisableTiming),
++                 "async read ready event create") ||
++        !cuda_ok(cudaEventCreateWithFlags(&r->done, cudaEventDisableTiming),
++                 "async read done event create")) {
++        ds4_gpu_async_read_free(r);
++        return NULL;
++    }
++    return r;
++}
++
++extern "C" void ds4_gpu_async_read_free(ds4_gpu_async_read *readback) {
++    if (!readback) return;
++    if (readback->done) (void)cudaEventDestroy(readback->done);
++    if (readback->ready) (void)cudaEventDestroy(readback->ready);
++    if (readback->stream) (void)cudaStreamDestroy(readback->stream);
++    if (readback->host) (void)cudaFreeHost(readback->host);
++    free(readback);
++}
++
++extern "C" void *ds4_gpu_async_read_host(ds4_gpu_async_read *readback) {
++    return readback ? readback->host : NULL;
++}
++
++extern "C" int ds4_gpu_async_read_ready(ds4_gpu_async_read *readback) {
++    if (!readback || !readback->pending) return 0;
++    cudaError_t err = cudaEventQuery(readback->done);
++    if (err == cudaSuccess) {
++        readback->pending = 0;
++        return 1;
++    }
++    if (err == cudaErrorNotReady) return 0;
++    readback->pending = 0;
++    return cuda_ok(err, "async read query");
++}
++
++extern "C" int ds4_gpu_tensor_read_async(ds4_gpu_async_read *readback,
++                                          const ds4_gpu_tensor *tensor,
++                                          uint64_t offset,
++                                          uint64_t bytes) {
++    if (!readback || !tensor || offset > tensor->bytes ||
++        bytes > tensor->bytes - offset || bytes > readback->bytes) {
++        return 0;
++    }
++    if (readback->pending && !ds4_gpu_async_read_ready(readback)) return 0;
++    readback->pending = 0;
++    readback->pending_bytes = bytes;
++    if (bytes == 0) return 1;
++    if (!cuda_ok(cudaEventRecord(readback->ready, 0),
++                 "async read dependency event record") ||
++        !cuda_ok(cudaStreamWaitEvent(readback->stream, readback->ready, 0),
++                 "async read stream wait") ||
++        !cuda_ok(cudaMemcpyAsync(readback->host,
++                                 (const char *)tensor->ptr + offset,
++                                 (size_t)bytes,
++                                 cudaMemcpyDeviceToHost,
++                                 readback->stream),
++                 "async tensor read copy") ||
++        !cuda_ok(cudaEventRecord(readback->done, readback->stream),
++                 "async read done event record")) {
++        return 0;
++    }
++    readback->pending = 1;
++    return 1;
++}
++
+ extern "C" int ds4_gpu_tensor_read_after_selected_event(const ds4_gpu_tensor *tensor,
+                                                          uint64_t offset,
+                                                          void *data,
+@@ -3011,6 +4781,82 @@ extern "C" uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+     return cuda_stream_expert_cache_configured_budget();
+ }
+ 
++static int cuda_stream_expert_cache_contains_table(
++        const cuda_stream_expert_cache       *cache,
++        const ds4_gpu_stream_expert_table    *table,
++        uint32_t                              expert) {
++    if (!cache || !table || !cache->valid || cache->capacity == 0) return 0;
++    for (uint32_t slot_i = 0; slot_i < cache->capacity; slot_i++) {
++        const cuda_stream_expert_cache_slot &slot = cache->slots[slot_i];
++        if (slot.valid &&
++            slot.model_map == table->model_map &&
++            slot.model_size == table->model_size &&
++            slot.layer == table->layer &&
++            slot.n_total_expert == table->n_total_expert &&
++            slot.expert == expert &&
++            slot.gate_offset == table->gate_offset &&
++            slot.up_offset == table->up_offset &&
++            slot.down_offset == table->down_offset &&
++            slot.gate_expert_bytes == table->gate_expert_bytes &&
++            slot.down_expert_bytes == table->down_expert_bytes) {
++            return 1;
++        }
++    }
++    return 0;
++}
++
++extern "C" uint32_t ds4_gpu_stream_expert_cache_count_resident(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts) {
++    if (!table || !expert_ids || n_experts == 0) return 0;
++    const cuda_stream_expert_cache *cache = &g_stream_expert_cache;
++    if (!cache->valid || cache->capacity == 0) return 0;
++    uint32_t resident = 0;
++    for (uint32_t i = 0; i < n_experts; i++) {
++        const int32_t expert = expert_ids[i];
++        if (expert < 0 || (uint32_t)expert >= table->n_total_expert) continue;
++        if (cuda_stream_expert_cache_contains_table(cache,
++                                                    table,
++                                                    (uint32_t)expert)) {
++            resident++;
++        }
++    }
++    return resident;
++}
++
++extern "C" uint32_t ds4_gpu_stream_expert_cache_filter_missing(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts,
++        int32_t                           *missing_ids,
++        uint32_t                           missing_cap,
++        uint32_t                          *resident_count) {
++    if (resident_count) *resident_count = 0;
++    if (!table || !expert_ids || !missing_ids || n_experts == 0 ||
++        missing_cap == 0) {
++        return 0;
++    }
++    const cuda_stream_expert_cache *cache = &g_stream_expert_cache;
++    uint32_t missing = 0;
++    uint32_t resident = 0;
++    for (uint32_t i = 0; i < n_experts; i++) {
++        const int32_t expert = expert_ids[i];
++        if (expert < 0 || (uint32_t)expert >= table->n_total_expert) continue;
++        if (cuda_stream_expert_cache_contains_table(cache,
++                                                    table,
++                                                    (uint32_t)expert)) {
++            resident++;
++            continue;
++        }
++        if (missing < missing_cap) {
++            missing_ids[missing++] = expert;
++        }
++    }
++    if (resident_count) *resident_count = resident;
++    return missing;
++}
++
+ extern "C" int ds4_gpu_stream_expert_cache_seed_selected(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *selected_ids,
+@@ -3162,6 +5008,9 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     uint32_t cache_hits = 0;
+     uint32_t cache_misses = 0;
+     uint32_t direct_loads = 0;
++    uint32_t evictions = 0;
++    const int prompt_like_batch =
++        slot_count > DS4_CUDA_ROUTED_EXPERTS_PER_TOKEN;
+     if (cuda_spex_stats_is_enabled()) {
+         g_spex_stats.selected_load_batches++;
+         g_spex_stats.selected_expert_requests += compact_count;
+@@ -3206,6 +5055,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                 cache_misses++;
+                 const uint32_t load_slot =
+                     cuda_stream_expert_cache_lru_slot(expert_cache);
++                const int evicting = expert_cache->slots[load_slot].valid;
+                 const int append = !expert_cache->slots[load_slot].valid;
+                 if (cuda_stream_expert_cache_load_slot(expert_cache,
+                                                        model_map,
+@@ -3219,10 +5069,12 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                                                        down_offset,
+                                                        gate_expert_bytes,
+                                                        down_expert_bytes,
+-                                                       0)) {
++                                                       0,
++                                                       prompt_like_batch)) {
+                     if (append && expert_cache->count < expert_cache->capacity) {
+                         expert_cache->count++;
+                     }
++                    if (evicting) evictions++;
+                     cache_slot = (int)load_slot;
+                 } else {
+                     cuda_stream_expert_cache_invalidate();
+@@ -3253,27 +5105,44 @@ static int cuda_stream_selected_cache_begin_compact_load(
+             const uint64_t down_src = down_offset + expert * down_expert_bytes;
+             direct_loads++;
+             if (cuda_spex_stats_is_enabled()) g_spex_stats.selected_direct_loads++;
+-            if (!cuda_model_copy_to_device_streamed(g_stream_selected_cache.gate_ptr + gate_dst,
+-                                                    model_map,
+-                                                    model_size,
+-                                                    gate_src,
+-                                                    gate_expert_bytes,
+-                                                    "selected moe_gate",
+-                                                    1) ||
+-                !cuda_model_copy_to_device_streamed(g_stream_selected_cache.up_ptr + gate_dst,
+-                                                    model_map,
+-                                                    model_size,
+-                                                    up_src,
+-                                                    gate_expert_bytes,
+-                                                    "selected moe_up",
+-                                                    1) ||
+-                !cuda_model_copy_to_device_streamed(g_stream_selected_cache.down_ptr + down_dst,
+-                                                    model_map,
+-                                                    model_size,
+-                                                    down_src,
+-                                                    down_expert_bytes,
+-                                                    "selected moe_down",
+-                                                    1)) {
++            const int copied_from_cold_lossless =
++                cuda_expert_cold_lossless_copy_to_device(
++                        g_stream_selected_cache.gate_ptr + gate_dst,
++                        g_stream_selected_cache.up_ptr + gate_dst,
++                        g_stream_selected_cache.down_ptr + down_dst,
++                        model_map,
++                        model_size,
++                        layer,
++                        n_total_expert,
++                        (uint32_t)expert,
++                        gate_offset,
++                        up_offset,
++                        down_offset,
++                        gate_expert_bytes,
++                        down_expert_bytes,
++                        prompt_like_batch);
++            if (!copied_from_cold_lossless &&
++                (!cuda_model_copy_to_device_streamed(g_stream_selected_cache.gate_ptr + gate_dst,
++                                                     model_map,
++                                                     model_size,
++                                                     gate_src,
++                                                     gate_expert_bytes,
++                                                     "selected moe_gate",
++                                                     1) ||
++                 !cuda_model_copy_to_device_streamed(g_stream_selected_cache.up_ptr + gate_dst,
++                                                     model_map,
++                                                     model_size,
++                                                     up_src,
++                                                     gate_expert_bytes,
++                                                     "selected moe_up",
++                                                     1) ||
++                 !cuda_model_copy_to_device_streamed(g_stream_selected_cache.down_ptr + down_dst,
++                                                     model_map,
++                                                     model_size,
++                                                     down_src,
++                                                     down_expert_bytes,
++                                                     "selected moe_down",
++                                                     1))) {
+                 cuda_stream_selected_cache_invalidate();
+                 return strict_failure ? 0 : 1;
+             }
+@@ -3310,7 +5179,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     if (getenv("DS4_CUDA_STREAMING_EXPERT_CACHE_VERBOSE")) {
+         cuda_model_load_progress_finish();
+         fprintf(stderr,
+-                "ds4: CUDA streaming selected layer=%u slots=%u compact=%u global_budget=%u before=%u after=%u hits=%u misses=%u direct=%u gate/up %.2f MiB down %.2f MiB\n",
++                "ds4: CUDA streaming selected layer=%u slots=%u compact=%u global_budget=%u before=%u after=%u hits=%u misses=%u direct=%u evictions=%u gate/up %.2f MiB down %.2f MiB\n",
+                 layer,
+                 slot_count,
+                 compact_count,
+@@ -3320,9 +5189,33 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                 cache_hits,
+                 cache_misses,
+                 direct_loads,
++                evictions,
+                 (double)compact_gate_bytes / 1048576.0,
+                 (double)compact_down_bytes / 1048576.0);
+     }
++    cuda_expert_tier_promote_batch promote_batch =
++        cuda_expert_tier_promote_note_batch(layer,
++                                            compact_ids,
++                                            slot_ids,
++                                            compact_count,
++                                            slot_count);
++    cuda_expert_tiering_observe_note_batch(
++            layer,
++            n_total_expert,
++            compact_ids,
++            slot_ids,
++            compact_count,
++            slot_count,
++            expert_cache && expert_cache->valid ? expert_cache->capacity : 0,
++            cache_count_before,
++            expert_cache && expert_cache->valid ? expert_cache->count : 0,
++            cache_hits,
++            cache_misses,
++            direct_loads,
++            evictions,
++            gate_expert_bytes,
++            down_expert_bytes,
++            &promote_batch);
+     return 1;
+ }
+ 
+@@ -3695,6 +5588,30 @@ __global__ static void matmul_f16_ordered_chunks_kernel(
+     }
+ }
+ 
++__global__ static void spex_hidden_score_kernel(
++        float *__restrict__ scores,
++        const __half *__restrict__ weights,
++        const float *__restrict__ hidden,
++        uint32_t n_embd,
++        uint32_t n_expert) {
++    uint32_t expert = (uint32_t)blockIdx.x;
++    if (expert >= n_expert) return;
++
++    float sum = 0.0f;
++    for (uint32_t i = threadIdx.x; i < n_embd; i += blockDim.x) {
++        sum += __half2float(weights[(uint64_t)i * n_expert + expert]) * hidden[i];
++    }
++
++    __shared__ float partial[256];
++    partial[threadIdx.x] = sum;
++    __syncthreads();
++    for (uint32_t stride = blockDim.x >> 1; stride > 0; stride >>= 1) {
++        if (threadIdx.x < stride) partial[threadIdx.x] += partial[threadIdx.x + stride];
++        __syncthreads();
++    }
++    if (threadIdx.x == 0) scores[expert] = partial[0];
++}
++
+ __global__ static void matmul_f16_pair_ordered_chunks_kernel(
+         float *out0,
+         float *out1,
+@@ -8232,6 +10149,92 @@ extern "C" int ds4_gpu_matmul_f16_tensor(ds4_gpu_tensor *out, const void *model_
+     return cuda_ok(cudaGetLastError(), "matmul_f16 launch");
+ }
+ 
++extern "C" int ds4_gpu_matmul_f16_weight_tensor(ds4_gpu_tensor *out, const ds4_gpu_tensor *weights, uint64_t in_dim, uint64_t out_dim, const ds4_gpu_tensor *x, uint64_t n_tok) {
++    if (!out || !weights || !x || in_dim == 0 || out_dim == 0 || n_tok == 0) return 0;
++    if (out_dim > UINT64_MAX / in_dim) return 0;
++    const uint64_t weight_elems = out_dim * in_dim;
++    if (weight_elems > UINT64_MAX / sizeof(uint16_t)) return 0;
++    const uint64_t weight_bytes = weight_elems * sizeof(uint16_t);
++    if (weights->bytes < weight_bytes ||
++        x->bytes < n_tok * in_dim * sizeof(float) ||
++        out->bytes < n_tok * out_dim * sizeof(float)) return 0;
++    const __half *w = (const __half *)weights->ptr;
++    const int serial_f16 = getenv("DS4_CUDA_SERIAL_F16_MATMUL") != NULL;
++    const int router_shape = in_dim == 4096u && out_dim == 256u && n_tok == 1u;
++    const int serial_router =
++        !serial_f16 &&
++        router_shape &&
++        getenv("DS4_CUDA_SERIAL_ROUTER") != NULL;
++    const int ordered_router =
++        !serial_f16 &&
++        !serial_router &&
++        n_tok == 1u &&
++        getenv("DS4_CUDA_NO_ORDERED_F16_MATMUL") == NULL;
++    if (!serial_f16 && g_cublas_ready && n_tok > 1) {
++        const uint64_t xh_count = n_tok * in_dim;
++        __half *xh = (__half *)cuda_tmp_alloc(xh_count * sizeof(__half), "f16 tensor-weight gemm activations");
++        if (!xh) return 0;
++        f32_to_f16_kernel<<<(xh_count + 255) / 256, 256>>>(xh, (const float *)x->ptr, xh_count);
++        if (!cuda_ok(cudaGetLastError(), "f16 tensor-weight activation convert launch")) return 0;
++        const float alpha = 1.0f;
++        const float beta = 0.0f;
++        cublasStatus_t st = cublasGemmEx(g_cublas,
++                                         CUBLAS_OP_T,
++                                         CUBLAS_OP_N,
++                                         (int)out_dim,
++                                         (int)n_tok,
++                                         (int)in_dim,
++                                         &alpha,
++                                         w,
++                                         CUDA_R_16F,
++                                         (int)in_dim,
++                                         xh,
++                                         CUDA_R_16F,
++                                         (int)in_dim,
++                                         &beta,
++                                         out->ptr,
++                                         CUDA_R_32F,
++                                         (int)out_dim,
++                                         CUDA_R_32F,
++                                         CUBLAS_GEMM_DEFAULT);
++        return cublas_ok(st, "f16 tensor-weight matmul");
++    }
++    dim3 grid((unsigned)out_dim, (unsigned)n_tok, 1);
++    if (serial_f16 || serial_router) {
++        matmul_f16_serial_kernel<<<grid, 1>>>((float *)out->ptr, w, (const float *)x->ptr, in_dim, out_dim, n_tok);
++        return cuda_ok(cudaGetLastError(), serial_router ? "matmul_f16_tensor_weight_router_serial launch" : "matmul_f16_tensor_weight_serial launch");
++    }
++    if (ordered_router) {
++        matmul_f16_ordered_chunks_kernel<<<grid, 32>>>((float *)out->ptr, w, (const float *)x->ptr, in_dim, out_dim, n_tok);
++        return cuda_ok(cudaGetLastError(), "matmul_f16_tensor_weight_ordered_chunks launch");
++    }
++    matmul_f16_kernel<<<grid, 256>>>((float *)out->ptr, w, (const float *)x->ptr, in_dim, out_dim, n_tok);
++    return cuda_ok(cudaGetLastError(), "matmul_f16_tensor_weight launch");
++}
++
++extern "C" int ds4_gpu_spex_hidden_score_tensor(
++        ds4_gpu_tensor       *scores,
++        const ds4_gpu_tensor *weights,
++        uint32_t                n_embd,
++        uint32_t                n_expert,
++        const ds4_gpu_tensor *hidden) {
++    if (!scores || !weights || !hidden || n_embd == 0 || n_expert == 0) return 0;
++    const uint64_t weight_elems = (uint64_t)n_embd * n_expert;
++    if (weight_elems > UINT64_MAX / sizeof(uint16_t)) return 0;
++    const uint64_t weight_bytes = weight_elems * sizeof(uint16_t);
++    if (weights->bytes < weight_bytes ||
++        hidden->bytes < (uint64_t)n_embd * sizeof(float) ||
++        scores->bytes < (uint64_t)n_expert * sizeof(float)) {
++        return 0;
++    }
++    spex_hidden_score_kernel<<<n_expert, 256>>>((float *)scores->ptr,
++                                                (const __half *)weights->ptr,
++                                                (const float *)hidden->ptr,
++                                                n_embd,
++                                                n_expert);
++    return cuda_ok(cudaGetLastError(), "spex hidden score launch");
++}
++
+ extern "C" int ds4_gpu_matmul_f16_pair_tensor(
+         ds4_gpu_tensor *out0,
+         ds4_gpu_tensor *out1,

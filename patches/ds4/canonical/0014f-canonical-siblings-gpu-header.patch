@@ -1,0 +1,67 @@
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 3c76ff9..9bbd2d0 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -18,6 +18,7 @@ extern "C" {
+  * buffers stay device-owned across the whole prefill/decode command sequence.
+  */
+ typedef struct ds4_gpu_tensor ds4_gpu_tensor;
++typedef struct ds4_gpu_async_read ds4_gpu_async_read;
+ 
+ int ds4_gpu_init(void);
+ void ds4_gpu_cleanup(void);
+@@ -31,6 +32,14 @@ void *ds4_gpu_tensor_contents(ds4_gpu_tensor *tensor);
+ int ds4_gpu_tensor_fill_f32(ds4_gpu_tensor *tensor, float value, uint64_t count);
+ int ds4_gpu_tensor_write(ds4_gpu_tensor *tensor, uint64_t offset, const void *data, uint64_t bytes);
+ int ds4_gpu_tensor_read(const ds4_gpu_tensor *tensor, uint64_t offset, void *data, uint64_t bytes);
++ds4_gpu_async_read *ds4_gpu_async_read_alloc(uint64_t bytes);
++void ds4_gpu_async_read_free(ds4_gpu_async_read *readback);
++void *ds4_gpu_async_read_host(ds4_gpu_async_read *readback);
++int ds4_gpu_tensor_read_async(ds4_gpu_async_read *readback,
++                              const ds4_gpu_tensor *tensor,
++                              uint64_t offset,
++                              uint64_t bytes);
++int ds4_gpu_async_read_ready(ds4_gpu_async_read *readback);
+ int ds4_gpu_tensor_copy(ds4_gpu_tensor *dst, uint64_t dst_offset,
+                           const ds4_gpu_tensor *src, uint64_t src_offset,
+                           uint64_t bytes);
+@@ -96,6 +105,17 @@ void ds4_gpu_stream_expert_cache_release_resident(void);
+ uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+         uint64_t gate_expert_bytes,
+         uint64_t down_expert_bytes);
++uint32_t ds4_gpu_stream_expert_cache_count_resident(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts);
++uint32_t ds4_gpu_stream_expert_cache_filter_missing(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        uint32_t                           n_experts,
++        int32_t                           *missing_ids,
++        uint32_t                           missing_cap,
++        uint32_t                          *resident_count);
+ int ds4_gpu_stream_expert_cache_seed_selected(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *selected_ids,
+@@ -291,6 +311,21 @@ int ds4_gpu_matmul_f16_tensor(
+         const ds4_gpu_tensor *x,
+         uint64_t                n_tok);
+ 
++int ds4_gpu_matmul_f16_weight_tensor(
++        ds4_gpu_tensor       *out,
++        const ds4_gpu_tensor *weights,
++        uint64_t                in_dim,
++        uint64_t                out_dim,
++        const ds4_gpu_tensor *x,
++        uint64_t                n_tok);
++
++int ds4_gpu_spex_hidden_score_tensor(
++        ds4_gpu_tensor       *scores,
++        const ds4_gpu_tensor *weights,
++        uint32_t                n_embd,
++        uint32_t                n_expert,
++        const ds4_gpu_tensor *hidden);
++
+ int ds4_gpu_matmul_f16_pair_tensor(
+         ds4_gpu_tensor       *out_a,
+         ds4_gpu_tensor       *out_b,

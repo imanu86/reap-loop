@@ -144,6 +144,43 @@ md5 `1db4f799` == live-tree+0020+0021+0026. Stato intermedio dopo `0018-pace-can
 (md5 `bf9a0b6f`). Riproducibile: estrai `git -C <ds4> show 80ebbc3:{ds4.c,ds4_cuda.cu,ds4_gpu.h}`
 in un repo pulito e applica in ordine.
 
+### v2.1 — canonizzazione siblings (`ds4_cuda.cu` / `ds4_gpu.h`) — sblocca il build
+
+La v2 originale (19 patch) ricostruiva `ds4.c` byte-identico al live-tree ma lasciava i
+**file GPU fratelli al livello fine-0014e** (solo 0001-0008/0011): il build su pod
+`80ebbc3` + 19 patch **falliva** con `ds4.c:10614: error: unknown type name
+'ds4_gpu_async_read'` (log `runs/ds4/20260710_pod2_smokes/canonical_build/`), più warning
+di dichiarazione implicita per `ds4_gpu_async_read_ready`, `ds4_gpu_async_read_host`,
+`ds4_gpu_stream_expert_cache_filter_missing`: simboli che `ds4.c` (post-canonical, ramo
+SPEX-hidden/tiering) referenzia ma che vivono solo nel `ds4_cuda.cu`/`ds4_gpu.h` **live-tree**
+(avanzati oltre 0014e), mai catturati da nessuna patch.
+
+**Delta fratelli fattorizzato** (metodo: base `80ebbc3` → apply canonical 19 → confronto
+file-per-file col live-tree WSL `/root/ds4` @ `0bdad9a`): `ds4.c` già byte-identico (0 delta);
+restano **solo** `ds4_gpu.h` (+35 righe, 4 hunk) e `ds4_cuda.cu` (+2084 righe nette, 19 hunk).
+Fattorizzato in due patch NUOVE, non-distruttive, LF-clean (`-text`), che applicano DOPO 0011
+(nessuna patch >0011 tocca i fratelli, quindi lo stato base dei fratelli è identico in ogni
+posizione ≥0011) e ricostruiscono i due file **byte-identici al live-tree buildabile**
+(`ds4_cuda.cu` md5 `7d57f58d`, `ds4_gpu.h` md5 `55070d97`):
+
+- **`0014f-canonical-siblings-gpu-header.patch`** (`8b280fda`) — dichiarazioni `ds4_gpu.h`:
+  `typedef struct ds4_gpu_async_read ds4_gpu_async_read;` + 9 prototipi (`ds4_gpu_async_read_*`
+  alloc/free/host/ready, `ds4_gpu_tensor_read_async`, `ds4_gpu_stream_expert_cache_count_resident`/
+  `_filter_missing`, `ds4_gpu_matmul_f16_weight_tensor`, `ds4_gpu_spex_hidden_score_tensor`).
+- **`0014g-canonical-siblings-cuda-impl.patch`** (`62d866e6`) — definizioni `ds4_cuda.cu`:
+  `struct ds4_gpu_async_read {…}` + impl dei prototipi 0014f + substrato GPU SPEX-hidden/tiering
+  (controparte CUDA dei sottosistemi che `0015-pace-canonical` canonizza in `ds4.c`).
+
+**Verifica reale (2026-07-10, CPU-only):** catena completa su base fresca `80ebbc3` →
+**21/21 canonical** (sorted, incl. 0014f/0014g) + `0027` + `0028` (blob committati LF) applicano
+**clean** (`git apply --check` + apply); `ds4.c` finale md5 `62ed2e71`, fratelli finali
+byte-identici al live-tree. **Cross-check simboli:** il typedef `ds4_gpu_async_read` e tutti i
+simboli del log d'errore risultano **dichiarati** in `ds4_gpu.h` **e definiti** in `ds4_cuda.cu`;
+comm dei `ds4_gpu_*` chiamati in `ds4.c` vs dichiarati nell'header → nessun simbolo mancante (i 3
+apparenti — `ds4_gpu_graph` typedef locale, `ds4_gpu_rms_norm_weight_rows_tensor` troncato,
+`ds4_gpu_wrap_model_range` solo in commento — sono falsi positivi). `ds4_gpu.h` passa
+`g++ -fsyntax-only`. **Stato: apply-checked + symbol-checked, build pending pod.**
+
 ### Tabella (ordine di apply = ordine tabella; hash = `git hash-object`, 8 char)
 
 | # | ordine | File in `canonical/` | Hash | Origine |
@@ -161,6 +198,8 @@ in un repo pulito e applica in ordine.
 | 11 | 0013 | 0013-reap-wrap.patch | 70f0e2b6 | copia LF, ≡ originale |
 | 12 | 0014 | 0014-pace-controller.patch | 7939a305 | copia LF, ≡ originale |
 | 13 | 0014e | 0014e-pace-wrap-rename.patch | 75d2ceae | copia LF, ≡ originale |
+| 13+ | 0014f | **0014f-canonical-siblings-gpu-header.patch** | 8b280fda | **NUOVA v2.1** — decl `ds4_gpu.h` (sblocca `ds4.c:10614`); vedi §v2.1 |
+| 13+ | 0014g | **0014g-canonical-siblings-cuda-impl.patch** | 62d866e6 | **NUOVA v2.1** — def `ds4_cuda.cu` (~2084 righe); vedi §v2.1 |
 | 14 | 0015 | **0015-pace-canonical.patch** | **86d67a95** | **RIGENERATA** — vedi nota fattorizzazione |
 | 15 | 0016 | **0016-pace-canonical.patch** | 73cfa4ab | RIGENERATA, **byte-identica** all'originale `0016-pace-rebuild-on-tighten` (73cfa4ab) |
 | 16 | 0018 | **0018-pace-canonical.patch** | 5b018a3b | RIGENERATA, **byte-identica** all'originale `0018-pace-skip-wrap-on-rotate` (5b018a3b) |
@@ -188,8 +227,11 @@ toccava**, quindi il rotate di 0015 **non è più separabile** dal substrato. Pe
   `rotate_on/every/decay`, `rmass`, `ds4_pace_note_router_probs`, `ds4_pace_rotate_maybe`,
   readback `router_probs`) **INSIEME** a tutto il substrato live-only mai formalizzato
   (vedi audit sotto). Non c'è confine pulito rotate-vs-substrato: struct `g_pace` e
-  `ds4_pace_init` sono condivisi riga-per-riga. `0014f` separato **non è recuperabile
-  fedelmente**; il 3-patch ai confini reversibili è la fattorizzazione più pulita ottenibile.
+  `ds4_pace_init` sono condivisi riga-per-riga. Uno split *pace* `0014f` separato **non è
+  recuperabile fedelmente**; il 3-patch ai confini reversibili è la fattorizzazione più pulita
+  ottenibile. (NB: i numeri `0014f`/`0014g` sono ora usati per le patch **sibling** GPU
+  `0014f/0014g-canonical-siblings-*` della §v2.1 — file diversi, concern diverso: fratelli
+  `ds4_cuda.cu`/`ds4_gpu.h`, non lo split pace qui ipotizzato.)
 - **`0016-pace-canonical`** = rebuild mask on tighten (≡ originale).
 - **`0018-pace-canonical`** = skip full WRAP on rotate (≡ originale).
 
@@ -230,14 +272,15 @@ identici in entrambe le serie.
 
 ### Rischi (dichiarati)
 
-1. **BUILD NON VERIFICATO (mandato CPU-only):** apply-clean ≠ compila. La v2 riproduce
-   `ds4.c` byte-identico al live-tree, ma i file GPU fratelli `ds4_cuda.cu`/`ds4_gpu.h`
-   sono ricostruiti **solo a livello fine-0014e** (patch 0001-0008/0011), NON allo stato
-   live-tree. Se il codice SPEX-hidden/GPU-prefetch in `ds4.c` referenzia dichiarazioni
-   CUDA che vivono solo nel `ds4_cuda.cu`/`ds4_gpu.h` live-tree (avanzati oltre 0014e), la
-   v2 **applica ma non builda**. Il path pace/rotate usa solo API GPU base (`router_probs`
-   via `ds4_gpu_tensor_read`) e dovrebbe buildare. ⇒ **lo smoke di switchover DEVE essere
-   build+boot su pod, non solo apply-check.**
+1. **BUILD non ancora verde su pod (mandato CPU-only):** apply-clean + symbol-checked ≠
+   compila-e-linka verificato. **RISOLTO il gap noto** che faceva fallire il pod build v2
+   (§v2.1): i fratelli `ds4_cuda.cu`/`ds4_gpu.h` ora sono ricostruiti **allo stato live-tree**
+   (0014f/0014g, byte-identici md5 `7d57f58d`/`55070d97`), quindi `ds4_gpu_async_read` e gli
+   altri simboli SPEX-hidden/GPU-prefetch sono dichiarati+definiti. Poiché la catena ricostruisce
+   ora `ds4.c` **e** entrambi i fratelli byte-identici al tree live-buildabile (che ha prodotto
+   il binario `ds4`), il build su pod dovrebbe passare. Residuo: la conferma è un
+   **build+boot su pod** (mandato CPU-only qui: nessuna toolchain CUDA locale) — non solo
+   apply/symbol-check. ⇒ **lo smoke di switchover DEVE essere build+boot su pod.**
 2. **OVER-SCOPE:** `0015-pace-canonical` canonizza sottosistemi non-pace (SPEX-hidden,
    cq1/tiering) perché entangled nello snapshot live a cui le leve sono ancorate. Fedele al
    binario reale, ma mischia i rami. Un refactor "pace-minimale" futuro potrà sfoltire — ma
