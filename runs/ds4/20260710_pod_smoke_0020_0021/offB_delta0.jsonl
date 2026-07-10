@@ -1,0 +1,17 @@
+{"ev":"prefill_reset","tok":0,"phase":1,"keep":0,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"prefill_apply","tok":0,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":8,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":16,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":24,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":32,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":40,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":48,"phase":3,"keep":23,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":56,"phase":3,"keep":23,"ngram":0.0170,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":64,"phase":3,"keep":23,"ngram":0.0572,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":72,"phase":3,"keep":23,"ngram":0.0919,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":80,"phase":3,"keep":23,"ngram":0.1210,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":88,"phase":3,"keep":23,"ngram":0.1276,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":96,"phase":3,"keep":23,"ngram":0.1238,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":104,"phase":3,"keep":23,"ngram":0.1166,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":112,"phase":3,"keep":23,"ngram":0.1087,"hit":1.0000,"breaths":0,"be":400}
+{"ev":"rotate","tok":120,"phase":3,"keep":23,"ngram":0.1013,"hit":1.0000,"breaths":0,"be":400}

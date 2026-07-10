@@ -1,0 +1,21 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.404s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: PACE on - warmup=16 keep=23[24..64] step=4 ngram(n=3,win=120) drift=0.35 rel=0.15 hyst=200 breath(every=400,len=80,keep=64,relearn=1) prebreath(on=0,drift=0.24,target=0.24,every=64,max=64,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=1 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=0,every=32,decay=0.980,preserve_stable=1)
+ds4: PACE S1 monitor alpha=0.10 trigger=0 slope(win=16,thr=0.000001,stable=4) action=rotate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2517 range, 6.07 GiB touched in 2144 ms (8 thread)
+ds4: REAP prefetch wait prefill_apply 2154 ms
+ds4: CUDA loading model tensors 0.59 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino): 40 layer, 2560 expert, 5742 range, 16.90 GiB touched in 3648 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino): 40 layer, 1080 expert, 2907 range, 7.13 GiB touched in 33 ms (8 thread)
+ds4: prefill: 10.93 t/s, generation: 6.78 t/s
+ds4: SPEX stats: selected_batches=11008 selected_experts=72223 cache_hits=57832 cache_misses=7958 hit_rate=0.8790 miss_per_expert=0.1102 direct_loads=6433 copy_calls=43173 copied=97139.25 MiB copy_ms=41572.801 copy_ms_per_batch=3.777 sync_calls=43173 sync_ms=1812.840 sync_ms_per_batch=0.165

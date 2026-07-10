@@ -1,0 +1,31 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.350s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: PACE on - warmup=16 keep=23[24..64] step=4 ngram(n=3,win=120) drift=0.35 rel=0.15 hyst=200 breath(every=400,len=80,keep=64,relearn=1) prebreath(on=0,drift=0.24,target=0.24,every=64,max=64,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=1,every=8,decay=0.980,preserve_stable=1)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2502 range, 6.07 GiB touched in 1710 ms (8 thread)
+ds4: REAP prefetch wait prefill_apply 1710 ms
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: prefill: 10.40 t/s, generation: 6.14 t/s
+ds4: SPEX stats: selected_batches=5504 selected_experts=39212 cache_hits=28430 cache_misses=4336 hit_rate=0.8677 miss_per_expert=0.1106 direct_loads=6446 copy_calls=32346 copied=72778.50 MiB copy_ms=31293.930 copy_ms_per_batch=5.686 sync_calls=32346 sync_ms=4889.423 sync_ms_per_batch=0.888

@@ -1,0 +1,46 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.348s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: PACE on - warmup=16 keep=23[24..64] step=4 ngram(n=3,win=120) drift=0.35 rel=0.15 hyst=200 breath(every=400,len=80,keep=64,relearn=1) prebreath(on=0,drift=0.24,target=0.24,every=64,max=64,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=1,every=8,decay=0.980,preserve_stable=1)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2508 range, 6.07 GiB touched in 1669 ms (8 thread)
+ds4: REAP prefetch wait prefill_apply 1671 ms
+ds4: CUDA loading model tensors 4.15 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 631 expert entrati, 1893 range, 4.159 GiB stimati, 4.167 GiB touched in 983 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 268 expert entrati, 804 range, 1.767 GiB stimati, 1.770 GiB touched in 343 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 227 expert entrati, 681 range, 1.496 GiB stimati, 1.499 GiB touched in 238 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 166 expert entrati, 498 range, 1.094 GiB stimati, 1.096 GiB touched in 168 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 119 expert entrati, 357 range, 0.784 GiB stimati, 0.786 GiB touched in 119 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 146 expert entrati, 438 range, 0.962 GiB stimati, 0.964 GiB touched in 89 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 105 expert entrati, 315 range, 0.692 GiB stimati, 0.693 GiB touched in 30 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 120 expert entrati, 360 range, 0.791 GiB stimati, 0.792 GiB touched in 85 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 92 expert entrati, 276 range, 0.606 GiB stimati, 0.607 GiB touched in 73 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 109 expert entrati, 327 range, 0.719 GiB stimati, 0.720 GiB touched in 94 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 106 expert entrati, 318 range, 0.699 GiB stimati, 0.700 GiB touched in 96 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 103 expert entrati, 309 range, 0.679 GiB stimati, 0.680 GiB touched in 98 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 87 expert entrati, 261 range, 0.573 GiB stimati, 0.574 GiB touched in 30 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 85 expert entrati, 255 range, 0.560 GiB stimati, 0.561 GiB touched in 56 ms (8 thread)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 90 expert entrati, 270 range, 0.593 GiB stimati, 0.594 GiB touched in 59 ms (8 thread)
+ds4: prefill: 12.77 t/s, generation: 6.71 t/s
+ds4: SPEX stats: selected_batches=5504 selected_experts=39189 cache_hits=28666 cache_misses=4100 hit_rate=0.8749 miss_per_expert=0.1046 direct_loads=6423 copy_calls=31569 copied=71030.25 MiB copy_ms=25793.658 copy_ms_per_batch=4.686 sync_calls=31569 sync_ms=3485.728 sync_ms_per_batch=0.633

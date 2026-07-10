@@ -1,0 +1,9 @@
+Here is a complete, compact single-file HTML page for a coffee shop. It includes a navigation bar, a hero section, an order button with JavaScript, and a contact form with validation.
+This HTML file is a self-contained, ready-to-use webpage for a coffee shop. It includes all navigation, branding, an order button with a thank-you alert, and a contact form that shows a confirmation message.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Bean & Brew - Coffee Shop

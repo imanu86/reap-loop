@@ -1,0 +1,16 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+  body { margin: 0; padding: 0; font-family: sans-serif; background: #c8; color: #d4; }
+  nav { background: #3a2; padding: 1em; text-align: center; }
+  nav a { color: #fff; margin: 0 1em; text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  section { padding: 2em; text-align: center; }
+  h1 { font-size: 3em; margin: 0; }
+  button { background: #d80; border: none; padding: 0.8em 2em; font-size: 1.2em; cursor: pointer; margin: 1em; }
+  form { background: #e9; padding: 1.5em; max-width: 300px; margin: 2em auto; border-radius: 6px; }
+  input { display: block; width: 100%; margin: 0.5em 0; padding: 
