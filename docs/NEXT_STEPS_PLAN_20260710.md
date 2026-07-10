@@ -12,16 +12,16 @@ sul 3060, e ogni verdetto recente poggia su n=1 + grading a regex.
 - [x] Push `cascade-memory/harness` (+31) e `reap/k91-coding-vram` (+41, include `runs/reap/multiseed_2026-07-07/`) su origin moe.
 - [x] Commit + push runs 2026-07-09 in reap-loop (`36a81b8`); worktree k91 ripulito (`c8a7569`); dirty moe committati (`3908b3b`).
 - [x] Cancellati branch locali merged (4× claude/*, reap/ds4-domain-prune, reap/public-domain-replica, codex/spex-integration).
-- [ ] **CLAIMS_CURRENT.md da riconciliare**: CLAIM-006 dice ancora "W50/130 L3 CLOSED" ma il replay pod 2026-07-10 dà W130 FAIL
+- [x] **CLAIMS_CURRENT.md da riconciliare** (fatto e78cd3d): CLAIM-006 dice ancora "W50/130 L3 CLOSED" ma il replay pod 2026-07-10 dà W130 FAIL
       (confound re-prefill/freeze-point, vedi J44). Aggiornare a OPEN con nota knife-edge.
-- [ ] **PACE_DESIGN.md §4** da aggiornare col limite misurato: n-gram è sensore in ritardo (J47/J48); il segnale con preavviso
+- [x] **PACE_DESIGN.md §4** (fatto e78cd3d) da aggiornare col limite misurato: n-gram è sensore in ritardo (J47/J48); il segnale con preavviso
       (~200 tok) è slope-S1 (CLAIM-011), non ancora cablato.
-- [ ] **Fonte canonica del paper**: proposta = `reap-loop/docs/paper/PAPER.md` (più avanti di 2 commit); congelare
+- [x] **Fonte canonica del paper** (fatto e78cd3d: PAPER.md CANONICAL, draft moe FROZEN, pointer multiseed): proposta = `reap-loop/docs/paper/PAPER.md` (più avanti di 2 commit); congelare
       `moe/docs/paper/PAPER_DRAFT_v2.md` con un puntatore. Nota: entrambi citano `runs/reap/multiseed_2026-07-07/` che vive
       in moe branch `reap/k91-coding-vram` (ora pushato).
-- [ ] **Mappa patch**: 0009/0010 esistono in revisioni divergenti tra i due repo; collisioni di numerazione 0011 (mask REAP vs
+- [x] **Mappa patch** (fatto e78cd3d: patches/README.md canonico + nota gemella in moe): 0009/0010 esistono in revisioni divergenti tra i due repo; collisioni di numerazione 0011 (mask REAP vs
       MTP dspark) e 0015/0016 (pace vs spex vs wiring). Aggiungere un README in `patches/` che dichiara la serie canonica.
-- [ ] moe `HANDOFF.md` §0-LIVE stantio (non menziona reap-loop/harness/k91); `PAPER_STATE.md` fermo alla tesi pre-REAP-LOOP.
+- [x] moe `HANDOFF.md` (fatto moe c1c55d4: §0-LIVE 2026-07-10, PAPER_STATE superseded, README) §0-LIVE stantio (non menziona reap-loop/harness/k91); `PAPER_STATE.md` fermo alla tesi pre-REAP-LOOP.
 
 ## Fase 1 — Pavimento di misura (bloccante: senza questo ogni vincitore è indistinguibile dal rumore)
 
