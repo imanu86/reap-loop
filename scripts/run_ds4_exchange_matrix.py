@@ -4,6 +4,33 @@
 The script is intentionally Windows/WSL friendly: it starts one ds4-server per
 variant, runs optional warmups plus measured requests through the OpenAI-like
 HTTP API, stores raw logs/responses, and writes a compact CSV summary.
+
+Measurement-floor upgrades (n=3 / ABAB / grading), all additive and
+retro-compatible (defaults reproduce the previous behavior byte-for-byte in the
+measurement path):
+
+- ``--runs N`` (default 1): N repetitions per variant into ``<stem>_rNN``
+  directories. ``summary.csv`` gains a ``run_index`` column (the legacy ``run``
+  column is kept for continuity), and a new ``summary_median.csv`` reports, per
+  (prompt, variant), the median of ``avg_tps``/``first50_tps``/``prompt_s`` plus
+  a majority-vote of the binary quality flags (a flag is 1 when at least half of
+  the runs raised it) and the median ``l0l3`` render grade.
+- ``--order {sequential,abab}`` (default ``sequential`` = legacy block order):
+  ``abab`` interleaves the variants (A, B, A, B, ...) across runs instead of
+  running each variant's repetitions back-to-back, to decorrelate the warm state
+  from ordering.
+- Quality flags: ``alert_in_script`` detects ``alert(`` / ``confirm(`` /
+  ``showModal`` only inside ``<script>...</script>`` blocks of the generated
+  content. The legacy ``has_popup`` column (naive substring match on the raw
+  output, so a prompt echo inside a comment counts as a feature) is kept for
+  continuity but is DEPRECATED; prefer ``alert_in_script``.
+- Prompt set: adds ``html_coffee`` (the exact compact coffee-shop prompt replayed
+  on the pod) and ``html_dashboard`` (a new medium-difficulty Italian dashboard
+  prompt) without touching the existing ``html`` prompt.
+- Optional functional grading: if ``scripts/functional_grade.py`` is importable,
+  HTML variants are graded via ``grade_frontpage`` and the L0-L3 level is written
+  to the ``l0l3`` column; when the module is absent the column stays empty and no
+  error is raised.
 """
 
 from __future__ import annotations
@@ -67,6 +94,36 @@ PROMPTS = {
         "Review this MoE decode loop: selected = router(hidden); missing "
         "experts are loaded from SSD, then repetition_score may widen the mask. "
         "List the main correctness risks and a minimal patch plan."
+    ),
+    # Exact compact coffee-shop prompt recovered from the pod warmup replay
+    # (runs/ds4/20260710_pod_cache1024_warmup_replay/frontpage_prompt.txt,
+    # 819 bytes, U+2014 em-dash, trailing newline preserved). Do not edit.
+    "html_coffee": (
+        "Write a COMPLETE and COMPACT single-file HTML page for a coffee shop. "
+        "Output ONLY the HTML, nothing else. Keep the CSS SHORT (about 10-15 "
+        "rules max) — prioritize a COMPLETE, working page over elaborate "
+        "styling. The page MUST be fully closed with </html> and MUST contain "
+        "all of these:\n"
+        "1. A <nav> with three links: Home, Menu, Contact.\n"
+        "2. A hero <section> with <h1>Bean & Brew</h1> and a one-line "
+        "subheading.\n"
+        "3. A <button id=\"order\">Order Now</button> wired in <script> with "
+        "addEventListener that shows alert(\"Thank you for your order!\").\n"
+        "4. A <form action=\"/submit\"> with a name text input, an email input, "
+        "a submit button, and an onsubmit handler that calls preventDefault and "
+        "shows a confirmation.\n"
+        "5. Minimal embedded CSS in <style> and the JS in <script>.\n"
+        "Write the entire compact HTML document now and finish it.\n"
+    ),
+    # New medium-difficulty HTML prompt (Italian, ~80 tokens): dashboard with a
+    # data table, a canvas bar chart, and a live text filter.
+    "html_dashboard": (
+        "Crea una dashboard HTML single-file in italiano per le vendite. Deve "
+        "avere una tabella con 5 righe (prodotto, quantita, ricavo), un grafico "
+        "a barre disegnato su <canvas> in JavaScript puro senza librerie, e un "
+        "campo di filtro che nasconde in tempo reale le righe della tabella non "
+        "corrispondenti. Metti il CSS in <style> e la logica in <script>. "
+        "Codice valido e compatto, pagina completa e chiusa con </html>."
     ),
 }
 
@@ -1766,11 +1823,36 @@ def parse_server_log(path: pathlib.Path) -> dict:
     return last_finished
 
 
+_SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(.*?)</script>", re.IGNORECASE | re.DOTALL)
+_ALERT_IN_SCRIPT_RE = re.compile(r"alert\s*\(|confirm\s*\(|showModal", re.IGNORECASE)
+
+
+def alert_in_script(content: str) -> int:
+    """1 if alert(/confirm(/showModal appears inside a <script> block, else 0.
+
+    Unlike the deprecated ``has_popup`` substring match, this only inspects the
+    JavaScript inside ``<script>...</script>`` blocks of the generated content,
+    so a prompt echo in a comment or in prose does not count as a real feature.
+    """
+    for block in _SCRIPT_BLOCK_RE.findall(content or ""):
+        if _ALERT_IN_SCRIPT_RE.search(block):
+            return 1
+    return 0
+
+
 def quality_flags(prompt_name: str, content: str) -> dict:
+    """Cheap output-quality signals.
+
+    ``has_popup`` is DEPRECATED: it matches ``alert(``/``popup``/``richiesta
+    inviata`` anywhere in the raw output, so an echo of the prompt inside a
+    comment or prose is counted as a real popup. Prefer ``alert_in_script``,
+    which only fires on ``alert(``/``confirm(``/``showModal`` inside actual
+    ``<script>`` blocks. ``has_popup`` is retained for continuity with older runs.
+    """
     lower = content.lower()
     repeated = bool(re.search(r"(.{24,160})\1\1", content, re.S))
     html_balance = ""
-    if prompt_name == "html":
+    if prompt_name.startswith("html"):
         html_balance = lower.count("<html") - lower.count("</html>")
     return {
         "content_chars": len(content),
@@ -1779,8 +1861,138 @@ def quality_flags(prompt_name: str, content: str) -> dict:
         "html_balance": html_balance,
         "doctype": int("<!doctype html" in lower),
         "has_popup": int("alert(" in lower or "popup" in lower or "richiesta inviata" in lower),
+        "alert_in_script": alert_in_script(content),
         "repeat_flag": int(repeated),
     }
+
+
+# --------------------------------------------------------------------------- #
+# Pure helpers for the n=3 / ABAB / grading upgrades (unit-tested offline).    #
+# --------------------------------------------------------------------------- #
+
+_MEDIAN_METRICS = ["avg_tps", "first50_tps", "prompt_s"]
+_MAJORITY_FLAGS = ["doctype", "has_popup", "alert_in_script", "repeat_flag"]
+
+
+def median(values) -> float | None:
+    """Median of the numeric, non-empty entries in ``values`` (None if none)."""
+    nums = []
+    for value in values:
+        if value is None or value == "":
+            continue
+        try:
+            nums.append(float(value))
+        except (TypeError, ValueError):
+            continue
+    if not nums:
+        return None
+    nums.sort()
+    n = len(nums)
+    mid = n // 2
+    if n % 2:
+        return nums[mid]
+    return (nums[mid - 1] + nums[mid]) / 2.0
+
+
+def order_jobs(variants, prompts, runs, order):
+    """Flatten (variant, prompt, run_index) jobs in the requested order.
+
+    ``sequential`` (default, legacy): each variant runs all its repetitions
+    back-to-back (variant -> prompt -> run). ``abab``: interleave the variants
+    across runs (prompt -> run -> variant) so the warm state is decorrelated from
+    the variant order.
+    """
+    run_indices = list(range(1, runs + 1))
+    jobs = []
+    if order == "abab":
+        for prompt in prompts:
+            for run_idx in run_indices:
+                for variant in variants:
+                    jobs.append((variant, prompt, run_idx))
+    else:
+        for variant in variants:
+            for prompt in prompts:
+                for run_idx in run_indices:
+                    jobs.append((variant, prompt, run_idx))
+    return jobs
+
+
+def compute_median_summary(rows):
+    """Aggregate measured rows into one median record per (prompt, variant)."""
+    groups: dict = {}
+    order: list = []
+    for row in rows:
+        key = (row.get("prompt"), row.get("variant"))
+        if key not in groups:
+            groups[key] = []
+            order.append(key)
+        groups[key].append(row)
+    out = []
+    for key in order:
+        grp = groups[key]
+        n = len(grp)
+        rec = {
+            "prompt": key[0],
+            "variant": key[1],
+            "run_count": n,
+            "variant_rationale": grp[0].get("variant_rationale", ""),
+        }
+        for metric in _MEDIAN_METRICS:
+            med = median([r.get(metric) for r in grp])
+            rec[f"{metric}_median"] = round(med, 4) if med is not None else ""
+        l0l3_med = median([r.get("l0l3") for r in grp])
+        rec["l0l3_median"] = l0l3_med if l0l3_med is not None else ""
+        for flag in _MAJORITY_FLAGS:
+            positives = 0
+            for r in grp:
+                try:
+                    positives += 1 if int(r.get(flag) or 0) else 0
+                except (TypeError, ValueError):
+                    pass
+            rec[flag] = 1 if positives * 2 >= n else 0
+        out.append(rec)
+    return out
+
+
+_FRONTPAGE_GRADER = None
+_FRONTPAGE_GRADER_LOADED = False
+
+
+def _get_frontpage_grader():
+    """Lazily import scripts/functional_grade.grade_frontpage; None if absent."""
+    global _FRONTPAGE_GRADER, _FRONTPAGE_GRADER_LOADED
+    if _FRONTPAGE_GRADER_LOADED:
+        return _FRONTPAGE_GRADER
+    _FRONTPAGE_GRADER_LOADED = True
+    try:
+        import importlib
+
+        scripts_dir = str(ROOT / "scripts")
+        if scripts_dir not in sys.path:
+            sys.path.insert(0, scripts_dir)
+        module = importlib.import_module("functional_grade")
+        _FRONTPAGE_GRADER = getattr(module, "grade_frontpage", None)
+    except Exception:  # noqa: BLE001 - grading is optional/best-effort.
+        _FRONTPAGE_GRADER = None
+    return _FRONTPAGE_GRADER
+
+
+def grade_l0l3(prompt_name: str, content: str) -> str:
+    """L0-L3 render grade for HTML variants, or "" if not applicable/available."""
+    if not prompt_name.startswith("html") or not content:
+        return ""
+    grader = _get_frontpage_grader()
+    if grader is None:
+        return ""
+    try:
+        result = grader(content)
+    except Exception:  # noqa: BLE001 - never let grading break a measured row.
+        return ""
+    level = result[0] if isinstance(result, tuple) else result
+    try:
+        return str(int(level))
+    except (TypeError, ValueError):
+        return ""
 
 
 def start_server(
@@ -1873,6 +2085,13 @@ def main() -> int:
     ap.add_argument("--prompts", default="html")
     ap.add_argument("--variants", help="Comma-separated variant names; default: whole suite")
     ap.add_argument("--runs", type=int, default=1)
+    ap.add_argument(
+        "--order",
+        choices=["sequential", "abab"],
+        default="sequential",
+        help="Job order across variants/runs: 'sequential' (default, legacy block "
+        "order) or 'abab' (interleave variants A,B,A,B... across runs).",
+    )
     ap.add_argument("--warmups", type=int, default=0)
     ap.add_argument("--warmup-tokens", type=int, default=48)
     ap.add_argument("--max-tokens", type=int, default=160)
@@ -1923,97 +2142,99 @@ def main() -> int:
     if not args.no_stop_existing:
         stop_ds4()
 
-    for variant in variants:
-        for prompt_name in prompt_names:
-            for run_idx in range(1, args.runs + 1):
-                stem = f"{prompt_name}_{variant.name}_r{run_idx:02d}"
-                run_dir = out_root / stem
-                run_dir.mkdir(parents=True, exist_ok=True)
-                print(f"[matrix] start {stem}", flush=True)
-                env = build_env(variant, run_dir)
-                write_manifest(
-                    run_dir=run_dir,
-                    stem=stem,
-                    variant=variant,
+    for variant, prompt_name, run_idx in order_jobs(variants, prompt_names, args.runs, args.order):
+        stem = f"{prompt_name}_{variant.name}_r{run_idx:02d}"
+        run_dir = out_root / stem
+        run_dir.mkdir(parents=True, exist_ok=True)
+        print(f"[matrix] start {stem}", flush=True)
+        env = build_env(variant, run_dir)
+        write_manifest(
+            run_dir=run_dir,
+            stem=stem,
+            variant=variant,
+            prompt_name=prompt_name,
+            args=args,
+            env=env,
+        )
+        proc = start_server(variant, env, run_dir, args.port, args)
+        try:
+            wait_models(args.port, timeout_s=90)
+            for warm_idx in range(1, args.warmups + 1):
+                warm_wall, _ = run_request(
+                    port=args.port,
                     prompt_name=prompt_name,
-                    args=args,
-                    env=env,
+                    prompt=PROMPTS[prompt_name],
+                    max_tokens=args.warmup_tokens,
+                    timeout=args.timeout,
+                    out_path=run_dir,
+                    phase=f"warmup_{warm_idx:02d}",
+                    stream=False,
                 )
-                proc = start_server(variant, env, run_dir, args.port, args)
-                try:
-                    wait_models(args.port, timeout_s=90)
-                    for warm_idx in range(1, args.warmups + 1):
-                        warm_wall, _ = run_request(
-                            port=args.port,
-                            prompt_name=prompt_name,
-                            prompt=PROMPTS[prompt_name],
-                            max_tokens=args.warmup_tokens,
-                            timeout=args.timeout,
-                            out_path=run_dir,
-                            phase=f"warmup_{warm_idx:02d}",
-                            stream=False,
-                        )
-                        print(f"[matrix] warmup {stem} {warm_wall:.3f}s", flush=True)
-                    wall_s, response = run_request(
-                        port=args.port,
-                        prompt_name=prompt_name,
-                        prompt=PROMPTS[prompt_name],
-                        max_tokens=args.max_tokens,
-                        timeout=args.timeout,
-                        out_path=run_dir,
-                        phase="measured",
-                        stream=args.stream,
-                    )
-                    usage = response.get("usage") if isinstance(response, dict) else None
-                    content = response_content(response)
-                    log_metrics = parse_server_log(run_dir / "server.stderr.log")
-                    q = quality_flags(prompt_name, content)
-                    completion_tokens = (usage or {}).get("completion_tokens")
-                    post_breath_end_tokens = None
-                    if completion_tokens is not None and log_metrics.get("first_breath_end_tok") is not None:
-                        post_breath_end_tokens = max(0, int(completion_tokens) - int(log_metrics["first_breath_end_tok"]))
-                    row = {
-                        "stem": stem,
-                        "evidence_type": "measured",
-                        "source_artifacts": "server.stderr.log,response_measured.json,routing.csv(if enabled)",
-                        "profile": PROFILE_NAME,
-                        "prompt": prompt_name,
-                        "variant": variant.name,
-                        "variant_rationale": variant.rationale,
-                        "run": run_idx,
-                        "wall_s": round(wall_s, 3),
-                        "prompt_tokens": (usage or {}).get("prompt_tokens"),
-                        "completion_tokens": completion_tokens,
-                        "stream_events": response.get("stream_events") if isinstance(response, dict) else None,
-                        "stream_content_events": response.get("stream_content_events") if isinstance(response, dict) else None,
-                        "derived_tokens_after_breath_end_to_finish": post_breath_end_tokens,
-                        **log_metrics,
-                        **trace_stats(run_dir),
-                        **q,
-                    }
-                    rows.append(row)
-                    print(
-                        "[matrix] done "
-                        f"{stem} wall={wall_s:.1f}s avg={log_metrics.get('avg_tps')} "
-                        f"pace_pre={log_metrics.get('pace_prebreaths')} pace_br={log_metrics.get('pace_breaths')} "
-                        f"pace_rot={log_metrics.get('pace_rotates')} promote={log_metrics.get('exchange_promote')}",
-                        flush=True,
-                    )
-                finally:
-                    proc.terminate()
-                    try:
-                        proc.wait(timeout=8)
-                    except subprocess.TimeoutExpired:
-                        proc.kill()
-                    stop_ds4()
-                    pace_src = f"/root/ds4_matrix_{variant.name}.jsonl"
-                    pace_dst = run_dir / "pace_events.jsonl"
-                    wsl_bash(
-                        f"test -f {pace_src} && cp {pace_src} "
-                        f"{json.dumps(wsl_path(pace_dst))} || true",
-                        timeout=10,
-                        check=False,
-                    )
+                print(f"[matrix] warmup {stem} {warm_wall:.3f}s", flush=True)
+            wall_s, response = run_request(
+                port=args.port,
+                prompt_name=prompt_name,
+                prompt=PROMPTS[prompt_name],
+                max_tokens=args.max_tokens,
+                timeout=args.timeout,
+                out_path=run_dir,
+                phase="measured",
+                stream=args.stream,
+            )
+            usage = response.get("usage") if isinstance(response, dict) else None
+            content = response_content(response)
+            log_metrics = parse_server_log(run_dir / "server.stderr.log")
+            q = quality_flags(prompt_name, content)
+            l0l3 = grade_l0l3(prompt_name, content)
+            completion_tokens = (usage or {}).get("completion_tokens")
+            post_breath_end_tokens = None
+            if completion_tokens is not None and log_metrics.get("first_breath_end_tok") is not None:
+                post_breath_end_tokens = max(0, int(completion_tokens) - int(log_metrics["first_breath_end_tok"]))
+            row = {
+                "stem": stem,
+                "evidence_type": "measured",
+                "source_artifacts": "server.stderr.log,response_measured.json,routing.csv(if enabled)",
+                "profile": PROFILE_NAME,
+                "prompt": prompt_name,
+                "variant": variant.name,
+                "variant_rationale": variant.rationale,
+                "run": run_idx,
+                "run_index": run_idx,
+                "wall_s": round(wall_s, 3),
+                "prompt_tokens": (usage or {}).get("prompt_tokens"),
+                "completion_tokens": completion_tokens,
+                "stream_events": response.get("stream_events") if isinstance(response, dict) else None,
+                "stream_content_events": response.get("stream_content_events") if isinstance(response, dict) else None,
+                "derived_tokens_after_breath_end_to_finish": post_breath_end_tokens,
+                "l0l3": l0l3,
+                **log_metrics,
+                **trace_stats(run_dir),
+                **q,
+            }
+            rows.append(row)
+            print(
+                "[matrix] done "
+                f"{stem} wall={wall_s:.1f}s avg={log_metrics.get('avg_tps')} "
+                f"pace_pre={log_metrics.get('pace_prebreaths')} pace_br={log_metrics.get('pace_breaths')} "
+                f"pace_rot={log_metrics.get('pace_rotates')} promote={log_metrics.get('exchange_promote')} "
+                f"l0l3={l0l3 or '-'}",
+                flush=True,
+            )
+        finally:
+            proc.terminate()
+            try:
+                proc.wait(timeout=8)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            stop_ds4()
+            pace_src = f"/root/ds4_matrix_{variant.name}.jsonl"
+            pace_dst = run_dir / "pace_events.jsonl"
+            wsl_bash(
+                f"test -f {pace_src} && cp {pace_src} "
+                f"{json.dumps(wsl_path(pace_dst))} || true",
+                timeout=10,
+                check=False,
+            )
 
     if rows:
         fieldnames = list(rows[0].keys())
@@ -2024,6 +2245,19 @@ def main() -> int:
             writer.writerows(rows)
         (out_root / "summary.json").write_text(json.dumps(rows, ensure_ascii=False, indent=2), encoding="utf-8")
         print(summary)
+
+        median_rows = compute_median_summary(rows)
+        if median_rows:
+            summary_median = out_root / "summary_median.csv"
+            with summary_median.open("w", newline="", encoding="utf-8") as fh:
+                writer = csv.DictWriter(fh, fieldnames=list(median_rows[0].keys()))
+                writer.writeheader()
+                writer.writerows(median_rows)
+            (out_root / "summary_median.json").write_text(
+                json.dumps(median_rows, ensure_ascii=False, indent=2),
+                encoding="utf-8",
+            )
+            print(summary_median)
 
     # Restore normal UI server if the local script exists.
     start_script = pathlib.Path(
