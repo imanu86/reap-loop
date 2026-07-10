@@ -1,0 +1,444 @@
+{
+  "traces": [
+    "html_W130",
+    "code_python-csv",
+    "code_js-debounce",
+    "code_sql-window",
+    "code_c-pointers",
+    "code_py-asyncio",
+    "code_regex-email",
+    "code_git-rebase",
+    "code_docker-multi",
+    "code_rust-owner",
+    "code_api-paging"
+  ],
+  "excluded": {
+    "html_W50": "49 tok -> 0 eval tok < 30",
+    "code_test-mock": "52 tok -> 2 eval tok < 30"
+  },
+  "warmup": 50,
+  "K": 23,
+  "ewma_decay": 0.98,
+  "rotate_every": 32,
+  "cooldown": 16,
+  "boost_win": 16,
+  "sweep": {
+    "h": [
+      0.3,
+      0.6,
+      1.2
+    ],
+    "k_drift": [
+      0.01,
+      0.02,
+      0.04
+    ],
+    "p": [
+      2,
+      4,
+      8
+    ]
+  },
+  "recommended_config": {
+    "h": 1.2,
+    "k_drift": 0.02,
+    "p": 2
+  },
+  "recommended_agg": {
+    "late_gain": 0.13697901597270598,
+    "mean_gain": 0.10182087492666968,
+    "p10_gain": 0.16101336998214652,
+    "churn_per100": 130.1950658171714,
+    "churn_ratio_vs_B": 0.18433088895052613,
+    "admissions_total": 2778,
+    "bounce_total": 8,
+    "bounce_rate": 0.0028797696184305254
+  },
+  "max_recovery_config": {
+    "h": 0.3,
+    "k_drift": 0.02,
+    "p": 8
+  },
+  "max_recovery_agg": {
+    "late_gain": 0.16448190365856116,
+    "mean_gain": 0.12306664979893583,
+    "p10_gain": 0.1790272481517706,
+    "churn_per100": 221.01546493025344,
+    "churn_ratio_vs_B": 0.3129149086157938,
+    "admissions_total": 4700,
+    "bounce_total": 193,
+    "bounce_rate": 0.041063829787234045
+  },
+  "config_table": {
+    "(0.3, 0.01, 2)": {
+      "late_gain": 0.2111764310274037,
+      "mean_gain": 0.18656981936973419,
+      "p10_gain": 0.2579177045660066,
+      "churn_per100": 1113.201605433776,
+      "churn_ratio_vs_B": 1.5760769444128757,
+      "admissions_total": 24251,
+      "bounce_total": 15967,
+      "bounce_rate": 0.6584058389344769
+    },
+    "(0.3, 0.01, 4)": {
+      "late_gain": 0.198342358399231,
+      "mean_gain": 0.16988330792905207,
+      "p10_gain": 0.23462801189106985,
+      "churn_per100": 722.0797664823599,
+      "churn_ratio_vs_B": 1.0223244975795924,
+      "admissions_total": 15621,
+      "bounce_total": 7875,
+      "bounce_rate": 0.5041290570386019
+    },
+    "(0.3, 0.01, 8)": {
+      "late_gain": 0.17883892559606518,
+      "mean_gain": 0.13463293673416044,
+      "p10_gain": 0.1814560691750412,
+      "churn_per100": 333.37562098290715,
+      "churn_ratio_vs_B": 0.4719950344086552,
+      "admissions_total": 7146,
+      "bounce_total": 1188,
+      "bounce_rate": 0.16624685138539042
+    },
+    "(0.3, 0.02, 2)": {
+      "late_gain": 0.20520048152659884,
+      "mean_gain": 0.179426115098871,
+      "p10_gain": 0.25508707594668806,
+      "churn_per100": 807.9199528473996,
+      "churn_ratio_vs_B": 1.1438575046949795,
+      "admissions_total": 17587,
+      "bounce_total": 9703,
+      "bounce_rate": 0.5517143344515836
+    },
+    "(0.3, 0.02, 4)": {
+      "late_gain": 0.19081802156046496,
+      "mean_gain": 0.16061814307296957,
+      "p10_gain": 0.22775596405753998,
+      "churn_per100": 493.904965056555,
+      "churn_ratio_vs_B": 0.6992733610488779,
+      "admissions_total": 10683,
+      "bounce_total": 3592,
+      "bounce_rate": 0.33623513994196386
+    },
+    "(0.3, 0.02, 8)": {
+      "late_gain": 0.16448190365856116,
+      "mean_gain": 0.12306664979893583,
+      "p10_gain": 0.1790272481517706,
+      "churn_per100": 221.01546493025344,
+      "churn_ratio_vs_B": 0.3129149086157938,
+      "admissions_total": 4700,
+      "bounce_total": 193,
+      "bounce_rate": 0.041063829787234045
+    },
+    "(0.3, 0.04, 2)": {
+      "late_gain": 0.19229469989858386,
+      "mean_gain": 0.16453332011370547,
+      "p10_gain": 0.24435402211416646,
+      "churn_per100": 533.6579752448847,
+      "churn_ratio_vs_B": 0.755555891116217,
+      "admissions_total": 11589,
+      "bounce_total": 4492,
+      "bounce_rate": 0.38760893951160585
+    },
+    "(0.3, 0.04, 4)": {
+      "late_gain": 0.17490007027061685,
+      "mean_gain": 0.14278185357174847,
+      "p10_gain": 0.21541469456202736,
+      "churn_per100": 314.393892615566,
+      "churn_ratio_vs_B": 0.4451205991771171,
+      "admissions_total": 6769,
+      "bounce_total": 1046,
+      "bounce_rate": 0.1545279952725661
+    },
+    "(0.3, 0.04, 8)": {
+      "late_gain": 0.13598252273576758,
+      "mean_gain": 0.10100581746563116,
+      "p10_gain": 0.1569740666344409,
+      "churn_per100": 137.39257346543548,
+      "churn_ratio_vs_B": 0.19452115979301565,
+      "admissions_total": 2910,
+      "bounce_total": 9,
+      "bounce_rate": 0.003092783505154639
+    },
+    "(0.6, 0.01, 2)": {
+      "late_gain": 0.1924431655456433,
+      "mean_gain": 0.16081550990901164,
+      "p10_gain": 0.2324245280713587,
+      "churn_per100": 448.6059109152656,
+      "churn_ratio_vs_B": 0.635138711505342,
+      "admissions_total": 9695,
+      "bounce_total": 2833,
+      "bounce_rate": 0.2922124806601341
+    },
+    "(0.6, 0.01, 4)": {
+      "late_gain": 0.1900717774240914,
+      "mean_gain": 0.15705303055419664,
+      "p10_gain": 0.22225108031520513,
+      "churn_per100": 423.88110808610963,
+      "churn_ratio_vs_B": 0.600133199921479,
+      "admissions_total": 9155,
+      "bounce_total": 2440,
+      "bounce_rate": 0.2665210267613326
+    },
+    "(0.6, 0.01, 8)": {
+      "late_gain": 0.17663992354344948,
+      "mean_gain": 0.1322140978509259,
+      "p10_gain": 0.18242768590653888,
+      "churn_per100": 288.0440090937158,
+      "churn_ratio_vs_B": 0.4078142894268986,
+      "admissions_total": 6178,
+      "bounce_total": 678,
+      "bounce_rate": 0.10974425380382001
+    },
+    "(0.6, 0.02, 2)": {
+      "late_gain": 0.17865082776577712,
+      "mean_gain": 0.14579969785258076,
+      "p10_gain": 0.22111955908155947,
+      "churn_per100": 308.02380083639736,
+      "churn_ratio_vs_B": 0.4361017882645784,
+      "admissions_total": 6611,
+      "bounce_total": 927,
+      "bounce_rate": 0.1402208440477991
+    },
+    "(0.6, 0.02, 4)": {
+      "late_gain": 0.1758205603152125,
+      "mean_gain": 0.1418433941282266,
+      "p10_gain": 0.213289575028583,
+      "churn_per100": 287.46975778158236,
+      "churn_ratio_vs_B": 0.4070012612665596,
+      "admissions_total": 6181,
+      "bounce_total": 727,
+      "bounce_rate": 0.11761850833198512
+    },
+    "(0.6, 0.02, 8)": {
+      "late_gain": 0.15743105541051217,
+      "mean_gain": 0.1175698920133578,
+      "p10_gain": 0.17534850780961644,
+      "churn_per100": 190.79513879143394,
+      "churn_ratio_vs_B": 0.2701288049598692,
+      "admissions_total": 4060,
+      "bounce_total": 93,
+      "bounce_rate": 0.0229064039408867
+    },
+    "(0.6, 0.04, 2)": {
+      "late_gain": 0.15480828922512108,
+      "mean_gain": 0.12201776029578872,
+      "p10_gain": 0.1953793575855051,
+      "churn_per100": 194.90358977237645,
+      "churn_ratio_vs_B": 0.2759455724139466,
+      "admissions_total": 4167,
+      "bounce_total": 144,
+      "bounce_rate": 0.03455723542116631
+    },
+    "(0.6, 0.04, 4)": {
+      "late_gain": 0.1506492974225753,
+      "mean_gain": 0.11753744755158674,
+      "p10_gain": 0.18454929166088577,
+      "churn_per100": 179.43978219989333,
+      "churn_ratio_vs_B": 0.2540518287570365,
+      "admissions_total": 3847,
+      "bounce_total": 102,
+      "bounce_rate": 0.026514166883285676
+    },
+    "(0.6, 0.04, 8)": {
+      "late_gain": 0.12686554747907292,
+      "mean_gain": 0.0939414635680989,
+      "p10_gain": 0.15033935753070707,
+      "churn_per100": 115.64231384546298,
+      "churn_ratio_vs_B": 0.16372702281485774,
+      "admissions_total": 2461,
+      "bounce_total": 2,
+      "bounce_rate": 0.0008126777732629012
+    },
+    "(1.2, 0.01, 2)": {
+      "late_gain": 0.16315527151297973,
+      "mean_gain": 0.12152733944952908,
+      "p10_gain": 0.17900876778380526,
+      "churn_per100": 197.55592354542648,
+      "churn_ratio_vs_B": 0.27970076113105496,
+      "admissions_total": 4230,
+      "bounce_total": 104,
+      "bounce_rate": 0.02458628841607565
+    },
+    "(1.2, 0.01, 4)": {
+      "late_gain": 0.16318625630475425,
+      "mean_gain": 0.12145425801468326,
+      "p10_gain": 0.17892759541601538,
+      "churn_per100": 197.19273625417497,
+      "churn_ratio_vs_B": 0.27918655857021496,
+      "admissions_total": 4225,
+      "bounce_total": 104,
+      "bounce_rate": 0.024615384615384615
+    },
+    "(1.2, 0.01, 8)": {
+      "late_gain": 0.15928264160297118,
+      "mean_gain": 0.11557672602855233,
+      "p10_gain": 0.17030079283671737,
+      "churn_per100": 187.7133795503663,
+      "churn_ratio_vs_B": 0.26576563330761005,
+      "admissions_total": 4024,
+      "bounce_total": 78,
+      "bounce_rate": 0.019383697813121274
+    },
+    "(1.2, 0.02, 2)": {
+      "late_gain": 0.13697901597270598,
+      "mean_gain": 0.10182087492666968,
+      "p10_gain": 0.16101336998214652,
+      "churn_per100": 130.1950658171714,
+      "churn_ratio_vs_B": 0.18433088895052613,
+      "admissions_total": 2778,
+      "bounce_total": 8,
+      "bounce_rate": 0.0028797696184305254
+    },
+    "(1.2, 0.02, 4)": {
+      "late_gain": 0.13694278766052362,
+      "mean_gain": 0.10171191662275536,
+      "p10_gain": 0.16071838709536437,
+      "churn_per100": 130.03564512054788,
+      "churn_ratio_vs_B": 0.1841051802530322,
+      "admissions_total": 2776,
+      "bounce_total": 8,
+      "bounce_rate": 0.002881844380403458
+    },
+    "(1.2, 0.02, 8)": {
+      "late_gain": 0.1330921241330381,
+      "mean_gain": 0.09684239571668024,
+      "p10_gain": 0.15241843973093,
+      "churn_per100": 123.0828819220298,
+      "churn_ratio_vs_B": 0.17426141994613195,
+      "admissions_total": 2624,
+      "bounce_total": 6,
+      "bounce_rate": 0.0022865853658536584
+    },
+    "(1.2, 0.04, 2)": {
+      "late_gain": 0.10128126832988577,
+      "mean_gain": 0.07570448911770311,
+      "p10_gain": 0.13075598554619086,
+      "churn_per100": 74.5319823739089,
+      "churn_ratio_vs_B": 0.10552278982308097,
+      "admissions_total": 1585,
+      "bounce_total": 0,
+      "bounce_rate": 0.0
+    },
+    "(1.2, 0.04, 4)": {
+      "late_gain": 0.10120020500372608,
+      "mean_gain": 0.0756081848109308,
+      "p10_gain": 0.13058902762690286,
+      "churn_per100": 74.44329057790003,
+      "churn_ratio_vs_B": 0.1053972194913766,
+      "admissions_total": 1583,
+      "bounce_total": 0,
+      "bounce_rate": 0.0
+    },
+    "(1.2, 0.04, 8)": {
+      "late_gain": 0.09780010476401758,
+      "mean_gain": 0.0720961314152449,
+      "p10_gain": 0.12442418893896234,
+      "churn_per100": 69.76171096578629,
+      "churn_ratio_vs_B": 0.09876901337482984,
+      "admissions_total": 1487,
+      "bounce_total": 0,
+      "bounce_rate": 0.0
+    }
+  },
+  "per_trace_best_config": {
+    "html_W130": "(0.6, 0.02, 8)",
+    "code_python-csv": "(0.3, 0.02, 8)",
+    "code_js-debounce": "(1.2, 0.01, 2)",
+    "code_sql-window": "(1.2, 0.01, 8)",
+    "code_c-pointers": "(0.3, 0.02, 8)",
+    "code_py-asyncio": "(1.2, 0.01, 2)",
+    "code_regex-email": "(0.6, 0.02, 8)",
+    "code_git-rebase": "(0.3, 0.02, 8)",
+    "code_docker-multi": "(0.6, 0.01, 8)",
+    "code_rust-owner": "(0.3, 0.02, 8)",
+    "code_api-paging": "(0.6, 0.04, 4)"
+  },
+  "recommended_regret_pts": {
+    "html_W130": 1.7948320986168054,
+    "code_python-csv": 3.614213128324961,
+    "code_js-debounce": 3.454241357761556,
+    "code_sql-window": 3.4322078061653993,
+    "code_c-pointers": 4.550594786242879,
+    "code_py-asyncio": 2.9048186058922787,
+    "code_regex-email": 0.343316669691196,
+    "code_git-rebase": 1.8296411013732805,
+    "code_docker-multi": 6.010052274023414,
+    "code_rust-owner": 4.396495547340573,
+    "code_api-paging": 1.1351287318470904
+  },
+  "pooled": {
+    "cov_mean": {
+      "A": 0.5099522722867662,
+      "B": 0.6414574675912648,
+      "C": 0.611773147213436,
+      "D": 0.6199704117561661
+    },
+    "cov_p10": {
+      "A": 0.3280591711124743,
+      "B": 0.47828645964254723,
+      "C": 0.48907254109462067,
+      "D": 0.49783062633224
+    },
+    "cov_late": {
+      "A": 0.48475918788871275,
+      "B": 0.6624367831030562,
+      "C": 0.6217382038614186,
+      "D": 0.6315342923756732
+    },
+    "churn_per100": {
+      "A": 0.0,
+      "B": 706.3117123691374,
+      "C": 130.1950658171714,
+      "D": 142.74495495242638
+    },
+    "churn_gib_total": {
+      "A": 0.0,
+      "B": 99.859130859375,
+      "C": 18.31201171875,
+      "D": 20.177490234375
+    },
+    "bounce_total": {
+      "A": 0,
+      "B": 7826,
+      "C": 8,
+      "D": 23
+    },
+    "lag": {
+      "A": [
+        0.4,
+        0,
+        5
+      ],
+      "B": [
+        0.4,
+        0,
+        5
+      ],
+      "C": [
+        0.0,
+        0,
+        5
+      ],
+      "D": [
+        0.0,
+        0,
+        5
+      ]
+    },
+    "bdry_dip": {
+      "A": 0.4079736551450228,
+      "B": 0.5775393562996953,
+      "C": 0.5581155148369308,
+      "D": 0.6210347691310855
+    },
+    "bdry_plateau": {
+      "A": 0.36274649048828367,
+      "B": 0.6393370484093638,
+      "C": 0.5665398052016081,
+      "D": 0.6000164441756497
+    }
+  },
+  "closure_of_AB_gap": 0.770941411084834,
+  "verdict": "POSITIVO: DEMAND-ADMIT (C, h=1.20 k=0.020 p=2) recupera 13.7 pt di copertura tardiva persa da FROZEN (A 0.485 -> C 0.622; B rotate32 0.662), chiude il 77% del gap A->B con churn 130.2 scambi/100tok = 5.4x MENO del rotate wholesale (B 706.3/100tok) e bounce 0.3% (B: 7826 rimbalzi). Regret del config unico vs il best per-trace: mediana 3.4 pt, max 6.0 pt -> parametri stabili tra trace. Merita la candidata patch 0026 e l'A/B live S3."
+}
