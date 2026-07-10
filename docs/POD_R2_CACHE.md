@@ -50,12 +50,19 @@ already holds:
 | `ds4_sm86_livetree-771a39a8` | ds4 CLI, same build |
 | `ds4-reaploop-sm86` (+`.meta`) | earlier **canonical** build (0001-0007,0011-0013, no rotation/PACE) |
 | `ds4-pace-sm86` (+`.sha`) | earlier pace build |
+| `ds4-src_livetree-771a39a8.tgz` (+`.sha256`) | **SOURCE tarball** of the live tree (post-0018 `/root/ds4`, `ds4.c` md5 `771a39a8…`; sources only — no `.o`/binaries/`.git`, 50 MB, 343 files). Lets a fresh pod REBUILD for any arch and apply the pace chain: extract, `git init`, `git apply` 0020→0021→0026 (verified apply-clean on this base 2026-07-10), `make cuda CUDA_ARCH=sm_NN -j$(nproc)` (~4 min on 32 vcpu, 0 warnings). Added 2026-07-10. |
+| `patches_0020_0021_0026.tgz` | the pace patch chain (canonical copies from reap-loop `patches/ds4/`) matching the source tarball above (added 2026-07-10) |
 
 So a fresh pod needs **no model download and no build** — just pull the model +
-the binary matching the mask/rotation features you need.
+the binary matching the mask/rotation features you need. If no prebuilt binary
+matches (different arch, or you need a patch past the cached builds), pull the
+source tarball + patch chain instead and rebuild on-pod (minutes, see row).
 
 rclone v1.58 predates the `Cloudflare` S3 provider id, so pass
 `--s3-provider=Other` on each command (Cloudflare R2 is plain S3-compatible).
+(rclone ≥ v1.60 knows `provider = Cloudflare` natively — the install.sh on a
+2026 pod image gives v1.74, where plain `rclone` commands work without the
+`--s3-provider=Other` override.)
 
 ## Upload a new binary (from the pod)
 
