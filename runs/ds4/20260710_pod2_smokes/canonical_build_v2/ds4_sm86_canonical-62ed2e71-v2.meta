@@ -1,0 +1,10 @@
+object: ds4_sm86_canonical-62ed2e71-v2 (CLI) / ds4-server_sm86_canonical-62ed2e71-v2
+built: 2026-07-10 RunPod SECURE RTX 3090 (pod i7dk94f0y05iji, redeploy pod2), nvcc cu12.9, make cuda CUDA_ARCH=sm_86 -j32, 0 warnings 0 errors
+source: BASE PULITA github.com/antirez/ds4 @ 80ebbc3 + catena CANONICAL v2 21/21 (patches/ds4/canonical/ sorted, incl 0014f gpu-header + 0014g cuda-impl siblings @ reap-loop 458f4b6) + 0027 + 0028 (CR-stripped: i blob committati hanno CRLF misti, sed 's/\r$//' necessario prima di git apply)
+ds4.c md5 after chain: 62ed2e710adb1d91c65baf674fbd4484 (IDENTICO alla catena livetree pace0028)
+checkpoint intermedio: dopo le 21 canonical ds4.c md5 = 1db4f799 (== livetree+0020+0021+0026 'admit') — conferma equivalenza canonical/livetree
+sha256 0f4fcafb1e64e3b618b00ab357b1b14c1d1f15e2363257897928a14f0feaa8ff  ds4_sm86_canonical-62ed2e71-v2
+sha256 1a8bd0bd8787398ee81b4de60cbc3a0644d50fc19595ccffaffb220421651a1e  ds4-server_sm86_canonical-62ed2e71-v2
+features: PACE + rotate32 + S1 + s1-slope(0020) + rotate-delta-prefetch(0021) + demand-admission(0026) + rewind-harness(0027) + token-sidecar(0028) — DA BASE CANONICAL, non live-tree
+smoke: GPU micro-run PASS su questo pod (rc=0, 8 tok, diag prefill/generation presenti; contended, tempi non indicativi)
+significato: SWITCHOVER SBLOCCATO — la base canonical committata ricostruisce e builda l'intero stato live-tree senza file non committati

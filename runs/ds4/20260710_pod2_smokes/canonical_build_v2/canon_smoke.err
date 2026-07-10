@@ -1,0 +1,12 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.410s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 50.66 MiB (ctx=512, backend=cuda, prefill_chunk=512, raw_kv_rows=512, compressed_kv_rows=130)
+ds4: using GPU graph generation with graph prefill
+ds4: gpu streaming prefill token 1/12ds4: gpu streaming prefill token 2/12ds4: gpu streaming prefill token 3/12ds4: gpu streaming prefill token 4/12ds4: gpu streaming prefill token 5/12ds4: gpu streaming prefill token 6/12ds4: gpu streaming prefill token 7/12ds4: gpu streaming prefill token 8/12ds4: gpu streaming prefill token 9/12ds4: gpu streaming prefill token 10/12ds4: gpu streaming prefill token 11/12ds4: CUDA loading model tensors 7.33 GiB cached
+ds4: gpu streaming prefill token 12/12
+ds4: prefill: 0.72 t/s, generation: 0.84 t/s

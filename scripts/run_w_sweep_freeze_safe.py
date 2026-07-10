@@ -118,7 +118,8 @@ def w_run_dir(outdir, w, run):
     return pathlib.Path(outdir) / f"W{w:03d}" / f"r{run:02d}"
 
 
-def _base_cmd(binary, model, ctx, ntokens, cache, prompt_file, temp, seed):
+def _base_cmd(binary, model, ctx, ntokens, cache, prompt_file, temp, seed,
+              top_p=None):
     cmd = [
         str(binary), "-m", str(model),
         "--cuda", "--ssd-streaming", "--ssd-streaming-cold",
@@ -128,17 +129,27 @@ def _base_cmd(binary, model, ctx, ntokens, cache, prompt_file, temp, seed):
     ]
     if float(temp) > 0 and seed is not None:
         cmd += ["--seed", str(seed)]
+    if float(temp) > 0 and top_p is not None:
+        cmd += ["--top-p", str(top_p)]
     return cmd
 
 
 def phase1_cmd(args, w, prompt_file, route_csv, seed):
-    """Phase-1: observe wide W (+headroom) with routing-weight trace on."""
+    """Phase-1: observe wide W (+headroom) with routing-weight trace on.
+
+    With --sample-p2-only, phase 1 stays GREEDY (temp 0, no seed) so the
+    routing trace / session mask / freeze point are built in the same regime
+    as the greedy arms; sampling then applies only to the masked phase 2
+    (the sampling-under-mask probe isolates exactly that variable).
+    """
     env = {
         "DS4_SPEX_TRACE_ROUTING": str(route_csv),
         "DS4_SPEX_TRACE_ROUTING_WEIGHTS": "1",
     }
+    p1_temp = 0.0 if getattr(args, "sample_p2_only", False) else args.temp
     cmd = _base_cmd(args.binary, args.model, args.ctx_p1, w + args.headroom,
-                    args.cache, prompt_file, args.temp, seed)
+                    args.cache, prompt_file, p1_temp, seed,
+                    getattr(args, "top_p", None))
     return env, cmd
 
 
@@ -147,7 +158,8 @@ def phase2_cmd(args, w, p2prompt_file, mask_file, seed):
     env = {"DS4_REAP_MASK_FILE": str(mask_file)}
     ntokens = max(1, args.total - w)
     cmd = _base_cmd(args.binary, args.model, args.ctx_p2, ntokens,
-                    args.cache, p2prompt_file, args.temp, seed)
+                    args.cache, p2prompt_file, args.temp, seed,
+                    getattr(args, "top_p", None))
     return env, cmd
 
 
@@ -347,7 +359,10 @@ def write_manifest(args, prompt_text):
         "created": _dt.datetime.now().isoformat(timespec="seconds"),
         "w_values": args.w_values, "runs": args.runs, "headroom": args.headroom,
         "total": args.total, "keep_k": args.keep_k, "mask_mode": args.mask_mode,
-        "n_expert": args.n_expert, "temp": args.temp, "seed_base": args.seed_base,
+        "n_expert": args.n_expert, "temp": args.temp,
+        "top_p": getattr(args, "top_p", None),
+        "sample_p2_only": bool(getattr(args, "sample_p2_only", False)),
+        "seed_base": args.seed_base,
         "cache_experts": args.cache, "ctx_p1": args.ctx_p1, "ctx_p2": args.ctx_p2,
         "port": args.port, "binary": str(args.binary), "model": str(args.model),
         "prompt_file": str(args.prompt_file), "prompt_chars": len(prompt_text),
@@ -383,6 +398,11 @@ def parse_args(argv=None):
     ap.add_argument("--ctx-p1", type=int, default=2048, help="phase-1 context length")
     ap.add_argument("--ctx-p2", type=int, default=3072, help="phase-2 context length")
     ap.add_argument("--temp", type=float, default=0.0)
+    ap.add_argument("--top-p", type=float, default=None, dest="top_p",
+                    help="nucleus sampling top-p (passed only when --temp > 0)")
+    ap.add_argument("--sample-p2-only", action="store_true", dest="sample_p2_only",
+                    help="keep phase 1 GREEDY (temp 0); apply --temp/--seed/--top-p "
+                         "only to the masked phase 2 (sampling-under-mask probe)")
     ap.add_argument("--seed-base", type=int, default=0,
                     help="seed = seed_base + run_index (only passed when --temp > 0)")
     ap.add_argument("--port", type=int, default=None,

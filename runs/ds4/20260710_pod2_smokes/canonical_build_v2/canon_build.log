@@ -1,0 +1,23 @@
+[canon] start 2026-07-10T22:38:51+00:00
+[canon] applied #1 0001-spex-stage0-cuda-stats.patch
+[canon] applied #2 0002-spex-selected-upload-event.patch
+[canon] applied #3 0003-spex-stage1-next-layer-prefetch.patch
+[canon] applied #4 0004-spex-markov-loader-prefetch.patch
+[canon] applied #5 0005-spex-routing-trace-capture.patch
+[canon] applied #6 0006-spex-routing-trace-weights.patch
+[canon] applied #7 0007-spex-trace-hidden.patch
+[canon] applied #8 0008-dspark-mtp-streaming-probe-unsafe.patch
+[canon] applied #9 0011-reap-runtime-mask.patch
+[canon] applied #10 0012-reap-sensor-s1.patch
+[canon] applied #11 0013-reap-wrap.patch
+[canon] applied #12 0014-pace-controller.patch
+[canon] applied #13 0014e-pace-wrap-rename.patch
+[canon] applied #14 0014f-canonical-siblings-gpu-header.patch
+[canon] applied #15 0014g-canonical-siblings-cuda-impl.patch
+[canon] applied #16 0015-pace-canonical.patch
+[canon] applied #17 0016-pace-canonical.patch
+[canon] applied #18 0018-pace-canonical.patch
+[canon] applied #19 0020-pace-s1-slope-trigger.patch
+[canon] applied #20 0021-pace-rotate-delta-prefetch.patch
+[canon] applied #21 0026-pace-demand-admission.patch
+[canon] FAIL apply-check #22: 0027-rewind-exactness-harness.patch
