@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783656881,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.1\">\n    <title>AI Program Store · CyberPunk</title>\n    <style>\n        /* reset base */\n        * { margin:0; padding:0; box-sizing:border-box; }\n        body {\n            background:#000 url('data:url(http://example.com/sbg.svg) etc); background-size:cover;\n            font-family: 'Courier New', Courier, monospace;\n            color:##00ffff; text-shadow: 0 0 10 ####00ffff80;\n            min-height:100vh; display:flex; align-items:center; justify-content:center;\n            padding:20;\n        }\n        /* cyberpunk grid background */\n        body::before {\n            content: '';\n            position: fixed; top:0; left:0; width:100; height:100;\n            background: repeating-linear-gradient, to bottom, transparent, transparent 2, rgba(0,255,255,0.1) 1);\n            pointer-events: none; z-index: -1;\n        }\n        .container {\n            max-width:900; width:100; padding:40 20; position:relative;\n            background: rgba(0,0,0,0.0.80);\n            border: 1 solid #00ffff; box-shadow: 0 0 20 #00ffff, inset 0 0 20 #00ffff;\n            backdrop-filter: blur(2);\n            border-radius: 10;\n        }\n        h1, h2 {\n            text-align:center; font-weight:bold; letter-spacing: 2;\n            text-transform: uppercase;\n        }\n        h1 { font-size: 3; margin-bottom: 20; border-bottom: 2 solid #00ffff; padding-bottom: 10; }\n        h2 { font-size: 2; margin: 20 0 10; }\n        .hero {\n            padding: 20 0; border-bottom: 1 dashed #00ffff;\n        }\n        .hero p {\n            font-size: 1; line-height: 1; text-align:center; color:##00ffff;\n        }\n        .grid {\n            display:grid; grid-template-columns: repeat(auto-fit, minmin(200, 1)); gap: 20; margin: 20 0;\n        }\n        .card {\n            background: #00000080; border: 1 solid #00ffff; padding: 20; border-radius: 0;\n            box-shadow: 0 0 10 #00ffff; transition: 0.0;\n        }\n        .card:hover {\n            box-shadow: 0 0 20 #00ffff; transform: scale(1.1);\n        }\n        .card h3 {\n            color: #00ffff; font-size: 1; margin-bottom: 10;\n        }\n        .card p {\n            color: ###00ffff; font-size: 1; margin: 0 0 10;\n        }\n        .btn {\n            display: inline-block; background: #00ffff; color: #000; font-weight: bold;\n            padding: 10 20; border: 1 solid #00ffff; text-decoration: none;\n            text-transform: uppercase; letter-spacing: 1; transition: 0.0;\n            margin: 2 0;\n       "
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783655950,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page HTML/CSS/JS single-file per un negozio di programmazione AI in stile cyberpunk, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n<meta charset=\"UTF-8\">\n<meta name=\"viewport\" content=\"width=device-width, responsive\">\n<title>AI Cyber – Nexus di Programmazione</title>\n<style>\n/* Reset e base */\n* {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding: 0, box: * {\nmargin: 0, padding"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

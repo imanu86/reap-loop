@@ -707,3 +707,25 @@ incomplete. `DS4_PACE_WRAP_ROTATE=0` removes most full-set rotate prefetch
 bandwidth, but periodic K-constant rotation still underperforms; the next
 useful direction is drift-triggered rebuild/widening or delta-prefetch, not
 blind periodic rotate.
+
+## 2026-07-10 Direct K23 vs K64->K23 Reproduction
+
+Question: previous manual runs suggested that `W50 full/K0 -> K23 direct` could
+beat gradual `K64 -> ... -> K23`. This reproduction keeps prompt/cache/model
+constant at cache256 and compares direct unit-count, direct weighted warmup, and
+completed stepdown relearn.
+
+Evidence:
+
+| Run | Variant | Schedule | Finish / avg | Prefetch | Quality observation |
+| --- | --- | --- | --- | --- | --- |
+| `20260710_direct_k23_vs_stepdown_html800` | `local_k23_cache256` | W50 full/K0 -> K23 direct | 344.096 s / 2.85 t/s | 6.07 GiB / 448 ms | 800 tokens, but CSS reset loops almost immediately; 51 repeats of `margin: 0, padding`; no `</html>`, `<form>`, or `<script>`. |
+| `20260710_direct_k23_vs_stepdown_html800` | `local_k23_weighted_warmup_cache256` | W50 full/K0 -> K23 direct, weighted warmup | 307.296 s / 2.87 t/s | 6.07 GiB / 449 ms | 800 tokens, but selector list loops; 215 `h6` occurrences; no `</html>`, `<form>`, or `<script>`. |
+| `20260710_stepdown_relearn_only_html800` | `local_stepdown_64_to23_relearn_on_tighten_cache256` | W50 full/K0 -> K64 -> K56 -> K48 -> K40 -> K32 -> K24 -> K23 | 438.872 s / 2.09 t/s | 75.78 GiB / 30291 ms | More HTML-like than both direct variants but still invalid/incomplete; no `</html>`, `<form>`, or `<script>`. |
+
+Conclusion: the cache256 reproduction confirms the user's intuition on speed
+only: direct K23 is much faster and avoids the 7 full working-set prefetches.
+It does **not** reproduce the better-quality old manual result. The likely next
+controlled variable is cache/session condition: rerun direct K23 with the old
+cache1024/large-cache setup or reconstruct the exact old session-learned mask
+before judging the trajectory itself.
