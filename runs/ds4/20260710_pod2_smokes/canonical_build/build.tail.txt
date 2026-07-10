@@ -1,0 +1,20 @@
+ds4.c: In function ‘metal_graph_spex_hidden_gpu_topk_read’:
+ds4.c:16421:10: warning: implicit declaration of function ‘ds4_gpu_async_read_ready’ [-Wimplicit-function-declaration]
+16421 |     if (!ds4_gpu_async_read_ready(g->spex_hidden_topk_readback)) {
+      |          ^~~~~~~~~~~~~~~~~~~~~~~~
+ds4.c:16430:27: warning: implicit declaration of function ‘ds4_gpu_async_read_host’ [-Wimplicit-function-declaration]
+16430 |         (const uint32_t *)ds4_gpu_async_read_host(g->spex_hidden_topk_readback);
+      |                           ^~~~~~~~~~~~~~~~~~~~~~~
+ds4.c:16430:9: warning: cast to pointer from integer of different size [-Wint-to-pointer-cast]
+16430 |         (const uint32_t *)ds4_gpu_async_read_host(g->spex_hidden_topk_readback);
+      |         ^
+ds4.c: In function ‘metal_graph_spex_prefetch_next_layer’:
+ds4.c:16954:18: warning: implicit declaration of function ‘ds4_gpu_stream_expert_cache_filter_missing’; did you mean ‘ds4_gpu_stream_expert_cache_release_resident’? [-Wimplicit-function-declaration]
+16954 |         seed_n = ds4_gpu_stream_expert_cache_filter_missing(&table,
+      |                  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+      |                  ds4_gpu_stream_expert_cache_release_resident
+make[1]: *** [Makefile:143: ds4.o] Error 1
+make[1]: *** Waiting for unfinished jobs....
+make[1]: Leaving directory '/workspace/build/canonical_src'
+make: *** [Makefile:101: cuda] Error 2
+BUILD_EXIT=2

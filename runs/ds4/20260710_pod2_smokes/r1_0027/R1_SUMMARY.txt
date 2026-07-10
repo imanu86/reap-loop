@@ -1,0 +1,9 @@
+R1 (0027) rewind-exactness — pod2 verdicts
+config: livetree base+0020+0021+0026+0027, MTP-built (--mtp ds4-mtp.gguf --mtp-draft 1 = speculation OFF), DS4_CUDA_DIRECT_MODEL host-mapped, PACE W50 K23 static, temp0.7 seed42 (routes ds4_session_eval decode path that carries the hook)
+
+ds4: REWIND_TEST armed p=100 k=50 log=/workspace/runs/r1_0027/sanity_v2/rewind_test.jsonl
+ds4: REWIND_TEST PASS snap_pos=219 k=50 first_div=-1 replay_ok=1
+ds4: REWIND_TEST armed p=400 k=50 log=/workspace/runs/r1_0027/r1_400_50/rewind_test.jsonl
+ds4: REWIND_TEST PASS snap_pos=400 k=50 first_div=-1 replay_ok=1
+ds4: REWIND_TEST armed p=400 k=200 log=/workspace/runs/r1_0027/r1_400_200/rewind_test.jsonl
+ds4: REWIND_TEST PASS snap_pos=400 k=200 first_div=-1 replay_ok=1
