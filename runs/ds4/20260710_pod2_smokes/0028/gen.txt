@@ -1,0 +1,38 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+font-family: sans-serif;
+margin:0 padding:0;
+nav {
+background: #dark;
+padding:10;
+a {
+margin:1;
+color: #link;
+section {
+background: #hero;
+padding:20;
+h1 {
+font-size: #large;
+button {
+background: #primary;
+form {
+background: #form;
+input {
+border: #input;
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your coffee, bre</
