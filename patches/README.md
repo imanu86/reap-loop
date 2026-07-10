@@ -30,6 +30,9 @@ primi 8 caratteri.
 | 0016 | 0016-spex-hidden-gpu-prefetch-stats.patch | 86b4125d | solo reap-loop | canonica, ramo SPEX-hidden; **collisione** — vedi regola 3 |
 | 0017 | 0017-spex-routing-trace-residency.patch | b1ce60e4 | solo reap-loop | **proposta, NON applicata** al sorgente live — vedi regola 4 |
 | 0018 | 0018-pace-skip-wrap-on-rotate.patch | 5b018a3b | solo reap-loop | applicata al sorgente live ma non committata (verifica simboli 2026-07-10: `DS4_PACE_WRAP_ROTATE` e `wrap_rotate` presenti in `/root/ds4/ds4.c`, che risulta modificato non committato nel repo /root/ds4) |
+| 0019 | — | — | — | **numero riservato** allo stopper anti-ripetizione (mandato Codex M1b) |
+| 0020 | 0020-pace-s1-slope-trigger.patch | 089da7cd | solo reap-loop | **authored vs live-tree, pending pod smoke + canonization** — S1-slope trigger (leva L2, `DS4_PACE_S1_TRIGGER`); ancorata allo snapshot live 2026-07-10 di `/root/ds4/ds4.c` (post-0018, md5 771a39a8), NON alla serie canonica — vedi "Stato apply" |
+| 0021 | 0021-pace-rotate-delta-prefetch.patch | 7fb78678 | solo reap-loop | **authored vs live-tree, pending pod smoke + canonization** — delta-prefetch su rotate (leva L3, `DS4_PACE_WRAP_ROTATE_DELTA`); si applica DOPO la 0020 (hunk struct dipendente), stessa base live-tree |
 | — | ds4_spex_predict.c / ds4_spex_predict.h | 396a9331 / 2ec4f88e | moe main/k91 (identici) | supporto (loader probe `.spex`) |
 | — | upstream-pr497-single-token-selected-load.diff | 51dd423f | moe main/k91/dspark (identica) | riferimento upstream |
 
@@ -60,6 +63,39 @@ primi 8 caratteri.
    (`/root/ds4/ds4.c`, verifica simboli 2026-07-10) non contiene il simbolo.
 5. `moe:patches/ds4/archive/2026-07-04-stall-instrumentation-uncommitted.patch` (ad71e31b) è
    materiale storico dell'arena moe: resta in moe e non entra nella serie canonica.
+
+## Stato apply (live-tree vs serie canonica) — input per la canonizzazione
+
+Verifica 2026-07-10 (deploy pod T1 + lettura diretta di `/root/ds4/ds4.c`, snapshot
+md5 `771a39a8`, 1314218 byte): le patch pace **0015/0016/0018 come archiviate NON
+applicano su base pulita 0001-0014e** — i loro hunk assumono campi/funzioni che
+esistono solo nel live-tree locale e non sono mai stati formalizzati in patch.
+Per questo 0020/0021 sono ancorate al live-tree (base = snapshot nell'header di
+ciascuna patch) e andranno ri-basate dopo la canonizzazione. Elenco preciso di
+ciò che il live-tree ha in più rispetto alla serie canonica:
+
+- **Campi struct `g_pace` solo live**: `prebreath_on`, `prebreath_drift`,
+  `prebreath_target`, `prebreath_every`, `prebreath_keep_max`, `prebreath_adapt`,
+  `prebreath_adapt_gain`, `prebreath_adapt_power`, `prebreath_step_max`,
+  `prebreath_relearn`, `prebreath_relearn_decay`, `cache_flush`, `prefill_apply`,
+  `prefill_wait_wrap`, `exchange_observe`, `weighted_warmup`, `weighted_relearn`,
+  `weighted_read_fail`, `in_prefill`, `last_prebreath_tok`, `exchange_events`,
+  `exchange_promote`, `exchange_demote`.
+- **Env solo live**: `DS4_PACE_PREBREATH{,_DRIFT,_TARGET,_EVERY,_KEEP_MAX,_ADAPT,
+  _ADAPT_GAIN,_ADAPT_POWER,_STEP_MAX,_RELEARN,_RELEARN_DECAY}`,
+  `DS4_PACE_CACHE_FLUSH`, `DS4_PACE_PREFILL_APPLY`, `DS4_PACE_PREFILL_WAIT_WRAP`,
+  `DS4_PACE_EXCHANGE_OBSERVE`, `DS4_PACE_WEIGHTED_SELECTED/_WARMUP/_RELEARN`.
+- **Funzioni solo live**: `ds4_pace_note_selected_batch`,
+  `ds4_pace_wants_selected_weights`, `ds4_pace_flush_expert_cache`,
+  `ds4_pace_exchange_observe`, `ds4_pace_reset_for_prefill`,
+  `ds4_pace_apply_prefill_mask`, `ds4_reap_prefetch_wait`. Firme divergenti:
+  `ds4_pace_note_selected` ha il parametro `selected_weights`;
+  `ds4_pace_apply_keep`/`_acc` hanno il parametro `why`.
+- **WRAP live ≠ 0013 canonica**: env thread/lock live = `DS4_REAP_PREFETCH_THREADS`
+  / `DS4_REAP_PREFETCH_LOCK` (non `DS4_REAP_WRAP_*`), banner stderr "fattorino"
+  (non "WRAP"), e il live-tree NON ha il fix race "pending re-run" della 0013
+  canonica (busy → "gia' in corso, salto", senza recupero della mask arrivata
+  durante il pass).
 
 ## Stato apply — deploy T1 pod (2026-07-10)
 

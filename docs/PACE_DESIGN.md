@@ -182,6 +182,21 @@ the EWMA *slope* as a widen/rotate trigger (e.g. a `DS4_PACE_S1_TRIGGER` env;
 NEXT_STEPS_PLAN_20260710 lever L2). Until that A/B runs, n-gram stays the wired
 trigger and S1 stays a diagnostic.
 
+**Update 2026-07-10 — patch `0020-pace-s1-slope-trigger` authored, pending pod
+smoke** (anchored to the local live-tree, not the canonical series — see
+`patches/README.md` "Stato apply"; note: the live tree only *parsed*
+`DS4_PACE_S1`, the in-memory accumulation did not exist and is added by 0020).
+The S1 monitor becomes in-memory (EWMA `DS4_PACE_ALPHA_S1`, default 0.10, fed
+from the same raw-router readback as rotation) and the slope is wired as a
+trigger: `DS4_PACE_S1_TRIGGER` (default 0), `DS4_PACE_S1_SLOPE_WIN` (default
+64 tok), `DS4_PACE_S1_SLOPE_THR` (default 0.0003/tok — provenance CLAIM-011:
++0.058 over ~200 tok ≈ 2.9e-4/tok), `DS4_PACE_S1_STABLE` (default 16
+consecutive tok), `DS4_PACE_S1_ACTION` = `rotate` (default: forced raw-router
+rotate, 0015 path) | `widen` (rides the standard breath). Still OFF by
+default: requires `DS4_PACE_S1=1` + `DS4_PACE_S1_TRIGGER=1`. JSONL events:
+`s1_trigger` (s1, slope, over, action) and `rotate(s1)`. Not yet
+compiled/measured — CLAIM-011 stays OPEN until the pod A/B.
+
 ---
 
 ## 5. Parameters (env, `DS4_PACE_*`), with sidecar-measured defaults
@@ -213,6 +228,7 @@ trigger and S1 stays a diagnostic.
 | `DS4_PACE_S1` | 0 | enable S1 diagnostic (monitor only) |
 | `DS4_PACE_WRAP` | 0 | run WRAP bulk page-in on mask change. **Off by default** — on the practical 3060 config prefetch *slows* t/s (0.82 vs 1.27, see CLAIMS_CURRENT §PREFETCH). Enable only when a probe proves a deeply SSD-bound regime. **Warning:** the matrix runner (`scripts/run_ds4_exchange_matrix.py`, `BASE_ENV`) sets `DS4_PACE_WRAP=1`, so matrix runs do NOT inherit this default (unless the variant overrides it, e.g. `pre_step8_nowrap` sets it back to 0) — account for the WRAP page-in cost when comparing matrix results against launcher/default runs. |
 | `DS4_PACE_WRAP_ROTATE` | 0 | allow WRAP bulk page-in on K-constant `rotate` mask refreshes. Default off after 2026-07-10 rotate4 measured 699.54 GiB / 65.6 s prefetch with no quality pass; K-changing tighten/breath/prebreath can still WRAP when `DS4_PACE_WRAP=1`. |
+| `DS4_PACE_WRAP_ROTATE_DELTA` | 0 | patch `0021-pace-rotate-delta-prefetch` (authored, pending pod smoke): on rotate, page in ONLY the experts that entered the keep set (old→new mask delta, ~43 slots/step measured) instead of the full WRAP (75-699 GiB). Active even with `DS4_PACE_WRAP_ROTATE=0`. JSONL `rotate_delta` (entered/exited/bytes). |
 | `DS4_PACE_PREFILL_APPLY` | 1 | learn the first mask from prompt routing and apply it after prefill, before decode token generation. This is a dynamic prompt mask, not a static domain mask. |
 | `DS4_PACE_PREFILL_WAIT_WRAP` | 1 | when WRAP is enabled, wait for the prefill-derived working set page-in before starting decode. Local 3060 smoke: 6.07 GiB touched in 445 ms, generation 2.83 t/s on a 19/24-token probe. |
 | `DS4_PACE_RELEARN_ON_TIGHTEN` | 0 | when a tighten step fires, rebuild the new smaller keep-K mask from raw-router EWMA mass (`rmass`) instead of shrinking the original warmup ranking. Requires the raw-router read path used by rotation; measured 2026-07-10 as lower n-gram drift than stale tighten. |

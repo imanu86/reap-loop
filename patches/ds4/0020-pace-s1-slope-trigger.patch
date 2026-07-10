@@ -1,0 +1,350 @@
+From ff4d73df49834d4b7f0c5f00ba0484938f5329f1 Mon Sep 17 00:00:00 2001
+From: reap-loop <dev@reap-loop.local>
+Date: Fri, 10 Jul 2026 11:50:27 +0200
+Subject: [PATCH] pace: 0020 S1-slope trigger (DS4_PACE_S1_TRIGGER) -
+ predictive rotate/widen on pruned-mass slope
+
+ANCHORED TO LOCAL LIVE-TREE 2026-07-10 (post-0018 /root/ds4/ds4.c, 1314218
+bytes, md5 771a39a861e9512fed2fc4528780e080); rebase needed after
+pace-series canonization (the filed 0015/0016/0018 do not apply on a clean
+base: the live tree carries prebreath/prefill/exchange/weighted extras, see
+patches/README.md "Stato apply").
+
+Adds the in-memory S1 pruned-mass monitor PACE was missing (live tree only
+parsed DS4_PACE_S1 into s1_on, no accumulation): router probability mass on
+PRUNED experts, read from the same raw-router readback as 0015 rotation,
+folded per decode token into an EWMA (DS4_PACE_ALPHA_S1, default 0.10).
+The absolute S1 level is measured dead; the EWMA SLOPE is the only signal
+with a measured pre-collapse rise (CLAIM-011: +0.058 over ~200 tok,
+0.722->0.781 local, 0.73->0.81 historical K91 => ~2.9e-4/tok).
+
+Trigger (OFF by default, needs DS4_PACE_S1=1 + DS4_PACE_S1_TRIGGER=1):
+slope over DS4_PACE_S1_SLOPE_WIN tokens (default 64, ring cap 256) must
+stay >= DS4_PACE_S1_SLOPE_THR (default 0.0003/tok, from CLAIM-011) for
+DS4_PACE_S1_STABLE consecutive tokens (default 16); one-window refractory
+after each fire. Action DS4_PACE_S1_ACTION:
+  rotate (default) - forced raw-router rotate, no cadence gate; why stays
+    "rotate" so the 0018 WRAP-on-rotate policy applies unchanged; rmass is
+    allocated+fed when the S1 rotate action is armed.
+  widen - rides the standard sensor breath path (keep widens one step,
+    breath_keep for breath_len tokens; the preceding s1_trigger JSONL event
+    disambiguates it from an n-gram breath).
+JSONL: ev "s1_trigger" with s1, slope, over, action; forced rotates emit
+ev "rotate(s1)".
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c | 202 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 197 insertions(+), 5 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 0d0aaeb..eff6019 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7402,6 +7402,11 @@ static uint32_t g_reap_bias_n;
+  * controller logic lives after the 0013 block. Design: reap/PACE_DESIGN.md. */
+ #define DS4_PACE_NGRAM_MAX 512   /* max sliding window in tokens */
+ 
++/* patch 0020: S1-slope trigger */
++#define DS4_PACE_S1_RING_MAX   256  /* max slope window (tokens) */
++#define DS4_PACE_S1_ACT_ROTATE 0    /* forced raw-router rotate (0015 path) */
++#define DS4_PACE_S1_ACT_WIDEN  1    /* standard breath (widen) */
++
+ typedef enum {
+     PACE_OFF = 0, PACE_WARMUP, PACE_DESCENT, PACE_HOLD, PACE_BREATH
+ } ds4_pace_phase;
+@@ -7438,6 +7443,12 @@ static struct {
+     double   tighten_lo, hit_hi;
+     uint32_t stable, anneal_warm;
+     int      s1_on;
++    double   alpha_s1;           /* EWMA alpha for the S1 pruned-mass monitor */
++    int      s1_trigger;         /* DS4_PACE_S1_TRIGGER: act on the S1 slope */
++    uint32_t s1_slope_win;       /* slope window, tokens (DS4_PACE_S1_SLOPE_WIN) */
++    double   s1_slope_thr;       /* slope threshold /tok (DS4_PACE_S1_SLOPE_THR) */
++    uint32_t s1_stable;          /* consecutive over-thr tokens to fire */
++    int      s1_action;          /* DS4_PACE_S1_ACT_ROTATE | _WIDEN */
+     int      wrap_on;
+     int      wrap_rotate;       /* allow WRAP page-in on K-constant rotate */
+     int      cache_flush;
+@@ -7492,6 +7503,16 @@ static struct {
+     /* breath re-learn window accumulator */
+     double  *bmass;
+     uint32_t bmass_rows;
++    /* S1 pruned-mass monitor + slope trigger (patch 0020) */
++    double   s1_tok_pruned;    /* per-token accumulation across layers */
++    double   s1_tok_total;
++    double   ema_s1;
++    double   s1_ring[DS4_PACE_S1_RING_MAX];  /* ema_s1 history for the slope */
++    uint32_t s1_ring_len, s1_ring_head;
++    double   s1_slope;         /* EWMA-S1 delta per token over the window */
++    uint32_t s1_over;          /* consecutive ticks with slope >= thr */
++    uint32_t s1_last_fire_tok;
++    uint64_t s1_events;
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -12842,6 +12863,27 @@ static void ds4_pace_init(void) {
+     g_pace.stable       = (uint32_t)pace_env_i("DS4_PACE_STABLE", 120);
+     g_pace.anneal_warm  = (uint32_t)pace_env_i("DS4_PACE_ANNEAL_WARM", 300);
+     g_pace.s1_on        = pace_env_i("DS4_PACE_S1", 0);
++    g_pace.alpha_s1     = pace_env_d("DS4_PACE_ALPHA_S1", 0.10);
++    if (g_pace.alpha_s1 <= 0.0) g_pace.alpha_s1 = 0.10;
++    if (g_pace.alpha_s1 > 1.0) g_pace.alpha_s1 = 1.0;
++    /* S1-slope trigger (patch 0020, PACE_DESIGN "S1-slope trigger", lever L2).
++     * Requires DS4_PACE_S1=1 (monitor) + DS4_PACE_S1_TRIGGER=1. Threshold
++     * provenance: CLAIM-011 measured rise ~+0.058 over ~200 tok before the
++     * collapse (0.722->0.781 local; 0.73->0.81 historical K91), i.e.
++     * ~2.9e-4/tok -> default 0.0003/tok. */
++    g_pace.s1_trigger   = pace_env_i("DS4_PACE_S1_TRIGGER", 0);
++    g_pace.s1_slope_win = (uint32_t)pace_env_i("DS4_PACE_S1_SLOPE_WIN", 64);
++    if (g_pace.s1_slope_win < 4) g_pace.s1_slope_win = 4;
++    if (g_pace.s1_slope_win > DS4_PACE_S1_RING_MAX)
++        g_pace.s1_slope_win = DS4_PACE_S1_RING_MAX;
++    g_pace.s1_slope_thr = pace_env_d("DS4_PACE_S1_SLOPE_THR", 0.0003);
++    g_pace.s1_stable    = (uint32_t)pace_env_i("DS4_PACE_S1_STABLE", 16);
++    if (g_pace.s1_stable == 0) g_pace.s1_stable = 1;
++    {
++        const char *a = getenv("DS4_PACE_S1_ACTION");
++        g_pace.s1_action = DS4_PACE_S1_ACT_ROTATE;
++        if (a && !strcmp(a, "widen")) g_pace.s1_action = DS4_PACE_S1_ACT_WIDEN;
++    }
+     /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_PREFETCH */
+     {
+         const char *w = getenv("DS4_PACE_WRAP");
+@@ -12882,7 +12924,9 @@ static void ds4_pace_init(void) {
+     g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+     if (g_pace.prebreath_relearn)
+         g_pace.bmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+-    if (g_pace.rotate_on || g_pace.relearn_on_tighten)
++    if (g_pace.rotate_on || g_pace.relearn_on_tighten ||
++        (g_pace.s1_on && g_pace.s1_trigger &&
++         g_pace.s1_action == DS4_PACE_S1_ACT_ROTATE))
+         g_pace.rmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+ 
+     fprintf(stderr,
+@@ -12910,6 +12954,13 @@ static void ds4_pace_init(void) {
+         g_pace.weighted_relearn,
+         g_pace.rotate_on, g_pace.rotate_every,
+         g_pace.rotate_decay, g_pace.rotate_preserve_stable);
++    if (g_pace.s1_on)
++        fprintf(stderr,
++            "ds4: PACE S1 monitor alpha=%.2f trigger=%d "
++            "slope(win=%u,thr=%.6f,stable=%u) action=%s\n",
++            g_pace.alpha_s1, g_pace.s1_trigger, g_pace.s1_slope_win,
++            g_pace.s1_slope_thr, g_pace.s1_stable,
++            g_pace.s1_action == DS4_PACE_S1_ACT_WIDEN ? "widen" : "rotate");
+ }
+ 
+ static inline int ds4_pace_active(void) {
+@@ -12994,7 +13045,9 @@ static void ds4_pace_note_selected_batch(uint32_t il,
+ 
+ static inline int ds4_pace_rotate_wants_router(void) {
+     if (!ds4_pace_active()) return 0;
+-    return (g_pace.rotate_on || g_pace.relearn_on_tighten) &&
++    return (g_pace.rotate_on || g_pace.relearn_on_tighten ||
++            (g_pace.s1_on && g_pace.s1_trigger &&
++             g_pace.s1_action == DS4_PACE_S1_ACT_ROTATE)) &&
+            g_pace.rmass && !g_pace.in_prefill &&
+            g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0;
+ }
+@@ -13012,6 +13065,30 @@ static void ds4_pace_note_router_probs(uint32_t il, const float *probs) {
+     if (any > 0.0) g_pace.rmass_rows++;
+ }
+ 
++/* ---- S1 pruned-mass monitor (patch 0020) ---- *
++ * In-memory version of the 0012 S1 sensor: router probability mass falling
++ * on PRUNED experts (the router still scores all experts under the 0011
++ * bias mask). The absolute level is measured dead as a signal; the EWMA
++ * SLOPE is the only measured pre-collapse riser (CLAIM-011). Fed from the
++ * same raw-router readback as rotation (metal_graph_spex_note_selected). */
++static inline int ds4_pace_s1_wants_router(void) {
++    if (!ds4_pace_active()) return 0;
++    return g_pace.s1_on && !g_pace.in_prefill &&
++           g_pace.cur_keep > 0 && g_reap_mask_on;
++}
++
++static void ds4_pace_s1_note_probs(uint32_t il, const float *probs) {
++    if (!probs || il >= DS4_MAX_LAYER || !ds4_pace_s1_wants_router()) return;
++    double tot = 0.0, pr = 0.0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++        const double v = (double)probs[e];
++        tot += v;
++        if (g_reap_mask_pruned[il][e]) pr += v;
++    }
++    g_pace.s1_tok_pruned += pr;
++    g_pace.s1_tok_total  += tot;
++}
++
+ /* ---- learn keep-set from an accumulator into g_reap_mask_pruned ---- *
+  * top-keep experts per layer by accumulated mass are KEPT; rest pruned. */
+ static void ds4_pace_learn_mask(const double *acc, int keep) {
+@@ -13206,6 +13283,15 @@ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+     g_pace.sel_inkeep = 0;
+     g_pace.ema_hit = 1.0;
+     g_pace.breaths = 0;
++    g_pace.s1_tok_pruned = 0.0;
++    g_pace.s1_tok_total = 0.0;
++    g_pace.ema_s1 = 0.0;
++    g_pace.s1_ring_len = 0;
++    g_pace.s1_ring_head = 0;
++    g_pace.s1_slope = 0.0;
++    g_pace.s1_over = 0;
++    g_pace.s1_last_fire_tok = 0;
++    g_pace.s1_events = 0;
+     ds4_pace_emit(why && *why ? why : "prefill_reset", 0.0, 1.0);
+ }
+ 
+@@ -13295,6 +13381,71 @@ static void ds4_pace_tune_cadence(void) {
+         g_pace.breath_every += 50;
+ }
+ 
++/* ---- S1-slope trigger (patch 0020) ---- */
++static void ds4_pace_emit_s1(const char *ev) {
++    if (g_pace.debug) {
++        fprintf(stderr,
++                "ds4: PACE %-12s tok=%u keep=%d s1=%.4f slope=%.6f over=%u\n",
++                ev, g_pace.tok, g_pace.cur_keep, g_pace.ema_s1,
++                g_pace.s1_slope, g_pace.s1_over);
++    }
++    if (g_pace.evlog) {
++        fprintf(g_pace.evlog,
++                "{\"ev\":\"%s\",\"tok\":%u,\"keep\":%d,\"s1\":%.5f,"
++                "\"slope\":%.7f,\"over\":%u,\"action\":\"%s\"}\n",
++                ev, g_pace.tok, g_pace.cur_keep, g_pace.ema_s1,
++                g_pace.s1_slope, g_pace.s1_over,
++                g_pace.s1_action == DS4_PACE_S1_ACT_WIDEN ? "widen" : "rotate");
++        fflush(g_pace.evlog);
++    }
++}
++
++/* Fold the last token's S1 sample into the EWMA, update the slope over the
++ * s1_slope_win window and the consecutive-over counter. Called once per
++ * decode token from ds4_pace_tick (the layer hooks of token N accumulate
++ * s1_tok_* before the tick of token N+1 folds them). */
++static void ds4_pace_s1_update(void) {
++    if (!g_pace.s1_on) return;
++    if (g_pace.s1_tok_total > 0.0) {
++        const double s1 = g_pace.s1_tok_pruned / g_pace.s1_tok_total;
++        g_pace.ema_s1 = (1.0 - g_pace.alpha_s1) * g_pace.ema_s1
++                      + g_pace.alpha_s1 * s1;
++        const uint32_t w = g_pace.s1_slope_win;
++        if (g_pace.s1_ring_len < w) {
++            g_pace.s1_ring[(g_pace.s1_ring_head + g_pace.s1_ring_len) % w] =
++                g_pace.ema_s1;
++            g_pace.s1_ring_len++;
++        } else {
++            g_pace.s1_ring[g_pace.s1_ring_head] = g_pace.ema_s1;
++            g_pace.s1_ring_head = (g_pace.s1_ring_head + 1) % w;
++        }
++        if (g_pace.s1_ring_len >= w && w > 1) {
++            /* the oldest sample sits at ring_head once the ring is full */
++            const double oldest = g_pace.s1_ring[g_pace.s1_ring_head];
++            g_pace.s1_slope = (g_pace.ema_s1 - oldest) / (double)(w - 1);
++        } else {
++            g_pace.s1_slope = 0.0;
++        }
++        /* consecutive-over counter; refractory of one window after a fire */
++        if (g_pace.s1_trigger &&
++            g_pace.s1_ring_len >= w &&
++            g_pace.tok - g_pace.s1_last_fire_tok >= w &&
++            g_pace.s1_slope >= g_pace.s1_slope_thr) {
++            g_pace.s1_over++;
++        } else {
++            g_pace.s1_over = 0;
++        }
++    }
++    g_pace.s1_tok_pruned = 0.0;
++    g_pace.s1_tok_total  = 0.0;
++}
++
++static inline int ds4_pace_s1_trigger_due(void) {
++    return g_pace.s1_on && g_pace.s1_trigger &&
++           g_pace.cur_keep > 0 &&
++           g_pace.s1_over >= g_pace.s1_stable;
++}
++
+ static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weights) {
+     if (!g_pace.rotate_on || !g_pace.rmass || g_pace.phase != PACE_HOLD ||
+         g_pace.cur_keep <= 0 || g_pace.rmass_rows == 0) {
+@@ -13314,6 +13465,27 @@ static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weig
+     return 1;
+ }
+ 
++/* patch 0020: forced K-constant rotate, no cadence gate - used by the
++ * S1-slope trigger (an S1 fire IS the clock). Same body as
++ * ds4_pace_rotate_maybe minus rotate_on and the rotate_every gate. The why
++ * string stays "rotate" so the 0018 WRAP-on-rotate policy (and a delta
++ * page-in policy layered on it) apply unchanged. */
++static int ds4_pace_rotate_force(const ds4_model *model, const ds4_weights *weights) {
++    if (!g_pace.rmass || g_pace.phase != PACE_HOLD ||
++        g_pace.cur_keep <= 0 || g_pace.rmass_rows == 0) {
++        return 0;
++    }
++    const uint32_t stable_before = g_pace.stable_since;
++    ds4_pace_apply_keep_acc(model, weights, g_pace.rmass, g_pace.cur_keep, "rotate");
++    if (g_pace.rotate_preserve_stable) {
++        g_pace.stable_since = stable_before;
++    }
++    g_pace.last_rotate_tok = g_pace.tok;
++    g_pace.rotate_events++;
++    ds4_pace_emit("rotate(s1)", g_pace.ema_ngram, g_pace.ema_hit);
++    return 1;
++}
++
+ /* ---- per-decode-token driver tick ---- */
+ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                           int token) {
+@@ -13330,6 +13502,7 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+         ? (double)g_pace.sel_inkeep / (double)g_pace.sel_checked : 1.0;
+     g_pace.ema_hit = (1.0 - g_pace.alpha_hit) * g_pace.ema_hit
+                    + g_pace.alpha_hit * hit;
++    ds4_pace_s1_update();   /* 0020: S1 EWMA + slope from last token's layers */
+ 
+     switch (g_pace.phase) {
+     case PACE_WARMUP:
+@@ -13359,6 +13532,22 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+         }
+         int sensor_due = g_pace.sensor_armed && g_pace.ema_ngram >= g_pace.drift;
+ 
++        /* patch 0020: S1-slope predictive trigger (CLAIM-011). Fires when
++         * the EWMA-S1 slope stayed >= thr for s1_stable consecutive tokens. */
++        if (!clock_due && !sensor_due && ds4_pace_s1_trigger_due()) {
++            g_pace.s1_over = 0;
++            g_pace.s1_last_fire_tok = g_pace.tok;
++            g_pace.s1_events++;
++            ds4_pace_emit_s1("s1_trigger");
++            if (g_pace.s1_action == DS4_PACE_S1_ACT_ROTATE &&
++                ds4_pace_rotate_force(model, weights)) {
++                break;
++            }
++            /* widen (or rotate impossible: no rmass rows yet): ride the
++             * standard breath path below as a sensor-due breath. */
++            sensor_due = 1;
++        }
++
+         if (!clock_due && !sensor_due &&
+             g_pace.prebreath_on &&
+             g_pace.sensor_armed &&
+@@ -16198,13 +16387,16 @@ static void metal_graph_spex_note_selected(
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
+     metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
+-    /* PACE rotate: optional raw-router probability readback for K-constant
+-     * mask refresh. This stays off unless DS4_PACE_ROTATE=1. */
+-    if (g && g->router_probs && ds4_pace_rotate_wants_router()) {
++    /* PACE rotate + S1 monitor (0020): raw-router probability readback,
++     * shared by the K-constant mask refresh and the S1 pruned-mass sensor.
++     * Off unless DS4_PACE_ROTATE=1 / relearn-on-tighten / DS4_PACE_S1=1. */
++    if (g && g->router_probs &&
++        (ds4_pace_rotate_wants_router() || ds4_pace_s1_wants_router())) {
+         float probs[DS4_MAX_EXPERT];
+         if (ds4_gpu_tensor_read(g->router_probs, 0, probs,
+                                 (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
+             ds4_pace_note_router_probs(il, probs);
++            ds4_pace_s1_note_probs(il, probs);
+         }
+     }
+     /* PACE (0014): in-memory gate-mass + hit-rate, including prefill.
+-- 
+2.54.0.windows.1
+
