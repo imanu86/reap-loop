@@ -1,0 +1,125 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.513s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 208.09 MiB (ctx=2048, backend=cuda, prefill_chunk=2048, raw_kv_rows=2048, compressed_kv_rows=514)
+ds4: using GPU graph generation with graph prefill
+ds4: PACE on - warmup=50 keep=23[23..23] step=0 ngram(n=3,win=120) drift=0.35 rel=0.15 hyst=200 breath(every=999999,len=80,keep=64,relearn=0) prebreath(on=0,drift=0.24,target=0.24,every=64,max=64,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=0,every=32,decay=0.980,preserve_stable=1)
+ds4: PACE ADMIT on - h=0.300 k_drift=0.020 persist=1 cooldown=16 max_per_100=0 (rmass EWMA decay=0.980)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: gpu prefill layer 1/43ds4: gpu prefill layer 2/43ds4: gpu prefill layer 3/43ds4: gpu prefill layer 4/43ds4: gpu prefill layer 5/43ds4: gpu prefill layer 6/43ds4: gpu prefill layer 7/43ds4: gpu prefill layer 8/43ds4: gpu prefill layer 9/43ds4: gpu prefill layer 10/43ds4: gpu prefill layer 11/43ds4: gpu prefill layer 12/43ds4: gpu prefill layer 13/43ds4: gpu prefill layer 14/43ds4: gpu prefill layer 15/43ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 16/43ds4: gpu prefill layer 17/43ds4: gpu prefill layer 18/43ds4: gpu prefill layer 19/43ds4: gpu prefill layer 20/43ds4: gpu prefill layer 21/43ds4: gpu prefill layer 22/43ds4: gpu prefill layer 23/43ds4: gpu prefill layer 24/43ds4: gpu prefill layer 25/43ds4: gpu prefill layer 26/43ds4: gpu prefill layer 27/43ds4: gpu prefill layer 28/43ds4: gpu prefill layer 29/43ds4: gpu prefill layer 30/43ds4: gpu prefill layer 31/43ds4: gpu prefill layer 32/43ds4: gpu prefill layer 33/43ds4: gpu prefill layer 34/43ds4: gpu prefill layer 35/43ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: gpu prefill layer 36/43ds4: gpu prefill layer 37/43ds4: gpu prefill layer 38/43ds4: gpu prefill layer 39/43ds4: gpu prefill layer 40/43ds4: gpu prefill layer 41/43ds4: gpu prefill layer 42/43ds4: gpu prefill layer 43/43
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE prefill_apply tok=0 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2517 range, 6.07 GiB touched in 3033 ms (8 thread)
+ds4: REAP prefetch wait prefill_apply 3036 ms
+ds4: CUDA loading model tensors 5.17 GiB cached
+ds4: PACE admit tok=16 L21 e241<-evict e111 S=0.3796
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=27 L32 e190<-evict e250 S=0.3829
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=30 L28 e59<-evict e126 S=0.3422
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 10 ms (3 thread)
+ds4: PACE admit tok=31 L32 e51<-evict e79 S=0.3406
+ds4: PACE admit tok=31 L36 e65<-evict e76 S=0.3151
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 2 expert entrati, 6 range, 0.013 GiB stimati, 0.013 GiB touched in 8 ms (6 thread)
+ds4: PACE admit tok=32 L30 e88<-evict e0 S=0.3093
+ds4: PACE admit tok=32 L32 e251<-evict e204 S=0.3159
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 2 expert entrati, 6 range, 0.013 GiB stimati, 0.013 GiB touched in 12 ms (6 thread)
+ds4: PACE admit tok=33 L23 e145<-evict e39 S=0.3476
+ds4: PACE admit tok=33 L27 e9<-evict e211 S=0.3434
+ds4: PACE admit tok=33 L29 e177<-evict e57 S=0.3691
+ds4: PACE admit tok=33 L35 e223<-evict e229 S=0.3429
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 4 expert entrati, 12 range, 0.026 GiB stimati, 0.026 GiB touched in 18 ms (8 thread)
+ds4: PACE admit tok=34 L23 e10<-evict e208 S=0.3244
+ds4: PACE admit tok=34 L34 e215<-evict e8 S=0.3569
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 2 expert entrati, 6 range, 0.013 GiB stimati, 0.013 GiB touched in 12 ms (6 thread)
+ds4: PACE admit tok=35 L19 e138<-evict e9 S=0.3419
+ds4: PACE admit tok=35 L25 e168<-evict e17 S=0.3014
+ds4: PACE admit tok=35 L30 e249<-evict e238 S=0.3002
+ds4: PACE admit tok=35 L33 e67<-evict e251 S=0.3338
+ds4: PACE admit tok=35 L34 e102<-evict e53 S=0.3135
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 5 expert entrati, 15 range, 0.033 GiB stimati, 0.033 GiB touched in 19 ms (8 thread)
+ds4: PACE admit tok=36 L20 e10<-evict e77 S=0.3010
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 1 ms (3 thread)
+ds4: PACE admit tok=37 L11 e198<-evict e129 S=0.3290
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 5 ms (3 thread)
+ds4: PACE admit tok=39 L32 e23<-evict e161 S=0.3458
+ds4: PACE admit tok=39 L33 e235<-evict e18 S=0.3420
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 2 expert entrati, 6 range, 0.013 GiB stimati, 0.013 GiB touched in 4 ms (6 thread)
+ds4: PACE admit tok=44 L40 e181<-evict e208 S=0.3208
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 8 ms (3 thread)
+ds4: PACE admit tok=45 L35 e78<-evict e21 S=0.3898
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=46 L24 e76<-evict e134 S=0.3002
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=47 L3 e5<-evict e14 S=0.3237
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 10 ms (3 thread)
+ds4: PACE admit tok=55 L3 e238<-evict e237 S=0.3042
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 6 ms (3 thread)
+ds4: PACE admit tok=56 L39 e35<-evict e170 S=0.3061
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 4 ms (3 thread)
+ds4: PACE admit tok=63 L42 e229<-evict e162 S=0.3319
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 1 ms (3 thread)
+ds4: PACE admit tok=67 L5 e241<-evict e107 S=0.3073
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 4 ms (3 thread)
+ds4: PACE admit tok=73 L22 e222<-evict e197 S=0.3026
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 5 ms (3 thread)
+ds4: PACE admit tok=80 L39 e209<-evict e207 S=0.3016
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 5 ms (3 thread)
+ds4: PACE admit tok=95 L21 e229<-evict e62 S=0.3192
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 6 ms (3 thread)
+ds4: PACE admit tok=104 L29 e193<-evict e75 S=0.3001
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 1 ms (3 thread)
+ds4: PACE admit tok=131 L31 e50<-evict e19 S=0.3079
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 1 ms (3 thread)
+ds4: PACE admit tok=134 L12 e136<-evict e149 S=0.3083
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 5 ms (3 thread)
+ds4: PACE admit tok=157 L29 e34<-evict e230 S=0.3011
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=181 L30 e207<-evict e197 S=0.3027
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 7 ms (3 thread)
+ds4: PACE admit tok=202 L27 e28<-evict e47 S=0.3083
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 1 ms (3 thread)
+ds4: PACE admit tok=213 L31 e143<-evict e164 S=0.3392
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 9 ms (3 thread)
+ds4: PACE admit tok=216 L33 e237<-evict e25 S=0.3237
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 8 ms (3 thread)
+ds4: PACE admit tok=223 L31 e153<-evict e144 S=0.3046
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP delta-prefetch (rotate): 1 expert entrati, 3 range, 0.007 GiB stimati, 0.007 GiB touched in 8 ms (3 thread)
+ds4: prefill: 8.75 t/s, generation: 11.69 t/s
