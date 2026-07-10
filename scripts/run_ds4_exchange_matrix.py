@@ -1539,54 +1539,65 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
     content_parts = []
     finish_reason = None
     usage = None
+
+    events_path.parent.mkdir(parents=True, exist_ok=True)
+
+    def record_event(handle, event: dict) -> None:
+        events.append(event)
+        handle.write(json.dumps(event, ensure_ascii=False) + "\n")
+        handle.flush()
+
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            for raw_line in resp:
-                line = raw_line.decode("utf-8", errors="replace").strip()
-                if not line or line.startswith(":"):
-                    continue
-                if not line.startswith("data:"):
-                    continue
-                payload = line.removeprefix("data:").strip()
-                if payload == "[DONE]":
-                    break
-                try:
-                    obj = json.loads(payload)
-                except json.JSONDecodeError:
-                    events.append(
+        with events_path.open("w", encoding="utf-8") as events_fh:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                for raw_line in resp:
+                    line = raw_line.decode("utf-8", errors="replace").strip()
+                    if not line or line.startswith(":"):
+                        continue
+                    if not line.startswith("data:"):
+                        continue
+                    payload = line.removeprefix("data:").strip()
+                    if payload == "[DONE]":
+                        break
+                    try:
+                        obj = json.loads(payload)
+                    except json.JSONDecodeError:
+                        record_event(
+                            events_fh,
+                            {
+                                "event_index": len(events) + 1,
+                                "t_s": round(time.perf_counter() - t0, 6),
+                                "raw": payload,
+                                "parse_error": True,
+                            },
+                        )
+                        continue
+                    delta = ""
+                    choices = obj.get("choices") or []
+                    if choices:
+                        choice = choices[0]
+                        finish_reason = choice.get("finish_reason") or finish_reason
+                        delta_obj = choice.get("delta") or {}
+                        delta = delta_obj.get("content") or ""
+                        if not delta:
+                            message = choice.get("message") or {}
+                            delta = message.get("content") or ""
+                    if obj.get("usage") is not None:
+                        usage = obj.get("usage")
+                    if delta:
+                        content_parts.append(delta)
+                    record_event(
+                        events_fh,
                         {
                             "event_index": len(events) + 1,
                             "t_s": round(time.perf_counter() - t0, 6),
-                            "raw": payload,
-                            "parse_error": True,
-                        }
+                            "delta": delta,
+                            "delta_chars": len(delta),
+                            "content_chars": sum(len(part) for part in content_parts),
+                            "finish_reason": finish_reason,
+                            "usage": usage,
+                        },
                     )
-                    continue
-                delta = ""
-                choices = obj.get("choices") or []
-                if choices:
-                    choice = choices[0]
-                    finish_reason = choice.get("finish_reason") or finish_reason
-                    delta_obj = choice.get("delta") or {}
-                    delta = delta_obj.get("content") or ""
-                    if not delta:
-                        message = choice.get("message") or {}
-                        delta = message.get("content") or ""
-                if obj.get("usage") is not None:
-                    usage = obj.get("usage")
-                if delta:
-                    content_parts.append(delta)
-                events.append(
-                    {
-                        "event_index": len(events) + 1,
-                        "t_s": round(time.perf_counter() - t0, 6),
-                        "delta": delta,
-                        "delta_chars": len(delta),
-                        "content_chars": sum(len(part) for part in content_parts),
-                        "finish_reason": finish_reason,
-                        "usage": usage,
-                    }
-                )
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
         try:
@@ -1597,9 +1608,6 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
     except Exception as exc:  # noqa: BLE001 - command-line diagnostic path.
         return time.perf_counter() - t0, {"error": type(exc).__name__, "message": str(exc)}
 
-    with events_path.open("w", encoding="utf-8") as fh:
-        for event in events:
-            fh.write(json.dumps(event, ensure_ascii=False) + "\n")
     content = "".join(content_parts)
     return (
         time.perf_counter() - t0,

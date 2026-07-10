@@ -1,0 +1,184 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.843s
+ds4: cuda backend initialized for graph diagnostics
+0710 07:29:37 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0710 07:29:37 ds4-server: listening on http://127.0.0.1:8015
+0710 07:29:38 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE on - warmup=100 keep=23[23..96] step=0 ngram(n=3,win=120) drift=1.00 rel=0.15 hyst=200 breath(every=999999,len=80,keep=96,relearn=0) prebreath(on=0,drift=0.18,target=0.18,every=64,max=96,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=0 prefill_wait_wrap=0 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=1,every=32,decay=0.980,preserve_stable=1)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+0710 07:30:36 ds4-server: chat ctx=0..78:78 prompt done 57.472s
+ds4: CUDA loading model tensors 7.80 GiB cached
+ds4: CUDA loading model tensors 7.86 GiB cached
+0710 07:31:41 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=0.78 t/s avg=0.78 t/s 63.708s
+ds4: PACE learned      tok=100 phase=2 keep=0 ngram=0.021 hit=1.000 breaths=0
+0710 07:33:05 ds4-server: chat ctx=128..178:50 gen=100 decoding chunk=0.60 t/s avg=0.68 t/s 146.504s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE descent      tok=101 phase=3 keep=23 ngram=0.021 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2511 range, 6.07 GiB touched in 748 ms (16 thread, mlock)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=133 phase=3 keep=23 ngram=0.025 hit=1.000 breaths=0
+0710 07:33:30 ds4-server: chat ctx=178..228:50 gen=150 decoding chunk=2.12 t/s avg=0.88 t/s 170.040s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=165 phase=3 keep=23 ngram=0.048 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=197 phase=3 keep=23 ngram=0.035 hit=1.000 breaths=0
+0710 07:33:54 ds4-server: chat ctx=228..278:50 gen=200 decoding chunk=2.05 t/s avg=1.03 t/s 194.472s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=229 phase=3 keep=23 ngram=0.030 hit=1.000 breaths=0
+0710 07:34:17 ds4-server: chat ctx=278..328:50 gen=250 decoding chunk=2.23 t/s avg=1.15 t/s 216.917s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=261 phase=3 keep=23 ngram=0.047 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=293 phase=3 keep=23 ngram=0.029 hit=1.000 breaths=0
+0710 07:34:38 ds4-server: chat ctx=328..378:50 gen=300 decoding chunk=2.53 t/s avg=1.27 t/s 236.664s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=325 phase=3 keep=23 ngram=0.074 hit=1.000 breaths=0
+0710 07:34:56 ds4-server: chat ctx=378..428:50 gen=350 decoding chunk=2.81 t/s avg=1.38 t/s 254.477s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=357 phase=3 keep=23 ngram=0.112 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=389 phase=3 keep=23 ngram=0.125 hit=1.000 breaths=0
+0710 07:35:15 ds4-server: chat ctx=428..478:50 gen=400 decoding chunk=2.65 t/s avg=1.46 t/s 273.331s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=421 phase=3 keep=23 ngram=0.133 hit=1.000 breaths=0
+0710 07:35:32 ds4-server: chat ctx=478..528:50 gen=450 decoding chunk=2.91 t/s avg=1.55 t/s 290.524s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=453 phase=3 keep=23 ngram=0.220 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=485 phase=3 keep=23 ngram=0.223 hit=1.000 breaths=0
+0710 07:35:51 ds4-server: chat ctx=528..578:50 gen=500 decoding chunk=2.84 t/s avg=1.62 t/s 308.135s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=517 phase=3 keep=23 ngram=0.252 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=549 phase=3 keep=23 ngram=0.246 hit=1.000 breaths=0
+0710 07:36:08 ds4-server: chat ctx=578..628:50 gen=550 decoding chunk=2.89 t/s avg=1.69 t/s 325.461s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=581 phase=3 keep=23 ngram=0.225 hit=1.000 breaths=0
+0710 07:36:27 ds4-server: chat ctx=628..678:50 gen=600 decoding chunk=2.77 t/s avg=1.75 t/s 343.529s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=613 phase=3 keep=23 ngram=0.201 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=645 phase=3 keep=23 ngram=0.175 hit=1.000 breaths=0
+0710 07:36:46 ds4-server: chat ctx=678..728:50 gen=650 decoding chunk=2.74 t/s avg=1.80 t/s 361.752s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=677 phase=3 keep=23 ngram=0.167 hit=1.000 breaths=0
+0710 07:37:03 ds4-server: chat ctx=728..778:50 gen=700 decoding chunk=2.94 t/s avg=1.85 t/s 378.750s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=709 phase=3 keep=23 ngram=0.176 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=741 phase=3 keep=23 ngram=0.140 hit=1.000 breaths=0
+0710 07:37:22 ds4-server: chat ctx=778..828:50 gen=750 decoding chunk=2.78 t/s avg=1.89 t/s 396.754s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=773 phase=3 keep=23 ngram=0.103 hit=1.000 breaths=0
+0710 07:37:39 ds4-server: chat ctx=828..878:50 gen=800 decoding chunk=3.01 t/s avg=1.94 t/s 413.386s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=805 phase=3 keep=23 ngram=0.179 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=837 phase=3 keep=23 ngram=0.153 hit=1.000 breaths=0
+0710 07:37:57 ds4-server: chat ctx=878..928:50 gen=850 decoding chunk=2.96 t/s avg=1.98 t/s 430.272s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=869 phase=3 keep=23 ngram=0.146 hit=1.000 breaths=0
+0710 07:38:14 ds4-server: chat ctx=928..978:50 gen=900 decoding chunk=2.95 t/s avg=2.01 t/s 447.219s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=901 phase=3 keep=23 ngram=0.181 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=933 phase=3 keep=23 ngram=0.185 hit=1.000 breaths=0
+0710 07:38:32 ds4-server: chat ctx=978..1028:50 gen=950 decoding chunk=2.88 t/s avg=2.04 t/s 464.568s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=965 phase=3 keep=23 ngram=0.153 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=997 phase=3 keep=23 ngram=0.123 hit=1.000 breaths=0
+0710 07:38:50 ds4-server: chat ctx=1028..1078:50 gen=1000 decoding chunk=2.80 t/s avg=2.07 t/s 482.417s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1029 phase=3 keep=23 ngram=0.174 hit=1.000 breaths=0
+0710 07:39:08 ds4-server: chat ctx=1078..1128:50 gen=1050 decoding chunk=2.93 t/s avg=2.10 t/s 499.491s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1061 phase=3 keep=23 ngram=0.172 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1093 phase=3 keep=23 ngram=0.133 hit=1.000 breaths=0
+0710 07:39:25 ds4-server: chat ctx=1128..1178:50 gen=1100 decoding chunk=2.97 t/s avg=2.13 t/s 516.329s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1125 phase=3 keep=23 ngram=0.143 hit=1.000 breaths=0
+0710 07:39:42 ds4-server: chat ctx=1178..1228:50 gen=1150 decoding chunk=2.98 t/s avg=2.16 t/s 533.091s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1157 phase=3 keep=23 ngram=0.116 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1189 phase=3 keep=23 ngram=0.089 hit=1.000 breaths=0
+0710 07:39:59 ds4-server: chat ctx=1228..1278:50 gen=1200 decoding chunk=2.93 t/s avg=2.18 t/s 550.157s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1221 phase=3 keep=23 ngram=0.089 hit=1.000 breaths=0
+0710 07:40:17 ds4-server: chat ctx=1278..1328:50 gen=1250 decoding chunk=2.98 t/s avg=2.20 t/s 566.946s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1253 phase=3 keep=23 ngram=0.133 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1285 phase=3 keep=23 ngram=0.191 hit=1.000 breaths=0
+0710 07:40:35 ds4-server: chat ctx=1328..1378:50 gen=1300 decoding chunk=2.98 t/s avg=2.23 t/s 583.745s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1317 phase=3 keep=23 ngram=0.238 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1349 phase=3 keep=23 ngram=0.184 hit=1.000 breaths=0
+0710 07:40:52 ds4-server: chat ctx=1378..1428:50 gen=1350 decoding chunk=3.01 t/s avg=2.25 t/s 600.347s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1381 phase=3 keep=23 ngram=0.102 hit=1.000 breaths=0
+0710 07:41:10 ds4-server: chat ctx=1428..1478:50 gen=1400 decoding chunk=2.85 t/s avg=2.27 t/s 617.862s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1413 phase=3 keep=23 ngram=0.073 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1445 phase=3 keep=23 ngram=0.059 hit=1.000 breaths=0
+0710 07:41:27 ds4-server: chat ctx=1478..1528:50 gen=1450 decoding chunk=2.94 t/s avg=2.28 t/s 634.876s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1477 phase=3 keep=23 ngram=0.069 hit=1.000 breaths=0
+0710 07:41:45 ds4-server: chat ctx=1528..1578:50 gen=1500 decoding chunk=2.95 t/s avg=2.30 t/s 651.834s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1509 phase=3 keep=23 ngram=0.106 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1541 phase=3 keep=23 ngram=0.168 hit=1.000 breaths=0
+0710 07:42:02 ds4-server: chat ctx=1578..1628:50 gen=1550 decoding chunk=2.94 t/s avg=2.32 t/s 668.827s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1573 phase=3 keep=23 ngram=0.229 hit=1.000 breaths=0
+0710 07:42:20 ds4-server: chat ctx=1628..1678:50 gen=1600 decoding chunk=2.98 t/s avg=2.33 t/s 685.598s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1605 phase=3 keep=23 ngram=0.279 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1637 phase=3 keep=23 ngram=0.234 hit=1.000 breaths=0
+0710 07:42:37 ds4-server: chat ctx=1678..1728:50 gen=1650 decoding chunk=2.91 t/s avg=2.35 t/s 702.804s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1669 phase=3 keep=23 ngram=0.202 hit=1.000 breaths=0
+0710 07:42:55 ds4-server: chat ctx=1728..1778:50 gen=1700 decoding chunk=2.93 t/s avg=2.36 t/s 719.864s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1701 phase=3 keep=23 ngram=0.234 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1733 phase=3 keep=23 ngram=0.219 hit=1.000 breaths=0
+0710 07:43:13 ds4-server: chat ctx=1778..1828:50 gen=1750 decoding chunk=2.81 t/s avg=2.37 t/s 737.640s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1765 phase=3 keep=23 ngram=0.109 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1797 phase=3 keep=23 ngram=0.106 hit=1.000 breaths=0
+0710 07:43:31 ds4-server: chat ctx=1828..1878:50 gen=1800 decoding chunk=2.92 t/s avg=2.38 t/s 754.744s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1829 phase=3 keep=23 ngram=0.169 hit=1.000 breaths=0
+0710 07:43:48 ds4-server: chat ctx=1878..1928:50 gen=1850 decoding chunk=3.01 t/s avg=2.40 t/s 771.343s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1861 phase=3 keep=23 ngram=0.200 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1893 phase=3 keep=23 ngram=0.168 hit=1.000 breaths=0
+0710 07:44:06 ds4-server: chat ctx=1928..1978:50 gen=1900 decoding chunk=2.88 t/s avg=2.41 t/s 788.685s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1925 phase=3 keep=23 ngram=0.102 hit=1.000 breaths=0
+0710 07:44:23 ds4-server: chat ctx=1978..2028:50 gen=1950 decoding chunk=2.93 t/s avg=2.42 t/s 805.777s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1957 phase=3 keep=23 ngram=0.073 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE rotate       tok=1989 phase=3 keep=23 ngram=0.143 hit=1.000 breaths=0
+0710 07:44:43 ds4-server: chat ctx=2028..2078:50 gen=2000 decoding chunk=2.70 t/s avg=2.43 t/s 824.316s
+0710 07:44:43 ds4-server: chat ctx=0..78:78 gen=2000 finish=length 881.790s
