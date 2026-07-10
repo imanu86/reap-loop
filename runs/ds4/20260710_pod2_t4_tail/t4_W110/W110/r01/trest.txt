@@ -1,0 +1,52 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f5f0e8; color: #2e241f; }
+        nav { background: #3e2c23; padding: 10px; text-align: center; }
+        nav a { color: #f5f0e8; margin: 0 15px; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .hero { background: #c9a06c; padding: 40px 20px; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 0.25rem; }
+        .hero p { font-size: 1.2rem; }
+        #order { margin: 20px auto; display: block; padding: 10px 20px; background: #2e241f; color: #f5f0e8; border: none; border-radius: 6px; cursor: pointer; font-size: 1rem; }
+        #order:hover { background: #3e2c23; }
+        form { background: #fff; max-width: 400px; margin: 20px auto; padding: 20px; border-radius: 8px; }
+        form input { width: 100%; padding: 8px; margin-bottom: 10px; border: 1px solid #ccc; border-radius: 4px; }
+        form input[type="submit"] { background: #2e241f; color: #f5f0e8; border: none; padding: 10px; cursor: pointer; }
+        form input[type="submit"]:hover { background: #3e2c23; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted to every morning</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="submit" value="Submit">
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", () => {
+            alert("Thank you for your order!");
+        });
+
+        document.querySelector("form").addEventListener("submit", () => {
+            event.preventDefault();
+            alert("Thanked successfully!");
+        });
+    </script>
+</body>
+</html>
