@@ -1,0 +1,12 @@
+{
+  "coherent_until_token_est": 3598,
+  "first_bad_token_est": 3599,
+  "body_starts_token_est": 2757,
+  "form_starts_token_est": 3185,
+  "script_starts_token_est": 2714,
+  "html_close_token_est": null,
+  "repeat_conclusive_token_est": 3607,
+  "result_text": "W100 ctx8192 avoids the early CSS loop and reaches body, form, and popup markup, but spends far more budget in CSS than W50. It enters a script/comment loop around content event 3599 ('//') and ends by length at 4000 tokens without </html>. It is slower to first useful markup and less complete than W50 ctx8192.",
+  "verdict": "script_comment_loop_no_html_close",
+  "method": "Measured from stream_events_measured.jsonl and content_measured.txt. <script appears before <body because an invalid CSS-in-script block is emitted in <head>; body at content event 2757, form at 3185, first repeated comment loop at content event 3599 with conclusive repetition by 3607; finish_reason=length."
+}

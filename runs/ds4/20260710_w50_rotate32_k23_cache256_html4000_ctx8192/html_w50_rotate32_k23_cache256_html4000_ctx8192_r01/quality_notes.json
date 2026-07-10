@@ -1,0 +1,12 @@
+{
+  "coherent_until_token_est": 2026,
+  "first_bad_token_est": 2027,
+  "body_starts_token_est": 1630,
+  "form_starts_token_est": 1824,
+  "script_starts_token_est": 2157,
+  "html_close_token_est": 2384,
+  "repeat_conclusive_token_est": null,
+  "result_text": "ctx=8192 changes the outcome substantially: the run stops naturally at 2417 completion tokens and reaches <body>, <form>, <script>, </body>, and </html>. It is not functionally correct: the form closes as literal 'form>', the popup markup is opened as an unterminated HTML comment, and the JavaScript contains invalid if statements. This is a complete-document trajectory but not a working landing page.",
+  "verdict": "complete_document_but_functionally_broken_markup_js",
+  "method": "Measured from stream_events_measured.jsonl plus manual inspection of content_measured.txt. <body at content event 1630, <form at 1824, <script at 2157, </html> at 2384. First structural break is the malformed form close at content event 2027; script syntax breaks at content event 2223."
+}

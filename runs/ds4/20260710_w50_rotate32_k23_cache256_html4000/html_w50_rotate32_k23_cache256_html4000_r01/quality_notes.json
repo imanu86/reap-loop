@@ -1,0 +1,9 @@
+{
+  "coherent_until_token_est": 1379,
+  "first_bad_token_est": 1434,
+  "body_starts_token_est": null,
+  "repeat_conclusive_token_est": 1434,
+  "result_text": "Diagnostic run only: ctx=4096 with max_tokens=4000 leaves total_tokens=4078 at the context edge. The output never reaches <body>; it repeats a CSS block beginning around event/content token 1379, with a second repetition by token 1434. Treat as context-confounded and failed before document body, not as evidence that 4000 tokens are intrinsically bad.",
+  "verdict": "diagnostic_ctx4096_edge_css_loop_no_body",
+  "method": "Measured from stream_events_measured.jsonl and server.stderr.log. Repeated CSS pattern first appears at event 1380/content 1379 and second occurrence at event 1435/content 1434; <body, <form, <script, and </html> are absent."
+}

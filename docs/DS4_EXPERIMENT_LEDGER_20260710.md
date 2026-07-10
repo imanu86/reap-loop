@@ -6,8 +6,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 281
-- Runner-measured rows: 97
+- Rows total: 284
+- Runner-measured rows: 100
 - Legacy / Claude / claim rows: 184
 
 ## Current Readout
@@ -16,6 +16,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 - Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.
 - W100+rotate32 at cache256 avoided the early loop through 2000 tokens and rendered a visible page. The run allocated most of the available budget to detailed CSS and reached body markup around token 1904; missing form/script/html close should be treated as token-budget-limited, not as degeneration.
 - W50+rotate32 with the same normal prompt, cache256, and 2000-token cap also avoided the early loop and reached body/card markup earlier, around token 1541, with slightly better average throughput than W100. It is still token-budget-limited: no form/script/html close within 2000 tokens.
+- The max_tokens=4000 A/B must use ctx8192. The W50 ctx4096 diagnostic hit total_tokens=4078 and looped in CSS before <body>, so it is context-confounded rather than a clean 4000-token quality result.
+- With ctx8192, W50+rotate32 completed a document at 2417 completion tokens and reached body/form/script/html close, but the produced page is not functional: malformed form close, popup commented out, and invalid JS. W100+rotate32 ctx8192 spent more budget in CSS, reached body/form much later, then looped on `//` inside script and ended by length without </html>.
 - The compact budget-aware prompt did not improve this A/B: it reached `<script>` earlier but entered a repeated `/* js */` placeholder loop, with first bad event around 961 and conclusive repetition around 977.
 - Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.
 - Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.
@@ -31,7 +33,10 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 | 20260710_w100_direct_k23_cache256_html2000 | w100_direct_k23_cache256 | 256 | 100 | 23 | 0 | 32 | 2000 | 2.55 | 3.08 | 6.07 | 1 | 183 | repeat=1; coherent_until~183; doctype=1; popup; fail_quality_loop_early |
 | 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 100 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_needs_more_tokens_or_prompt_constraint |
 | 20260710_w100_rotate32_k23_cache256_html2000_compact_prompt | w100_rotate32_k23_cache256_compact_budget | 256 | 100 | 23 | 1 | 32 | 1379 | 1.67 | 2.83 | 6.07 | 1 | 960 | repeat=1; coherent_until~960; doctype=1; script; popup; fail_js_comment_loop_after_compact_budget_prompt |
+| 20260710_w100_rotate32_k23_cache256_html4000_ctx8192 | w100_rotate32_k23_cache256_html4000_ctx8192 | 256 | 100 | 23 | 1 | 32 | 4000 | 2.78 | 2.99 | 6.07 | 1 | 3598 | repeat=1; coherent_until~3598; doctype=1; form; script; popup; script_comment_loop_no_html_close |
 | 20260710_w50_rotate32_k23_cache256_html2000 | w50_rotate32_k23_cache256 | 256 | 50 | 23 | 1 | 32 | 2000 | 2.59 | 2.88 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_w50_no_loop |
+| 20260710_w50_rotate32_k23_cache256_html4000 | w50_rotate32_k23_cache256_html4000 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.79 | 2.9 | 6.07 | 0 | 1379 | repeat=0; coherent_until~1379; doctype=1; popup; diagnostic_ctx4096_edge_css_loop_no_body |
+| 20260710_w50_rotate32_k23_cache256_html4000_ctx8192 | w50_rotate32_k23_cache256_html4000_ctx8192 | 256 | 50 | 23 | 1 | 32 | 2417 | 2.56 | 3.0 | 6.07 | 0 | 2026 | repeat=0; coherent_until~2026; doctype=1; form; script; popup; complete_document_but_functionally_broken_markup_js |
 | 20260710_pod_cache1024_html800 | local_k23_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 14.12 | 24.79 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pod_cache1024_html800 | local_k23_weighted_warmup_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 16.37 | 24.71 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 50 | 64 | 1 | 999999 | 400 | 2.22 | 2.92 | 75.78 | 0 |  | repeat=0; doctype=1; popup |

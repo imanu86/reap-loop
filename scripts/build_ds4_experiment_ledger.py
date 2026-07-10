@@ -648,6 +648,9 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
             "20260710_w100_rotate32_k23_cache256_html2000",
             "20260710_w100_rotate32_k23_cache256_html2000_compact_prompt",
             "20260710_w50_rotate32_k23_cache256_html2000",
+            "20260710_w50_rotate32_k23_cache256_html4000",
+            "20260710_w50_rotate32_k23_cache256_html4000_ctx8192",
+            "20260710_w100_rotate32_k23_cache256_html4000_ctx8192",
         )
     ]
     cache_sweep = [
@@ -680,6 +683,8 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.",
         "- W100+rotate32 at cache256 avoided the early loop through 2000 tokens and rendered a visible page. The run allocated most of the available budget to detailed CSS and reached body markup around token 1904; missing form/script/html close should be treated as token-budget-limited, not as degeneration.",
         "- W50+rotate32 with the same normal prompt, cache256, and 2000-token cap also avoided the early loop and reached body/card markup earlier, around token 1541, with slightly better average throughput than W100. It is still token-budget-limited: no form/script/html close within 2000 tokens.",
+        "- The max_tokens=4000 A/B must use ctx8192. The W50 ctx4096 diagnostic hit total_tokens=4078 and looped in CSS before <body>, so it is context-confounded rather than a clean 4000-token quality result.",
+        "- With ctx8192, W50+rotate32 completed a document at 2417 completion tokens and reached body/form/script/html close, but the produced page is not functional: malformed form close, popup commented out, and invalid JS. W100+rotate32 ctx8192 spent more budget in CSS, reached body/form much later, then looped on `//` inside script and ended by length without </html>.",
         "- The compact budget-aware prompt did not improve this A/B: it reached `<script>` earlier but entered a repeated `/* js */` placeholder loop, with first bad event around 961 and conclusive repetition around 977.",
         "- Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.",
         "- Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.",
