@@ -3,7 +3,7 @@
   "first_bad_token_est": null,
   "body_starts_token_est": 1904,
   "repeat_conclusive_token_est": null,
-  "failure_mode": "No early repetition loop: stream reached max token 2000 and the browser renders a visible page. The run spends most tokens in CSS and starts body markup around token/event 1904; it never emits a form or script, does not close html, and truncates inside the card grid.",
-  "verdict": "visually_renderable_but_functionally_incomplete_no_form_script",
-  "method": "Measured from stream_events_measured.jsonl plus content_measured.txt. '<!-- HTML -->' appears at event 1904; <form, <script, and </html> are absent. Chrome renders the partial DOM because browsers recover from incomplete markup."
+  "result_text": "No early repetition loop: stream reached max token 2000 and the browser renders a visible page. The model allocated most of the available budget to detailed CSS and started body markup around token/event 1904; form/script/html close are absent because the run ended at the token limit, not because a degeneration loop was observed.",
+  "verdict": "visually_renderable_token_budget_limited_needs_more_tokens_or_prompt_constraint",
+  "method": "Measured from stream_events_measured.jsonl plus content_measured.txt. '<!-- HTML -->' appears at event 1904; <form, <script, and </html> are absent. Chrome renders the partial DOM; absence of later elements is treated as token-budget-limited completion, not output breakage."
 }

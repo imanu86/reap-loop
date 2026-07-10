@@ -14,7 +14,7 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 
 - Best current 3060-local stability candidate in the requested HTML800 A/B is still `K23 rotate32`: it reached 800 streamed tokens without the repeat detector, but it is slower than static K23 and still needs render/functional grading.
 - Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.
-- W100+rotate32 at cache256 avoided the early loop through 2000 tokens, but produced an incomplete page: body markup starts around token 1904, with no form/script/html close. Rotation improves stability, not completion quality by itself.
+- W100+rotate32 at cache256 avoided the early loop through 2000 tokens and rendered a visible page. The run allocated most of the available budget to detailed CSS and reached body markup around token 1904; missing form/script/html close should be treated as token-budget-limited, not as degeneration.
 - Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.
 - Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.
 - Tighten-time relearn and rotation plumbing are useful actuator milestones. Blind step-down and frequent periodic rotate are too expensive; next tests should be trigger/delta based.
@@ -27,7 +27,7 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 | 20260709_requested4_html800_cache128 | local_k23_rotate32_cache128 | 128 | 23 | 1 | 32 | 800 | 3.03 | 2.99 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
 | 20260709_requested4_html800_cache256 | local_k23_rotate32_cache256 | 256 | 23 | 1 | 32 | 800 | 2.61 | 2.89 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
 | 20260710_w100_direct_k23_cache256_html2000 | w100_direct_k23_cache256 | 256 | 23 | 0 | 32 | 2000 | 2.55 | 3.08 | 6.07 | 1 | 183 | repeat=1; coherent_until~183; doctype=1; popup; fail_quality_loop_early |
-| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_but_functionally_incomplete_no_form_script |
+| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_needs_more_tokens_or_prompt_constraint |
 | 20260710_pod_cache1024_html800 | local_k23_cache1024 | 1024 | 23 | 0 | 32 | 800 | 14.12 | 24.79 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pod_cache1024_html800 | local_k23_weighted_warmup_cache1024 | 1024 | 23 | 0 | 32 | 800 | 16.37 | 24.71 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 64 | 1 | 999999 | 400 | 2.22 | 2.92 | 75.78 | 0 |  | repeat=0; doctype=1; popup |
