@@ -1,0 +1,67 @@
+diff --git a/ds4.c b/ds4.c
+index 640511e..019eb38 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -22797,6 +22797,46 @@ static void print_top_logits(
+     }
+ }
+ 
++/* patch 0028: sidecar testo token - DS4_SPEX_TRACE_TOKENS=/path.csv
++ * Una riga per token generato: pos,token_id,piece (testo UTF-8 del token,
++ * CSV-quoted). pos e' la posizione che il token occupa nella sequenza: la
++ * stessa chiave delle righe DS4_SPEX_TRACE_ROUTING, cosi' un viewer puo'
++ * unire testo e routing senza tokenizer esterni. Stesso pattern lazy-open
++ * di DS4_REAP_SENSOR_LOG (patch 0012); fopen("w") tronca a ogni run come
++ * il routing trace. */
++static void trace_token_sidecar(const ds4_vocab *vocab, int token, int pos) {
++    static FILE *tfh; static bool tchecked;
++    if (!tchecked) {
++        tchecked = true;
++        const char *p = getenv("DS4_SPEX_TRACE_TOKENS");
++        if (p && *p) { tfh = fopen(p, "w"); if (tfh) fprintf(tfh, "pos,token_id,piece\n"); }
++    }
++    if (!tfh || token < 0 || token >= vocab->n_vocab) return;
++    ds4_str s = vocab->token[token];
++    char buf[512];
++    size_t n = 0;
++    if (vocab_token_is_literal_special(s)) {
++        for (uint64_t i = 0; i < s.len && n < sizeof(buf) - 1; i++) buf[n++] = s.ptr[i];
++    } else {
++        uint64_t sp = 0;
++        while (sp < s.len && n < sizeof(buf) - 1) {
++            uint32_t cp = utf8_decode_one(s.ptr, s.len, &sp);
++            int b = gpt2_codepoint_to_byte(cp);
++            if (b >= 0) buf[n++] = (char)b;
++        }
++    }
++    buf[n] = '\0';
++    fprintf(tfh, "%d,%d,\"", pos, token);
++    for (size_t i = 0; i < n; i++) {
++        unsigned char c = (unsigned char)buf[i];
++        if (c == '"') fputs("\"\"", tfh);
++        else if (c == '\n') fputs("\\n", tfh);
++        else if (c == '\r') fputs("\\r", tfh);
++        else fputc(c, tfh);
++    }
++    fputs("\"\n", tfh);
++}
++
+ /* CPU generation entry point.  It runs layer-major prefill once, then decodes
+  * one token at a time using the persistent KV cache and scratch arena. */
+ static int generate_raw_swa_cpu(
+@@ -22867,6 +22907,7 @@ static int generate_raw_swa_cpu(
+ 
+         int token = sample_argmax(logits, DS4_N_VOCAB);
+         if (token == vocab->eos_id) break;
++        trace_token_sidecar(vocab, token, pos);
+ 
+         if (emit) emit(emit_ud, token);
+         n_generated++;
+@@ -23024,6 +23065,7 @@ static int generate_metal_graph_raw_swa(
+ 
+         int token = sample_argmax(logits, DS4_N_VOCAB);
+         if (token == vocab->eos_id) break;
++        trace_token_sidecar(vocab, token, pos);
+ 
+         if (emit) emit(emit_ud, token);
+         n_generated++;
