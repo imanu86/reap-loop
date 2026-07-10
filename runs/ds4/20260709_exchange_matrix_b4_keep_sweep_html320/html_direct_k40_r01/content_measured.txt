@@ -1,0 +1,32 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>AI Codex · Negozio di programmazione AI</title>
+    <!-- Font: futuristic sans -->
+    <link href="httpshttps://https" rel="preconnect">
+    <link rel="preconnect" href="https://https" crossorigin>
+    <style>
+        /* reset */
+        *{padding:0 , margin:0 , box-sizing:inherit} 
+        *::after {border: none} 
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border: none}
+        *::after {border: none}
+        *::before {border:

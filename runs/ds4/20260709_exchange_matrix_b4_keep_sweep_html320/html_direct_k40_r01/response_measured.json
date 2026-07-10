@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783577886,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n    <title>AI Codex · Negozio di programmazione AI</title>\n    <!-- Font: futuristic sans -->\n    <link href=\"httpshttps://https\" rel=\"preconnect\">\n    <link rel=\"preconnect\" href=\"https://https\" crossorigin>\n    <style>\n        /* reset */\n        *{padding:0 , margin:0 , box-sizing:inherit} \n        *::after {border: none} \n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border: none}\n        *::after {border: none}\n        *::before {border:"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 320,
+    "total_tokens": 398,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

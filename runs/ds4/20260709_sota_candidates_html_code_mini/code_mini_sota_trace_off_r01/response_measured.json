@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-2",
+  "object": "chat.completion",
+  "created": 1783584070,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:\n\n**Main Correctness Risks**\n\n1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed with un-zeroed/ex partial weights, leading to garbage activations.\n2. **Reputation score widening without mask synchronization** – `re repetition_score` may widen the mask after expert loading, but the loaded expert weights may not be consistent with the updated mask, causing expert selection to use stale or incomplete weights.\n3. **Router hidden state staleness** – `hidden` may be mutated by other heads or layers after the router uses it, causing router to compute logits on already-posted or corrupted states.\n4. **Expert weight loading not atomic with mask update** – If the mask is widened after expert loading, the loaded expert may not be applied to the new mask, causing the expert to compute on entries that were not actually selected.\n\n**Minimal Patch Plan**\n\n1. **S serialize expert loading and mask update**"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 220,
+    "total_tokens": 281,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  }
+}

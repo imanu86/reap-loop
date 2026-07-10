@@ -1,0 +1,17 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1=λ, maximum-scale=1, user-s=1=0">
+    <title>AI Code Shop – Cyberpunk</title>
+<style>
+    /* reset */
+*::before {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+::selection {
+    background: #0x1% 0x2% 0x3% 0x4% 0x5% 0

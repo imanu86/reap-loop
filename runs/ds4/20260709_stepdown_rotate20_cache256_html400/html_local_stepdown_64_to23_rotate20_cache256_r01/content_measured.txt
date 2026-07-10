@@ -1,0 +1,16 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop - Cyberpunk</title>
+    <!-- Font Awesome 5 (CDN) -->
+    <link rel="stylesheet" href="https://fa-send-icn?key=free" href="https://fa-send-icn?key=free" crossorigin="anonymous">
+    <style>
+        /* Reset e cyberpunk */
+    * {
+    margin: 0, box: 0, font: 'Courier New', monospace;
+    color: # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # # #

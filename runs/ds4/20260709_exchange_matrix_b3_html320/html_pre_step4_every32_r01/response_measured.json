@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783577563,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1=1\">\n    <title>AI Codex – Richieste</title>\n    <style>\n    /* reset implicito */\n    *:border0 padding0 margin0 .no *::before *::after .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::before .no *::after *::"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 320,
+    "total_tokens": 398,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

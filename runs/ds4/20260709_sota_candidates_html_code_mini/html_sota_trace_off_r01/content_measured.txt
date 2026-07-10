@@ -1,0 +1,37 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop – Nexus</title>
+    <style>
+    /* cyberpunk */
+    @font-face {
+    /* base */
+    * {
+    margin: 0
+    padding: 0
+    box: border
+    font: Roboto? */
+    /* layout */
+    body {
+    background: dark
+    text: light
+    font: Roboto? */
+    /* header */
+    header {
+    background: dark
+    text: light
+    font: Roboto? */
+    /* main */
+    main {
+    background: dark
+    text: light
+    font: Roboto? */
+    /* footer */
+    footer {
+    background: dark
+    text: light

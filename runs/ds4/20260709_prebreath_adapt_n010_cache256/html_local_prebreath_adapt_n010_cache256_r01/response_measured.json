@@ -1,0 +1,14 @@
+{
+  "stream": true,
+  "stream_events": 0,
+  "stream_content_events": 0,
+  "usage": null,
+  "choices": [
+    {
+      "message": {
+        "content": ""
+      },
+      "finish_reason": null
+    }
+  ]
+}

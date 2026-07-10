@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783576835,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "## Correctness Risks\n\n1. **Race condition on expert loading**: `load_from_ssd(expert)` while another token may already be loading the same expert causes duplicate loads and potential cache corruption.\n2. **Missing synchronization on cache check**: `cache.contains(expert)` and `load_from_ssd(expt)` are non atomic — a check-tup race allows double loads.\n3. **Stst hazard on `hidden += expert(hidden)`**: In‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 129,
+    "completion_tokens": 240,
+    "total_tokens": 369,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 129
+    }
+  }
+}

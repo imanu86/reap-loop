@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 223,
+  "stream_content_events": 220,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 220,
+    "total_tokens": 298,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Codex – Negozio di Programmazione AI</title>\n    <style>\n    /* reset base */\n    * box, html, button, input, textarea, select, option, a, img, ul, li, h1, h2, h3, p, div, form, table, the, tr, th, td, section, article, main, header, footer, nav, figure, figcaption, aside, address, blockquote, pre, code, code, pre, k, samp, var, ol, ul, dl, dt, dd, figure, figcaption, header, footer, nav, aside, address, blockquote, pre,"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

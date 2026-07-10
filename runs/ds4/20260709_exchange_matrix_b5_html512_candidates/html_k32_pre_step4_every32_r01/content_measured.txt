@@ -1,0 +1,83 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Shop - Cyberpunk</title>
+    <!-- Font: retaggio cyber -->
+    <link href="httpshttps://https.gg" rel="preconnect" crossorigin>
+    <style>
+        /* reset base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #dark;
+            color: ######################################## cyb
+        }
+
+        /* struttura cyber */
+        body {
+            background: #000;
+            font-family: 'Courier New', monospace;
+            color: #0f6;
+            min-height: 100vh;
+            display: flex;
+            align: center;
+            justify: center;
+            padding: 20;
+        }
+
+        .container {
+            max-width: 1200;
+            width: full;
+            padding: 0;
+        }
+
+        /* griglia e layout */
+        .hero {
+            grid: 1;
+        }
+
+        /* card cyber */
+        .card {
+            background: rgba(0, 0, 0, 0);
+        }
+
+        /* form */
+        input, textarea {
+        background: #0 0 0 0;
+        border: neon;
+        }
+
+        /* pulsanti */
+        button {
+        background: #0 0 0 0;
+        color: #0 0 0 0;
+        border: neon;
+        }
+
+        /* popup */
+        .popup {
+        background: rgba(0, 0, 0, 0);
+        display: none;
+        }
+
+        /* animazioni */
+        .glow {
+        glow: 0 0 0 0;
+        }
+
+        /* codice compatto */
+        .codice {
+        comp: 0 0 0 0;
+        }
+
+        /* stile cyberpunk */
+        .cyber {
+        color: #0 0 0 0;

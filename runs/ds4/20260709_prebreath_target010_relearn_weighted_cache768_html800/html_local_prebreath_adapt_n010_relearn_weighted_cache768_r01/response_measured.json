@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Codex – Negozio di Programmazione AI</title>\n    <style>\n    /* stylesheet */\n    /* general */\n    body{\n    margin 0, padding 0, background, font, color, form, popup.\n    */\n    /* cyberpunk */\n    /* neon */\n    /* grid */\n    /* button */\n    /* input */\n    /* popup */\n    /* validazione */\n    /* richiesta inviata */\n    /* */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n    */\n   "
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+Traceback (most recent call last):
+  File "C:\Users\imanu\source\repos\reap-loop\scripts\run_ds4_exchange_matrix.py", line 1697, in <module>
+    raise SystemExit(main())
+                     ^^^^^^
+  File "C:\Users\imanu\source\repos\reap-loop\scripts\run_ds4_exchange_matrix.py", line 1583, in main
+    wait_models(args.port, timeout_s=90)
+  File "C:\Users\imanu\source\repos\reap-loop\scripts\run_ds4_exchange_matrix.py", line 1156, in wait_models
+    raise TimeoutError(f"server did not become ready on {url}: {last}")
+TimeoutError: server did not become ready on http://127.0.0.1:8014/v1/models: <urlopen error [WinError 10061] Impossibile stabilire la connessione. Rifiuto persistente del computer di destinazione>

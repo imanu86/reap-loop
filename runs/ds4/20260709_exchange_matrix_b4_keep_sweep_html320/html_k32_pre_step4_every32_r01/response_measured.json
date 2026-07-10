@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783578290,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI Codex · Negozio di programmazione AI</title>\n    <!-- Font: https://https://font CDN -->\n    <link href=\"https://https://font CDN\" crossorigin=\"anonymous\">\n    <style>\n        /* reset */\n        * {\n        margin: 0;\n        padding: 0;\n        box-sizing: border-box;\n        }\n\n        body {\n        margin: 0;\n        background: #000;\n        font-family: 'Roboto Mono', monospace;\n        color: #00;\n        overflow: overflow: hidden;\n        }\n\n        .cyber-wrapper {\n        max-width: 1200;\n        margin: 0 auto;\n        padding: 2;\n        background: #000;\n        min-height: 100;\n        display: flex;\n        flex-direction: column;\n        align-items: center;\n        justify-center;\n        }\n\n        header {\n        width: 100;\n        text-align: center;\n        padding: 1;\n        border-bottom: 3 solid rgb(0, 0, 0);\n        margin: 0;\n        }\n\n        .glitch-title {\n        font-size: 3;\n        color: #"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 320,
+    "total_tokens": 398,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

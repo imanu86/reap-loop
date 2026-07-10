@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783577421,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI Code Shop - Cyberpunk</title>\n    <!-- Font: future font -->\n    <link href=\"https://https.ggo?font=Roboto&amp;Cyborg\" rel=\"stylesheet\">\n    <style>\n        /* Reset e base */\n        * {\n        margin: 0;\n        padding: 0;\n        box-sizing: border-box;\n        font-family: 'Roboto', sans-serif;\n        body {\n        background: black;\n        color: white;\n        font-size: 16px;\n        }\n        /* Layout cyberpunk */\n        body {\n        background: #0; \n        background: black;\n        color: white;\n        font-size: 16px;\n        }\n        /* Layout cyberpunk */\n        body {\n        background: #0; \n        background: black;\n        color: white;\n        font-size: 16px;\n        }\n        /* Layout cyberpunk */\n        body {\n        background: #0; \n        background: black;\n        color: white;\n        font-size: 16px;\n        }\n        /* Layout cyberpunk */\n        body {\n        background: #0; \n        background: black;\n        color: white;\n        font-size"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 320,
+    "total_tokens": 398,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

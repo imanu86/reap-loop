@@ -1,0 +1,9 @@
+[matrix] start html_direct_k23_r01
+[matrix] done html_direct_k23_r01 wall=278.5s avg=1.32 pre=0 br=2 promote=3139
+[matrix] start html_keep32_direct_r01
+[matrix] done html_keep32_direct_r01 wall=128.3s avg=3.0 pre=0 br=2 promote=2752
+[matrix] start html_pre_step4_every32_r01
+[matrix] done html_pre_step4_every32_r01 wall=140.1s avg=2.69 pre=2 br=2 promote=3139
+[matrix] start html_clock_breath64_r01
+[matrix] done html_clock_breath64_r01 wall=128.0s avg=2.97 pre=0 br=3 promote=3526
+runs\ds4\20260709_exchange_matrix_b3_html320\summary.csv

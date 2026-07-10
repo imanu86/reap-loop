@@ -1,0 +1,3 @@
+stem,prompt,variant,prompt_tokens,completion_tokens,chars,tail,prompt_s,finish_s,avg_tps,first50_tps,promote,demote,prebreaths,breaths,prefetch_gib,prefetch_ms
+code_direct_k23_r01,code,direct_k23,129,240,551,‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑‑,260.898,445.061,1.30,0.55,3139,12814,0,2,39.6,5752.0
+html_direct_k23_r01,html,direct_k23,78,240,819,    /* */     /* */     /* */     /* */     /* */     /* */     /* */     /* */ ,9.122,86.304,3.11,2.70,3139,10019,0,1,31.41,338.0

@@ -1,0 +1,206 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="680" viewBox="0 0 1180 680">
+<rect width="100%" height="100%" fill="#0f1012"/>
+<text x="82" y="30" fill="#f4f4f5" font-family="Segoe UI, Arial" font-size="20" font-weight="700">Immediate descent-breath: ngram score by PACE event</text>
+<text x="82" y="52" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="12">Measured PACE events: +1 reaches K96 at tok 340 and collapses; +2 reaches K96 at tok 196 and keeps ngram low, but content still degrades.</text>
+<line x1="82" y1="586.0" x2="1148" y2="586.0" stroke="#27272a"/>
+<text x="70" y="590.0" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.00</text>
+<line x1="82" y1="557.6" x2="1148" y2="557.6" stroke="#27272a"/>
+<text x="70" y="561.6" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.05</text>
+<line x1="82" y1="529.2" x2="1148" y2="529.2" stroke="#27272a"/>
+<text x="70" y="533.2" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.10</text>
+<line x1="82" y1="500.8" x2="1148" y2="500.8" stroke="#27272a"/>
+<text x="70" y="504.8" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.15</text>
+<line x1="82" y1="472.3" x2="1148" y2="472.3" stroke="#27272a"/>
+<text x="70" y="476.3" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.20</text>
+<line x1="82" y1="443.9" x2="1148" y2="443.9" stroke="#27272a"/>
+<text x="70" y="447.9" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.25</text>
+<line x1="82" y1="358.7" x2="1148" y2="358.7" stroke="#27272a"/>
+<text x="70" y="362.7" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.40</text>
+<line x1="82" y1="245.0" x2="1148" y2="245.0" stroke="#27272a"/>
+<text x="70" y="249.0" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.60</text>
+<line x1="82" y1="131.4" x2="1148" y2="131.4" stroke="#27272a"/>
+<text x="70" y="135.4" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.80</text>
+<line x1="82" y1="74.6" x2="1148" y2="74.6" stroke="#27272a"/>
+<text x="70" y="78.6" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.90</text>
+<line x1="82.0" y1="50" x2="82.0" y2="586" stroke="#202124"/>
+<text x="82.0" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">0</text>
+<line x1="217.5" y1="50" x2="217.5" y2="586" stroke="#202124"/>
+<text x="217.5" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">100</text>
+<line x1="352.9" y1="50" x2="352.9" y2="586" stroke="#202124"/>
+<text x="352.9" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">200</text>
+<line x1="488.4" y1="50" x2="488.4" y2="586" stroke="#202124"/>
+<text x="488.4" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">300</text>
+<line x1="623.8" y1="50" x2="623.8" y2="586" stroke="#202124"/>
+<text x="623.8" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">400</text>
+<line x1="759.3" y1="50" x2="759.3" y2="586" stroke="#202124"/>
+<text x="759.3" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">500</text>
+<line x1="894.7" y1="50" x2="894.7" y2="586" stroke="#202124"/>
+<text x="894.7" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">600</text>
+<line x1="1030.2" y1="50" x2="1030.2" y2="586" stroke="#202124"/>
+<text x="1030.2" y="610" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">700</text>
+<line x1="82" y1="529.2" x2="1148" y2="529.2" stroke="#eab308" stroke-dasharray="6 6"/>
+<text x="1144" y="523.2" fill="#eab308" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.10 target</text>
+<line x1="82" y1="443.9" x2="1148" y2="443.9" stroke="#fb7185" stroke-dasharray="6 6"/>
+<text x="1144" y="437.9" fill="#fb7185" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.25 hard trigger</text>
+<line x1="82" y1="50" x2="82" y2="586" stroke="#52525b"/>
+<line x1="82" y1="586" x2="1148" y2="586" stroke="#52525b"/>
+<polyline fill="none" stroke="#22c55e" stroke-width="2.4" points="82.0,586.0 149.7,586.0 151.1,586.0 152.4,586.0 157.9,586.0 163.3,585.0 168.7,582.1 174.1,580.4 179.5,579.5 184.9,579.1 190.4,576.9 195.8,575.1 201.2,574.3 206.6,573.9 212.0,573.2 217.5,571.6 222.9,570.7 228.3,570.4 233.7,570.3 239.1,570.5 244.5,566.9 250.0,563.6 255.4,561.3 260.8,555.5 266.2,545.1 271.6,531.6 277.0,516.2 282.5,499.4 287.9,481.7 293.3,463.5 298.7,445.0 304.1,426.2 309.6,407.7 315.0,391.8 320.4,374.7 325.8,358.6 331.2,341.4 336.6,323.4 342.1,305.0 347.5,286.4 352.9,267.4 358.3,248.4 363.7,229.3 369.2,210.1 374.6,191.0 380.0,171.7 385.4,152.5 390.8,133.3 396.2,117.9 401.7,103.7 407.1,94.0 412.5,87.6 417.9,83.5 423.3,80.8 428.8,78.9 434.2,77.7 439.6,77.0 445.0,76.5 450.4,76.1 455.8,75.9 461.3,75.8 466.7,75.7 472.1,75.6 477.5,75.6 482.9,75.6 488.4,75.6 493.8,75.5 499.2,75.5 504.6,75.5 510.0,75.5 515.4,75.5 520.9,75.5 526.3,75.5 531.7,75.5 537.1,75.5 542.5,75.5"/>
+<circle cx="82.0" cy="586.0" r="3.0" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.7" cy="586.0" r="3.0" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.1" cy="586.0" r="3.0" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="152.4" cy="586.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=52 ngram=0.0000 keep=24 ev=prebreath</title></circle>
+<circle cx="157.9" cy="586.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=56 ngram=0.0000 keep=25 ev=prebreath</title></circle>
+<circle cx="163.3" cy="585.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=60 ngram=0.0017 keep=26 ev=prebreath</title></circle>
+<circle cx="168.7" cy="582.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=64 ngram=0.0068 keep=27 ev=prebreath</title></circle>
+<circle cx="174.1" cy="580.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=68 ngram=0.0098 keep=28 ev=prebreath</title></circle>
+<circle cx="179.5" cy="579.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=72 ngram=0.0114 keep=29 ev=prebreath</title></circle>
+<circle cx="184.9" cy="579.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=76 ngram=0.0122 keep=30 ev=prebreath</title></circle>
+<circle cx="190.4" cy="576.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=80 ngram=0.0160 keep=31 ev=prebreath</title></circle>
+<circle cx="195.8" cy="575.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=84 ngram=0.0191 keep=32 ev=prebreath</title></circle>
+<circle cx="201.2" cy="574.3" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=88 ngram=0.0206 keep=33 ev=prebreath</title></circle>
+<circle cx="206.6" cy="573.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=92 ngram=0.0213 keep=34 ev=prebreath</title></circle>
+<circle cx="212.0" cy="573.2" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=96 ngram=0.0225 keep=35 ev=prebreath</title></circle>
+<circle cx="217.5" cy="571.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=100 ngram=0.0254 keep=36 ev=prebreath</title></circle>
+<circle cx="222.9" cy="570.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=104 ngram=0.0269 keep=37 ev=prebreath</title></circle>
+<circle cx="228.3" cy="570.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=108 ngram=0.0275 keep=38 ev=prebreath</title></circle>
+<circle cx="233.7" cy="570.3" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=112 ngram=0.0276 keep=39 ev=prebreath</title></circle>
+<circle cx="239.1" cy="570.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=116 ngram=0.0272 keep=40 ev=prebreath</title></circle>
+<circle cx="244.5" cy="566.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=120 ngram=0.0336 keep=41 ev=prebreath</title></circle>
+<circle cx="250.0" cy="563.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=124 ngram=0.0395 keep=42 ev=prebreath</title></circle>
+<circle cx="255.4" cy="561.3" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=128 ngram=0.0434 keep=43 ev=prebreath</title></circle>
+<circle cx="260.8" cy="555.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=132 ngram=0.0536 keep=44 ev=prebreath</title></circle>
+<circle cx="266.2" cy="545.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=136 ngram=0.0720 keep=45 ev=prebreath</title></circle>
+<circle cx="271.6" cy="531.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=140 ngram=0.0957 keep=46 ev=prebreath</title></circle>
+<circle cx="277.0" cy="516.2" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=144 ngram=0.1229 keep=47 ev=prebreath</title></circle>
+<circle cx="282.5" cy="499.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=148 ngram=0.1524 keep=48 ev=prebreath</title></circle>
+<circle cx="287.9" cy="481.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=152 ngram=0.1835 keep=49 ev=prebreath</title></circle>
+<circle cx="293.3" cy="463.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=156 ngram=0.2155 keep=50 ev=prebreath</title></circle>
+<circle cx="298.7" cy="445.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=160 ngram=0.2481 keep=51 ev=prebreath</title></circle>
+<circle cx="304.1" cy="426.2" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=164 ngram=0.2812 keep=52 ev=prebreath</title></circle>
+<circle cx="309.6" cy="407.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=168 ngram=0.3137 keep=53 ev=prebreath</title></circle>
+<circle cx="315.0" cy="391.8" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=172 ngram=0.3417 keep=54 ev=prebreath</title></circle>
+<circle cx="320.4" cy="374.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=176 ngram=0.3718 keep=55 ev=prebreath</title></circle>
+<circle cx="325.8" cy="358.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=180 ngram=0.4002 keep=56 ev=prebreath</title></circle>
+<circle cx="331.2" cy="341.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=184 ngram=0.4305 keep=57 ev=prebreath</title></circle>
+<circle cx="336.6" cy="323.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=188 ngram=0.4621 keep=58 ev=prebreath</title></circle>
+<circle cx="342.1" cy="305.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=192 ngram=0.4945 keep=59 ev=prebreath</title></circle>
+<circle cx="347.5" cy="286.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=196 ngram=0.5273 keep=60 ev=prebreath</title></circle>
+<circle cx="352.9" cy="267.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=200 ngram=0.5606 keep=61 ev=prebreath</title></circle>
+<circle cx="358.3" cy="248.4" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=204 ngram=0.5940 keep=62 ev=prebreath</title></circle>
+<circle cx="363.7" cy="229.3" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=208 ngram=0.6277 keep=63 ev=prebreath</title></circle>
+<circle cx="369.2" cy="210.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=212 ngram=0.6614 keep=64 ev=prebreath</title></circle>
+<circle cx="374.6" cy="191.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=216 ngram=0.6951 keep=65 ev=prebreath</title></circle>
+<circle cx="380.0" cy="171.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=220 ngram=0.7290 keep=66 ev=prebreath</title></circle>
+<circle cx="385.4" cy="152.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=224 ngram=0.7628 keep=67 ev=prebreath</title></circle>
+<circle cx="390.8" cy="133.3" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=228 ngram=0.7967 keep=68 ev=prebreath</title></circle>
+<circle cx="396.2" cy="117.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=232 ngram=0.8237 keep=69 ev=prebreath</title></circle>
+<circle cx="401.7" cy="103.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=236 ngram=0.8488 keep=70 ev=prebreath</title></circle>
+<circle cx="407.1" cy="94.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=240 ngram=0.8658 keep=71 ev=prebreath</title></circle>
+<circle cx="412.5" cy="87.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=244 ngram=0.8770 keep=72 ev=prebreath</title></circle>
+<circle cx="417.9" cy="83.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=248 ngram=0.8843 keep=73 ev=prebreath</title></circle>
+<circle cx="423.3" cy="80.8" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=252 ngram=0.8891 keep=74 ev=prebreath</title></circle>
+<circle cx="428.8" cy="78.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=256 ngram=0.8923 keep=75 ev=prebreath</title></circle>
+<circle cx="434.2" cy="77.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=260 ngram=0.8944 keep=76 ev=prebreath</title></circle>
+<circle cx="439.6" cy="77.0" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=264 ngram=0.8957 keep=77 ev=prebreath</title></circle>
+<circle cx="445.0" cy="76.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=268 ngram=0.8966 keep=78 ev=prebreath</title></circle>
+<circle cx="450.4" cy="76.1" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=272 ngram=0.8972 keep=79 ev=prebreath</title></circle>
+<circle cx="455.8" cy="75.9" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=276 ngram=0.8976 keep=80 ev=prebreath</title></circle>
+<circle cx="461.3" cy="75.8" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=280 ngram=0.8978 keep=81 ev=prebreath</title></circle>
+<circle cx="466.7" cy="75.7" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=284 ngram=0.8980 keep=82 ev=prebreath</title></circle>
+<circle cx="472.1" cy="75.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=288 ngram=0.8981 keep=83 ev=prebreath</title></circle>
+<circle cx="477.5" cy="75.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=292 ngram=0.8982 keep=84 ev=prebreath</title></circle>
+<circle cx="482.9" cy="75.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=296 ngram=0.8982 keep=85 ev=prebreath</title></circle>
+<circle cx="488.4" cy="75.6" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=300 ngram=0.8982 keep=86 ev=prebreath</title></circle>
+<circle cx="493.8" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=304 ngram=0.8983 keep=87 ev=prebreath</title></circle>
+<circle cx="499.2" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=308 ngram=0.8983 keep=88 ev=prebreath</title></circle>
+<circle cx="504.6" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=312 ngram=0.8983 keep=89 ev=prebreath</title></circle>
+<circle cx="510.0" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=316 ngram=0.8983 keep=90 ev=prebreath</title></circle>
+<circle cx="515.4" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=320 ngram=0.8983 keep=91 ev=prebreath</title></circle>
+<circle cx="520.9" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=324 ngram=0.8983 keep=92 ev=prebreath</title></circle>
+<circle cx="526.3" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=328 ngram=0.8983 keep=93 ev=prebreath</title></circle>
+<circle cx="531.7" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=332 ngram=0.8983 keep=94 ev=prebreath</title></circle>
+<circle cx="537.1" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=336 ngram=0.8983 keep=95 ev=prebreath</title></circle>
+<circle cx="542.5" cy="75.5" r="4.2" fill="#22c55e" opacity="0.92"><title>step1 every4 tok=340 ngram=0.8983 keep=96 ev=prebreath</title></circle>
+<rect x="92" y="610" width="14" height="14" rx="3" fill="#22c55e"/>
+<text x="114" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">step1 every4</text>
+<polyline fill="none" stroke="#38bdf8" stroke-width="2.4" points="82.0,586.0 149.7,586.0 151.1,586.0 152.4,586.0 157.9,586.0 163.3,585.0 168.7,582.1 174.1,580.4 179.5,579.5 184.9,579.1 190.4,577.5 195.8,575.5 201.2,574.5 206.6,573.4 212.0,571.5 217.5,570.4 222.9,569.9 228.3,569.9 233.7,570.0 239.1,567.5 244.5,563.8 250.0,561.5 255.4,558.6 260.8,553.1 266.2,549.5 271.6,547.1 277.0,545.6 282.5,544.6 287.9,543.9 293.3,543.5 298.7,543.2 304.1,543.0 309.6,543.4 315.0,546.4 320.4,548.4 325.8,551.4 331.2,553.4 336.6,554.7 342.1,555.5 347.5,556.1"/>
+<circle cx="82.0" cy="586.0" r="3.0" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.7" cy="586.0" r="3.0" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.1" cy="586.0" r="3.0" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="152.4" cy="586.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=52 ngram=0.0000 keep=25 ev=prebreath</title></circle>
+<circle cx="157.9" cy="586.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=56 ngram=0.0000 keep=27 ev=prebreath</title></circle>
+<circle cx="163.3" cy="585.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=60 ngram=0.0017 keep=29 ev=prebreath</title></circle>
+<circle cx="168.7" cy="582.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=64 ngram=0.0068 keep=31 ev=prebreath</title></circle>
+<circle cx="174.1" cy="580.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=68 ngram=0.0098 keep=33 ev=prebreath</title></circle>
+<circle cx="179.5" cy="579.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=72 ngram=0.0114 keep=35 ev=prebreath</title></circle>
+<circle cx="184.9" cy="579.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=76 ngram=0.0122 keep=37 ev=prebreath</title></circle>
+<circle cx="190.4" cy="577.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=80 ngram=0.0150 keep=39 ev=prebreath</title></circle>
+<circle cx="195.8" cy="575.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=84 ngram=0.0184 keep=41 ev=prebreath</title></circle>
+<circle cx="201.2" cy="574.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=88 ngram=0.0202 keep=43 ev=prebreath</title></circle>
+<circle cx="206.6" cy="573.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=92 ngram=0.0221 keep=45 ev=prebreath</title></circle>
+<circle cx="212.0" cy="571.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=96 ngram=0.0256 keep=47 ev=prebreath</title></circle>
+<circle cx="217.5" cy="570.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=100 ngram=0.0275 keep=49 ev=prebreath</title></circle>
+<circle cx="222.9" cy="569.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=104 ngram=0.0283 keep=51 ev=prebreath</title></circle>
+<circle cx="228.3" cy="569.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=108 ngram=0.0284 keep=53 ev=prebreath</title></circle>
+<circle cx="233.7" cy="570.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=112 ngram=0.0281 keep=55 ev=prebreath</title></circle>
+<circle cx="239.1" cy="567.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=116 ngram=0.0326 keep=57 ev=prebreath</title></circle>
+<circle cx="244.5" cy="563.8" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=120 ngram=0.0391 keep=59 ev=prebreath</title></circle>
+<circle cx="250.0" cy="561.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=124 ngram=0.0431 keep=61 ev=prebreath</title></circle>
+<circle cx="255.4" cy="558.6" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=128 ngram=0.0482 keep=63 ev=prebreath</title></circle>
+<circle cx="260.8" cy="553.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=132 ngram=0.0579 keep=65 ev=prebreath</title></circle>
+<circle cx="266.2" cy="549.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=136 ngram=0.0642 keep=67 ev=prebreath</title></circle>
+<circle cx="271.6" cy="547.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=140 ngram=0.0684 keep=69 ev=prebreath</title></circle>
+<circle cx="277.0" cy="545.6" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=144 ngram=0.0711 keep=71 ev=prebreath</title></circle>
+<circle cx="282.5" cy="544.6" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=148 ngram=0.0729 keep=73 ev=prebreath</title></circle>
+<circle cx="287.9" cy="543.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=152 ngram=0.0740 keep=75 ev=prebreath</title></circle>
+<circle cx="293.3" cy="543.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=156 ngram=0.0748 keep=77 ev=prebreath</title></circle>
+<circle cx="298.7" cy="543.2" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=160 ngram=0.0753 keep=79 ev=prebreath</title></circle>
+<circle cx="304.1" cy="543.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=164 ngram=0.0756 keep=81 ev=prebreath</title></circle>
+<circle cx="309.6" cy="543.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=168 ngram=0.0750 keep=83 ev=prebreath</title></circle>
+<circle cx="315.0" cy="546.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=172 ngram=0.0696 keep=85 ev=prebreath</title></circle>
+<circle cx="320.4" cy="548.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=176 ngram=0.0661 keep=87 ev=prebreath</title></circle>
+<circle cx="325.8" cy="551.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=180 ngram=0.0608 keep=89 ev=prebreath</title></circle>
+<circle cx="331.2" cy="553.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=184 ngram=0.0574 keep=91 ev=prebreath</title></circle>
+<circle cx="336.6" cy="554.7" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=188 ngram=0.0551 keep=93 ev=prebreath</title></circle>
+<circle cx="342.1" cy="555.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=192 ngram=0.0537 keep=95 ev=prebreath</title></circle>
+<circle cx="347.5" cy="556.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>step2 every4 tok=196 ngram=0.0527 keep=96 ev=prebreath</title></circle>
+<rect x="337" y="610" width="14" height="14" rx="3" fill="#38bdf8"/>
+<text x="359" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">step2 every4</text>
+<polyline fill="none" stroke="#f59e0b" stroke-width="2.4" points="82.0,586.0 149.7,586.0 151.1,586.0 194.4,575.9 237.8,567.4 281.1,557.5 324.5,565.2 367.8,560.2 411.1,552.9 454.5,533.7 497.8,474.4 541.2,481.0 584.5,480.7 627.9,500.1 671.2,473.8 714.6,451.3 757.9,452.3 801.2,452.9 844.6,455.9 887.9,479.8 931.3,428.8 974.6,434.8 1018.0,466.9 1061.3,512.8 1104.7,516.0 1148.0,468.8"/>
+<circle cx="82.0" cy="586.0" r="3.0" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.7" cy="586.0" r="3.0" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.1" cy="586.0" r="3.0" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="194.4" cy="575.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=83 ngram=0.0177 keep=23 ev=rotate</title></circle>
+<circle cx="237.8" cy="567.4" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=115 ngram=0.0328 keep=23 ev=rotate</title></circle>
+<circle cx="281.1" cy="557.5" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=147 ngram=0.0502 keep=23 ev=rotate</title></circle>
+<circle cx="324.5" cy="565.2" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=179 ngram=0.0366 keep=23 ev=rotate</title></circle>
+<circle cx="367.8" cy="560.2" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=211 ngram=0.0454 keep=23 ev=rotate</title></circle>
+<circle cx="411.1" cy="552.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=243 ngram=0.0583 keep=23 ev=rotate</title></circle>
+<circle cx="454.5" cy="533.7" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=275 ngram=0.0920 keep=23 ev=rotate</title></circle>
+<circle cx="497.8" cy="474.4" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=307 ngram=0.1963 keep=23 ev=rotate</title></circle>
+<circle cx="541.2" cy="481.0" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=339 ngram=0.1848 keep=23 ev=rotate</title></circle>
+<circle cx="584.5" cy="480.7" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=371 ngram=0.1853 keep=23 ev=rotate</title></circle>
+<circle cx="627.9" cy="500.1" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=403 ngram=0.1511 keep=23 ev=rotate</title></circle>
+<circle cx="671.2" cy="473.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=435 ngram=0.1975 keep=23 ev=rotate</title></circle>
+<circle cx="714.6" cy="451.3" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=467 ngram=0.2370 keep=23 ev=rotate</title></circle>
+<circle cx="757.9" cy="452.3" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=499 ngram=0.2352 keep=23 ev=rotate</title></circle>
+<circle cx="801.2" cy="452.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=531 ngram=0.2343 keep=23 ev=rotate</title></circle>
+<circle cx="844.6" cy="455.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=563 ngram=0.2289 keep=23 ev=rotate</title></circle>
+<circle cx="887.9" cy="479.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=595 ngram=0.1869 keep=23 ev=rotate</title></circle>
+<circle cx="931.3" cy="428.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=627 ngram=0.2767 keep=23 ev=rotate</title></circle>
+<circle cx="974.6" cy="434.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=659 ngram=0.2661 keep=23 ev=rotate</title></circle>
+<circle cx="1018.0" cy="466.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=691 ngram=0.2095 keep=23 ev=rotate</title></circle>
+<circle cx="1061.3" cy="512.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=723 ngram=0.1289 keep=23 ev=rotate</title></circle>
+<circle cx="1104.7" cy="516.0" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=755 ngram=0.1232 keep=23 ev=rotate</title></circle>
+<circle cx="1148.0" cy="468.8" r="4.2" fill="#f59e0b" opacity="0.92"><title>rotate32 tok=787 ngram=0.2062 keep=23 ev=rotate</title></circle>
+<rect x="582" y="610" width="14" height="14" rx="3" fill="#f59e0b"/>
+<text x="604" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">rotate32</text>
+<polyline fill="none" stroke="#ef4444" stroke-width="2.4" points="82.0,586.0 149.7,586.0 151.1,586.0 286.5,440.5 394.9,81.8"/>
+<circle cx="82.0" cy="586.0" r="3.0" fill="#ef4444" opacity="0.92"><title>hard K96 breath tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.7" cy="586.0" r="3.0" fill="#ef4444" opacity="0.92"><title>hard K96 breath tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.1" cy="586.0" r="3.0" fill="#ef4444" opacity="0.92"><title>hard K96 breath tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="286.5" cy="440.5" r="4.2" fill="#ef4444" opacity="0.92"><title>hard K96 breath tok=151 ngram=0.2560 keep=96 ev=breath(ngram)</title></circle>
+<circle cx="394.9" cy="81.8" r="4.2" fill="#ef4444" opacity="0.92"><title>hard K96 breath tok=231 ngram=0.8873 keep=23 ev=breath_end</title></circle>
+<rect x="827" y="610" width="14" height="14" rx="3" fill="#ef4444"/>
+<text x="849" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">hard K96 breath</text>
+</svg>

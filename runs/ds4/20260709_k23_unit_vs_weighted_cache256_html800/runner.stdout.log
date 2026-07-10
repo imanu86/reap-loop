@@ -1,0 +1,5 @@
+[matrix] start html_local_k23_cache256_r01
+[matrix] done html_local_k23_cache256_r01 wall=286.3s avg=2.98 pace_pre=0 pace_br=0 pace_rot=0 promote=0
+[matrix] start html_local_k23_weighted_warmup_cache256_r01
+[matrix] done html_local_k23_weighted_warmup_cache256_r01 wall=329.0s avg=2.57 pace_pre=0 pace_br=0 pace_rot=0 promote=0
+C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260709_k23_unit_vs_weighted_cache256_html800\summary.csv

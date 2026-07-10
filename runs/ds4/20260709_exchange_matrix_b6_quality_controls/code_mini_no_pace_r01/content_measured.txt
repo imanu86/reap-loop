@@ -1,0 +1,9 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+## Main Correctness Risks
+
+1. **Missing expert loading blocks the pipeline** – If `missing experts are loaded from SSD` is synchronous, it stalls the entire decode step. This can cause a correctness issue if the router selects an expert that isn't yet available, forcing a fallback or stale computation.
+
+2. **Repetition score widening the mask without re-checking expert availability** – If `repetition_score` adds new expert IDs to the mask, those experts might not have been loaded yet. The loop would then attempt to compute with missing weights, producing garbage or a crash.
+
+3. **Router selection and expert loading race condition** – If loading is asynchronous, the router

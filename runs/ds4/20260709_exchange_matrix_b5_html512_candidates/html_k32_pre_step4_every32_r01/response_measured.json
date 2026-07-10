@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783578824,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI Code Shop - Cyberpunk</title>\n    <!-- Font: retaggio cyber -->\n    <link href=\"httpshttps://https.gg\" rel=\"preconnect\" crossorigin>\n    <style>\n        /* reset base */\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n\n        body {\n            background: #dark;\n            color: ######################################## cyb\n        }\n\n        /* struttura cyber */\n        body {\n            background: #000;\n            font-family: 'Courier New', monospace;\n            color: #0f6;\n            min-height: 100vh;\n            display: flex;\n            align: center;\n            justify: center;\n            padding: 20;\n        }\n\n        .container {\n            max-width: 1200;\n            width: full;\n            padding: 0;\n        }\n\n        /* griglia e layout */\n        .hero {\n            grid: 1;\n        }\n\n        /* card cyber */\n        .card {\n            background: rgba(0, 0, 0, 0);\n        }\n\n        /* form */\n        input, textarea {\n        background: #0 0 0 0;\n        border: neon;\n        }\n\n        /* pulsanti */\n        button {\n        background: #0 0 0 0;\n        color: #0 0 0 0;\n        border: neon;\n        }\n\n        /* popup */\n        .popup {\n        background: rgba(0, 0, 0, 0);\n        display: none;\n        }\n\n        /* animazioni */\n        .glow {\n        glow: 0 0 0 0;\n        }\n\n        /* codice compatto */\n        .codice {\n        comp: 0 0 0 0;\n        }\n\n        /* stile cyberpunk */\n        .cyber {\n        color: #0 0 0 0;\n"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 512,
+    "total_tokens": 590,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

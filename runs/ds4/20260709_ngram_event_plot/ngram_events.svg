@@ -1,0 +1,124 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1180" height="680" viewBox="0 0 1180 680">
+<rect width="100%" height="100%" fill="#0f1012"/>
+<text x="82" y="28" fill="#f4f4f5" font-family="Segoe UI, Arial" font-size="20" font-weight="700">DS4 PACE ngram score vs generated token</text>
+<text x="82" y="50" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="12">Punti reali da pace_events.jsonl: decisioni PACE, non campionamento continuo per-token</text>
+<line x1="82" y1="588.0" x2="1146" y2="588.0" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="592.0" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.00</text>
+<line x1="82" y1="559.8" x2="1146" y2="559.8" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="563.8" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.05</text>
+<line x1="82" y1="531.6" x2="1146" y2="531.6" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="535.6" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.10</text>
+<line x1="82" y1="503.5" x2="1146" y2="503.5" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="507.5" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.15</text>
+<line x1="82" y1="475.3" x2="1146" y2="475.3" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="479.3" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.20</text>
+<line x1="82" y1="447.1" x2="1146" y2="447.1" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="451.1" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.25</text>
+<line x1="82" y1="418.9" x2="1146" y2="418.9" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="422.9" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.30</text>
+<line x1="82" y1="362.6" x2="1146" y2="362.6" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="366.6" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.40</text>
+<line x1="82" y1="249.9" x2="1146" y2="249.9" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="253.9" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.60</text>
+<line x1="82" y1="137.2" x2="1146" y2="137.2" stroke="#27272a" stroke-width="1"/>
+<text x="70" y="141.2" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">0.80</text>
+<line x1="82.0" y1="48" x2="82.0" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="82.0" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">0</text>
+<line x1="217.2" y1="48" x2="217.2" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="217.2" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">100</text>
+<line x1="352.4" y1="48" x2="352.4" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="352.4" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">200</text>
+<line x1="487.6" y1="48" x2="487.6" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="487.6" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">300</text>
+<line x1="622.8" y1="48" x2="622.8" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="622.8" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">400</text>
+<line x1="758.0" y1="48" x2="758.0" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="758.0" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">500</text>
+<line x1="893.2" y1="48" x2="893.2" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="893.2" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">600</text>
+<line x1="1028.4" y1="48" x2="1028.4" y2="588" stroke="#202124" stroke-width="1"/>
+<text x="1028.4" y="612" fill="#a1a1aa" font-family="Segoe UI, Arial" font-size="11" text-anchor="middle">700</text>
+<line x1="82" y1="531.6" x2="1146" y2="531.6" stroke="#eab308" stroke-width="1.4" stroke-dasharray="6 6" opacity="0.8"/>
+<text x="1142" y="525.6" fill="#eab308" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">target 0.10</text>
+<line x1="82" y1="447.1" x2="1146" y2="447.1" stroke="#fb7185" stroke-width="1.4" stroke-dasharray="6 6" opacity="0.8"/>
+<text x="1142" y="441.1" fill="#fb7185" font-family="Segoe UI, Arial" font-size="11" text-anchor="end">hard-ish 0.25</text>
+<line x1="82" y1="48" x2="82" y2="588" stroke="#52525b"/>
+<line x1="82" y1="588" x2="1146" y2="588" stroke="#52525b"/>
+<text x="614.0" y="652" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="13" text-anchor="middle">generated token</text>
+<text x="22" y="318.0" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="13" transform="rotate(-90 22 318.0)" text-anchor="middle">ngram repetition score</text>
+<polyline fill="none" stroke="#10b981" stroke-width="2.4" points="82.0,588.0 149.6,588.0 151.0,588.0 286.1,547.5 291.6,540.4 297.0,534.1 302.4,528.0 307.8,521.1 313.2,519.1 318.6,517.7 324.0,516.9 329.4,515.3 334.8,510.7 340.2,503.4 345.6,492.1"/>
+<circle cx="82.0" cy="588.0" r="3.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.6" cy="588.0" r="3.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.0" cy="588.0" r="3.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="286.1" cy="547.5" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=151 ngram=0.0719 keep=27 ev=prebreath</title></circle>
+<circle cx="291.6" cy="540.4" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=155 ngram=0.0844 keep=31 ev=prebreath</title></circle>
+<circle cx="297.0" cy="534.1" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=159 ngram=0.0957 keep=35 ev=prebreath</title></circle>
+<circle cx="302.4" cy="528.0" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=163 ngram=0.1065 keep=40 ev=prebreath</title></circle>
+<circle cx="307.8" cy="521.1" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=167 ngram=0.1188 keep=45 ev=prebreath</title></circle>
+<circle cx="313.2" cy="519.1" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=171 ngram=0.1223 keep=51 ev=prebreath</title></circle>
+<circle cx="318.6" cy="517.7" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=175 ngram=0.1248 keep=57 ev=prebreath</title></circle>
+<circle cx="324.0" cy="516.9" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=179 ngram=0.1262 keep=63 ev=prebreath</title></circle>
+<circle cx="329.4" cy="515.3" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=183 ngram=0.1290 keep=69 ev=prebreath</title></circle>
+<circle cx="334.8" cy="510.7" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=187 ngram=0.1371 keep=77 ev=prebreath</title></circle>
+<circle cx="340.2" cy="503.4" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=191 ngram=0.1501 keep=87 ev=prebreath</title></circle>
+<circle cx="345.6" cy="492.1" r="4.2" fill="#10b981" opacity="0.92"><title>prebreath unit256 tok=195 ngram=0.1702 keep=96 ev=prebreath</title></circle>
+<rect x="92" y="610" width="14" height="14" rx="3" fill="#10b981"/>
+<text x="114" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">prebreath unit256</text>
+<polyline fill="none" stroke="#f59e0b" stroke-width="2.4" points="82.0,588.0 149.6,588.0 151.0,588.0 311.8,547.9 311.8,547.9 317.2,536.0 317.2,536.0 322.7,522.5 322.7,522.5 328.1,507.9 328.1,507.9 333.5,491.7 333.5,491.7 338.9,474.5 338.9,474.5 344.3,456.6 344.3,456.6"/>
+<circle cx="82.0" cy="588.0" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.6" cy="588.0" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.0" cy="588.0" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="311.8" cy="547.9" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=170 ngram=0.0712 keep=23 ev=prebreath_relearn</title></circle>
+<circle cx="311.8" cy="547.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=170 ngram=0.0712 keep=27 ev=prebreath</title></circle>
+<circle cx="317.2" cy="536.0" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=174 ngram=0.0923 keep=27 ev=prebreath_relearn</title></circle>
+<circle cx="317.2" cy="536.0" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=174 ngram=0.0923 keep=31 ev=prebreath</title></circle>
+<circle cx="322.7" cy="522.5" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=178 ngram=0.1162 keep=31 ev=prebreath_relearn</title></circle>
+<circle cx="322.7" cy="522.5" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=178 ngram=0.1162 keep=36 ev=prebreath</title></circle>
+<circle cx="328.1" cy="507.9" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=182 ngram=0.1422 keep=36 ev=prebreath_relearn</title></circle>
+<circle cx="328.1" cy="507.9" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=182 ngram=0.1422 keep=45 ev=prebreath</title></circle>
+<circle cx="333.5" cy="491.7" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=186 ngram=0.1709 keep=45 ev=prebreath_relearn</title></circle>
+<circle cx="333.5" cy="491.7" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=186 ngram=0.1709 keep=61 ev=prebreath</title></circle>
+<circle cx="338.9" cy="474.5" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=190 ngram=0.2014 keep=61 ev=prebreath_relearn</title></circle>
+<circle cx="338.9" cy="474.5" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=190 ngram=0.2014 keep=89 ev=prebreath</title></circle>
+<circle cx="344.3" cy="456.6" r="3.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=194 ngram=0.2331 keep=89 ev=prebreath_relearn</title></circle>
+<circle cx="344.3" cy="456.6" r="4.2" fill="#f59e0b" opacity="0.92"><title>prebreath weighted512 tok=194 ngram=0.2331 keep=96 ev=prebreath</title></circle>
+<rect x="357" y="610" width="14" height="14" rx="3" fill="#f59e0b"/>
+<text x="379" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">prebreath weighted512</text>
+<polyline fill="none" stroke="#ef4444" stroke-width="2.4" points="82.0,588.0 149.6,588.0 151.0,588.0 286.1,443.7 394.3,88.0"/>
+<circle cx="82.0" cy="588.0" r="3.2" fill="#ef4444" opacity="0.92"><title>hard breath K96 cache256 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.6" cy="588.0" r="3.2" fill="#ef4444" opacity="0.92"><title>hard breath K96 cache256 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.0" cy="588.0" r="3.2" fill="#ef4444" opacity="0.92"><title>hard breath K96 cache256 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="286.1" cy="443.7" r="4.2" fill="#ef4444" opacity="0.92"><title>hard breath K96 cache256 tok=151 ngram=0.2560 keep=96 ev=breath(ngram)</title></circle>
+<circle cx="394.3" cy="88.0" r="4.2" fill="#ef4444" opacity="0.92"><title>hard breath K96 cache256 tok=231 ngram=0.8873 keep=23 ev=breath_end</title></circle>
+<rect x="622" y="610" width="14" height="14" rx="3" fill="#ef4444"/>
+<text x="644" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">hard breath K96 cache256</text>
+<polyline fill="none" stroke="#38bdf8" stroke-width="2.4" points="82.0,588.0 149.6,588.0 151.0,588.0 194.2,578.0 237.5,569.5 280.7,559.7 324.0,567.4 367.3,562.4 410.5,555.1 453.8,536.2 497.1,477.4 540.3,483.9 583.6,483.6 626.8,502.9 670.1,476.7 713.4,454.4 756.6,455.5 799.9,456.0 843.2,459.0 886.4,482.7 929.7,432.1 972.9,438.1 1016.2,469.9 1059.5,515.4 1102.7,518.6 1146.0,471.8"/>
+<circle cx="82.0" cy="588.0" r="3.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=0 ngram=0.0000 keep=0 ev=prefill_reset</title></circle>
+<circle cx="149.6" cy="588.0" r="3.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=50 ngram=0.0000 keep=0 ev=learned</title></circle>
+<circle cx="151.0" cy="588.0" r="3.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=51 ngram=0.0000 keep=23 ev=descent</title></circle>
+<circle cx="194.2" cy="578.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=83 ngram=0.0177 keep=23 ev=rotate</title></circle>
+<circle cx="237.5" cy="569.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=115 ngram=0.0328 keep=23 ev=rotate</title></circle>
+<circle cx="280.7" cy="559.7" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=147 ngram=0.0502 keep=23 ev=rotate</title></circle>
+<circle cx="324.0" cy="567.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=179 ngram=0.0366 keep=23 ev=rotate</title></circle>
+<circle cx="367.3" cy="562.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=211 ngram=0.0454 keep=23 ev=rotate</title></circle>
+<circle cx="410.5" cy="555.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=243 ngram=0.0583 keep=23 ev=rotate</title></circle>
+<circle cx="453.8" cy="536.2" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=275 ngram=0.0920 keep=23 ev=rotate</title></circle>
+<circle cx="497.1" cy="477.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=307 ngram=0.1963 keep=23 ev=rotate</title></circle>
+<circle cx="540.3" cy="483.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=339 ngram=0.1848 keep=23 ev=rotate</title></circle>
+<circle cx="583.6" cy="483.6" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=371 ngram=0.1853 keep=23 ev=rotate</title></circle>
+<circle cx="626.8" cy="502.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=403 ngram=0.1511 keep=23 ev=rotate</title></circle>
+<circle cx="670.1" cy="476.7" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=435 ngram=0.1975 keep=23 ev=rotate</title></circle>
+<circle cx="713.4" cy="454.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=467 ngram=0.2370 keep=23 ev=rotate</title></circle>
+<circle cx="756.6" cy="455.5" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=499 ngram=0.2352 keep=23 ev=rotate</title></circle>
+<circle cx="799.9" cy="456.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=531 ngram=0.2343 keep=23 ev=rotate</title></circle>
+<circle cx="843.2" cy="459.0" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=563 ngram=0.2289 keep=23 ev=rotate</title></circle>
+<circle cx="886.4" cy="482.7" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=595 ngram=0.1869 keep=23 ev=rotate</title></circle>
+<circle cx="929.7" cy="432.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=627 ngram=0.2767 keep=23 ev=rotate</title></circle>
+<circle cx="972.9" cy="438.1" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=659 ngram=0.2661 keep=23 ev=rotate</title></circle>
+<circle cx="1016.2" cy="469.9" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=691 ngram=0.2095 keep=23 ev=rotate</title></circle>
+<circle cx="1059.5" cy="515.4" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=723 ngram=0.1289 keep=23 ev=rotate</title></circle>
+<circle cx="1102.7" cy="518.6" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=755 ngram=0.1232 keep=23 ev=rotate</title></circle>
+<circle cx="1146.0" cy="471.8" r="4.2" fill="#38bdf8" opacity="0.92"><title>rotate32 cache256 tok=787 ngram=0.2062 keep=23 ev=rotate</title></circle>
+<rect x="887" y="610" width="14" height="14" rx="3" fill="#38bdf8"/>
+<text x="909" y="622" fill="#d4d4d8" font-family="Segoe UI, Arial" font-size="12">rotate32 cache256</text>
+</svg>

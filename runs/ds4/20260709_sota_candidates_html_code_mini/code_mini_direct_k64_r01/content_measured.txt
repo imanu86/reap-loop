@@ -1,0 +1,12 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed before the expert weights are fully available, producing garbage outputs.
+2. **Mask widening after expert selection** – Widening the mask after selection can cause tokens to be routed to experts that were not loaded (or loaded for a different batch position), violating the invariant that each token's expert assignment is fixed before loading.
+3. **Reputation score inconsistency** – If `repetition_score` is computed per token but applied after selection, the mask may include tokens that were not originally routed to any expert, resulting in undefined behavior or out-of-bense accesses.
+4. **Expert weight reuse without re-loading** – If the same expert is reused across multiple decode steps without re-loading, stale weights may be used after the mask changes.
+
+**Minimal Patch Plan**
+
+1. **Synchronize expert loading before decode** –

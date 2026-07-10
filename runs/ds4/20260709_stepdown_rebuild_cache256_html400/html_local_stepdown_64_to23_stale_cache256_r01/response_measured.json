@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783629837,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Code Shop – Cyberpunk</title>\n    <style>\n    /* reset e base */\n    * { box-sizing: border-box; }\n    body { margin: 0, padding: 0, font-family: 'Courier New', monospace, sans-serif, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 400,
+    "total_tokens": 478,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

@@ -1,0 +1,14 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Codex · Negozio di programmazione AI</title>
+    <!-- Font (in stile cyberpunk) -->
+    <link href="httpshttps://fonts.googleapis.com/css?family=Roboto+Condensed+Black" rel="stylesheet">
+    <style>
+        /* reset e base */
+        * { margin: 0, padding: 0; box-sizing: border-box;
+        body

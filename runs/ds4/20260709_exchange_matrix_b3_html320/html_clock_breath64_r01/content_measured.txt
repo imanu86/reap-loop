@@ -1,0 +1,43 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1=0, shrinkable=no">
+    <title>AI Shop – CyberPunk</title>
+    <style>
+    /* base reset */
+    * {
+    margin: 0;
+    padding: 0;
+    box border: 0;
+    font-family: sans-serif;
+    }
+    body {
+    background: black;
+    font-family: sans-serif;
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    color: #neon;
+    line-height: 1.5;
+    }
+    .container {
+    max-width: 1200;
+    margin: 0 e 2: auto;
+    padding: 0 e 2: 20;
+    }
+    /* cyberpunk */
+    body {
+    background: #black;
+    font-family: sans-serif;
+    font-family: 'Segoe UI', Roboto, Helvetica, sans-serif;
+    color: #neon;
+    line-height: 1.5;
+    }
+    .container {
+    max-width: 1200;
+    margin: 0 e 2: auto;
+    padding: 0 e 2: 20;
+    }
+    /* cyberpunk */
+    body {

@@ -1,0 +1,13 @@
+[matrix] start html_direct_k40_r01
+[matrix] done html_direct_k40_r01 wall=126.9s avg=3.03 pre=0 br=2 promote=2408
+[matrix] start html_direct_k48_r01
+[matrix] done html_direct_k48_r01 wall=131.5s avg=2.86 pre=0 br=1 promote=2064
+[matrix] start html_direct_k56_r01
+[matrix] done html_direct_k56_r01 wall=139.0s avg=2.71 pre=0 br=2 promote=1720
+[matrix] start html_k32_pre_step4_every32_r01
+[matrix] done html_k32_pre_step4_every32_r01 wall=128.6s avg=2.93 pre=8 br=0 promote=1376
+[matrix] start html_k32_pre_step8_every32_r01
+[matrix] done html_k32_pre_step8_every32_r01 wall=130.4s avg=2.89 pre=4 br=1 promote=2752
+[matrix] start html_direct_k64_r01
+[matrix] done html_direct_k64_r01 wall=125.3s avg=3.03 pre=0 br=2 promote=1376
+runs\ds4\20260709_exchange_matrix_b4_keep_sweep_html320\summary.csv

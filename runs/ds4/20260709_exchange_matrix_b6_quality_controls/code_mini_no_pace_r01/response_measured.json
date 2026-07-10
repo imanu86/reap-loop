@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783579657,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:\n\n## Main Correctness Risks\n\n1. **Missing expert loading blocks the pipeline** – If `missing experts are loaded from SSD` is synchronous, it stalls the entire decode step. This can cause a correctness issue if the router selects an expert that isn't yet available, forcing a fallback or stale computation.\n\n2. **Repetition score widening the mask without re-checking expert availability** – If `repetition_score` adds new expert IDs to the mask, those experts might not have been loaded yet. The loop would then attempt to compute with missing weights, producing garbage or a crash.\n\n3. **Router selection and expert loading race condition** – If loading is asynchronous, the router"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 160,
+    "total_tokens": 221,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  }
+}

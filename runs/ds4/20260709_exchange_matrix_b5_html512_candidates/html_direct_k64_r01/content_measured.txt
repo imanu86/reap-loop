@@ -1,0 +1,36 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI · CYBER SHOP</title>
+    <!-- Font futuristico -->
+    <link href="https://assets/fonts/roboto.css" rel="stylesheet">
+    <style>
+        /* RESET e base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+        background: #000;
+        color: #cyan;
+        font-family: 'Roboto', monospace;
+        line-height: 1.5;
+        min-height: 1000;
+        overflow-x: hidden;
+        }
+        .wrapper {
+        max-width: 1200;
+        margin: 0 auto;
+        padding: 2;
+        display: flex;
+        flex-direction: column;
+        gap-4;
+        }
+        /* cyberpunk base */
+        .glow-text {
+        text-shadow: 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.0 0.

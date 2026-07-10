@@ -1,0 +1,28 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Shop · Cyberpunk</title>
+    <!-- Font Awesome 6 (gratuito) -->
+    <link rel="stylesheet" href="https://cdn.afters.io/awesome.css" crossorigin="anonymous">
+    <!-- Font Awesome 6 (gratuito) -->
+    <link rel="stylesheet" href="https://cdn.afters.io/awesome.css" crossorigin="anonymous">
+    <style>
+        /* reset */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #02 0% 0% /  #0c0c0c;
+            background-color: #02000f;
+            color: #c0c0c0;
+            font-family: 'Courier New', Courier, monospace;
+            line-height: 1.6;
+            background-image: radial-gradient circle #00 0% 0% / #0c0c0c;
+            background-image: url('data:image/svg+xml,%0%0%0%0%0%0%0%0%0%0

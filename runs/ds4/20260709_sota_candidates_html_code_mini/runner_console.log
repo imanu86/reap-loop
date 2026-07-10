@@ -1,0 +1,25 @@
+[matrix] start html_sota_trace_off_r01
+[matrix] warmup html_sota_trace_off_r01 102.932s
+[matrix] done html_sota_trace_off_r01 wall=119.2s avg=2.69 pre=0 br=0 promote=0
+[matrix] start code_mini_sota_trace_off_r01
+[matrix] warmup code_mini_sota_trace_off_r01 169.108s
+[matrix] done code_mini_sota_trace_off_r01 wall=124.7s avg=2.66 pre=0 br=0 promote=0
+[matrix] start html_keep32_direct_r01
+[matrix] warmup html_keep32_direct_r01 142.371s
+[matrix] done html_keep32_direct_r01 wall=102.3s avg=2.9 pre=0 br=0 promote=0
+[matrix] start code_mini_keep32_direct_r01
+[matrix] warmup code_mini_keep32_direct_r01 168.232s
+[matrix] done code_mini_keep32_direct_r01 wall=103.8s avg=2.85 pre=0 br=0 promote=0
+[matrix] start html_k32_pre_step4_every32_r01
+[matrix] warmup html_k32_pre_step4_every32_r01 156.995s
+[matrix] done html_k32_pre_step4_every32_r01 wall=87.4s avg=2.97 pre=0 br=0 promote=0
+[matrix] start code_mini_k32_pre_step4_every32_r01
+[matrix] warmup code_mini_k32_pre_step4_every32_r01 152.213s
+[matrix] done code_mini_k32_pre_step4_every32_r01 wall=113.6s avg=2.77 pre=0 br=0 promote=0
+[matrix] start html_direct_k64_r01
+[matrix] warmup html_direct_k64_r01 181.677s
+[matrix] done html_direct_k64_r01 wall=144.5s avg=2.46 pre=0 br=0 promote=0
+[matrix] start code_mini_direct_k64_r01
+[matrix] warmup code_mini_direct_k64_r01 222.153s
+[matrix] done code_mini_direct_k64_r01 wall=105.7s avg=2.52 pre=0 br=0 promote=0
+runs/ds4/20260709_sota_candidates_html_code_mini/summary.csv

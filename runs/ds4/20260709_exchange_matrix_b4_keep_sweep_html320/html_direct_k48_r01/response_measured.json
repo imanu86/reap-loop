@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783578020,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, user-scalable=no\">\n    <title>AI · CYBER SHOP</title>\n    <!-- Font (via CDN) -->\n    <link href=\"https://https://font.esi.https?family=Roboto\" rel=\"stylesheet\">\n    <style>\n        /* reset */\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n\n        body {\n            background: #000;\n            color: #coral;\n        font-family: 'Roboto', monospace;\n        background-image: radial-fixed: 0.0;\n        background-attachment: fixed;\n        background-size: 1000 1;\n        background: #000;\n        background-image: url('data:image/svg+xml,<svg xmlns=\"http://www.ws.si\" viewBox=\"0 0 100 100\"><rect fill=\"0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 "
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 320,
+    "total_tokens": 398,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

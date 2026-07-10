@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-2",
+  "object": "chat.completion",
+  "created": 1783584647,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:\n\n**Main Correctness Risks**\n\n1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode loop may proceed with stale or zero-filled expert weights before the load completes.\n2. **Repition score widening without mask synchronization** – Widening the mask after loading experts can cause a mismatch between the number of active experts and the actual loaded expert count, leading to out-of bounds access or silent expert dropout.\n3. **Router and hidden state staling** – The router may produce indices based on stale hidden states if the hidden state is not properly synchronized after the expert load, resulting in incorrect expert selection.\n4. **Mask widening after expert load** – Widening the mask after loading experts can cause a mismatch between the number of active experts and the actual loaded expert count, leading to out-of bounds access or silent expert dropout.\n\n**Minimal Patch Plan**\n\n1. **Insert a barrier** after the expert load to ensure all expert weights are visible"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 61,
+    "completion_tokens": 220,
+    "total_tokens": 281,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 61
+    }
+  }
+}

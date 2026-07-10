@@ -1,0 +1,5 @@
+[matrix] start html_k32_pre_step4_every32_r01
+[matrix] done html_k32_pre_step4_every32_r01 wall=188.2s avg=3.14 pre=2 br=2 promote=2752
+[matrix] start html_direct_k64_r01
+[matrix] done html_direct_k64_r01 wall=202.1s avg=2.93 pre=0 br=2 promote=1376
+runs\ds4\20260709_exchange_matrix_b5_html512_candidates\summary.csv

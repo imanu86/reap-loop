@@ -1,0 +1,5 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode step may proceed with stale (or zero) expert weights before the load completes

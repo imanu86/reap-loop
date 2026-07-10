@@ -1,0 +1,12 @@
+Here are the main correctness risks and a minimal patch plan for the MoE decode loop you described:
+
+**Main Correctness Risks**
+
+1. **Missing expert loading race condition** – If missing experts are loaded from SSD asynchronously, the decode loop may proceed with stale or zero-filled expert weights before the load completes.
+2. **Repition score widening without mask synchronization** – Widening the mask after loading experts can cause a mismatch between the number of active experts and the actual loaded expert count, leading to out-of bounds access or silent expert dropout.
+3. **Router and hidden state staling** – The router may produce indices based on stale hidden states if the hidden state is not properly synchronized after the expert load, resulting in incorrect expert selection.
+4. **Mask widening after expert load** – Widening the mask after loading experts can cause a mismatch between the number of active experts and the actual loaded expert count, leading to out-of bounds access or silent expert dropout.
+
+**Minimal Patch Plan**
+
+1. **Insert a barrier** after the expert load to ensure all expert weights are visible

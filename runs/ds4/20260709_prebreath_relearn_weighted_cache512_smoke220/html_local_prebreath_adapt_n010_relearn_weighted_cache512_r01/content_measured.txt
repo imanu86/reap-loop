@@ -1,0 +1,27 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Codex – Negozio di Programmazione AI</title>
+    <style>
+    /* reset base */
+    * body margin 0 padding 0 */
+    html, body {
+    margin 0 padding 0
+    section {
+    .section- {
+    /* classi esplicite */
+    .hero, .hero, .form-section, .footer
+    */
+    /* classi esplicite */
+    .hero, .hero, .form-section, .footer
+    */
+    /* classi esplicite */
+    .hero, .hero, .form-section, .footer
+    */
+    /* classi esplicite */
+    .hero, .hero,

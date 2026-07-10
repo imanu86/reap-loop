@@ -1,0 +1,83 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Shop - Cyberpunk</title>
+    <style>
+        /* reset e base */
+        * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border;
+        border-sizing: border;
+    }
+        body {
+        background: #000;
+        color: #00lime;
+        font-family: 'Courier New', monospace;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        min-height: 100vh;
+        background-image: radial-gradient circle, #0f0f0f 1%, #100 2%, #000 100%;
+        background-blend-mode: multiply;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        background-color: #000;
+        background-image: url('data:image/svg+xml,%...'); /* fallback */
+        background-color: #000;
+        background-image: linear-gradient to bottom, #000 0%, #100 100%;
+        background-repeat:

@@ -1,0 +1,20 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi in modo diretto, utile e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Review this MoE decode loop: selected = router(hidden); missing experts are loaded from SSD, then repetition_score may widen the mask. List the main correctness risks and a minimal patch plan."
+    }
+  ],
+  "max_tokens": 96,
+  "temperature": 0,
+  "stream": false,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  }
+}

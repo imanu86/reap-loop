@@ -1,0 +1,13 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop – Cyberpunk</title>
+    <style>
+    /* reset e base */
+    * { box-sizing: border-box; }
+    body { margin: 0, padding: 0, font-family: 'Courier New', monospace, sans-serif, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, monospace, Courier New, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier, Courier

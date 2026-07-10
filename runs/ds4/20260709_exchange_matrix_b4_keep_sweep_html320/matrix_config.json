@@ -1,0 +1,18 @@
+{
+  "suite": "long",
+  "prompts": "html",
+  "variants": "direct_k40,direct_k48,direct_k56,direct_k64,k32_pre_step4_every32,k32_pre_step8_every32",
+  "runs": 1,
+  "warmups": 0,
+  "warmup_tokens": 48,
+  "max_tokens": 320,
+  "timeout": 1200,
+  "port": 8014,
+  "out_dir": "runs\\ds4\\20260709_exchange_matrix_b4_keep_sweep_html320",
+  "model": "/root/models/ds4-2bit.gguf",
+  "ctx": 2048,
+  "server_max_tokens": 2048,
+  "cache_experts": 258,
+  "prefill_chunk": 512,
+  "no_stop_existing": false
+}

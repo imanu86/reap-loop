@@ -1,0 +1,21 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Codex - Negozio di Programmazione AI</title>
+    <style>
+    /* importazione font futuristico */
+    @import url('https.com/google fonts?='Cyber'');
+    /* reset e base */
+    * {
+    margin: 0;
+    padding: 0;
+    box: border: border;
+    /* corpo */
+    body {
+    font-family: 'Cyber', sans-serif, monopole;
+    background: 0.000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000

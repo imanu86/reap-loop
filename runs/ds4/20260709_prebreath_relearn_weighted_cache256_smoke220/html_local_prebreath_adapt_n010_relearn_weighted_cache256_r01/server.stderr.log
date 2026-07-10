@@ -1,0 +1,39 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.873s
+ds4: cuda backend initialized for graph diagnostics
+0709 20:25:00 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0709 20:25:00 ds4-server: listening on http://127.0.0.1:8014
+0709 20:25:00 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE on - warmup=50 keep=23[23..96] step=4 ngram(n=3,win=120) drift=1.00 rel=0.15 hyst=200 breath(every=999999,len=80,keep=96,relearn=0) prebreath(on=1,drift=0.07,target=0.10,every=4,max=96,adapt=1,gain=23.00,pow=2.00,step_max=40,relearn=1,rdecay=0.30) anneal_warm=300 wrap=1 cache_flush=0 prefill_apply=0 prefill_wait_wrap=0 s1=0 exchange=0 weighted=1 rotate(on=0,every=32,decay=0.980)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+0709 20:25:59 ds4-server: chat ctx=0..78:78 prompt done 58.626s
+ds4: CUDA loading model tensors 2.28 GiB cached
+ds4: PACE learned      tok=50 phase=2 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: CUDA loading model tensors 7.86 GiB cached
+0709 20:27:16 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=0.65 t/s avg=0.65 t/s 76.852s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE descent      tok=51 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2499 range, 6.07 GiB touched in 826 ms (16 thread, mlock)
+0709 20:27:44 ds4-server: chat ctx=128..178:50 gen=100 decoding chunk=1.81 t/s avg=0.96 t/s 104.483s
+0709 20:28:08 ds4-server: chat ctx=178..228:50 gen=150 decoding chunk=2.03 t/s avg=1.16 t/s 129.097s
+0709 20:28:33 ds4-server: chat ctx=228..278:50 gen=200 decoding chunk=2.01 t/s avg=1.30 t/s 153.948s
+ds4: PACE prebreath_relearn tok=215 phase=3 keep=23 ngram=0.076 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE prebreath    tok=215 phase=3 keep=27 ngram=0.076 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 1080 expert, 2889 range, 7.13 GiB touched in 676 ms (16 thread, mlock)
+ds4: PACE prebreath_relearn tok=219 phase=3 keep=27 ngram=0.101 hit=1.000 breaths=0
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE prebreath    tok=219 phase=3 keep=32 ngram=0.101 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 1280 expert, 3366 range, 8.45 GiB touched in 472 ms (16 thread, mlock)
+0709 20:28:43 ds4-server: chat ctx=278..298:20 gen=220 decoding chunk=2.06 t/s avg=1.34 t/s 163.659s
+0709 20:28:43 ds4-server: chat ctx=0..78:78 gen=220 finish=length 222.286s

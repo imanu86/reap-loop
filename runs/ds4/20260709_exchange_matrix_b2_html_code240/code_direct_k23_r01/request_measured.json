@@ -1,0 +1,20 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi in modo diretto, utile e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Review this C-style pseudocode for a GPU-backed MoE inference loop. Explain correctness risks and propose a minimal patch plan that preserves routing semantics while reducing repeated expert-load stalls.\n\nfor token in decode:\n    selected = router(hidden)\n    for expert in selected:\n        if not cache.contains(expert):\n            load_from_ssd(expert)\n        hidden += expert(hidden)\n    if repetition_score(window) > threshold:\n        widen_mask()\n    else if stable_hit_rate > 0.9:\n        tighten_mask()\n"
+    }
+  ],
+  "max_tokens": 240,
+  "temperature": 0,
+  "stream": false,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  }
+}

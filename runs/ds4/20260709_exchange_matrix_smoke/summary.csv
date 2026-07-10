@@ -1,0 +1,2 @@
+stem,prompt,variant,run,wall_s,prompt_tokens,completion_tokens,prompt_s,finish_s,first50_tps,last_chunk_tps,avg_tps,exchange_events,exchange_promote,exchange_demote,prebreaths,breaths,tightens,prefetch_count,prefetch_gib,prefetch_ms,content_chars,prefix,s_init_count,html_balance,doctype,has_popup,repeat_flag
+html_direct_k23_r01,html,direct_k23,1,56.103,78,4,42.853,51.431,,0.47,0.47,0,0,0,0,0,0,0,0.0,0.0,16,Ecco una landing,0,0,0,0,0

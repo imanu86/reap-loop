@@ -1,0 +1,28 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 3.140s
+ds4: cuda backend initialized for graph diagnostics
+0709 08:42:18 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0709 08:42:18 ds4-server: listening on http://127.0.0.1:8014
+0709 08:42:19 ds4-server: chat ctx=0..61:61 prompt start
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0709 08:44:21 ds4-server: chat ctx=0..61:61 prompt done 110.371s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0709 08:46:03 ds4-server: chat ctx=61..111:50 gen=50 decoding chunk=0.53 t/s avg=0.53 t/s 94.562s
+0709 08:46:56 ds4-server: chat ctx=111..161:50 gen=100 decoding chunk=1.01 t/s avg=0.69 t/s 143.930s
+0709 08:47:32 ds4-server: chat ctx=161..211:50 gen=150 decoding chunk=1.48 t/s avg=0.84 t/s 177.759s
+0709 08:47:37 ds4-server: chat ctx=211..221:10 gen=160 decoding chunk=2.03 t/s avg=0.88 t/s 182.676s
+0709 08:47:37 ds4-server: chat ctx=0..61:61 gen=160 finish=length 293.049s
