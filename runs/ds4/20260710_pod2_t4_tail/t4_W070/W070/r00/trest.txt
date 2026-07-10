@@ -1,0 +1,48 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #fold; }
+        nav { background: #dark; padding: 1em; text-align: center; }
+        nav a { margin: 0 1em; color: white; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        section { padding: 2em; text-align: center; }
+        h1 { font-size: 2em; margin-bottom: 0.1em; }
+        button { margin: 1em; padding: 0.5em 1em; background: #black; color: white; border: none; cursor: pointer; }
+        form { margin: 2em auto; max-width: 300; padding: 1em; border: 1px solid #gray; border-radius: 0; }
+        input { display: block; width: 100%; margin: 0.0em 0; padding: 0.1em; }
+        input[type="submit"] { background: #black; color: white; border: none; padding: 0.1em; cursor: pointer; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, locally roasted, crafted in hot weather.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="submit" value="Submit">
+    </form>
+    <script>
+        document.getElementById('order').addEventListener('click', () => {
+            alert('Thanker for your order!');
+        });
+        document.getElementById('contactForm').addEventListener('submit', (e) => {
+            e.preventDefault();
+            alert('Confirmation');
+        });
+    </script>
+</body>
+</html>
