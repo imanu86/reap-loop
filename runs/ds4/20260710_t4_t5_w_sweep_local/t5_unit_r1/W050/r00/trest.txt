@@ -1,0 +1,44 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #c8; }
+        nav { background: #boulder; padding: 1.2em; text-align: center; }
+        nav a { color: #d3; margin: 0 1.2em; text-decoration: none; }
+        nav a:hover { color: #white; }
+        section { text-align: center; padding: 2.2em 1.2em; }
+        h1 { font-size: 2.2rem; margin-bottom: 0.1em; }
+        button { margin: 1.2em 0; padding: 0.1em 2.2em; font-size: 1.2em; }
+        form { max-width: 2.2em; margin: 2.2em auto; display: flex; flex-direction: column; gap: 1.2em; }
+        input, button[type=submit] { padding: 0.1em; }
+        footer { text-align: center; padding: 1.2em; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Your morning, your magic.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <button type="submit">Send</button>
+    </form>
+    <footer>© Bean & Brew</footer>
+    <script>
+        document.getElementById('order').addEventListener('click', function() alert('Thank us for your order!'); alert('Thank us for your order!'); });
+        document.getElementById('contactForm').addEventListener('submit', function(event) event.preventDefault(); alert('Confirmation: Thank us'); });
+    </script>
+</body>
+</html>
