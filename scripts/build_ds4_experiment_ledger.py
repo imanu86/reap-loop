@@ -242,6 +242,7 @@ def parse_summary_rows(repo: Path) -> list[dict[str, str]]:
                 env = read_json(leaf / "server_env.json")
                 request = read_json(leaf / "request_measured.json")
                 response = read_json(leaf / "response_measured.json")
+                quality_notes = read_json(leaf / "quality_notes.json")
                 usage = as_dict(response.get("usage"))
                 content = text(leaf / "content_measured.txt")
                 log = text(leaf / "server.stderr.log") + "\n" + text(leaf / "server.stdout.log")
@@ -337,6 +338,9 @@ def parse_summary_rows(repo: Path) -> list[dict[str, str]]:
                         "has_script": clean(1 if "<script" in content.lower() else 0),
                         "has_popup": clean(src.get("has_popup") or (1 if "alert(" in content or "richiesta inviata" in content.lower() else 0)),
                         "repeat_flag": clean(src.get("repeat_flag")),
+                        "coherent_until_token_est": clean(quality_notes.get("coherent_until_token_est")),
+                        "result_text": clean(quality_notes.get("result_text") or quality_notes.get("failure_mode")),
+                        "verdict": clean(quality_notes.get("verdict")),
                         "pace_events": clean(
                             {
                                 "learned": src.get("pace_learned"),
@@ -663,7 +667,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "## Current Readout",
         "",
         "- Best current 3060-local stability candidate in the requested HTML800 A/B is still `K23 rotate32`: it reached 800 streamed tokens without the repeat detector, but it is slower than static K23 and still needs render/functional grading.",
-        "- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes.",
+        "- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.",
         "- Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.",
         "- Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.",
         "- Tighten-time relearn and rotation plumbing are useful actuator milestones. Blind step-down and frequent periodic rotate are too expensive; next tests should be trigger/delta based.",

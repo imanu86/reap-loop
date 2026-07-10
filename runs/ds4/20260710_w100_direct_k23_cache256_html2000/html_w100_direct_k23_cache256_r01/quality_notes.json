@@ -1,0 +1,8 @@
+{
+  "coherent_until_token_est": 183,
+  "first_bad_token_est": 184,
+  "repeat_conclusive_token_est": 223,
+  "failure_mode": "HTML starts coherently, then CSS degenerates inside the reset block: first malformed 'font-s' at stream token/event about 184 and repeated 'font-s: 2;' is conclusive by about token 223.",
+  "verdict": "fail_quality_loop_early",
+  "method": "Measured from stream_events_measured.jsonl cumulative content; event_index is token-like for streamed deltas."
+}

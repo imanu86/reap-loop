@@ -1,0 +1,83 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 2.616s
+ds4: cuda backend initialized for graph diagnostics
+0710 07:07:32 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0710 07:07:32 ds4-server: listening on http://127.0.0.1:8014
+0710 07:07:33 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE on - warmup=100 keep=23[23..96] step=0 ngram(n=3,win=120) drift=1.00 rel=0.15 hyst=200 breath(every=999999,len=80,keep=96,relearn=0) prebreath(on=0,drift=0.18,target=0.18,every=64,max=96,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=0 prefill_wait_wrap=0 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=0,every=32,decay=0.980,preserve_stable=1)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0710 07:10:32 ds4-server: chat ctx=0..78:78 prompt done 172.986s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0710 07:11:50 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=0.66 t/s avg=0.66 t/s 75.632s
+ds4: PACE learned      tok=100 phase=2 keep=0 ngram=0.021 hit=1.000 breaths=0
+0710 07:13:19 ds4-server: chat ctx=128..178:50 gen=100 decoding chunk=0.58 t/s avg=0.62 t/s 161.129s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE descent      tok=101 phase=3 keep=23 ngram=0.021 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2517 range, 6.07 GiB touched in 649 ms (16 thread, mlock)
+0710 07:13:37 ds4-server: chat ctx=178..228:50 gen=150 decoding chunk=2.71 t/s avg=0.84 t/s 179.606s
+0710 07:13:56 ds4-server: chat ctx=228..278:50 gen=200 decoding chunk=2.78 t/s avg=1.01 t/s 197.623s
+0710 07:14:12 ds4-server: chat ctx=278..328:50 gen=250 decoding chunk=3.08 t/s avg=1.17 t/s 213.874s
+0710 07:14:30 ds4-server: chat ctx=328..378:50 gen=300 decoding chunk=3.09 t/s avg=1.30 t/s 230.068s
+0710 07:14:46 ds4-server: chat ctx=378..428:50 gen=350 decoding chunk=3.07 t/s avg=1.42 t/s 246.367s
+0710 07:15:03 ds4-server: chat ctx=428..478:50 gen=400 decoding chunk=3.08 t/s avg=1.52 t/s 262.585s
+0710 07:15:19 ds4-server: chat ctx=478..528:50 gen=450 decoding chunk=3.16 t/s avg=1.62 t/s 278.391s
+0710 07:15:36 ds4-server: chat ctx=528..578:50 gen=500 decoding chunk=3.12 t/s avg=1.70 t/s 294.429s
+0710 07:15:52 ds4-server: chat ctx=578..628:50 gen=550 decoding chunk=3.11 t/s avg=1.77 t/s 310.519s
+0710 07:16:10 ds4-server: chat ctx=628..678:50 gen=600 decoding chunk=3.06 t/s avg=1.84 t/s 326.850s
+0710 07:16:26 ds4-server: chat ctx=678..728:50 gen=650 decoding chunk=3.09 t/s avg=1.89 t/s 343.042s
+0710 07:16:43 ds4-server: chat ctx=728..778:50 gen=700 decoding chunk=3.07 t/s avg=1.95 t/s 359.302s
+0710 07:17:01 ds4-server: chat ctx=778..828:50 gen=750 decoding chunk=3.07 t/s avg=2.00 t/s 375.567s
+0710 07:17:17 ds4-server: chat ctx=828..878:50 gen=800 decoding chunk=3.10 t/s avg=2.04 t/s 391.688s
+0710 07:17:34 ds4-server: chat ctx=878..928:50 gen=850 decoding chunk=3.08 t/s avg=2.08 t/s 407.918s
+0710 07:17:50 ds4-server: chat ctx=928..978:50 gen=900 decoding chunk=3.07 t/s avg=2.12 t/s 424.181s
+0710 07:18:08 ds4-server: chat ctx=978..1028:50 gen=950 decoding chunk=3.09 t/s avg=2.16 t/s 440.380s
+0710 07:18:24 ds4-server: chat ctx=1028..1078:50 gen=1000 decoding chunk=3.06 t/s avg=2.19 t/s 456.700s
+0710 07:18:42 ds4-server: chat ctx=1078..1128:50 gen=1050 decoding chunk=2.93 t/s avg=2.22 t/s 473.761s
+0710 07:18:58 ds4-server: chat ctx=1128..1178:50 gen=1100 decoding chunk=3.05 t/s avg=2.24 t/s 490.139s
+0710 07:19:16 ds4-server: chat ctx=1178..1228:50 gen=1150 decoding chunk=3.08 t/s avg=2.27 t/s 506.353s
+0710 07:19:32 ds4-server: chat ctx=1228..1278:50 gen=1200 decoding chunk=3.09 t/s avg=2.30 t/s 522.528s
+0710 07:19:49 ds4-server: chat ctx=1278..1328:50 gen=1250 decoding chunk=3.08 t/s avg=2.32 t/s 538.739s
+0710 07:20:06 ds4-server: chat ctx=1328..1378:50 gen=1300 decoding chunk=3.07 t/s avg=2.34 t/s 555.032s
+0710 07:20:23 ds4-server: chat ctx=1378..1428:50 gen=1350 decoding chunk=3.09 t/s avg=2.36 t/s 571.230s
+0710 07:20:39 ds4-server: chat ctx=1428..1478:50 gen=1400 decoding chunk=3.07 t/s avg=2.38 t/s 587.501s
+0710 07:20:57 ds4-server: chat ctx=1478..1528:50 gen=1450 decoding chunk=3.07 t/s avg=2.40 t/s 603.803s
+0710 07:21:13 ds4-server: chat ctx=1528..1578:50 gen=1500 decoding chunk=3.08 t/s avg=2.42 t/s 620.045s
+0710 07:21:30 ds4-server: chat ctx=1578..1628:50 gen=1550 decoding chunk=3.08 t/s avg=2.44 t/s 636.295s
+0710 07:21:46 ds4-server: chat ctx=1628..1678:50 gen=1600 decoding chunk=3.07 t/s avg=2.45 t/s 652.572s
+0710 07:22:04 ds4-server: chat ctx=1678..1728:50 gen=1650 decoding chunk=3.00 t/s avg=2.47 t/s 669.245s
+0710 07:22:21 ds4-server: chat ctx=1728..1778:50 gen=1700 decoding chunk=2.94 t/s avg=2.48 t/s 686.272s
+0710 07:22:39 ds4-server: chat ctx=1778..1828:50 gen=1750 decoding chunk=3.04 t/s avg=2.49 t/s 702.705s
+0710 07:22:55 ds4-server: chat ctx=1828..1878:50 gen=1800 decoding chunk=3.07 t/s avg=2.50 t/s 719.009s
+0710 07:23:13 ds4-server: chat ctx=1878..1928:50 gen=1850 decoding chunk=3.04 t/s avg=2.52 t/s 735.462s
+0710 07:23:29 ds4-server: chat ctx=1928..1978:50 gen=1900 decoding chunk=3.07 t/s avg=2.53 t/s 751.732s
+0710 07:23:47 ds4-server: chat ctx=1978..2028:50 gen=1950 decoding chunk=3.03 t/s avg=2.54 t/s 768.226s
+0710 07:24:03 ds4-server: chat ctx=2028..2078:50 gen=2000 decoding chunk=3.08 t/s avg=2.55 t/s 784.435s
+0710 07:24:03 ds4-server: chat ctx=0..78:78 gen=2000 finish=length 957.422s
+0710 07:24:03 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=86043 selected_experts=520236 cache_hits=0 cache_misses=262 hit_rate=0.0000 miss_per_expert=0.0005 direct_loads=520230 copy_calls=1561476 copied=3513321.00 MiB copy_ms=681185.147 copy_ms_per_batch=7.917 sync_calls=1561476 sync_ms=179239.470 sync_ms_per_batch=2.083
+ds4: expert tiering observe summary batches=86043 slots=536124 compact=520236 hit_rate=0.0000 hits=0 misses=6 direct=520230 evictions=0 direct=3511552.50 MiB compact=3511593.00 MiB
+ds4: expert tiering observe layer=1 batches=2001 slots=12468 compact=12206 hit_rate=0.0000 misses=0 direct=12206 evictions=0 cap=0 top=46:535,59:533,237:533,210:532,252:281,19:279
+ds4: expert tiering observe layer=2 batches=2001 slots=12468 compact=12203 hit_rate=0.0000 misses=0 direct=12203 evictions=0 cap=0 top=162:542,164:540,63:527,44:524,226:523,34:280
+ds4: expert tiering observe layer=0 batches=2001 slots=12468 compact=12200 hit_rate=0.0000 misses=6 direct=12194 evictions=0 cap=172 top=119:526,19:524,109:283,156:283,14:279,163:279
+ds4: expert tiering observe layer=19 batches=2001 slots=12468 compact=12118 hit_rate=0.0000 misses=0 direct=12118 evictions=0 cap=0 top=10:1794,213:1698,111:1475,173:1152,243:1058,116:818
+ds4: expert tiering observe layer=3 batches=2001 slots=12468 compact=12110 hit_rate=0.0000 misses=0 direct=12110 evictions=0 cap=0 top=60:2002,229:1686,45:1632,226:1413,74:1174,112:846

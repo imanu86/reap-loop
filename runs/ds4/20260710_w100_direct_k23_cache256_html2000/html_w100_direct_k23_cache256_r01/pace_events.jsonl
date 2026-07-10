@@ -1,0 +1,3 @@
+{"ev":"prefill_reset","tok":0,"phase":1,"keep":0,"ngram":0.0000,"hit":1.0000,"breaths":0,"be":999999}
+{"ev":"learned","tok":100,"phase":2,"keep":0,"ngram":0.0210,"hit":1.0000,"breaths":0,"be":999999}
+{"ev":"descent","tok":101,"phase":3,"keep":23,"ngram":0.0209,"hit":1.0000,"breaths":0,"be":999999}

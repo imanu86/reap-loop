@@ -6,14 +6,14 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 276
-- Runner-measured rows: 93
+- Rows total: 277
+- Runner-measured rows: 94
 - Legacy / Claude / claim rows: 183
 
 ## Current Readout
 
 - Best current 3060-local stability candidate in the requested HTML800 A/B is still `K23 rotate32`: it reached 800 streamed tokens without the repeat detector, but it is slower than static K23 and still needs render/functional grading.
-- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes.
+- Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.
 - Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.
 - Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.
 - Tighten-time relearn and rotation plumbing are useful actuator milestones. Blind step-down and frequent periodic rotate are too expensive; next tests should be trigger/delta based.
