@@ -1,0 +1,27 @@
+{
+  "harness": "run_w_sweep_freeze_safe.py",
+  "created": "2026-07-11T01:08:54",
+  "w_values": [
+    50
+  ],
+  "runs": 1,
+  "headroom": 16,
+  "total": 1200,
+  "keep_k": 23,
+  "mask_mode": "weighted",
+  "n_expert": 256,
+  "temp": 0.0,
+  "top_p": null,
+  "sample_p2_only": false,
+  "seed_base": 0,
+  "cache_experts": 256,
+  "ctx_p1": 4096,
+  "ctx_p2": 4096,
+  "port": null,
+  "binary": "/root/ds4/ds4",
+  "model": "/root/models/ds4-2bit.gguf",
+  "prompt_file": "/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/frontpage_prompt.txt",
+  "prompt_chars": 817,
+  "recipe_source": "runs/ds4/20260710_pod_cache1024_warmup_replay/README.md",
+  "note": "port is recorded for manifest/server-mode parity; the executed path is CLI-direct two-phase (as in the pod replay)."
+}

@@ -40,3 +40,8 @@
 [driver-v2] T5 unit r1 done rc=0 2026-07-11T01:08:53+02:00
 [driver-v2] T5 weighted r2 start 2026-07-11T01:08:53+02:00
 [run] W=50 run=0 ...
+[done] rows=1  verdict={'pairs': [(50, 2)], 'monotone_non_decreasing': None, 'level_spread': 0}
+[done] summaries in /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260710_t4_t5_w_sweep_local/t5_weighted_r2
+[driver-v2] T5 weighted r2 done rc=0 2026-07-11T01:48:18+02:00
+[driver-v2] T5 unit r2 start 2026-07-11T01:48:18+02:00
+[run] W=50 run=0 ...
