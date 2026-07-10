@@ -1,0 +1,50 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #faaq; }
+        nav { background: #brown; padding: 1.0.5rem; display: flex; gap: 1.2rem; }
+        nav a { color: #stone; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        section { padding: 2rem; text-align: center; }
+        h1 { font-size: 2.3rem; margin-bottom: 0.1rem; }
+        .subheading { font-size: 1.2rem; color: #gray; margin-bottom: 1.2rem; }
+        #order { padding: 1.2rem 2.3rem; font-size: 1.2rem; background: #dark; color: #white; border: none; border-radius: 2.3rem; cursor: pointer; }
+        form { margin: 2rem auto; max-width: 2.3rem; background: #white; padding: 2rem; border-radius: 2.3rem; }
+        input { display: block; width: 100%; margin-bottom: 1.2rem; padding: 1.2rem; border: 1px solid #gray; border-radius: 2.3rem; }
+        input[type="submit"] { background: #dark; color: #white; border: none; cursor: pointer; }
+        input[type="submit"]:hover { background: #brown; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p class="subheading">Freshly roasted · thoughtfully breed</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <input type="submit" value="Send">
+    </form>
+    <script>
+        document.getElementById('order').addEventListener('click', function() {
+            alert('Thank you for your order!');
+        });
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            alert('Conferycation!');
+        });
+    </script>
+</body>
+</html>
