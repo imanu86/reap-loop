@@ -49,6 +49,15 @@ claim è una **distribuzione**, non un punto; **collapse-rate** = frazione di
 rollout che degenerano non-recuperati, è la metrica primaria (non gli esiti
 singoli).
 
+**P4 — DESIGN OVER TRIAL.** Gli esperimenti **identificano parametri del decision
+model**, non enumerano config. Prima di ogni run: quale parametro non-identificato
+del modello (width→K*, hazard, obiettivo) misura? Se nessuno, non si lancia. Il
+modello vive in `docs/DECISION_MODEL.md` + `scripts/decision_model.py`
+(`runs/ds4/20260711_emodel_decision/REPORT.md`): sensori invarianti, formule,
+tabella decisioni, e la **lista minima** degli esperimenti di identificazione
+(oggi: traccia routing su task stretti, efficacia rewind su K12 largo, tps(K<23)
+locale). Le config si **calcolano** dal modello, non si provano a tentativi.
+
 ---
 
 ## Auto-calibrazione (il cuore "qualsiasi hardware") — DA COSTRUIRE
