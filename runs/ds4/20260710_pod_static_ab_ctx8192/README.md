@@ -42,6 +42,23 @@ fase2 1200, stessa config del T4 locale in corso).
   (`cyberpunk_prompt.txt`, 199 byte). Prompt coffee = l'esatto
   `frontpage_prompt.txt` 819 byte del replay.
 
+**Secondo abort mirato (solo armA/armB, 17:10→17:28Z):** sul prompt
+cyberpunk (italiano) la fase-1 apre SEMPRE con prosa italiana prima della
+fence («Ecco una landing page cyberpunk…», confermato su prep-smoke e armA
+r00) ⇒ lo strip @92406ce (solo fence *leading*) non scatta MAI su questo
+prompt ⇒ armA r00 congelato con taglio grezzo DENTRO un attributo
+(`content="width=device-width, initial`) = patologia J44 ⇒ fase-2 in loop
+(`'scp', 'scp', …`). Poiché il mandato per (a)/(b) è esplicitamente «freeze
+sicuro via freeze_boundary», l'harness sul pod è stato esteso in modo
+POD-LOCALE (splice della sola `strip_markdown_fence`: salta un prologo in
+prosa ≤600 char fino alla prima riga fence-open; py_compile OK; test
+prose/lead/plain/closed passati; freeze `>` within-target sul caso prose) e
+armA+armB rilanciati da zero alle 17:28:38Z. L'r00 rotto è conservato come
+evidenza (`armA_k23_rawcut_evidence/`). L'arm S5 NON è stato rifatto: la sua
+ragione d'essere è la parità harness col T4 locale @92406ce. Fix da
+integrare upstream dall'owner dell'harness (utile anche al T4 locale sui
+prompt che elicitano prosa).
+
 ## Bracci (tutti n=3, W=50, two-phase, freeze sicuro)
 
 | arm | prompt | K | fase2 budget | ctx p2 | cache | outdir |
