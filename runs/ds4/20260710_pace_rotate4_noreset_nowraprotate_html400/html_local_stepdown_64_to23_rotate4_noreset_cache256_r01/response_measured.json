@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783654742,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.1\">\n    <title>AI CODE · N E G O Z I O</title>\n    <style>\n    /* reset */\n    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n    body {\n        background: #0d0f1f;\n        font-family: 'system-emo, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;\n        color: #e0f0ff;\n        min-height: 100vh;\n        display: flex;\n        align-items: center;\n        justify-content: center;\n        padding: 2rem;\n        background-image: radial-gradient circle at 50% 50%, #0c1a2b, #030407;\n    }\n    .page {\n        max-width: 1200px;\n        width: 100%;\n        background: rgba(10, 15, 20, .0.85);\n        backdrop-filter: blur(12px);\n        border: 1px solid #0ff7;\n        border-radius: 2rem 2rem 1rem 2rem;\n        box-shadow: 0 0 40px #0ff2, 0 0 80px #0ff1;\n        padding: 2.5rem 2rem;\n        transition: box-shadow 0.3s;\n    }\n    header {\n        display: flex;\n        flex-wrap: wrap;\n        justify-content: space-between;\n        align-items: center;\n        border-bottom: 1px"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 400,
+    "total_tokens": 478,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

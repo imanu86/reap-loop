@@ -188,8 +188,11 @@ tradeoff vs a (dead) predictive sensor.
 | `DS4_PACE_ANNEAL_WARM` | 300 | tokens before tightening unlocks |
 | `DS4_PACE_S1` | 0 | enable S1 diagnostic (monitor only) |
 | `DS4_PACE_WRAP` | 0 | run WRAP bulk page-in on mask change. **Off by default** — on the practical 3060 config prefetch *slows* t/s (0.82 vs 1.27, see CLAIMS_CURRENT §PREFETCH). Enable only when a probe proves a deeply SSD-bound regime. |
+| `DS4_PACE_WRAP_ROTATE` | 0 | allow WRAP bulk page-in on K-constant `rotate` mask refreshes. Default off after 2026-07-10 rotate4 measured 699.54 GiB / 65.6 s prefetch with no quality pass; K-changing tighten/breath/prebreath can still WRAP when `DS4_PACE_WRAP=1`. |
 | `DS4_PACE_PREFILL_APPLY` | 1 | learn the first mask from prompt routing and apply it after prefill, before decode token generation. This is a dynamic prompt mask, not a static domain mask. |
 | `DS4_PACE_PREFILL_WAIT_WRAP` | 1 | when WRAP is enabled, wait for the prefill-derived working set page-in before starting decode. Local 3060 smoke: 6.07 GiB touched in 445 ms, generation 2.83 t/s on a 19/24-token probe. |
+| `DS4_PACE_RELEARN_ON_TIGHTEN` | 0 | when a tighten step fires, rebuild the new smaller keep-K mask from raw-router EWMA mass (`rmass`) instead of shrinking the original warmup ranking. Requires the raw-router read path used by rotation; measured 2026-07-10 as lower n-gram drift than stale tighten. |
+| `DS4_PACE_ROTATE_PRESERVE_STABLE` | 1 | K-constant raw-router rotation does not reset `stable_since`, so frequent rotation can no longer indefinitely postpone tighten. |
 | `DS4_PACE_LOG` | "" | optional JSONL event log (off SSD hot path if unset) |
 
 Backward-compat: `DS4_REAP_WRAP` still honored as an alias for

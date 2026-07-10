@@ -1,46 +1,72 @@
 diff --git a/ds4.c b/ds4.c
-index 7812d10..b6f2a41 100644
+index 47a5efa..0299851 100644
 --- a/ds4.c
 +++ b/ds4.c
-@@ -7439,6 +7439,8 @@ static struct {
+@@ -7446,6 +7446,8 @@ static struct {
      int      rotate_on;          /* DS4_PACE_ROTATE: K-constant raw-router mask rotation */
      uint32_t rotate_every;       /* rotate at most once every N decode tokens */
      double   rotate_decay;       /* per-layer EWMA decay for raw router probabilities */
-+    int      rotate_preserve_stable; /* do not let K-constant rotate block tighten */
-+    int      relearn_on_tighten; /* rebuild target-K mask from raw-router rmass */
- 
-     /* --- runtime state --- */
-     ds4_pace_phase phase;
-@@ -12827,6 +12829,8 @@ static void ds4_pace_init(void) {
++    int      rotate_preserve_stable; /* keep tighten clock stable across K-constant rotates */
++    int      relearn_on_tighten;  /* rebuild keep set from raw-router mass on tighten */
+     int      weighted_warmup;     /* DS4_PACE_WEIGHTED_WARMUP: learn initial mask from slot weights */
+     int      weighted_relearn;    /* DS4_PACE_WEIGHTED_RELEARN: re-learn breath mass from slot weights */
+     uint64_t weighted_read_fail;
+@@ -12856,6 +12858,10 @@ static void ds4_pace_init(void) {
      g_pace.rotate_decay = pace_env_d("DS4_PACE_ROTATE_DECAY", 0.98);
      if (g_pace.rotate_decay < 0.0) g_pace.rotate_decay = 0.0;
      if (g_pace.rotate_decay > 1.0) g_pace.rotate_decay = 1.0;
-+    g_pace.rotate_preserve_stable = pace_env_i("DS4_PACE_ROTATE_PRESERVE_STABLE", 1);
-+    g_pace.relearn_on_tighten = pace_env_i("DS4_PACE_RELEARN_ON_TIGHTEN", 0);
++    g_pace.rotate_preserve_stable =
++        pace_env_i("DS4_PACE_ROTATE_PRESERVE_STABLE", 1);
++    g_pace.relearn_on_tighten =
++        pace_env_i("DS4_PACE_RELEARN_ON_TIGHTEN", 0);
+     {
+         int weighted_all = pace_env_i("DS4_PACE_WEIGHTED_SELECTED", 0);
+         g_pace.weighted_warmup =
+@@ -12874,15 +12880,16 @@ static void ds4_pace_init(void) {
+     g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+     if (g_pace.prebreath_relearn)
+         g_pace.bmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+-    if (g_pace.rotate_on)
++    if (g_pace.rotate_on || g_pace.relearn_on_tighten)
+         g_pace.rmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
  
-     g_pace.phase = PACE_WARMUP;
-     g_pace.in_prefill = 0;
-@@ -12843,7 +12847,8 @@ static void ds4_pace_init(void) {
+     fprintf(stderr,
          "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
          "drift=%.2f rel=%.2f hyst=%u breath(every=%u,len=%u,keep=%d,relearn=%d) "
-         "prebreath(on=%d,drift=%.2f,every=%u,max=%d) "
--        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d "
+         "prebreath(on=%d,drift=%.2f,target=%.2f,every=%u,max=%d,adapt=%d,gain=%.2f,pow=%.2f,step_max=%d,relearn=%d,rdecay=%.2f) "
+-        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d weighted(warmup=%d,relearn=%d) "
+-        "rotate(on=%d,every=%u,decay=%.3f)\n",
 +        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d "
-+        "relearn_on_tighten=%d rotate_preserve_stable=%d "
-         "rotate(on=%d,every=%u,decay=%.3f)\n",
++        "relearn_on_tighten=%d weighted(warmup=%d,relearn=%d) "
++        "rotate(on=%d,every=%u,decay=%.3f,preserve_stable=%d)\n",
          g_pace.warmup, g_pace.keep, g_pace.keep_min, g_pace.keep_max,
          g_pace.keep_step, g_pace.ngram_n, g_pace.ngram_window,
-@@ -12853,7 +12858,8 @@ static void ds4_pace_init(void) {
-         g_pace.prebreath_every, g_pace.prebreath_keep_max,
+         g_pace.drift, g_pace.release, g_pace.hyst, g_pace.breath_every,
+@@ -12895,10 +12902,11 @@ static void ds4_pace_init(void) {
+         g_pace.prebreath_relearn, g_pace.prebreath_relearn_decay,
          g_pace.anneal_warm, g_pace.wrap_on, g_pace.cache_flush,
          g_pace.prefill_apply, g_pace.prefill_wait_wrap, g_pace.s1_on,
--        g_pace.exchange_observe, g_pace.rotate_on, g_pace.rotate_every,
+-        g_pace.exchange_observe, g_pace.weighted_warmup,
 +        g_pace.exchange_observe, g_pace.relearn_on_tighten,
-+        g_pace.rotate_preserve_stable, g_pace.rotate_on, g_pace.rotate_every,
-         g_pace.rotate_decay);
++        g_pace.weighted_warmup,
+         g_pace.weighted_relearn,
+         g_pace.rotate_on, g_pace.rotate_every,
+-        g_pace.rotate_decay);
++        g_pace.rotate_decay, g_pace.rotate_preserve_stable);
  }
  
-@@ -13218,10 +13224,15 @@ static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weig
+ static inline int ds4_pace_active(void) {
+@@ -12983,7 +12991,8 @@ static void ds4_pace_note_selected_batch(uint32_t il,
+ 
+ static inline int ds4_pace_rotate_wants_router(void) {
+     if (!ds4_pace_active()) return 0;
+-    return g_pace.rotate_on && g_pace.rmass && !g_pace.in_prefill &&
++    return (g_pace.rotate_on || g_pace.relearn_on_tighten) &&
++           g_pace.rmass && !g_pace.in_prefill &&
+            g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0;
+ }
+ 
+@@ -13286,7 +13295,11 @@ static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weig
      const uint32_t last_change = g_pace.last_rotate_tok > g_pace.stable_since
          ? g_pace.last_rotate_tok : g_pace.stable_since;
      if (g_pace.tok - last_change < g_pace.rotate_every) return 0;
@@ -52,20 +78,20 @@ index 7812d10..b6f2a41 100644
      g_pace.last_rotate_tok = g_pace.tok;
      g_pace.rotate_events++;
      ds4_pace_emit("rotate", g_pace.ema_ngram, g_pace.ema_hit);
-     return 1;
- }
-@@ -13287,8 +13298,14 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+@@ -13415,8 +13428,16 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
              && g_pace.keep > g_pace.keep_min) {
              g_pace.keep = g_pace.keep - g_pace.keep_step > g_pace.keep_min
                  ? g_pace.keep - g_pace.keep_step : g_pace.keep_min;
--            ds4_pace_apply_keep(model, weights, g_pace.keep);
+-            ds4_pace_apply_keep(model, weights, g_pace.keep, "tighten");
 -            ds4_pace_emit("tighten", g_pace.ema_ngram, g_pace.ema_hit);
-+            if (g_pace.relearn_on_tighten && g_pace.rmass && g_pace.rmass_rows > 0) {
++            if (g_pace.relearn_on_tighten && g_pace.rmass &&
++                g_pace.rmass_rows > 0) {
 +                ds4_pace_apply_keep_acc(model, weights, g_pace.rmass,
 +                                        g_pace.keep, "tighten_relearn");
-+                ds4_pace_emit("tighten_relearn", g_pace.ema_ngram, g_pace.ema_hit);
++                ds4_pace_emit("tighten_relearn",
++                              g_pace.ema_ngram, g_pace.ema_hit);
 +            } else {
-+                ds4_pace_apply_keep(model, weights, g_pace.keep);
++                ds4_pace_apply_keep(model, weights, g_pace.keep, "tighten");
 +                ds4_pace_emit("tighten", g_pace.ema_ngram, g_pace.ema_hit);
 +            }
          }

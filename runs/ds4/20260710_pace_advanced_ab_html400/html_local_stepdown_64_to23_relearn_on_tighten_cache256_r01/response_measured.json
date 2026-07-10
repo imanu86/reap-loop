@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783652652,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>AI·Code · Negozio di Programmazione AI</title>\n<style>\n    /* reset */\n    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }\n    body { font-family: 'Courier New', Courier, monospace; background: #000; color: #lne; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20v; }\n    .page { max-width: 120px; width: 100%; background: rgba(0, 0, 0, 0.80); border: 1px solid #0f; border-radius: 10px; padding: 40v 20v; box-shadow: 0 0 20px #0f; backdrop-filter: blur(2px); }\n    h1, h2, h3 { font-weight: normal; text-transform: uppercase; letter-spacing: 2px; }\n    h1 { font-size: 2v; text-shadow: 0 0 10px #0f, 0 0 20px #0f; margin-bottom: 20v; }\n    .hero { text-align: center; padding: 20v 0; border-bottom: 1px dashed #0f; }\n    .hero p { font-size: 1v; color: #lne; opacity: 0.8; }\n    .grid { display: grid"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 400,
+    "total_tokens": 478,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

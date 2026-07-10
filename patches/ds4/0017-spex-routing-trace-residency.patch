@@ -1,0 +1,396 @@
+From 3b4f9a0b6c7d8e9f00112233445566778899aabb Mon Sep 17 00:00:00 2001
+From: reap-loop <reap-loop@local>
+Date: Fri, 10 Jul 2026 12:00:00 +0200
+Subject: [PATCH] spex: append optional routing residency trace columns
+
+DS4_SPEX_TRACE_ROUTING_RESIDENCY=1 appends storage0..storage5 to the
+existing DS4_SPEX_TRACE_ROUTING CSV.  The default CSV remains unchanged;
+when weights are enabled the storage columns are appended after w0..w5,
+otherwise they are appended after e0..e5.
+
+Residency is derived from the runtime CUDA-side metadata that already
+decides how routed expert weights are served: the streaming expert cache
+slot table and model range cache/registration state.  No expert payloads
+or GPU tensors are read back for this feature.
+---
+ ds4.c       |  56 ++++++++++++++++++++++++++-
+ ds4_cuda.cu | 111 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ ds4_gpu.h   |  16 ++++++++
+ 3 files changed, 182 insertions(+), 2 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 78cae24..b823111 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14381,6 +14381,20 @@ static bool metal_graph_spex_trace_routing_weights_enabled(void) {
+     return cached == 1;
+ }
+ 
++/* DS4_SPEX_TRACE_ROUTING_RESIDENCY=1 appends storage0..storage5 after the
++ * selected expert ids, or after w0..w5 when routing weights are enabled.
++ * Values come from ds4_gpu_stream_expert_residency(), which inspects runtime
++ * cache / mapping metadata only; it does not read expert payloads back from the
++ * GPU. */
++static bool metal_graph_spex_trace_routing_residency_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_SPEX_TRACE_ROUTING_RESIDENCY");
++        cached = (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++    }
++    return cached == 1;
++}
++
+ static FILE *metal_graph_spex_trace_routing_file(void) {
+     if (g_spex_trace_routing_failed) return NULL;
+     const char *path = getenv("DS4_SPEX_TRACE_ROUTING");
+@@ -14400,16 +14414,27 @@ static FILE *metal_graph_spex_trace_routing_file(void) {
+     }
+     g_spex_trace_routing_path = ds4_strdup(path);
+     if (metal_graph_spex_trace_routing_weights_enabled()) {
+-        fprintf(g_spex_trace_routing_fh,
+-                "pos,layer,n,e0,e1,e2,e3,e4,e5,w0,w1,w2,w3,w4,w5\n");
++        if (metal_graph_spex_trace_routing_residency_enabled()) {
++            fprintf(g_spex_trace_routing_fh,
++                    "pos,layer,n,e0,e1,e2,e3,e4,e5,w0,w1,w2,w3,w4,w5,"
++                    "storage0,storage1,storage2,storage3,storage4,storage5\n");
++        } else {
++            fprintf(g_spex_trace_routing_fh,
++                    "pos,layer,n,e0,e1,e2,e3,e4,e5,w0,w1,w2,w3,w4,w5\n");
++        }
+     } else {
+-        fprintf(g_spex_trace_routing_fh,
+-                "pos,layer,n,e0,e1,e2,e3,e4,e5\n");
++        if (metal_graph_spex_trace_routing_residency_enabled()) {
++            fprintf(g_spex_trace_routing_fh,
++                    "pos,layer,n,e0,e1,e2,e3,e4,e5,"
++                    "storage0,storage1,storage2,storage3,storage4,storage5\n");
++        } else {
++            fprintf(g_spex_trace_routing_fh,
++                    "pos,layer,n,e0,e1,e2,e3,e4,e5\n");
++        }
+     }
+-    fprintf(stderr, "ds4: SPEX routing trace enabled: %s (weights: %s)\n",
++    fprintf(stderr,
++            "ds4: SPEX routing trace enabled: %s (weights: %s residency: %s)\n",
+             path,
+-            metal_graph_spex_trace_routing_weights_enabled() ? "on" : "off");
++            metal_graph_spex_trace_routing_weights_enabled() ? "on" : "off",
++            metal_graph_spex_trace_routing_residency_enabled() ? "on" : "off");
+     return g_spex_trace_routing_fh;
+ }
+ 
+@@ -14423,9 +14448,26 @@ static void metal_graph_spex_trace_selected(
+         const ds4_gpu_graph *g,
+         uint32_t             il,
+         const int32_t       *selected_ids,
+-        uint32_t             n_selected) {
++        uint32_t             n_selected,
++        const ds4_model     *model,
++        const ds4_layer_weights *layer,
++        uint64_t             gate_expert_bytes,
++        uint64_t             down_expert_bytes) {
+     if (!g || !g->spex_trace_decode_active || !selected_ids ||
+         n_selected == 0 || n_selected > DS4_MAX_EXPERT_USED) {
+         return;
+@@ -14438,6 +14480,16 @@ static void metal_graph_spex_trace_selected(
+             return;
+         }
+     }
++    ds4_gpu_stream_expert_table residency_table;
++    bool residency_table_valid = false;
++    if (metal_graph_spex_trace_routing_residency_enabled() &&
++        model && layer && il < DS4_N_LAYER) {
++        residency_table =
++            graph_stream_expert_table_make(model,
++                                           layer,
++                                           il,
++                                           gate_expert_bytes,
++                                           down_expert_bytes);
++        residency_table_valid = residency_table.model_map != NULL;
++    }
+     FILE *fh = metal_graph_spex_trace_routing_file();
+     if (!fh) return;
+     fprintf(fh,
+@@ -14476,13 +14528,45 @@ static void metal_graph_spex_trace_selected(
+             }
+         }
+     }
++    if (metal_graph_spex_trace_routing_residency_enabled()) {
++        for (uint32_t i = 0; i < DS4_MAX_EXPERT_USED; i++) {
++            const char *storage = "unknown";
++            if (residency_table_valid && i < n_selected) {
++                switch (ds4_gpu_stream_expert_residency(
++                            &residency_table,
++                            (uint32_t)selected_ids[i])) {
++                case DS4_GPU_EXPERT_RESIDENCY_VRAM:
++                    storage = "vram";
++                    break;
++                case DS4_GPU_EXPERT_RESIDENCY_CPU_RAM:
++                    storage = "cpu ram";
++                    break;
++                case DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD:
++                    storage = "ssd offload";
++                    break;
++                case DS4_GPU_EXPERT_RESIDENCY_UNKNOWN:
++                default:
++                    storage = "unknown";
++                    break;
++                }
++            }
++            fprintf(fh, ",%s", storage);
++        }
++    }
+     fputc('\n', fh);
+ }
+ 
+ static void metal_graph_spex_note_selected(
+         ds4_gpu_graph *g,
+         uint32_t       il,
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
+-    metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
+     g->spex_prefetch_selected_valid = false;
+     if (!selected_ids ||
+@@ -14736,7 +14820,14 @@ static bool metal_graph_decode_cuda_selected_load(
+                                   (uint64_t)DS4_N_EXPERT_USED *
+                                       sizeof(selected_ids[0])) != 0;
+     const double t_read = profile ? now_sec() : 0.0;
+ 
+     if (ok) {
+-        metal_graph_spex_note_selected(g, il, selected_ids, DS4_N_EXPERT_USED);
++        metal_graph_spex_trace_selected(g,
++                                        il,
++                                        selected_ids,
++                                        DS4_N_EXPERT_USED,
++                                        model,
++                                        layer,
++                                        gate_expert_bytes,
++                                        down_expert_bytes);
++        metal_graph_spex_note_selected(g, il, selected_ids, DS4_N_EXPERT_USED);
+     }
+     if (ok) {
+         const ds4_gpu_stream_expert_table table =
+@@ -16178,6 +16269,15 @@ static bool metal_graph_encode_decode_layer(
+                                                async_load.selected_ids,
+                                                DS4_N_EXPERT_USED);
+             }
++            if (ok) {
++                metal_graph_spex_trace_selected(g,
++                                                il,
++                                                async_load.selected_ids,
++                                                DS4_N_EXPERT_USED,
++                                                model,
++                                                layer,
++                                                gate_expert_bytes,
++                                                down_expert_bytes);
++            }
+         } else if (ok) {
+             ok = ds4_gpu_commit_and_wait_selected_readback(selected_event,
+                                                            "selected-id shared-overlap") != 0;
+@@ -16197,6 +16297,15 @@ static bool metal_graph_encode_decode_layer(
+             if (ok) {
+                 metal_graph_spex_note_selected(g, il, selected_ids, DS4_N_EXPERT_USED);
+             }
++            if (ok) {
++                metal_graph_spex_trace_selected(g,
++                                                il,
++                                                selected_ids,
++                                                DS4_N_EXPERT_USED,
++                                                model,
++                                                layer,
++                                                gate_expert_bytes,
++                                                down_expert_bytes);
++            }
+             if (ok) {
+                 const ds4_gpu_stream_expert_table table =
+                     graph_stream_expert_table_make(model,
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 68b022c..2cb91fb 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -505,6 +505,54 @@ static int cuda_model_range_is_cached(const void *model_map, uint64_t offset, ui
+     return 0;
+ }
+ 
++static ds4_gpu_expert_residency cuda_model_range_residency(
++        const void *model_map,
++        uint64_t    offset,
++        uint64_t    bytes) {
++    if (!model_map || bytes == 0) return DS4_GPU_EXPERT_RESIDENCY_UNKNOWN;
++    const uint64_t end = offset + bytes;
++    if (end < offset) return DS4_GPU_EXPERT_RESIDENCY_UNKNOWN;
++
++    if (g_model_device_owned) return DS4_GPU_EXPERT_RESIDENCY_VRAM;
++
++    for (const cuda_model_range &r : g_model_ranges) {
++        if (r.host_base != model_map) continue;
++        if (offset >= r.offset && end <= r.offset + r.bytes) {
++            return r.host_registered ?
++                DS4_GPU_EXPERT_RESIDENCY_CPU_RAM :
++                DS4_GPU_EXPERT_RESIDENCY_VRAM;
++        }
++        if (r.host_registered && r.registered_base &&
++            r.registered_device_base) {
++            const uintptr_t h0 = (uintptr_t)((const char *)model_map + offset);
++            const uintptr_t h1 = h0 + bytes;
++            const uintptr_t r0 = (uintptr_t)r.registered_base;
++            const uintptr_t r1 = r0 + r.registered_bytes;
++            if (h1 >= h0 && h0 >= r0 && h1 <= r1) {
++                return DS4_GPU_EXPERT_RESIDENCY_CPU_RAM;
++            }
++        }
++    }
++
++    if (g_model_registered || g_model_hmm_direct ||
++        getenv("DS4_CUDA_DIRECT_MODEL") != NULL) {
++        return DS4_GPU_EXPERT_RESIDENCY_CPU_RAM;
++    }
++
++    if (g_ssd_streaming_mode &&
++        g_model_fd >= 0 &&
++        (g_model_fd_host_base == NULL || model_map == g_model_fd_host_base)) {
++        return DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD;
++    }
++
++    return DS4_GPU_EXPERT_RESIDENCY_UNKNOWN;
++}
++
++static ds4_gpu_expert_residency cuda_model_ranges_residency3(
++        const void *model_map,
++        uint64_t    gate_offset,
++        uint64_t    up_offset,
++        uint64_t    down_offset,
++        uint64_t    gate_expert_bytes,
++        uint64_t    down_expert_bytes) {
++    ds4_gpu_expert_residency a =
++        cuda_model_range_residency(model_map, gate_offset, gate_expert_bytes);
++    ds4_gpu_expert_residency b =
++        cuda_model_range_residency(model_map, up_offset, gate_expert_bytes);
++    ds4_gpu_expert_residency c =
++        cuda_model_range_residency(model_map, down_offset, down_expert_bytes);
++    if (a == DS4_GPU_EXPERT_RESIDENCY_VRAM &&
++        b == DS4_GPU_EXPERT_RESIDENCY_VRAM &&
++        c == DS4_GPU_EXPERT_RESIDENCY_VRAM) {
++        return DS4_GPU_EXPERT_RESIDENCY_VRAM;
++    }
++    if (a == DS4_GPU_EXPERT_RESIDENCY_UNKNOWN ||
++        b == DS4_GPU_EXPERT_RESIDENCY_UNKNOWN ||
++        c == DS4_GPU_EXPERT_RESIDENCY_UNKNOWN) {
++        return DS4_GPU_EXPERT_RESIDENCY_UNKNOWN;
++    }
++    if (a == DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD ||
++        b == DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD ||
++        c == DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD) {
++        return DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD;
++    }
++    return DS4_GPU_EXPERT_RESIDENCY_CPU_RAM;
++}
++
+ static int cuda_model_range_is_cached(const void *model_map, uint64_t offset, uint64_t bytes) {
+     if (bytes == 0) return 1;
+     if (g_model_device_owned || g_model_registered || g_model_hmm_direct) return 1;
+@@ -2034,6 +2082,29 @@ static int cuda_stream_expert_cache_find(
+     return -1;
+ }
+ 
++static int cuda_stream_expert_cache_contains_table(
++        const cuda_stream_expert_cache       *cache,
++        const ds4_gpu_stream_expert_table    *table,
++        uint32_t                              expert) {
++    if (!cache || !table || !cache->valid || cache->capacity == 0) return 0;
++    for (uint32_t slot_i = 0; slot_i < cache->capacity; slot_i++) {
++        const cuda_stream_expert_cache_slot &slot = cache->slots[slot_i];
++        if (slot.valid &&
++            slot.model_map == table->model_map &&
++            slot.model_size == table->model_size &&
++            slot.layer == table->layer &&
++            slot.n_total_expert == table->n_total_expert &&
++            slot.expert == expert &&
++            slot.gate_offset == table->gate_offset &&
++            slot.up_offset == table->up_offset &&
++            slot.down_offset == table->down_offset &&
++            slot.gate_expert_bytes == table->gate_expert_bytes &&
++            slot.down_expert_bytes == table->down_expert_bytes) {
++            return 1;
++        }
++    }
++    return 0;
++}
++
+ static uint32_t cuda_stream_expert_cache_lru_slot(
+         cuda_stream_expert_cache *cache) {
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+@@ -3476,6 +3547,46 @@ extern "C" uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+     return cuda_stream_expert_cache_configured_budget();
+ }
+ 
++extern "C" ds4_gpu_expert_residency ds4_gpu_stream_expert_residency(
++        const ds4_gpu_stream_expert_table *table,
++        uint32_t                           expert) {
++    if (!table ||
++        !table->model_map ||
++        expert >= table->n_total_expert ||
++        !cuda_stream_layer_expert_ranges_valid(table->model_size,
++                                               table->n_total_expert,
++                                               table->gate_offset,
++                                               table->up_offset,
++                                               table->down_offset,
++                                               table->gate_expert_bytes,
++                                               table->down_expert_bytes,
++                                               "trace residency")) {
++        return DS4_GPU_EXPERT_RESIDENCY_UNKNOWN;
++    }
++
++    if (cuda_stream_expert_cache_contains_table(&g_stream_expert_cache,
++                                                table,
++                                                expert)) {
++        return DS4_GPU_EXPERT_RESIDENCY_VRAM;
++    }
++
++    const uint64_t gate_offset =
++        table->gate_offset + (uint64_t)expert * table->gate_expert_bytes;
++    const uint64_t up_offset =
++        table->up_offset + (uint64_t)expert * table->gate_expert_bytes;
++    const uint64_t down_offset =
++        table->down_offset + (uint64_t)expert * table->down_expert_bytes;
++    return cuda_model_ranges_residency3(table->model_map,
++                                        gate_offset,
++                                        up_offset,
++                                        down_offset,
++                                        table->gate_expert_bytes,
++                                        table->down_expert_bytes);
++}
++
+ extern "C" uint32_t ds4_gpu_stream_expert_cache_count_resident(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *expert_ids,
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index f8968cb..86c9c45 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -91,6 +91,14 @@ typedef struct ds4_gpu_stream_expert_table {
+     uint64_t    down_expert_bytes;
+ } ds4_gpu_stream_expert_table;
+ 
++typedef enum ds4_gpu_expert_residency {
++    DS4_GPU_EXPERT_RESIDENCY_UNKNOWN = 0,
++    DS4_GPU_EXPERT_RESIDENCY_VRAM = 1,
++    DS4_GPU_EXPERT_RESIDENCY_CPU_RAM = 2,
++    DS4_GPU_EXPERT_RESIDENCY_SSD_OFFLOAD = 3,
++} ds4_gpu_expert_residency;
++
+ /* Reset only the prompt-local eviction heuristic.  The resident SSD expert
+  * cache itself is intentionally kept warm across sessions. */
+ void ds4_gpu_stream_expert_cache_reset_route_hotness(void);
+@@ -105,6 +113,9 @@ uint32_t ds4_gpu_stream_expert_cache_budget_for_expert_size(
+         uint64_t gate_expert_bytes,
+         uint64_t down_expert_bytes);
++ds4_gpu_expert_residency ds4_gpu_stream_expert_residency(
++        const ds4_gpu_stream_expert_table *table,
++        uint32_t                           expert);
+ uint32_t ds4_gpu_stream_expert_cache_count_resident(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *expert_ids,
+-- 
+2.43.0

@@ -678,3 +678,32 @@ meaningful next A/B.
   ammesso troppo presto. TODO: rifare esperimenti puliti su CQ1/1-bit/sub-CQ1
   con prompt native warmup, hotset prompt-derived, metriche L0-L3, t/s
   segmentato, memoria reale, e fallback native verificato.
+
+## 2026-07-10 PACE Tighten-Relearn Measured Ledger
+
+Evidence constrained to `summary.csv`, `pace_events.jsonl`, and
+`content_measured.txt` from the measured run directories.
+
+| Run | Variant | Cache | Max tokens | PACE events | t/s | Prefetch GiB/ms | Qualita osservata |
+| --- | --- | ---: | ---: | --- | ---: | --- | --- |
+| `20260710_pace_advanced_ab_html400` | `local_stepdown_64_to23_stale_cache256` | 256 | 400 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten K56/K48/K40/K32/K24/K23@67/83/99/115/131/147` | 1.87 | 75.78 GiB / 6848 ms | Starts with `<!DOCTYPE html>`, but no `</html>`, `<form>`, or `<script>` in measured content; tail repeats `body`/CSS stanzas; `repeat_flag=1`. |
+| `20260710_pace_advanced_ab_html400` | `local_stepdown_64_to23_relearn_on_tighten_cache256` | 256 | 400 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten_relearn K56/K48/K40/K32/K24/K23@67/83/99/115/131/147` | 2.22 | 75.78 GiB / 13902 ms | Starts with `<!DOCTYPE html>`, but no `</html>`, `<form>`, or `<script>`; truncates in CSS around `.grid`; `repeat_flag=0`. |
+| `20260710_pace_advanced_ab_html800` | `local_stepdown_64_to23_stale_cache256` | 256 | 800 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten K56/K48/K40/K32/K24/K23@67/83/99/115/131/147` | 2.61 | 75.78 GiB / 3345 ms | Longer CSS/comment-like output, still no `</html>`, `<form>`, or `<script>`; measured tail lists sections such as responsive/accessibility/security; `repeat_flag=0`. |
+| `20260710_pace_advanced_ab_html800` | `local_stepdown_64_to23_relearn_on_tighten_cache256` | 256 | 800 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten_relearn K56/K48/K40/K32/K24/K23@67/83/99/115/131/147` | 2.76 | 75.78 GiB / 10843 ms | Reaches more CSS, including `.popup {`, but measured content still lacks closing HTML, form, and script; `repeat_flag=0`. |
+| `20260710_pace_relearn_cache512_html400` | `local_stepdown_64_to23_relearn_on_tighten_cache512` | 512 | 400 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten_relearn K56/K48/K40/K32/K24/K23@67/83/99/115/131/147` | 2.23 | 75.78 GiB / 13878 ms | Starts the same HTML/CSS shell, but no `</html>`, `<form>`, or `<script>`; tail collapses into repeated `0.0.0...`; `repeat_flag=1`. |
+| `20260710_pace_rotate4_noreset_html400` | `local_stepdown_64_to23_rotate4_noreset_cache256` | 256 | 400 | `prefill_reset@0`, `learned@50`, `descent K64@51`, 85 `rotate` events `@55..397`, `tighten_relearn K56/K48/K40/K32/K24/K23@68/85/102/119/136/153` | 1.38 | 699.54 GiB / 65621 ms | Preserved-stable rotate no longer blocks descent, but measured content still has no `</html>`, `<form>`, or `<script>` and truncates in CSS; `repeat_flag=0`. |
+| `20260710_pace_rotate4_noreset_nowraprotate_html400` | `local_stepdown_64_to23_rotate4_noreset_cache256` + `DS4_PACE_WRAP_ROTATE=0` default | 256 | 400 | same 85 `rotate` events, `tighten_relearn K56/K48/K40/K32/K24/K23@68/85/102/119/136/153` | 1.28 | 75.78 GiB / 21953 ms | `wrap_rotate=0` cut full-set rotate page-in from 699.54 GiB to 75.78 GiB, but content still incomplete and decode remained slow; no `</html>`, `<form>`, or `<script>`. |
+| `20260710_pace_rotate16_noreset_nowraprotate_html400` | `local_stepdown_64_to23_rotate16_noreset_cache256` + `DS4_PACE_WRAP_ROTATE=0` default | 256 | 400 | 21 `rotate` events, `tighten_relearn K56/K48/K40/K32/K24/K23@68/85/102/119/136/153` | 1.24 | 75.78 GiB / 11999 ms | Fewer rotations did not recover throughput or quality; final n-gram still high and content incomplete. |
+| `20260709_stepdown_rotate20_cache256_html400` baseline | `local_stepdown_64_to23_rotate20_cache256` | 256 | 400 | `prefill_reset@0`, `learned@50`, `descent K64@51`, `tighten K56/K48/K40/K32/K24/K23@67/83/99/115/131/147`, 12 `rotate` events `@167..387` | 1.19 | 148.62 GiB / 34156 ms | Still no `</html>`, `<form>`, or `<script>`; tail collapses into repeated `#` tokens; `repeat_flag=1`. |
+
+Conclusion: tighten-time relearn is confirmed by the measured
+`tighten_relearn` events and is the best cache256 variant here on avg t/s
+(2.22 vs 1.87 at 400 tokens; 2.76 vs 2.61 at 800 tokens), while avoiding the
+measured repeat flag at cache256. It is not a quality pass: every measured
+content file remains incomplete HTML and never reaches a real form/script.
+Cache512 does not improve quality, and rotate4_noreset proves the stability
+timer fix works under frequent refreshes but is too expensive and still
+incomplete. `DS4_PACE_WRAP_ROTATE=0` removes most full-set rotate prefetch
+bandwidth, but periodic K-constant rotation still underperforms; the next
+useful direction is drift-triggered rebuild/widening or delta-prefetch, not
+blind periodic rotate.

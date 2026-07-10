@@ -1,0 +1,25 @@
+{
+  "id": "chatcmpl-1",
+  "object": "chat.completion",
+  "created": 1783653027,
+  "model": "deepseek-v4-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Code Shop - Cyberpunk</title>\n    <style>\n    /* Reset e base */\n    * {\n        margin: 0;\n        padding: 0;\n        box: border: border;\n    body {\n    font-family: 'Courier', monospace, sans-serif;\n    background: var(--bg);\n    color: var(--text);\n    }\n    /* Layout */\n    .hero {\n    section: hero\n    .hero-content\n    h1: titolo\n    p: descrizione\n    .cta-button\n    .form-section\n    form\n    input, textarea\n    button\n    .popup-overlay\n    .popup-content\n    button\n    */\n    /* Colori cyberpunk */\n    :root {\n    neon-neutral: 0\n    dark: 0\n    light: 0\n    */\n    /* Animazioni */\n    .hero\n    .form\n    .popup\n    */\n    /* Responsive */\n    @media\n    */\n    /* Accessibilità */\n    label\n    aria-label\n    */\n    /* SEO */\n    meta\n    title\n    */\n    /* Performance */\n    loading\n    */\n    /* Sicurezza */\n    form\n    no-submit\n    */\n    /* Compatibilità */\n    browser\n    */\n    /* Codice valido */\n    HTML5\n    CSS3\n    JS\n    */\n    /* Single-file */\n    tutto\n    */\n    /* Popup */\n    richiesta\n    inviata\n    */\n    /* Modulo contatti */\n    nome\n    email\n    messaggio\n    */\n    /* Stile cyberpunk */\n    grigio\n    neon\n    */\n    /* Compact */\n    minimo\n    */\n    /* Funzionale */\n    submit\n    alert\n    */\n    /* Valido */\n    W4\n    */\n    /* No ragionamento */\n    diretto\n    utile\n    */\n    /* Risposta */\n    codice\n    */\n    /* */\n    */\n    <!DOCTYPE html>\n    <html lang=\"it\">\n    <head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n    <title>AI Code Shop - Cyberpunk</title>\n    <style>\n    /* Reset */\n    * {\n    margin: 0;\n    padding: 0;\n    box: border: border;\n    body {\n    font-family: 'Courier', monospace, sans-serif;\n    background: var(--bg);\n    color: var(--text);\n    }\n    /* Layout */\n    .hero {\n    section: hero\n    .hero-content\n    h1: titolo\n    p: descrizione\n    .cta-button\n    .form-section\n    form\n    input, textarea\n    button\n    .popup-overlay\n    .popup-content\n    button\n    */\n    /* Colori cyberpunk */\n    :root {\n    neon-neutral: 0\n    dark: 0\n    light: 0\n    */\n    /* Animazioni */\n    .hero\n    .form\n    .popup\n    */\n    /* Responsive */\n    @media\n    */\n    /* Accessibilità */\n    label\n    aria-label\n    */\n    /* SEO */\n    meta\n    title\n    */\n    /* Performance */\n    loading\n    */\n    /* Sicurezza */\n    form\n    no-submit"
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "total_tokens": 878,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  }
+}

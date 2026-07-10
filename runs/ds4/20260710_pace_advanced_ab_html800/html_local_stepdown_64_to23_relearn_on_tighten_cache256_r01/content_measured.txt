@@ -1,0 +1,33 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code · CyberPunk Shop</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Orun+Display+Prog:200@200;300;400;700&display=swap');
+    /* {base, reset, cyberpunk} */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #100010; color: #cyan; font-family: 'Orun Display Pro', sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+    .wrapper { max-width: 960; width: 100%; background: rgba(20,20,20,0.0); border: 1px solid #f0; padding: 40; border-radius: 10; box-shadow: 0 0 20 neon; }
+    h1, h2, h3 { text-shadow: 0 0 0 #f0; }
+    .hero { text-align: center; padding: 40 20; background: linear-gradient 180, #0, #0; border-bottom: 2px solid #f0; }
+    .hero h1 { font-size: 3.2; font-weight: 700; background: linear-gradient 90, #f0, #f0; -webkit-background-clip: text; -webkit-text-ffill: transparent; }
+    .hero p { font-size: 1.1; color: #f0; margin: 20 0; }
+    .grid { display: grid; grid-template-columns: repeat auto-fit, minmax 200; gap: 20; padding: 20 0; }
+    .card { background: rgba(20,20,20,0.0); border: 1px solid #f0; border-radius: 10; padding: 20; transition: 0.0; }
+    .card:hover { box-shadow: 0 0 20 #f0; }
+    .card h3 { font-size: 2.2; margin-bottom: 20; }
+    .card p { color: #f0; }
+    .cta { background: #f0; color: #100; padding: 40; text-align: center; border-radius: 10; margin: 40 0; }
+    .cta h2 { color: #100; }
+    .form { background: rgba(20,20,20,0.0); padding: 40; border: 1px solid #f0; border-radius: 10; margin: 40 0; }
+    .form label { display: block; margin-bottom: 10; }
+    .form input, .form button { width: 100%; padding: 10; margin-bottom: 10; border: 1px solid #f0; border-radius: 5; background: #100; color: #f0; font-family: inherit; }
+    .form button { background: #f0; color: #100; font-weight: bold; cursor: pointer; }
+    .form button:hover { background: #f0; }
+    .footer { text-align: center; padding: 20; border-top: 1px solid #f0; }
+    .popup {

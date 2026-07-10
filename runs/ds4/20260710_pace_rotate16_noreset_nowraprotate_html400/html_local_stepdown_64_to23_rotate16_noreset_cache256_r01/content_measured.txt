@@ -1,0 +1,51 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI·Code · Negozio di Programmazione AI</title>
+    <style>
+        /* reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #black;
+            background: radial-gradient circle at center, #0a0a0a 0%, #0a0a0a 100%;
+            font-family: 'Courier New', monospace;
+            color: #00ffcc;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #00ffcc;
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            box-shadow: 0 0 20px #00ffcc66, 0 0 40px #00ffcc33;
+            backdrop-filter: blur(2px);
+        }
+
+        header {
+            text-align: center;
+            border-bottom: 1px dashed #00ffcc;
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.8rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;

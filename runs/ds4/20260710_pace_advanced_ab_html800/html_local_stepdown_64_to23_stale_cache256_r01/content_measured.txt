@@ -1,0 +1,167 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop - Cyberpunk</title>
+    <style>
+    /* Reset e base */
+    * {
+        margin: 0;
+        padding: 0;
+        box: border: border;
+    body {
+    font-family: 'Courier', monospace, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    }
+    /* Layout */
+    .hero {
+    section: hero
+    .hero-content
+    h1: titolo
+    p: descrizione
+    .cta-button
+    .form-section
+    form
+    input, textarea
+    button
+    .popup-overlay
+    .popup-content
+    button
+    */
+    /* Colori cyberpunk */
+    :root {
+    neon-neutral: 0
+    dark: 0
+    light: 0
+    */
+    /* Animazioni */
+    .hero
+    .form
+    .popup
+    */
+    /* Responsive */
+    @media
+    */
+    /* Accessibilità */
+    label
+    aria-label
+    */
+    /* SEO */
+    meta
+    title
+    */
+    /* Performance */
+    loading
+    */
+    /* Sicurezza */
+    form
+    no-submit
+    */
+    /* Compatibilità */
+    browser
+    */
+    /* Codice valido */
+    HTML5
+    CSS3
+    JS
+    */
+    /* Single-file */
+    tutto
+    */
+    /* Popup */
+    richiesta
+    inviata
+    */
+    /* Modulo contatti */
+    nome
+    email
+    messaggio
+    */
+    /* Stile cyberpunk */
+    grigio
+    neon
+    */
+    /* Compact */
+    minimo
+    */
+    /* Funzionale */
+    submit
+    alert
+    */
+    /* Valido */
+    W4
+    */
+    /* No ragionamento */
+    diretto
+    utile
+    */
+    /* Risposta */
+    codice
+    */
+    /* */
+    */
+    <!DOCTYPE html>
+    <html lang="it">
+    <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>AI Code Shop - Cyberpunk</title>
+    <style>
+    /* Reset */
+    * {
+    margin: 0;
+    padding: 0;
+    box: border: border;
+    body {
+    font-family: 'Courier', monospace, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    }
+    /* Layout */
+    .hero {
+    section: hero
+    .hero-content
+    h1: titolo
+    p: descrizione
+    .cta-button
+    .form-section
+    form
+    input, textarea
+    button
+    .popup-overlay
+    .popup-content
+    button
+    */
+    /* Colori cyberpunk */
+    :root {
+    neon-neutral: 0
+    dark: 0
+    light: 0
+    */
+    /* Animazioni */
+    .hero
+    .form
+    .popup
+    */
+    /* Responsive */
+    @media
+    */
+    /* Accessibilità */
+    label
+    aria-label
+    */
+    /* SEO */
+    meta
+    title
+    */
+    /* Performance */
+    loading
+    */
+    /* Sicurezza */
+    form
+    no-submit
