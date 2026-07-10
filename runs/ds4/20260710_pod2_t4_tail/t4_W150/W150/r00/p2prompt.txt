@@ -1,0 +1,19 @@
+Write a COMPLETE and COMPACT single-file HTML page for a coffee shop. Output ONLY the HTML, nothing else. Keep the CSS SHORT (about 10-15 rules max) — prioritize a COMPLETE, working page over elaborate styling. The page MUST be fully closed with </html> and MUST contain all of these:
+1. A <nav> with three links: Home, Menu, Contact.
+2. A hero <section> with <h1>Bean & Brew</h1> and a one-line subheading.
+3. A <button id="order">Order Now</button> wired in <script> with addEventListener that shows alert("Thank you for your order!").
+4. A <form action="/submit"> with a name text input, an email input, a submit button, and an onsubmit handler that calls preventDefault and shows a confirmation.
+5. Minimal embedded CSS in <style> and the JS in <script>.
+Write the entire compact HTML document now and finish it.
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f0e8; color: #3e2c1a; }
+        nav { background: #3e2c1a; padding: 10px; text-align: center; }
+        nav a { color: #f5f0e8; margin: 0 15px; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .hero { text-align: center; 
