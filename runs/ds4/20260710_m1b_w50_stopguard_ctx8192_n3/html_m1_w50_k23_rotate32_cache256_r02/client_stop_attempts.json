@@ -1,0 +1,24 @@
+[
+  {
+    "attempt": 1,
+    "phase": "measured",
+    "wall_s": 1442.877,
+    "content_chars": 10183,
+    "client_stop": {
+      "reason": "client_stop_repeat_token_ngram",
+      "at_chars": 10183,
+      "trim_to_chars": null,
+      "kind": "token_ngram",
+      "ngram_n": 3,
+      "repeat_count": 3,
+      "sample": "</> </> </>"
+    }
+  },
+  {
+    "attempt": 2,
+    "phase": "measured_retry01",
+    "wall_s": 1992.143,
+    "content_chars": 10436,
+    "client_stop": null
+  }
+]

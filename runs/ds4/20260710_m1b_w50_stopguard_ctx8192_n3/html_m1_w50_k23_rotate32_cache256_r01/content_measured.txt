@@ -1,0 +1,464 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Shop - CyberPunk</title>
+    <style>
+        /* reset base */
+        * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'Segoe UI', 'Roboto, 'Helvetica, sans-serif;
+        scroll-behavior: smooth;
+    }
+
+        body {
+            background: radial-gradient circle at center, #0d0d0d 0%, #000 100%;
+            color: #e0e0e0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(4px);
+            border: 1px solid #0ff;
+            box-shadow: 0 0 20px #0ff8, 0 0 40px #0ff4;
+            border-radius: 24px;
+            padding: 2rem 1.5rem;
+            margin: 2rem 0;
+            transition: 0.3s;
+        }
+
+        header {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.5rem;
+            border-bottom: 2px solid #0ff;
+            padding-bottom: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            font-weight: 900;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            background: linear-gradient 90deg, #0ff, #f0f, #ff0;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
+        }
+
+        header p {
+            color: #b0b0ff;
+            font-size: 1.2rem;
+            text-shadow: 0 0 5px #0ff;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr);
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: #0a0a0a;
+            border: 1px solid #0ff;
+            border-radius: 12px;
+            padding: 1.2rem;
+            box-shadow: 0 0 10px #0ff2, 0 0 20px #f0f2;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            transform: scale(1.02);
+            border-color: #f0f;
+        }
+
+        .card h3 {
+            color: #f0f;
+            margin-bottom: 0.5rem;
+        }
+
+        .card p {
+            color: #ccc;
+            font-size: 0.9rem;
+        }
+
+        .price {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #0ff;
+            margin: 0.5rem 0;
+        }
+
+        .btn {
+            background: transparent;
+            border: 1px solid #0ff;
+            color: #0ff;
+            padding: 0.5rem 1.2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .btn:hover {
+            background: #0ff;
+            color: #000;
+            box-shadow: 0 0 10px #0ff, 0 0 20px #0ff;
+        }
+
+        .form-section {
+            background: #0a0a0a;
+            border: 1px solid #0ff;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-top: 2rem;
+        }
+
+        .form-section h2 {
+            color: #f0f;
+            margin-bottom: 1rem;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 0.8rem;
+            margin: 0.5rem 0;
+            background: #1a1a1a;
+            border: 1px solid #0ff;
+            border-radius: 4px;
+            color: #fff;
+            font-size: 1rem;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #f0f;
+            box-shadow: 0 0 5px #f0f;
+        }
+
+        label {
+            color: #b0b0ff;
+        }
+
+        .submit-btn {
+            background: #0ff;
+            color: #000;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+
+        .submit-btn:hover {
+            background: #f0f;
+            color: #fff;
+        }
+
+        .footer {
+            margin-top: 2rem;
+            text-align: center;
+            color: #777;
+        }
+
+        /* popup overlay */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(2px);
+            z-index: 999;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .popup-overlay.active {
+            display: flex;
+        }
+
+        .popup-box {
+            background: #0a0a0a;
+            border: 2px solid #0ff;
+            border-radius: 12px;
+            padding: 2rem 3rem;
+            text-align: center;
+            box-shadow: 0 0 20px #0ff, 0 0 40px #f0f;
+            animation: flick 0.2s;
+        }
+
+        .popup-box h2 {
+            color: #0ff;
+            font-size: 2rem;
+        }
+
+        .popup-box p {
+            color: #ccc;
+            margin: 1rem 0;
+        }
+
+        .popup-box .close-btn {
+            background: #0ff;
+            color: #000;
+            border: none;
+            padding: 0.5rem 2rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .close-btn:hover {
+            background: #f0f;
+            color: #fff;
+        }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 1rem;
+            }
+        }
+    </</style>
+</head>
+<body>
+    <div class="container">
+        <!-- header -->
+        <header>
+            <h1>AI Code Shop</h1>
+            <p>✦ Programmi AI per te</p>
+        </header>
+
+        <!-- main -->
+        <section class="grid">
+            <div class="card">
+                <h3>AI Brain</h3>
+                <p>Neotue di ultima generazione</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+            </div>
+            <div class="card">
+                <h3>AI Logic</h3>
+                <p>Spi loghi quanti</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Nexus</h3>
+                <p>Rete neurale profonda</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Core</h3>
+                <p>Processo quantistico</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Void</h3>
+                <p>Vuoto di memoria</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Spark</h3>
+                <p>Scisia di luce</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Glitch</h3>
+                <p>Errore di sistema</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Echo</h3>
+                <p>Rimbonto di codice</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Zenith</h3>
+                <p>Apice di sistema</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Quantum</h3>
+                <p>Stalo di stato</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Cyber</h3>
+                <p>P cyber di rete</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Pulse</h3>
+                <p>Scia di impulso</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Code</h3>
+                <p>Codice di comma</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Node</h3>
+                <p>Collegamento di rete</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Shell</h3>
+                <p>Scatola di sistema</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Flux</h3>
+                <p>Flusso di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Ray</h3>
+                <p>Raggio di luce</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Blink</h3>
+                <p>Collegamento di istanza</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Byte</h3>
+                <p>Mischia di byte</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Pixel</h3>
+                <p>Granella di pixel</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Synth</h3>
+                <p>Synth di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Craft</h3>
+                <p>C di crea</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Ast</h3>
+                <p>St di ast</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Drill</h3>
+                <p>Dr preso</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Wave</h3>
+                <p>Olio di onda</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Merge</h3>
+                <p>Unire di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Sort</h3>
+                <p>Ordine di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Stack</h3>
+                <p>Pila di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Loop</h3>
+                <p>Gro di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Debug</h3>
+                <p>Debug di erro</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Class</h3>
+                <p>Class di codice</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Object</h3>
+                <p>Oggetto di funzione</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Event</h3>
+                <p>Evento di processo</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Tuple</h3>
+                <p>Coppia di dati</p>
+                <div class="price">$ 99.0</div>
+                <button class="btn" onclick="orderCall()">Acta</button>
+                </div>
+            <div class="card">
+                <h3>AI Meta</h3>
+                <p>Meta di sistema

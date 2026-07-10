@@ -1,0 +1,272 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Emporium • Cyberpunk</title>
+    <!-- Font futuristico -->
+    <link href="httpshttps" rel="preconnect" crossorigin>
+    <style>
+    /* Reset e stardo cyber */
+    *,
+    *::w,
+    ::after,
+    *::before {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+    }
+
+    body {
+        background: #000;
+        color: #green-cyan;
+        font-family: 'Origen', 'Courier New', monospace;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20;
+        margin: 0;
+        background: radial-gradient circle at 50% 50%, #0a0a0a 0%, #1a1a1a 100%;
+        position: relative;
+        overflow-x: hidden;
+    }
+
+    .grid-sbg {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-image: linear-gradient to #0f0f0f 1px, transparent 1px), linear-gradient to #0f0f0f 1px, transparent 1px);
+        background-size: 40 40;
+        opacity: 0.3;
+        z-index: -1;
+    }
+
+    .main {
+        max-width: 950;
+        width: 100%;
+        background: #0a0f0e;
+        border: 1 solid #0ff;
+        box-shadow: 0 0 20 #0ff, inset 0 0 20 #0ff;
+        padding: 2rem 1.5rem;
+        border-radius: 12;
+        backdrop-filter: blur(2);
+        position: relative;
+        z-index: 2;
+    }
+
+    .header {
+        text-align: center;
+        border-bottom: 1 dashed #0ff;
+        padding-bottom: 1.2rem;
+        margin-bottom: 1.5rem;
+    }
+
+    .header h1 {
+        font-size: 2.5rem;
+        text-transform: uppercase;
+        letter-spacing: 4;
+        color: #cyan;
+        text-shadow: 0 0 10 #cyan, 0 0 20 #cyan;
+        margin: 0;
+    }
+
+    .header p {
+        color: #0f0;
+        font-size: 1.1rem;
+        margin-top: 0.5;
+        text-shadow: 0 0 4 #0f0;
+    }
+
+    .hero {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+    padding: 1rem 0;
+    border-bottom: 1 dashed #0ff;
+}
+
+    .hero .card {
+        background: #00000080;
+        border: 1 solid #f0f;
+        padding: 1.5rem;
+        border-radius: 8;
+        width: 100%;
+        text-align: center;
+        box-shadow: 0 0 10 #f0f, inset 0 0 5 #f0f;
+        transition: 0.3;
+    }
+
+    .hero .card:hover {
+        box-shadow: 0 0 20 #f0f, inset 0 0 20 #f0f;
+    }
+
+    .hero .card h2 {
+        color: #f0f;
+        margin-bottom: 0.5;
+    }
+
+    .hero .card p {
+        color: #ccc;
+        font-size: 0.9rem;
+    }
+
+    .btn {
+        background: transparent;
+        border: 1 solid #0ff;
+        color: #0ff;
+        padding: 0.6 1.2;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 2;
+        cursor: pointer;
+        transition: 0.2;
+        border-radius: 4;
+        font-family: inherit;
+    }
+
+    .btn:hover {
+        background: #0ff;
+        color: #000;
+        box-shadow: 0 0 10 #0ff;
+    }
+
+    .form-area {
+        background: #00000080;
+        border: 1 solid #0f0;
+        padding: 1.5rem;
+        border-radius: 8;
+        margin-top: 1.5rem;
+        box-shadow: 0 0 10 #0f0, inset 0 0 5 #0f0;
+    }
+
+    .form-area h3 {
+        color: #0f0;
+        text-align: center;
+        margin-bottom: 1.2;
+    }
+
+    .form-group {
+        margin-bottom: 1.2;
+    }
+
+    .form-group label {
+        display: block;
+        color: #0ff;
+        margin-bottom: 0.3;
+        font-size: 0.9rem;
+    }
+
+    .form-group input,
+    .form-group textarea {
+        width: 100%;
+        padding: 0.8 0.5;
+        background: #000;
+        border: 1 solid #0ff;
+        border-radius: 4;
+        color: #0ff;
+        font-family: inherit;
+        font-size: 0.9rem;
+        outline: none;
+        transition: 0.2;
+    }
+
+    .form-group input:focus,
+    .form-group textarea:focus {
+        border-color: #f0f;
+        box-shadow: 0 0 4 #f0f;
+    }
+
+    .form-group textarea {
+        height: 120;
+        resize: vertical;
+    }
+
+    .form .btn {
+        width: 100%;
+        padding: 0.8;
+        margin-top: 0.5;
+        background: #0f0;
+        color: #000;
+        border: 1 solid #0f0;
+        font-weight: bold;
+    }
+
+    .form .btn:hover {
+        background: #0ff;
+        border-color: #0ff;
+        color: #000;
+    }
+
+    .popup-over {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #00080;
+        backdrop-filter: blur(2);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .popup-over.show {
+        display: flex;
+    }
+
+    .popup-box {
+        background: #0a0f0e;
+        border: 2 solid #0ff;
+        padding: 2.5rem 3rem;
+        border-radius: 12;
+        text-align: center;
+        box-shadow: 0 0 30 #0ff, inset 0 0 10 #0ff;
+        animation: flick 0.3;
+    }
+
+    .popup-box h2 {
+        color: #0f0;
+        font-size: 2rem;
+        margin-bottom: 0.5;
+    }
+
+    .popup-box p {
+        color: #ccc;
+        margin-bottom: 1.5;
+    }
+
+    .popup-box .btn {
+        background: #0ff;
+        color: #000;
+        border: 1 solid #0ff;
+        padding: 0.6 3;
+    }
+
+    .popup-box .btn:hover {
+        background: #f0f;
+        border-color: #f0f;
+        color: #fff;
+    }
+
+    .footer {
+        text-align: center;
+        margin-top: 1.5rem;
+        color: #888;
+        font-size: 0.8rem;
+    }
+
+    .footer a {
+        color: #0ff;
+        text-decoration: none;
+    }
+
+    .footer a:hover {

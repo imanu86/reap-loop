@@ -431,6 +431,50 @@ QUICK_VARIANTS = [
         cache_experts=256,
     ),
     Variant(
+        "m1_w50_k23_rotate32_cache256",
+        {
+            "DS4_PACE_WARMUP": "50",
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_RELEARN": "0",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "32",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "M1a replication arm: ctx8192/html4000, W50 full-router warmup, fixed K23, rotate32 decay 0.98, cache256, no breath/prebreath/relearn.",
+        cache_experts=256,
+    ),
+    Variant(
+        "m1_w100_k23_rotate32_cache256",
+        {
+            "DS4_PACE_WARMUP": "100",
+            "DS4_PACE_KEEP": "23",
+            "DS4_PACE_KEEP_MIN": "23",
+            "DS4_PACE_KEEP_MAX": "96",
+            "DS4_PACE_KEEP_STEP": "0",
+            "DS4_PACE_PREBREATH": "0",
+            "DS4_PACE_BREATH_EVERY": "999999",
+            "DS4_PACE_BREATH_KEEP": "96",
+            "DS4_PACE_BREATH_LEN": "80",
+            "DS4_PACE_RELEARN": "0",
+            "DS4_PACE_DRIFT": "1.0",
+            "DS4_PACE_ROTATE": "1",
+            "DS4_PACE_ROTATE_EVERY": "32",
+            "DS4_PACE_ROTATE_DECAY": "0.98",
+            "DS4_PACE_CACHE_TARGET_SLOTS": "256",
+        },
+        "M1a replication arm: ctx8192/html4000, W100 full-router warmup, fixed K23, rotate32 decay 0.98, cache256, no breath/prebreath/relearn.",
+        cache_experts=256,
+    ),
+    Variant(
         "local_prebreath_adapt_n010_cache256",
         {
             "DS4_PACE_KEEP": "23",
@@ -1519,6 +1563,14 @@ def write_manifest(
             "weights": env.get("DS4_SPEX_TRACE_ROUTING_WEIGHTS") == "1",
             "scope_replay_note": "Open Scope with this CSV only for diagnostic replay; do not compare directly with trace_off timing unless trace overhead is accepted.",
         },
+        "client_stop": {
+            "html_close": bool(getattr(args, "client_stop_html_close", False)),
+            "repeat_guard": bool(getattr(args, "client_stop_repeat", False)),
+            "repeat_ngram": getattr(args, "client_stop_ngram", None),
+            "repeat_window": getattr(args, "client_stop_window", None),
+            "repeat_count": getattr(args, "client_stop_repeats", None),
+            "retry_on_client_stop": getattr(args, "retry_on_client_stop", 0),
+        },
         "source_artifacts": {
             "server_stderr": "server.stderr.log",
             "server_stdout": "server.stdout.log",
@@ -1583,7 +1635,114 @@ def post_json(url: str, body: dict, timeout: int) -> tuple[float, dict | str]:
     return time.perf_counter() - t0, parsed
 
 
-def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -> tuple[float, dict | str]:
+@dataclass(frozen=True)
+class ClientStopConfig:
+    html_close: bool = False
+    repeat_guard: bool = False
+    repeat_ngram: int = 3
+    repeat_window: int = 120
+    repeat_count: int = 3
+
+
+def make_client_stop_config(args: argparse.Namespace) -> ClientStopConfig | None:
+    if not args.client_stop_html_close and not args.client_stop_repeat:
+        return None
+    return ClientStopConfig(
+        html_close=args.client_stop_html_close,
+        repeat_guard=args.client_stop_repeat,
+        repeat_ngram=args.client_stop_ngram,
+        repeat_window=args.client_stop_window,
+        repeat_count=args.client_stop_repeats,
+    )
+
+
+_TOKEN_RE = re.compile(r"\S+")
+
+
+def repeated_ngram_stop(text: str, *, n: int, window: int, count: int) -> dict | None:
+    """Detect adjacent verbatim repetition of the last n-token phrase."""
+    if n < 1 or count < 2:
+        return None
+    tokens = _TOKEN_RE.findall(text)[-window:]
+    need = n * count
+    if len(tokens) < need:
+        return None
+    tail = tokens[-need:]
+    phrase = tail[-n:]
+    for idx in range(count):
+        start = idx * n
+        if tail[start : start + n] != phrase:
+            return None
+    return {
+        "kind": "token_ngram",
+        "ngram_n": n,
+        "repeat_count": count,
+        "sample": " ".join(phrase)[:160],
+    }
+
+
+def repeated_line_block_stop(text: str, *, count: int) -> dict | None:
+    """Detect adjacent repeated non-empty line blocks in the current tail."""
+    lines = [line.rstrip() for line in text.splitlines() if line.strip()]
+    if len(lines) < count:
+        return None
+    max_block = min(8, len(lines) // count)
+    for block_len in range(1, max_block + 1):
+        need = block_len * count
+        tail = lines[-need:]
+        block = tail[-block_len:]
+        block_text = "\n".join(block)
+        if len(block_text.strip()) < 12:
+            continue
+        if all(tail[i * block_len : (i + 1) * block_len] == block for i in range(count)):
+            return {
+                "kind": "line_block",
+                "line_block_len": block_len,
+                "repeat_count": count,
+                "sample": block_text[:160],
+            }
+    return None
+
+
+def detect_client_stop(content: str, config: ClientStopConfig | None) -> dict | None:
+    if config is None:
+        return None
+    if config.html_close:
+        lower = content.lower()
+        close_idx = lower.find("</html>")
+        if close_idx >= 0:
+            trim_to = close_idx + len("</html>")
+            return {
+                "reason": "client_stop_html_close",
+                "at_chars": trim_to,
+                "trim_to_chars": trim_to,
+            }
+    if config.repeat_guard:
+        repeat = repeated_line_block_stop(content, count=config.repeat_count)
+        if repeat is None:
+            repeat = repeated_ngram_stop(
+                content,
+                n=config.repeat_ngram,
+                window=config.repeat_window,
+                count=config.repeat_count,
+            )
+        if repeat is not None:
+            return {
+                "reason": f"client_stop_repeat_{repeat['kind']}",
+                "at_chars": len(content),
+                "trim_to_chars": None,
+                **repeat,
+            }
+    return None
+
+
+def post_stream(
+    url: str,
+    body: dict,
+    timeout: int,
+    events_path: pathlib.Path,
+    client_stop: ClientStopConfig | None = None,
+) -> tuple[float, dict | str]:
     data = json.dumps(body, ensure_ascii=False).encode("utf-8")
     req = urllib.request.Request(
         url,
@@ -1596,6 +1755,7 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
     content_parts = []
     finish_reason = None
     usage = None
+    stop_info = None
 
     events_path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -1643,6 +1803,12 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
                         usage = obj.get("usage")
                     if delta:
                         content_parts.append(delta)
+                        content = "".join(content_parts)
+                        stop_info = detect_client_stop(content, client_stop)
+                        if stop_info and stop_info.get("trim_to_chars") is not None:
+                            content_parts = [content[: int(stop_info["trim_to_chars"])]]
+                        if stop_info:
+                            finish_reason = stop_info["reason"]
                     record_event(
                         events_fh,
                         {
@@ -1653,8 +1819,11 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
                             "content_chars": sum(len(part) for part in content_parts),
                             "finish_reason": finish_reason,
                             "usage": usage,
+                            "client_stop": stop_info,
                         },
                     )
+                    if stop_info:
+                        break
     except urllib.error.HTTPError as exc:
         raw = exc.read().decode("utf-8", errors="replace")
         try:
@@ -1673,6 +1842,7 @@ def post_stream(url: str, body: dict, timeout: int, events_path: pathlib.Path) -
             "stream_events": len(events),
             "stream_content_events": sum(1 for event in events if event.get("delta")),
             "usage": usage,
+            "client_stop": stop_info,
             "choices": [{"message": {"content": content}, "finish_reason": finish_reason}],
         },
     )
@@ -1686,6 +1856,20 @@ def response_content(response: dict | str) -> str:
         return ""
     msg = choices[0].get("message") or {}
     return msg.get("content") or ""
+
+
+def response_client_stop(response: dict | str) -> dict | None:
+    if not isinstance(response, dict):
+        return None
+    stop_info = response.get("client_stop")
+    return stop_info if isinstance(stop_info, dict) else None
+
+
+def retryable_client_stop(response: dict | str) -> bool:
+    stop_info = response_client_stop(response)
+    if not stop_info:
+        return False
+    return str(stop_info.get("reason", "")).startswith("client_stop_repeat")
 
 
 def parse_server_log(path: pathlib.Path) -> dict:
@@ -2038,6 +2222,7 @@ def run_request(
     out_path: pathlib.Path,
     phase: str,
     stream: bool = False,
+    client_stop_config: ClientStopConfig | None = None,
 ) -> tuple[float, dict | str]:
     body = {
         "model": "deepseek-v4-flash",
@@ -2063,6 +2248,7 @@ def run_request(
             body,
             timeout,
             out_path / f"stream_events_{phase}.jsonl",
+            client_stop_config,
         )
     else:
         wall_s, response = post_json(
@@ -2104,8 +2290,15 @@ def main() -> int:
     ap.add_argument("--cache-experts", type=int, default=258)
     ap.add_argument("--prefill-chunk", type=int, default=512)
     ap.add_argument("--stream", action="store_true", help="Capture measured requests as SSE stream events with timestamps.")
+    ap.add_argument("--client-stop-html-close", action="store_true", help="When streaming, stop the client as soon as </html> is emitted.")
+    ap.add_argument("--client-stop-repeat", action="store_true", help="When streaming, stop on adjacent verbatim repetition in the generated tail.")
+    ap.add_argument("--client-stop-ngram", type=int, default=3, help="N for the adjacent repeated n-gram client stop guard.")
+    ap.add_argument("--client-stop-window", type=int, default=120, help="Token window inspected by the repeated n-gram client stop guard.")
+    ap.add_argument("--client-stop-repeats", type=int, default=3, help="How many adjacent repeats trigger the client stop guard.")
+    ap.add_argument("--retry-on-client-stop", type=int, default=0, help="Retry a measured request this many times after a repeat-stop attempt.")
     ap.add_argument("--no-stop-existing", action="store_true")
     args = ap.parse_args()
+    client_stop_config = make_client_stop_config(args)
 
     prompt_names = [p.strip() for p in args.prompts.split(",") if p.strip()]
     for name in prompt_names:
@@ -2180,9 +2373,52 @@ def main() -> int:
                 out_path=run_dir,
                 phase="measured",
                 stream=args.stream,
+                client_stop_config=client_stop_config,
+            )
+            attempts = [
+                {
+                    "attempt": 1,
+                    "phase": "measured",
+                    "wall_s": round(wall_s, 3),
+                    "content_chars": len(response_content(response)),
+                    "client_stop": response_client_stop(response),
+                }
+            ]
+            wall_s_all_attempts = wall_s
+            final_phase = "measured"
+            retry_attempts = 0
+            while retry_attempts < args.retry_on_client_stop and retryable_client_stop(response):
+                retry_attempts += 1
+                final_phase = f"measured_retry{retry_attempts:02d}"
+                wall_s, response = run_request(
+                    port=args.port,
+                    prompt_name=prompt_name,
+                    prompt=PROMPTS[prompt_name],
+                    max_tokens=args.max_tokens,
+                    timeout=args.timeout,
+                    out_path=run_dir,
+                    phase=final_phase,
+                    stream=args.stream,
+                    client_stop_config=client_stop_config,
+                )
+                wall_s_all_attempts += wall_s
+                attempts.append(
+                    {
+                        "attempt": retry_attempts + 1,
+                        "phase": final_phase,
+                        "wall_s": round(wall_s, 3),
+                        "content_chars": len(response_content(response)),
+                        "client_stop": response_client_stop(response),
+                    }
+                )
+            (run_dir / "client_stop_attempts.json").write_text(
+                json.dumps(attempts, ensure_ascii=False, indent=2),
+                encoding="utf-8",
             )
             usage = response.get("usage") if isinstance(response, dict) else None
             content = response_content(response)
+            final_stop = response_client_stop(response)
+            first_stop = attempts[0].get("client_stop") if attempts else None
             log_metrics = parse_server_log(run_dir / "server.stderr.log")
             q = quality_flags(prompt_name, content)
             l0l3 = grade_l0l3(prompt_name, content)
@@ -2205,6 +2441,14 @@ def main() -> int:
                 "completion_tokens": completion_tokens,
                 "stream_events": response.get("stream_events") if isinstance(response, dict) else None,
                 "stream_content_events": response.get("stream_content_events") if isinstance(response, dict) else None,
+                "client_stop_enabled": int(client_stop_config is not None),
+                "first_client_stop_reason": (first_stop or {}).get("reason"),
+                "client_stop_reason": (final_stop or {}).get("reason"),
+                "client_stop_at_chars": (final_stop or {}).get("at_chars"),
+                "client_stop_sample": (final_stop or {}).get("sample"),
+                "retry_attempts": retry_attempts,
+                "final_attempt_phase": final_phase,
+                "wall_s_all_attempts": round(wall_s_all_attempts, 3),
                 "derived_tokens_after_breath_end_to_finish": post_breath_end_tokens,
                 "l0l3": l0l3,
                 **log_metrics,

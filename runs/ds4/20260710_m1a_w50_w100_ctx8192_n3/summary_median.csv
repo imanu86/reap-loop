@@ -1,0 +1,3 @@
+prompt,variant,run_count,variant_rationale,avg_tps_median,first50_tps_median,prompt_s_median,l0l3_median,doctype,has_popup,alert_in_script,repeat_flag
+html,m1_w50_k23_rotate32_cache256,3,"M1a replication arm: ctx8192/html4000, W50 full-router warmup, fixed K23, rotate32 decay 0.98, cache256, no breath/prebreath/relearn.",2.63,0.56,135.597,0.0,1,1,0,1
+html,m1_w100_k23_rotate32_cache256,3,"M1a replication arm: ctx8192/html4000, W100 full-router warmup, fixed K23, rotate32 decay 0.98, cache256, no breath/prebreath/relearn.",2.53,0.5,127.3735,0.0,1,1,0,1

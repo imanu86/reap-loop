@@ -1,0 +1,7 @@
+stem,variant,run_index,final_attempt_phase,stream_status,completion_tokens,stream_events,content_chars,emits_html_close,html_close_event,l0l3,client_stop_reason,first_client_stop_reason,retry_attempts,avg_tps,prompt_s,finish_s,loop_onset_event_est,coherent_until_event_est,loop_kind,loop_sample
+html_m1_w50_k23_rotate32_cache256_r01,m1_w50_k23_rotate32_cache256,1,measured,ok,4000,4003,6295,0,,0,,,0,2.68,61.504,1553.252,,,,
+html_m1_w100_k23_rotate32_cache256_r01,m1_w100_k23_rotate32_cache256,1,measured,ok,4000,4003,10624,0,,0,,,0,2.56,130.704,1694.62,617,616,ngram3_window120_repeat3,border: 1px solid
+html_m1_w50_k23_rotate32_cache256_r02,m1_w50_k23_rotate32_cache256,2,measured,ok,4000,4003,7149,0,,0,,,0,2.63,145.491,1668.073,118,117,ngram3_window120_repeat3,"user-sme=1.1, user-sme=1.1, user-sme=1.1,"
+html_m1_w100_k23_rotate32_cache256_r02,m1_w100_k23_rotate32_cache256,2,measured,ok,4000,4000,13765,0,,1,,,0,2.5,124.043,1724.121,469,468,ngram3_window120_repeat3,"255, 0.1) 1px,"
+html_m1_w50_k23_rotate32_cache256_r03,m1_w50_k23_rotate32_cache256,3,measured,ok,4000,4003,12340,0,,0,,,0,2.61,135.597,1669.611,757,756,ngram3_window120_repeat3,} .item .info
+html_m1_w100_k23_rotate32_cache256_r03,m1_w100_k23_rotate32_cache256,3,measured,stream_failed,,1799,5795,0,,0,,,0,,,,586,585,ngram3_window120_repeat3,0 0 20

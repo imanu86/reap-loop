@@ -1,0 +1,23 @@
+{
+  "stream": true,
+  "stream_events": 191,
+  "stream_content_events": 190,
+  "usage": null,
+  "client_stop": {
+    "reason": "client_stop_repeat_token_ngram",
+    "at_chars": 636,
+    "trim_to_chars": null,
+    "kind": "token_ngram",
+    "ngram_n": 3,
+    "repeat_count": 3,
+    "sample": "0 0 0"
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1=1\">\n    <title>AI Code Shop - CyberPunk</title>\n    <style>\n        /* Reset base */\n        * {\n        margin: 0;\n        padding: 0;\n        box-sizing: border-box;\n        font-family: 'Courier, monospace, 'Segoe UI, Roboto, Helvetica, sans-serif;\n        scroll-behavior: smooth;\n        transition: all 0.0 ease;\n        color: ### #c 0 0 0 0 0 0 0 0 0"
+      },
+      "finish_reason": "client_stop_repeat_token_ngram"
+    }
+  ]
+}

@@ -6,18 +6,19 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 284
-- Runner-measured rows: 100
-- Legacy / Claude / claim rows: 184
+- Rows total: 305
+- Runner-measured rows: 119
+- Legacy / Claude / claim rows: 186
 
 ## Current Readout
 
-- Best current 3060-local stability candidate in the requested HTML800 A/B is still `K23 rotate32`: it reached 800 streamed tokens without the repeat detector, but it is slower than static K23 and still needs render/functional grading.
+- Treat repeat/ngram as diagnostics only. The requested HTML800 `K23 rotate32` row remains interesting, but its quality status must be read through L0-L3 grading or rendered artifacts, not through repeat absence.
 - Static/direct K23 is the speed baseline, not the quality answer: it is fast but repeatedly breaks HTML in multiple prompt/cache regimes; W100 direct K0->K23 at cache256 failed around token 183 despite a stable ~3.08 t/s tail.
 - W100+rotate32 at cache256 avoided the early loop through 2000 tokens and rendered a visible page. The run allocated most of the available budget to detailed CSS and reached body markup around token 1904; missing form/script/html close should be treated as token-budget-limited, not as degeneration.
 - W50+rotate32 with the same normal prompt, cache256, and 2000-token cap also avoided the early loop and reached body/card markup earlier, around token 1541, with slightly better average throughput than W100. It is still token-budget-limited: no form/script/html close within 2000 tokens.
 - The max_tokens=4000 A/B must use ctx8192. The W50 ctx4096 diagnostic hit total_tokens=4078 and looped in CSS before <body>, so it is context-confounded rather than a clean 4000-token quality result.
 - With ctx8192, W50+rotate32 completed a document at 2417 completion tokens and reached body/form/script/html close, but the produced page is not functional: malformed form close, popup commented out, and invalid JS. W100+rotate32 ctx8192 spent more budget in CSS, reached body/form much later, then looped on `//` inside script and ended by length without </html>.
+- `prompt_s` is prompt prefill/cache/order state, not generated-token warmup cost. The historical W100 ctx8192 `prompt_s=266.374s` must not be attributed solely to W=100 or VRAM filling; speed comparisons require paired cache-state/order.
 - The compact budget-aware prompt did not improve this A/B: it reached `<script>` earlier but entered a repeated `/* js */` placeholder loop, with first bad event around 961 and conclusive repetition around 977.
 - Breath variants that fire after visible n-gram damage are too late; useful post-return tokens were measured as zero in the requested A/B.
 - Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.
@@ -26,40 +27,49 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 
 ## High-Signal Runtime Rows
 
-| suite | variant | server_cache_experts | pace_warmup | pace_keep | pace_rotate | pace_rotate_every | completion_tokens | avg_tps | last_chunk_tps | prefetch_gib | repeat_flag | coherent_until_token_est | quality_signal |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 20260709_requested4_html800_cache128 | local_k23_rotate32_cache128 | 128 | 50 | 23 | 1 | 32 | 800 | 3.03 | 2.99 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
-| 20260709_requested4_html800_cache256 | local_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 800 | 2.61 | 2.89 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
-| 20260710_w100_direct_k23_cache256_html2000 | w100_direct_k23_cache256 | 256 | 100 | 23 | 0 | 32 | 2000 | 2.55 | 3.08 | 6.07 | 1 | 183 | repeat=1; coherent_until~183; doctype=1; popup; fail_quality_loop_early |
-| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 100 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_needs_more_tokens_or_prompt_constraint |
-| 20260710_w100_rotate32_k23_cache256_html2000_compact_prompt | w100_rotate32_k23_cache256_compact_budget | 256 | 100 | 23 | 1 | 32 | 1379 | 1.67 | 2.83 | 6.07 | 1 | 960 | repeat=1; coherent_until~960; doctype=1; script; popup; fail_js_comment_loop_after_compact_budget_prompt |
-| 20260710_w100_rotate32_k23_cache256_html4000_ctx8192 | w100_rotate32_k23_cache256_html4000_ctx8192 | 256 | 100 | 23 | 1 | 32 | 4000 | 2.78 | 2.99 | 6.07 | 1 | 3598 | repeat=1; coherent_until~3598; doctype=1; form; script; popup; script_comment_loop_no_html_close |
-| 20260710_w50_rotate32_k23_cache256_html2000 | w50_rotate32_k23_cache256 | 256 | 50 | 23 | 1 | 32 | 2000 | 2.59 | 2.88 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_w50_no_loop |
-| 20260710_w50_rotate32_k23_cache256_html4000 | w50_rotate32_k23_cache256_html4000 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.79 | 2.9 | 6.07 | 0 | 1379 | repeat=0; coherent_until~1379; doctype=1; popup; diagnostic_ctx4096_edge_css_loop_no_body |
-| 20260710_w50_rotate32_k23_cache256_html4000_ctx8192 | w50_rotate32_k23_cache256_html4000_ctx8192 | 256 | 50 | 23 | 1 | 32 | 2417 | 2.56 | 3.0 | 6.07 | 0 | 2026 | repeat=0; coherent_until~2026; doctype=1; form; script; popup; complete_document_but_functionally_broken_markup_js |
-| 20260710_pod_cache1024_html800 | local_k23_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 14.12 | 24.79 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
-| 20260710_pod_cache1024_html800 | local_k23_weighted_warmup_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 16.37 | 24.71 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
-| 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 50 | 64 | 1 | 999999 | 400 | 2.22 | 2.92 | 75.78 | 0 |  | repeat=0; doctype=1; popup |
-| 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_stale_cache256 | 256 | 50 | 64 | 0 | 32 | 400 | 1.87 | 2.59 | 75.78 | 1 |  | repeat=1; doctype=1; popup |
-| 20260710_pace_advanced_ab_html800 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 50 | 64 | 1 | 999999 | 800 | 2.76 | 2.92 | 75.78 | 0 |  | repeat=0; doctype=1; popup |
-| 20260710_pace_advanced_ab_html800 | local_stepdown_64_to23_stale_cache256 | 256 | 50 | 64 | 0 | 32 | 800 | 2.61 | 3.0 | 75.78 | 0 |  | repeat=0; doctype=1; popup |
+| suite | variant | server_cache_experts | pace_warmup | pace_keep | pace_rotate | pace_rotate_every | completion_tokens | avg_tps | last_chunk_tps | prefetch_gib | l0l3 | client_stop_reason | retry_attempts | repeat_flag | coherent_until_token_est | quality_signal |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| 20260709_requested4_html800_cache128 | local_k23_rotate32_cache128 | 128 | 50 | 23 | 1 | 32 | 800 | 3.03 | 2.99 | 139.61 |  |  |  | 0 | 800 | repeat_proxy=0; coherent_until~800; doctype=1; popup |
+| 20260709_requested4_html800_cache256 | local_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 800 | 2.61 | 2.89 | 139.61 |  |  |  | 0 | 800 | repeat_proxy=0; coherent_until~800; doctype=1; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w100_k23_rotate32_cache256 | 256 | 100 | 23 | 1 | 32 | 4000 | 2.56 | 2.85 | 6.07 | 0 |  | 0 | 1 |  | L0; repeat_proxy=1; doctype=1; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w100_k23_rotate32_cache256 | 256 | 100 | 23 | 1 | 32 | 4000 | 2.5 | 2.84 | 6.07 | 1 |  | 0 | 1 |  | L1; repeat_proxy=1; doctype=1; form; script; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w100_k23_rotate32_cache256 | 256 | 100 | 23 | 1 | 32 |  |  |  | 0.0 | 0 |  | 0 | 0 |  | L0; repeat_proxy=0; doctype=1; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.68 | 2.8 | 6.07 | 0 |  | 0 | 1 |  | L0; repeat_proxy=1; doctype=1; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.63 | 2.8 | 6.07 | 0 |  | 0 | 1 |  | L0; repeat_proxy=1; doctype=1; popup |
+| 20260710_m1a_w50_w100_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.61 | 2.79 | 6.07 | 0 |  | 0 | 1 |  | L0; repeat_proxy=1; doctype=1; popup |
+| 20260710_m1b_w50_stopguard_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.47 | 2.63 | 6.07 | 2 |  | 0 | 0 |  | L2; repeat_proxy=0; doctype=1; popup |
+| 20260710_m1b_w50_stopguard_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.33 | 2.78 | 6.07 | 0 |  | 1 | 0 |  | L0; repeat_proxy=0; doctype=1; form; script; popup |
+| 20260710_m1b_w50_stopguard_ctx8192_n3 | m1_w50_k23_rotate32_cache256 | 256 | 50 | 23 | 1 | 32 |  |  |  | 0.0 | 1 | client_stop_repeat_token_ngram | 1 | 0 |  | L1; repeat_proxy=0; client_stop=client_stop_repeat_token_ngram; doctype=1; popup |
+| 20260710_w100_direct_k23_cache256_html2000 | w100_direct_k23_cache256 | 256 | 100 | 23 | 0 | 32 | 2000 | 2.55 | 3.08 | 6.07 |  |  |  | 1 | 183 | repeat_proxy=1; coherent_until~183; doctype=1; popup; fail_quality_loop_early |
+| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 100 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 |  |  |  | 0 | 2000 | repeat_proxy=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_needs_more_tokens_or_prompt_constraint |
+| 20260710_w100_rotate32_k23_cache256_html2000_compact_prompt | w100_rotate32_k23_cache256_compact_budget | 256 | 100 | 23 | 1 | 32 | 1379 | 1.67 | 2.83 | 6.07 |  |  |  | 1 | 960 | repeat_proxy=1; coherent_until~960; doctype=1; script; popup; fail_js_comment_loop_after_compact_budget_prompt |
+| 20260710_w100_rotate32_k23_cache256_html4000_ctx8192 | w100_rotate32_k23_cache256_html4000_ctx8192 | 256 | 100 | 23 | 1 | 32 | 4000 | 2.78 | 2.99 | 6.07 |  |  |  | 1 | 3598 | repeat_proxy=1; coherent_until~3598; doctype=1; form; script; popup; script_comment_loop_no_html_close |
+| 20260710_w50_rotate32_k23_cache256_html2000 | w50_rotate32_k23_cache256 | 256 | 50 | 23 | 1 | 32 | 2000 | 2.59 | 2.88 | 6.07 |  |  |  | 0 | 2000 | repeat_proxy=0; coherent_until~2000; doctype=1; popup; visually_renderable_token_budget_limited_w50_no_loop |
+| 20260710_w50_rotate32_k23_cache256_html4000 | w50_rotate32_k23_cache256_html4000 | 256 | 50 | 23 | 1 | 32 | 4000 | 2.79 | 2.9 | 6.07 |  |  |  | 0 | 1379 | repeat_proxy=0; coherent_until~1379; doctype=1; popup; diagnostic_ctx4096_edge_css_loop_no_body |
+| 20260710_w50_rotate32_k23_cache256_html4000_ctx8192 | w50_rotate32_k23_cache256_html4000_ctx8192 | 256 | 50 | 23 | 1 | 32 | 2417 | 2.56 | 3.0 | 6.07 |  |  |  | 0 | 2026 | repeat_proxy=0; coherent_until~2026; doctype=1; form; script; popup; complete_document_but_functionally_broken_markup_js |
+| 20260710_pod_cache1024_html800 | local_k23_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 14.12 | 24.79 | 6.07 |  |  |  | 1 |  | repeat_proxy=1; doctype=1; popup |
+| 20260710_pod_cache1024_html800 | local_k23_weighted_warmup_cache1024 | 1024 | 50 | 23 | 0 | 32 | 800 | 16.37 | 24.71 | 6.07 |  |  |  | 1 |  | repeat_proxy=1; doctype=1; popup |
+| 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 50 | 64 | 1 | 999999 | 400 | 2.22 | 2.92 | 75.78 |  |  |  | 0 |  | repeat_proxy=0; doctype=1; popup |
+| 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_stale_cache256 | 256 | 50 | 64 | 0 | 32 | 400 | 1.87 | 2.59 | 75.78 |  |  |  | 1 |  | repeat_proxy=1; doctype=1; popup |
+| 20260710_pace_advanced_ab_html800 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 50 | 64 | 1 | 999999 | 800 | 2.76 | 2.92 | 75.78 |  |  |  | 0 |  | repeat_proxy=0; doctype=1; popup |
+| 20260710_pace_advanced_ab_html800 | local_stepdown_64_to23_stale_cache256 | 256 | 50 | 64 | 0 | 32 | 800 | 2.61 | 3.0 | 75.78 |  |  |  | 0 |  | repeat_proxy=0; doctype=1; popup |
 
 ## Cache Pattern Rows
 
-| suite | variant | prompt_name | server_cache_experts | avg_tps | last_chunk_tps | tier_miss_eviction | repeat_flag | quality_signal |
-|---|---|---|---|---|---|---|---|---|
-| 20260709_local_cache_sweep_k23_code256 | local_k23_cache128 | code_mini | 128 | 3.23 | 3.36 | 82560/82304 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_code256 | local_k23_cache258 | code_mini | 258 | 3.07 | 3.23 | 12/0 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_code256 | local_k23_cache64 | code_mini | 64 | 2.31 | 2.82 | 82560/82432 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache128 | code_mini | 128 | 3.29 | 3.4 | 82560/82304 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache258 | code_mini | 258 | 1.84 | 2.82 | 12/0 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache64 | code_mini | 64 | 1.69 | 2.83 | 82560/82432 | 0 | repeat=0; doctype=0 |
-| 20260709_local_cache_sweep_k23_html320 | local_k23_cache128 | html | 128 | 3.03 | 3.12 | 99072/98816 | 1 | repeat=1; doctype=1; popup |
-| 20260709_local_cache_sweep_k23_html320 | local_k23_cache258 | html | 258 | 2.4 | 2.89 | 12/0 | 1 | repeat=1; doctype=1; popup |
-| 20260709_local_cache_sweep_k23_html320 | local_k23_cache64 | html | 64 | 1.78 | 1.82 | 99072/98944 | 1 | repeat=1; doctype=1; popup |
-| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache128 | html | 128 | 3.34 | 3.45 | 99072/98816 | 1 | repeat=1; doctype=1; popup |
-| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache258 | html | 258 | 3.23 | 3.33 | 12/0 | 1 | repeat=1; doctype=1; popup |
-| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache64 | html | 64 | 1.85 | 2.87 | 99072/98944 | 1 | repeat=1; doctype=1; popup |
+| suite | variant | prompt_name | server_cache_experts | avg_tps | last_chunk_tps | tier_miss_eviction | l0l3 | repeat_flag | quality_signal |
+|---|---|---|---|---|---|---|---|---|---|
+| 20260709_local_cache_sweep_k23_code256 | local_k23_cache128 | code_mini | 128 | 3.23 | 3.36 | 82560/82304 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_code256 | local_k23_cache258 | code_mini | 258 | 3.07 | 3.23 | 12/0 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_code256 | local_k23_cache64 | code_mini | 64 | 2.31 | 2.82 | 82560/82432 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache128 | code_mini | 128 | 3.29 | 3.4 | 82560/82304 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache258 | code_mini | 258 | 1.84 | 2.82 | 12/0 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_code256_rev | local_k23_cache64 | code_mini | 64 | 1.69 | 2.83 | 82560/82432 |  | 0 | repeat_proxy=0; doctype=0 |
+| 20260709_local_cache_sweep_k23_html320 | local_k23_cache128 | html | 128 | 3.03 | 3.12 | 99072/98816 |  | 1 | repeat_proxy=1; doctype=1; popup |
+| 20260709_local_cache_sweep_k23_html320 | local_k23_cache258 | html | 258 | 2.4 | 2.89 | 12/0 |  | 1 | repeat_proxy=1; doctype=1; popup |
+| 20260709_local_cache_sweep_k23_html320 | local_k23_cache64 | html | 64 | 1.78 | 1.82 | 99072/98944 |  | 1 | repeat_proxy=1; doctype=1; popup |
+| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache128 | html | 128 | 3.34 | 3.45 | 99072/98816 |  | 1 | repeat_proxy=1; doctype=1; popup |
+| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache258 | html | 258 | 3.23 | 3.33 | 12/0 |  | 1 | repeat_proxy=1; doctype=1; popup |
+| 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache64 | html | 64 | 1.85 | 2.87 | 99072/98944 |  | 1 | repeat_proxy=1; doctype=1; popup |
 
 ## Legacy / Claude Evidence Index
 
@@ -76,19 +86,21 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 | CLAIM-009 | claims_current | context_only | **CLOSED (caveat W130)** | COMPLETAMENTO (frontpage L3 ~500 tok) | session W=50 L3 picco 13.6 t/s comp ~65s (2.5x full); session W=130 L3 comp ~81s; adaptive cov-90 (K~39) L2 picco 6.7 comp ~99s; full L3 picco 3.4 comp ~164s. Warmup corto (>=50... | docs/paper/PAPER.md, completamento, runs/ds4/20260710_pod_cache1024_warmup_replay/README.md |
 | CLAIM-010 | claims_current | context_only | **CLOSED** | VELOCITA config funzionanti (>=L2) | Python cov-80 (K~23) L3 = 9.6 t/s; Python keep-32 L3 = 8.3; JSON keep-20 L3 = 7.2; JSON cov-80 (K~24) L3 = 5.8. | docs/paper/PAPER.md |
 | CLAIM-011 | claims_current | context_only | **OPEN** | FEEDBACK slope-S1 (segnale di loop) | S1 = frazione di massa-router sugli esperti POTATI (router calcola tutti 256; bias solo su selezione). Assoluto cronico ~0.75 -> NON distingue; solo lo SLOPE e usabile. Locale: ... | docs/paper/PAPER.md, trace S1, K91 |
-| CLAIM-012 | claims_current | context_only | **RETRACTED (lose-lose)** | MIXED-PRECISION alza il soffitto | q2 e q2-q4 entrambi L1 sul task hard -> il soffitto e la TAGLIA del modello, non i bit. q2-q4 (98GB) +19% tempo vs q2 (81GB). ds4 fa gia asimmetrico (routed 2-bit IQ2_XXS/Q2_K, ... | docs/paper/PAPER.md, run q2 vs q2-q4 |
-| CLAIM-013 | claims_current | context_only | **OPEN (regime-dipendente)** | PREFETCH SPEX-dense = velocita ovunque | recall != velocita. Hidden-probe wired (0015, funziona); recall 0.616-0.807 costante-su-cache (batte n-gram 0.33-0.56). t/s reale: RAM-served (pod) 2.5-4.5x PIU LENTO; SSD-bound... | docs/SPEX_spec.md, patch 0015/0003/0004 |
-| CLAIM-014 | claims_current | context_only | **RETRACTED** | Asimmetria causale HOT/COLD ("94% vs 69%") | Multiseed N=3 non replica; era mask-inerte + n=1. rep-rate hot ~ cold. | docs/paper/PAPER.md (retraction) |
-| CLAIM-015 | claims_current | context_only | **RETRACTED (refutato)** | DYNAMIC staircase / PACE learn-live | Avvelena la cache; il direct-descent vince. Path dinamico OFF. | src/ path dinamico (patch 0014), note ENG-BUG |
-| CLAIM-016 | claims_current | context_only | **OPEN** | reap/full "near-lossless" (loop) | 1.009x CI[0.972, 1.035]. Il CI attraversa 1.0 -> NON dire "near-lossless" secco per il loop. (Distinto da F1 statico, vedi NUANCE.) | docs/paper/PAPER.md |
-| CLAIM-017 | claims_current | context_only | **CLOSED** | Contrasto PAIRED rand/reap | 1.345x CI[1.270, 1.423], NON sovrapposto a reap/full. Stessa GPU, confound-clean. Contrasto ordinale pulito: conta il RANKING di salienza. | docs/paper/PAPER.md, log paired |
-| CLAIM-018 | claims_current | context_only | **RETRACTED come tesi** | "frontier / DC-scale unlock" | Prior-art fino a 1026B (EASY-EP, PreMoE, REAP-Cerebras 2510.13999). Posizione onesta = EDGE / single-stream. | docs/paper/PAPER.md |
-| CLAIM-019 | claims_current | context_only | **CLOSED (fix noto)** | Bug reserve cache esperti | DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB default 16 -> capato a VRAM/2 = 6GB -> cache esperti DISABILITATA su 12GB. reserve=1 la riabilita. Trappola (vale anche per antirez: d... | note locali 3060, src/ streaming cache |
-| CLAIM-020 | claims_current | context_only | **OPEN** | 3060 I/O / capacity-bound | Working-set keep-23 = 920 esperti / 6.07 GiB > cache VRAM 854; + non-expert ~5.4GB -> 12GB pieni. keep-23 warm dipende dalla cache esperti (sweep 2026-07-09): 3.03-3.34 t/s a ca... | note locali 3060, runs/ds4/20260709_local_cache_sweep_k23_RESULTS.md |
-| CLAIM-021 | claims_current | context_only | **OPEN (n=1, proxy repeat)** | STABILITA lunga 3060: K23 rotate32 (W100 non salva il direct) | Static K23 e veloce ma degenera presto: html800 coerente solo ~tok116 (3.39 t/s c128 / 3.06 c256); W100 direct cache256 fallisce ~tok183 nonostante coda ~3.08 t/s -> allungare i... | runs/ds4/20260709_requested_breath_rotation_RESULTS.md, runs/ds4/20260710_w100_direct_k23_cache256_html2000/, runs/ds4/20260710_w100_rotate32_k23_cache256_html2000/, docs/DS4_EX... |
-| CLAIM-022 | claims_current | context_only | **CLOSED (fatto)** | Architettura modello 2-bit | 158B tot / 13B attivi, 43 layer (3 densi 0-2 + 40 MoE 3-42), 256 esperti/layer, top-6, 6.75 MiB/esperto, 81GB SSD. "40 vs 43" era falso allarme (i densi non hanno esperti). | note architettura, docs/ |
-| CLAIM-023 | claims_current | context_only | **OPEN (collisione)** | Nome "REAP" | Collide con REAP-Cerebras (arXiv 2510.13999). Pruning statico e prior-art (EASY-EP, PreMoE, NAEE). | README, docs/paper/PAPER.md |
-| CLAIM-024 | claims_current | context_only | **CLOSED** | Contributo netto del progetto | = loop live-calibrato + eval graduato L0-L3 + adaptive-K coverage + negativi onesti. Costruito su ds4 / DwarfStar (antirez, MIT). | README, docs/paper/PAPER.md |
+| CLAIM-012 | claims_current | context_only | **CLOSED** | CONTROLLO POSITIVO full (T1 pod) | Full no_pace (nessuna mask) MAI degenerato: 13/13 repeat=0, CSS sempre coerente. Cyberpunk L0 a 800 E 2000 tok (greedy E sampled) per BUDGET, non per config -- il prompt elicita... | runs/ds4/20260710_pod_t1_full_positive_control/README.md |
+| CLAIM-013 | claims_current | context_only | **RETRACTED (lose-lose)** | MIXED-PRECISION alza il soffitto | q2 e q2-q4 entrambi L1 sul task hard -> il soffitto e la TAGLIA del modello, non i bit. q2-q4 (98GB) +19% tempo vs q2 (81GB). ds4 fa gia asimmetrico (routed 2-bit IQ2_XXS/Q2_K, ... | docs/paper/PAPER.md, run q2 vs q2-q4 |
+| CLAIM-014 | claims_current | context_only | **OPEN (regime-dipendente)** | PREFETCH SPEX-dense = velocita ovunque | recall != velocita. Hidden-probe wired (0015, funziona); recall 0.616-0.807 costante-su-cache (batte n-gram 0.33-0.56). t/s reale: RAM-served (pod) 2.5-4.5x PIU LENTO; SSD-bound... | docs/SPEX_spec.md, patch 0015/0003/0004 |
+| CLAIM-015 | claims_current | context_only | **RETRACTED** | Asimmetria causale HOT/COLD ("94% vs 69%") | Multiseed N=3 non replica; era mask-inerte + n=1. rep-rate hot ~ cold. | docs/paper/PAPER.md (retraction) |
+| CLAIM-016 | claims_current | context_only | **RETRACTED (refutato)** | DYNAMIC staircase / PACE learn-live | Avvelena la cache; il direct-descent vince. Path dinamico OFF. | src/ path dinamico (patch 0014), note ENG-BUG |
+| CLAIM-017 | claims_current | context_only | **OPEN** | reap/full "near-lossless" (loop) | 1.009x CI[0.972, 1.035]. Il CI attraversa 1.0 -> NON dire "near-lossless" secco per il loop. (Distinto da F1 statico, vedi NUANCE.) | docs/paper/PAPER.md |
+| CLAIM-018 | claims_current | context_only | **CLOSED** | Contrasto PAIRED rand/reap | 1.345x CI[1.270, 1.423], NON sovrapposto a reap/full. Stessa GPU, confound-clean. Contrasto ordinale pulito: conta il RANKING di salienza. | docs/paper/PAPER.md, log paired |
+| CLAIM-019 | claims_current | context_only | **RETRACTED come tesi** | "frontier / DC-scale unlock" | Prior-art fino a 1026B (EASY-EP, PreMoE, REAP-Cerebras 2510.13999). Posizione onesta = EDGE / single-stream. | docs/paper/PAPER.md |
+| CLAIM-020 | claims_current | context_only | **CLOSED (fix noto)** | Bug reserve cache esperti | DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB default 16 -> capato a VRAM/2 = 6GB -> cache esperti DISABILITATA su 12GB. reserve=1 la riabilita. Trappola (vale anche per antirez: d... | note locali 3060, src/ streaming cache |
+| CLAIM-021 | claims_current | context_only | **OPEN** | 3060 I/O / capacity-bound | Working-set keep-23 = 920 esperti / 6.07 GiB > cache VRAM 854; + non-expert ~5.4GB -> 12GB pieni. keep-23 warm dipende dalla cache esperti (sweep 2026-07-09): 3.03-3.34 t/s a ca... | note locali 3060, runs/ds4/20260709_local_cache_sweep_k23_RESULTS.md |
+| CLAIM-022 | claims_current | context_only | **OPEN (L0-L3 misurato; ctx8192 n=1, replica=M1a)** | STABILITA lunga 3060: K23 rotate32 (W100 non salva il direct) | CORRETTO da retro-grade L0-L3 + controllo positivo T1 (i vecchi verdetti "regge / repeat=0" erano artefatti del proxy): (a) a <=800 tok rotate32 E static K23 sono ENTRAMBI L0 fu... | runs/ds4/20260710_retro_grade_l0l3/REPORT.md, runs/ds4/20260710_pod_t1_full_positive_control/README.md, docs/HANDOFF_CODEX.md (M1a), runs/ds4/20260709_requested_breath_rotation_... |
+| CLAIM-023 | claims_current | context_only | **CLOSED (fatto)** | Architettura modello 2-bit | 158B tot / 13B attivi, 43 layer (3 densi 0-2 + 40 MoE 3-42), 256 esperti/layer, top-6, 6.75 MiB/esperto, 81GB SSD. "40 vs 43" era falso allarme (i densi non hanno esperti). | note architettura, docs/ |
+| CLAIM-024 | claims_current | context_only | **CLOSED (misurato, con nuance)** | Greedy NON riproducibile run-to-run | Locale (3060): divergenza a tok~75 a config/prompt identici, temp 0 (rollout indipendenti, NON prefisso+coda: coerente con non-associativita' FP/CUDA che ribalta un argmax quasi... | runs/ds4/20260710_w50_rotate32_k23_cache256_html4000/ANALYSIS.md, runs/ds4/20260710_pod_t1_full_positive_control/README.md |
+| CLAIM-025 | claims_current | context_only | **OPEN (collisione)** | Nome "REAP" | Collide con REAP-Cerebras (arXiv 2510.13999). Pruning statico e prior-art (EASY-EP, PreMoE, NAEE). | README, docs/paper/PAPER.md |
+| CLAIM-026 | claims_current | context_only | **CLOSED** | Contributo netto del progetto | = loop live-calibrato + eval graduato L0-L3 + adaptive-K coverage + negativi onesti. Costruito su ds4 / DwarfStar (antirez, MIT). | README, docs/paper/PAPER.md |
 | LEDGER-HIST-CACHE1024-STATIC-K23-20260707 | legacy_experiments_ledger | legacy_only | historical_claude_recovery | HIST-CACHE1024-STATIC-K23-20260707 | Static file-mask keep-23 17.3 t/s hit 0.986; runtime static-from-token0 11.4 t/s hit 0.923; full no-mask 3.6 t/s hit 0.607; dynamic staircase 2.5 t/s hit 0.557. | `docs/CLAIMS_CURRENT.md`, `docs/paper/PAPER.md`, Claude memory; docs/EXPERIMENTS_LEDGER.md |
 | LEDGER-HIST-CLAUDE-SPEX-30B-20260703 | legacy_experiments_ledger | legacy_only | historical_claude_recovery | HIST-CLAUDE-SPEX-30B-20260703 | Qwen3-30B SPEX hidden recall: domain @8/@16/@32 = `.9316/.9906/.9978`; general = `.8292/.9560/.9861`; Markov lower. 235B hidden remained estimated, not measured. | Claude export/consolidation under `Documents/Codex/2026-07-05/.../outputs/` and `.claude/projects/...`; docs/EXPERIMENTS_LEDGER.md |
 | LEDGER-HIST-K91-CODING-FIT-20260706 | legacy_experiments_ledger | legacy_only | historical_claude_recovery | HIST-K91-CODING-FIT-20260706 | RTX 3080 Ti 12GB: K0 full hit 0.35, 2.16 t/s; K91 keep23 hit 0.67, 3.67 t/s; K96 keep9 hit 0.96, 12.02 t/s. Coding quality degraded: full K0 rendered, K50 pseudo-HTML, K91/K96 l... | `.claude` memory and `runs/reap/k91_coding_vram/README.md`; docs/EXPERIMENTS_LEDGER.md |

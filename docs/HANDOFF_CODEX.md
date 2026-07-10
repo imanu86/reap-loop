@@ -71,4 +71,24 @@ esiti, deviazioni e tempo speso; CLAIMS toccato solo se un finding cambia stato 
 
 ## §LOG MANDATI
 
-- **M1** — aperto 2026-07-10, in corso. (Chiuderlo qui con: esiti M1a-d, commit hash, deviazioni.)
+- **M1** — chiuso 2026-07-10. Artefatti:
+  `runs/ds4/20260710_m1a_w50_w100_ctx8192_n3/` e
+  `runs/ds4/20260710_m1b_w50_stopguard_ctx8192_n3/`, con `summary.csv`,
+  `summary_median.csv`, `m1_analysis.csv`, `ANALYSIS.md`, manifest e log per seed.
+  Runner esteso con varianti esplicite `m1_w50_k23_rotate32_cache256` /
+  `m1_w100_k23_rotate32_cache256` e stopper client-side opzionale
+  (`</html>`, ngram n=3/window120/repeat3, line-block repeat, retry=1).
+  M1a: W50 n=3 = L0,L0,L0, nessun `</html>`, median avg_tps 2.63;
+  W100 n=3 = L0,L1,L0, nessun `</html>`, median avg_tps sui run validi 2.53,
+  con r03 tronco (`final stream failed`, 1799 eventi, niente usage/completion).
+  Quindi non c'e' replica del segnale n=1 precedente: ctx8192 non basta a rendere
+  il documento funzionale su questa config, e W50>W100 non emerge come finding
+  qualitativo robusto. M1b: W50+stopper n=3 = L2,L0,L1; r01/r02 arrivano a 4000
+  senza stop utile, r03 ferma su `client_stop_repeat_token_ngram` dopo retry ma resta
+  L1 e senza usage completo. Finding: lo stopper conservativo intercetta solo una
+  parte dei collassi e non dimostra ancora token saved -> functional page. M1c:
+  ledger aggiornato per chiarire che `prompt_s` e' prefill/cache/order, non costo
+  del warmup W. M1d fatto: master ledger ora porta `l0l3` e metadata client-stop
+  nelle righe runner nuove. Deviazioni: W100 r03 M1a e M1b r02/r03 hanno stream
+  failure/usage incompleto; riportati come anomalie, non rimossi. CLAIMS non toccato.
+  Commit: commit finale di chiusura M1.

@@ -1,0 +1,336 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Shop - CyberPunk</title>
+    <style>
+        /* * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica, sans-serif';
+        scroll-behavior: smooth;
+        background: #000;
+        color: #lne(1.1.1);
+        }
+        body {
+            background: radial-gradient circle at center, #0a0a0a 0%, #0a0a0a 100%;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .page-wrapper {
+            max-width: 900px;
+            width: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            border: 1px solid #0f0;
+            box-shadow: 0 0 20px #0f0, 0 0 40px #0f0, inset 0 0 20px #0f0;
+            border-radius: 12px;
+            padding: 2rem 1.5rem;
+            backdrop-filter: blur(2px);
+        }
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+        h1 {
+            font-size: 2.5rem;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            color: #0f0;
+            text-shadow: 0 0 10px #0f0, 0 0 20px #0f0, 0 0 40px #0f0;
+            margin: 0 0 0.5rem;
+        }
+        .sub-title {
+            color: #b0f0b0;
+            font-size: 1.2rem;
+            border-bottom: 1px dashed #0f0;
+            padding-bottom: 0.5rem;
+        }
+        .hero {
+            background: #0a0a0a;
+            border: 1px solid #0f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            box-shadow: 0 0 10px #0f0 inset;
+        }
+        .hero p {
+            font-size: 1.1rem;
+            line-height: 1.6;
+        }
+        .hero .tag {
+            color: #0f0;
+            font-weight: bold;
+        }
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr);
+            gap: 1rem;
+            margin: 2rem 0;
+        }
+        .card {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+            transition: 0.2s;
+        }
+        .card:hover {
+            box-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+        .card h3 {
+            color: #0f0;
+            margin: 0 0 0.5rem;
+        }
+        .card p {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+        .form-area {
+            background: #0a0a0a;
+            border: 1px solid #0f0;
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin: 2rem 0;
+        }
+        .form-area h2 {
+            color: #0f0;
+            margin-top: 0;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        label {
+            color: #0f0;
+            font-weight: bold;
+        }
+        input, textarea {
+            background: #000;
+            border: 1px solid #0f0;
+            padding: 0.8rem;
+            border-radius: 4px;
+            color: #0f0;
+            font-size: 1rem;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            box-shadow: 0 0 5px #0f0;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        button:hover {
+            background: #0f0;
+            box-shadow: 0 0 10px #0f0, 0 0 20px #0f0;
+        }
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #0f0;
+        }
+        .popup-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.80);
+            backdrop-filter: blur(2px);
+            justify-content: center;
+            align-items: center;
+            z-index: 999;
+        }
+        .popup-over.show {
+            display: flex;
+        }
+        .popup-box {
+            background: #000;
+            border: 2px solid #0f0;
+            padding: 2rem 3rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 0 20px #0f0, 0 0 40px #0f0;
+        }
+        .popup-box h2 {
+            color: #0f0;
+        }
+        .popup-box p {
+            color: #ccc;
+        }
+        .popup-box button {
+            margin-top: 1rem;
+        }
+        .glic-btn {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 0.8rem 2rem;
+            font-size: 1.2rem;
+            font-weight: bold;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .glic-btn:hover {
+            box-shadow: 0 0 10px #0f0;
+        }
+        .error-m {
+            color: #f0;
+            font-size: 0.9rem;
+        }
+        @media (max-width: 600px) {
+            h1 {
+                font-size: 2.2rem;
+            }
+        }
+    </style>
+    < /* */
+    .popup-over {
+        display: none;
+    }
+    .popup-over.show {
+        display: flex;
+    }
+    </style>
+</head>
+<body>
+    <div class="page-wrapper">
+        <header>
+            <h1>AI Code Shop</h1>
+            <div class="sub-title">Negozio di Programmazione AI - CyberPunk</div>
+        </header>
+        <section class="hero">
+            <p><span class="tag">� Neut Net</span> — Acquista modelli di sintetizzazione neurale, potenze di calcolo quantistico, esprazioni di coscienza artificiale. Tutti i nostri codici sono certificati da protocolli di sicurezza cbernetica.</p>
+        </section>
+        <div class="grid">
+            <div class="card">
+                <h3>AI Brain v1</h3>
+                <p>Modello di rete neurale per ottimizzare processi di deep learning.</p>
+            </div>
+            <div class="card">
+                <h3>SynC 2</h3>
+                <p>Processo di sintetizzazione dati per AI quantistica.</p>
+            </div>
+            <div class="card">
+                <h3>NeuroX 3</h3>
+                <p>Esprazioni di coscienza per AI generativa.</p>
+            </div>
+            <div class="card">
+                <h3>CodeMatrix</h3>
+                <p>Libreria di codici per AI programmazione.</p>
+            </div>
+            <div class="card">
+                <h3>QuantNet</h3>
+                <p>Rete di calcolo quantistico per AI.</p>
+            </div>
+            <div class="card">
+                <h3>CyberMind</h3>
+                <p>Modello di coscienza artificiale avanzato.</p>
+            </div>
+        </div>
+        <div class="form-area">
+        <h2>Contattaci — Richiesta Codice</h2>
+        <form>
+        <div class="form-group">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" placeholder="Inserisci il tuo nome">
+        </div>
+        <div class="form-group">
+            <label for="email">Email</label>
+            <input type="email" id="email" placeholder="Inserisci la tua email">
+        </div>
+        <div class="form-group">
+            <label for="message">Richiesta</label>
+            <textarea id="message" rows="4" placeholder="Descrivi la tua richiesta..."></textarea>
+        </div>
+        <button type="button" id="inviaBtn">Invia Richiesta</button>
+        <div class="error-m" id="error-m" style="hidden"></div>
+        </form>
+    </div>
+    <footer>
+        <p>AI Code Shop - 202- CyberPunk</p>
+    </footer>
+    </div>
+    <!-- popup-over -->
+    <div class="popup-over" id="popupOver">
+        <div class="popup-box">
+            <h2>Richiesta Inviata</h2>
+            <p>Il tuo messaggio è stato inviato con successo nella rete neurale.</p>
+            <button class="glic-btn" id="closePopup">OK</button>
+        </div>
+    </div>
+    <script>
+        document.addEventListener, DOM, ready, function (form) non form.
+        const btn = document.getElementById('inviaBtn');
+        const popupOver = document.getElementById('popupOver');
+        const closeBtn = document.getElementById('closePopup');
+        const errorDiv = document.getElementById('error-m');
+        const nome = document.getElementById('nome');
+        const email = document.getElementById('email');
+        const message = document.getElementById('message');
+
+        btn.addEventListener('click', function (e) {
+            e.preventDefault();
+            let error = '';
+            if nome.value.trim() === '' || email.value.trim() === '' || message.value.trim() === '' || error = 'Compia tutti campi';
+            if error) {
+                errorDiv.textContent = error;
+                errorDiv.style.visibility = 'block';
+                return;
+            }
+            if email.value.indexOf('@') === -1 || email.value.indexOf('.') === -1) {
+                error = 'Inserisci una email valida';
+                errorDiv.textContent = error;
+                errorDiv.style.visibility = 'block';
+                return;
+            }
+            errorDiv.style.visibility = 'hidden';
+            popupOver.classList.add('show');
+            // form.reset();
+        }
+
+        closeBtn.addEventListener('click', function () {
+            popupOver.classList.remove('show');
+        });
+
+        window.addEventListener('click', function (e) {
+            if e.target === popupOver) {
+                popupOver.classList.remove('show');
+            }
+        });
+    </script>
+</</>
+</>
+</>
+</>
+</>
+</>
+</>
+</>
+</>
+</>

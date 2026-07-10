@@ -1,0 +1,273 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Store - Cyberpunk</title>
+    <style>
+        /* Reset base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #000;
+            color: #00-cyan;
+            font-family: 'Courier New', monospace;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20;
+        }
+
+        .container {
+            max-width: 900;
+            width: 100%;
+            background: rgba(00, 00, 00, 0.8);
+            border: 2 solid #0ff;
+            box-shadow: 0 0 20 #0ff, inset 0 0 20 #0ff;
+            padding: 2rem;
+            border-radius: 10;
+            backdrop-filter: blur(3);
+            animation: flicker 2s infinite alternate;
+}
+
+        @keyframes flicker {
+        from {
+            box-shadow: 0 0 5 #cyan, 0 0 10 #cyan, 0 0 20 #cyan;
+        }
+        to {
+            box-shadow: 0 0 10 #cyan, 0 0 20 #cyan, 0 0 30 #cyan;
+        }
+        }
+
+        header {
+            text-align: center;
+        }
+
+        h1 {
+        font-size: 2.5rem;
+        text-shadow: 0 0 10 #cyan, 0 0 20 #cyan;
+        letter-spacing: 4;
+        margin-bottom: 0.5;
+        color: #fff;
+        border-bottom: 2 solid #0ff;
+        padding-bottom: 10;
+        display: inline-block;
+        }
+
+        .sub-title {
+            color: #0ff;
+            font-size: 1.2;
+            margin-bottom: 2;
+            opacity: 0.9;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin: 2rem 0;
+        }
+
+        .card {
+            background: rgba(0, 0, 20, 0.5);
+            border: 1 solid #cyan;
+            padding: 1.5;
+            border-radius: 8;
+            box-shadow: 0 0 5 rgba(0, 255, 255, 0.3);
+            transition: 0.3;
+        }
+
+        .card:hover {
+            background: rgba(0, 255, 255, 0.1);
+        }
+
+        .card h3 {
+            color: #fff;
+            text-shadow: 0 0 5 #cyan;
+        }
+
+        .card p {
+            color: #aaa;
+        }
+
+        .btn {
+            background: transparent;
+            border: 2 solid #0ff;
+            color: #0ff;
+            padding: 0.8 2;
+            font-size: 1.2;
+            cursor: pointer;
+            transition: 0.3;
+            text-transform: uppercase;
+            letter-spacing: 2;
+            margin-top: 1;
+        }
+
+        .btn:hover {
+            background: #0ff;
+            color: #000;
+            box-shadow: 0 0 10 #0ff;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 1.2;
+        }
+
+        input, textarea {
+            background: #000;
+            border: 1 solid #0ff;
+            padding: 0.8;
+            color: #0ff;
+            font-family: inherit;
+            font-size: 1;
+            outline: none;
+        }
+
+        input:focus, textarea:focus {
+            box-shadow: 0 0 5 #0ff;
+        }
+
+        label {
+            color: #0ff;
+            font-size: 0.9;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 2;
+            border-top: 1 solid #0ff;
+            padding-top: 1;
+            color: #888;
+        }
+
+        .popup-over {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(2);
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+        }
+
+        .popup-box {
+            background: #000;
+            border: 2 solid #0ff;
+            padding: 2.5 3;
+            text-align: center;
+            box-shadow: 0 0 30 #0ff;
+            animation: flicker 1.5 infinite;
+        }
+
+        .popup-box h2 {
+            color: #0ff;
+            font-size: 2;
+            margin-bottom: 0.5;
+        }
+
+        .popup-box p {
+            color: #aaa;
+        }
+
+        .popup-box .btn {
+            margin-top: 1.5;
+        }
+
+        @media (max-width: 600) {
+            .grid {
+            grid-template-columns: 1fr;
+        }
+        }
+    </style>
+    <!-- Script -->
+    <script>
+        function mostraPopup() {
+            document.getElementById('popup-over').display: block;
+        }
+        function nasodi() {
+            document.getElementById('popup-over').display: none;
+        }
+        function inv() {
+            // mostraPopup();
+            // alert "richiesta inviata"
+            // qui' eventuale invio form
+            // per mostrare popup
+            mostraPopup();
+            // reset form (facile)
+            document.getElementById('form').reset();
+            // rest
+            return false; // evita submit
+        }
+    </script>
+    <!-- HTML -->
+    <!-- /cor del container -->
+    <div class="container">
+        <header>
+            <h1>AI Code Store</h1>
+            <p class="sub-title">Negozio di programmazione AI - Cyberpunk</p>
+        </header>
+        <section class="grid">
+            <div class="card">
+                <h3>�DAI�BRA</h3>
+                <p>Modelli avanzati per AI, coding reattivo, potenza di calcolo quantistico.</p>
+                <button class="btn" onclick="alert()">Scopri</button>
+            </div>
+            <div class="card">
+                <h3>�CANTIER�</h3>
+                <p>Al tuo interno, sistemi di AI generativa, pronti per ogni progetto.</p>
+                <button class="btn" onclick="alert()">Scopri</button>
+            </div>
+            <div class="card">
+                <h3>�PACCH�</h3>
+                <p>Tool di AI per sviluppatori, librerie di codice quantistico.</p>
+                <button class="btn" onclick="alert()">Scopri</button>
+            </div>
+        </section>
+        <section>
+        <h2 style="color: #0ff;">Contattaci</h2>
+        <form id="form" onsubmit="return inv()">
+            <label for="nome">Nome</label>
+            <input type="text" id="nome" name="nome" required placeholder="Il tuo nome">
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required placeholder="La tua email">
+            <label for="msg">Messaggio</label>
+            <textarea id="msg" rows="4" required placeholder="Il tuo messaggio..."></textarea>
+            <button class="btn" type="submit">Invia richiesta</button>
+</form>
+</section>
+<div class="footer">
+<p>�//Accesso al sistema quantistico</p>
+<p>AI Code Store 202 202 - Tutti i diritti riservati</p>
+</div>
+</div>
+<!-- popup -->
+<div id="popup-over" class="popup-over">
+<div class="popup-box">
+<h2>�Richiesta Inviata�</h2>
+<p>Il tuo messaggio è stato trasmesso al sistema quantistico.</p>
+<button class="btn" onclick="nasodi()">Chiudi</button>
+</div>
+</div>
+<script>
+// nessuna funzione javascript
+// gestisci popup
+// script inline
+// // 
+// // 
+// // 
+// // 
+//

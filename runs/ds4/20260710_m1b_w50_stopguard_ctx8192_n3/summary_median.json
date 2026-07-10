@@ -1,0 +1,16 @@
+[
+  {
+    "prompt": "html",
+    "variant": "m1_w50_k23_rotate32_cache256",
+    "run_count": 3,
+    "variant_rationale": "M1a replication arm: ctx8192/html4000, W50 full-router warmup, fixed K23, rotate32 decay 0.98, cache256, no breath/prebreath/relearn.",
+    "avg_tps_median": 2.4,
+    "first50_tps_median": 0.425,
+    "prompt_s_median": 175.119,
+    "l0l3_median": 1.0,
+    "doctype": 1,
+    "has_popup": 1,
+    "alert_in_script": 0,
+    "repeat_flag": 0
+  }
+]

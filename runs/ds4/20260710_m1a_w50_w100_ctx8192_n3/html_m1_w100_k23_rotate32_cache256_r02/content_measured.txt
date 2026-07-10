@@ -1,0 +1,689 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Emporium • Cyberpunk</title>
+    <!-- Font futuristico -->
+    <link href="https://https" rel="stylesheet" href="https.com/integrazione.2" crossorigin>
+    <style>
+    /* Reset e strade cyberpunk */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+
+    body {
+        background: radial-gradient(ellipse at center, #0d0d14 0%, #1200 100%, #0 100%);
+        background-color: #0a0a0f;
+        font-family: 'Orpo', 'Couro', monospace;
+        color: #f0f0f0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        margin: 0;
+        background-image: 
+            repeating-linear-gradient(0deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px),
+            repeating-linear-gradient(0deg, rgba(255, 0, 255, 0.1) 1px, transparent 1px);
+    background-size: 4px 4px;
+    animation: scan 8s linear infinite;
+    @keyframes scan {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 40px; }
+    }
+    /* overlay gruglia */
+    body::before {
+        content: '';
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: repeating-linear-gradient(0deg, rgba(0, 255, 255, 0.1) 1px, transparent 1px);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .card {
+        background: #0e0e0e;
+        border: 2px solid #0ff;
+        box-shadow: 0 0 20px #0ff8, 0 0 40px #f0f, inset 0 0 20px #0ff4;
+        border-radius: 12px;
+        padding: 2rem 2rem 2rem;
+        max-width: 520px;
+        width: 100%;
+        backdrop-filter: blur(4px);
+        position: relative;
+    z-index: 10;
+    transition: box-shadow 0.2s;
+    }
+    .card:hover {
+        box-shadow: 0 0 30px #0ff, 0 0 60px #f0f, inset 0 0 30px #0ff;
+    }
+
+    h1 {
+        font-size: 2.4rem;
+        text-align: center;
+        text-transform: uppercase;
+        letter-spacing:  -0.2em;
+        margin-bottom: 0.5rem;
+        text-shadow: 0 0 10px #0ff, 0 0 20px #f0f, 0 0 30px #00f;
+        color: #fff;
+        font-weight: 700;
+    }
+
+    .s-sub {
+        display: block;
+        text-align: center;
+        font-size: 0.9rem;
+        color: #0ff;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #f0f4;
+        padding-bottom: 0.8rem;
+        text-shadow: 0 0 5px #0ff;
+    }
+
+    .grid {
+        display: flex;
+        flex-direction: column;
+        gap: 1.2rem;
+    }
+
+    .input-group {
+        display: flex;
+        flex-direction: column;
+        gap: 0.3rem;
+    }
+
+    label {
+        font-size: 0.9rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        color: #f0f;
+        text-shadow: 0 0 5px #f0f;
+    }
+
+    input, textarea {
+        background: #0a0a0f;
+        border: 1px solid #0ff;
+        border-radius: 4px;
+        padding: 0.8rem 0.6rem;
+        font-family: 'Orpo', monospace;
+        color: #fff;
+        font-size: 0.9rem;
+        outline: none;
+        transition: border 0.2s, box-shadow 0.2s;
+        box-shadow: 0 0 5px transparent;
+    }
+    input:focus, textarea:focus {
+        border-color: #f0f;
+        box-shadow: 0 0 10px #0ff, 0 0 10px #f0f;
+    }
+
+    textarea {
+        resize: vertical;
+        min-height: 80px;
+    }
+
+    button {
+        background: #0a0a0f;
+        border: 2px solid #0ff;
+        color: #0ff;
+        padding: 0.8rem 1.2rem;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        font-weight: bold;
+        cursor: pointer;
+        transition: all 0.2s;
+        box-shadow: 0 0 5px #0ff, 0 0 10px transparent;
+        margin-top: 0.2rem;
+        width: 100%;
+    }
+    button:hover {
+        background: #0ff;
+        color: #0a0a0f;
+        box-shadow: 0 0 20px #0ff, 0 0 40px #f0f;
+        border-color: #f0f;
+    }
+
+    .footer {
+        margin-top: 2rem;
+        text-align: center;
+        font-size: 0.7rem;
+        color: #888;
+        border-top: 1px solid #f0f3;
+        padding-top: 1rem;
+    }
+
+    .footer a {
+        color: #0ff;
+        text-decoration: none;
+    }
+
+    .popup-over {
+        display: none;
+        position: fixed;
+        top: 0; left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(4px);
+        z-index: 1000;
+        align-items: center;
+        justify-content: center;
+        animation: fade 0.3s;
+    }
+    .popup-over.show {
+        display: flex;
+    }
+
+    .popup-box {
+        background: #0e0e0e;
+        border: 2px solid #0ff;
+        box-shadow: 0 0 20px #0ff, 0 0 40px #f0f;
+        padding: 2rem 3rem;
+        border-radius: 12px;
+        text-align: center;
+    }
+    .popup-box h2 {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .popup-box p {
+        color: #0ff;
+        margin-bottom: 1rem;
+    }
+    .popup-box .close {
+        background: transparent;
+        border: 1px solid #f0f;
+        color: #f0f;
+        padding: 0.5rem 2rem;
+        cursor: pointer;
+        font-size: 1rem;
+        transition: 0.2s;
+    }
+    .popup-box .close:hover {
+        background: #f0f;
+        color: #0a0a0f;
+    }
+
+    .error-m {
+        color: #f0f;
+        font-size: 0.8rem;
+        margin-top: 0.2rem;
+    }
+    .hidden {
+        display: none;
+    }
+</style>
+```
+
+    <!-- Popup overlay -->
+<div class="popup-over" id="popupOver">
+    <div class="popup-box">
+        <h2>✔ ✔</h2>
+        <p>Richiesta inviata con successo</p>
+        <button class="close" id="closePopup">[ Chiudi ]</button>
+    </div>
+</div>
+
+    <!-- Card principale -->
+    <div class="card">
+        <h1>⚀ AI Code</h1>
+        <span class="s-sub">— cyberpunk emporium —</span>
+
+        <form id="contactForm">
+            <div class="grid">
+                <div class="input-group">
+                    <label for="name">[ N_ ]</label>
+                    <input type="text" id="name" placeholder="> nome oper" required>
+                </div>
+                <div class="input-group">
+                    <label for="email">[ @ ]</label>
+                    <input type="email" id="email" placeholder="> link com" required>
+                </div>
+                <div class="input-group">
+                    <label for="message">[ mess_ ]</label>
+                    <textarea id="message" placeholder="> scrivi richi..." required></textarea>
+                </div>
+                <button type="submit" id="inBtn">◉ invia</button>
+            </div>
+       form>
+
+        <div class="footer">
+            <span>✧ 202° AI • proto •</span><br>
+            <a href="#">[ accesso deep ]</a>
+        </div>
+    </div>
+
+    <script>
+    // JS per popup e modulo
+    function() {
+        // Previsti errori e invio
+        document.getElementById('contactForm'). addEventListener('submit', function(e) {
+            e.preventDefault(); // blocco invio trad
+            // Validazione base
+            const name = document.getElementById('name);
+            const email = document.getElementById('email);
+            const message = document.getElementById('message);
+            if (name.value.trim() === '' || email.value.trim() === '' || message.value.trim() === '' ) {
+                alert('c' da compire');
+                return;
+            }
+            // Mostra popup
+            document.getElementById('popupOver'). classList.add('show');
+            // Reset eventuale
+            // Non serve per pulire
+        });
+
+        // Chiudi popup
+        document.getElementById('closePopup'). addEventListener('click', function() {
+            document.getElementById('popupOver'). classList.remove('show');
+        });
+
+        // Chiudi overlay se clicchi fuori
+        document.getElementById('popupOver'). addEventListener('click', function(e) {
+            if (e.target.id === 'popupOver') {
+                document.getElementById('popupOver'). classList.remove('show');
+            }
+        });
+    // Prev alert per compire
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </script>
+    </

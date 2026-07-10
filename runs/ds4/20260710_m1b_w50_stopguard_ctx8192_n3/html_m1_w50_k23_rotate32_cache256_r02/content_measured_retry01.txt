@@ -1,0 +1,416 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.1">
+    <title>AI Code Store - CyberPunk</title>
+    <style>
+        /* reset base */
+        * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        font-family: 'system-ui', 'Segoe UI', 'Roboto', 'Helvetica, sans-serif';
+        scroll-behavior: smooth;
+    }
+
+    body {
+        background: radial-gradient circle at center, #0d0c0d 0%, #1a0033 100%;
+        color: #f0f0ff;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 2rem 1rem;
+        font-size: 1rem;
+        line-height: 1.6;
+    }
+
+        /* cyberpunk main */
+        .card {
+        max-width: 960px;
+        width: 100%;
+        background: rgba(10, 10, 20, 0.8);
+        backdrop-filter: blur(12px);
+        border: 2px solid #0ff;
+        box-shadow: 0 0 40px #0ff2, 0 0 20px #0ff4;
+        border-radius: 24px;
+        padding: 2.5rem 2rem;
+        transition: 0.3s;
+        margin: 1rem;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+        animation: pulse 2s infinite alternate;
+    }
+
+    .card::before,
+    .card::after {
+        content: '';
+        position: absolute;
+        top: -0%;
+        left: 0%;
+        width: 100%;
+        height: 100%;
+        background: repeating-linear-gradient(45deg, #f0ff00, #0ff, #f0f, #0ff);
+        opacity: 0.1;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .card>* {
+        position: relative;
+        z-index: 1;
+    }
+
+    h1 {
+        font-size: 3rem;
+        text-transform: uppercase;
+        letter-spacing: 0.2rem;
+        text-shadow: 0 0 10px #0ff, 0 0 20px #f0ff;
+        margin: 0 0 1rem;
+        background: linear-gradient 45deg, #f0f, #0ff, #ff0;
+        -webkit-backclip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+        font-weight: 900;
+        filter: drop-shadow 0 0 10px #0ff;
+    }
+
+    .sub-p {
+        color: #b0b0ff;
+        font-size: 1.2rem;
+        margin-bottom: 2rem;
+        border-bottom: 1px solid #0ff8;
+        padding-bottom: 1rem;
+        display: inline-block;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr);
+        gap: 1.5rem;
+        margin: 2rem 0;
+        text-align: left;
+    }
+
+    .card-item {
+        background: #0a0a0a80;
+        border: 1px solid #0ff;
+        border-radius: 12px;
+        padding: 1.2rem;
+        transition: 0.2s;
+        box-shadow: 0 0 10px #0ff2;
+        backdrop-filter: blur( 4px);
+    }
+
+    .card-item:hover {
+        background: #0ff1;
+        border-color: #f0f;
+        transform: scale 1.02;
+        box-shadow: 0 0 20px #f0f;
+    }
+
+    .card-item h3 {
+        color: #f0f;
+        margin: 0 0 0.5rem;
+        text-shadow: 0 0 5px #f0f;
+    }
+
+    .price {
+        font-size: 1.4rem;
+        font-weight: bold;
+        color: #0ff;
+        text-shadow: 0 0 5px #0ff;
+    }
+
+    .btn {
+        display: inline-block;
+        background: #0ff;
+        color: #0a0a0a;
+        font-weight: bold;
+        padding: 0.8rem 2.5rem;
+        border-radius: 50px;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        border: 2px solid #f0f;
+        box-shadow: 0 0 10px #0ff, 0 0 20px #f0f;
+        transition: 0.2s;
+        cursor: pointer;
+        margin: 1rem 0;
+        text-decoration: none;
+        border: none;
+        background: linear-gradient 45deg, #0ff, #f0f;
+        color: #000;
+        font-weight: 900;
+    }
+
+    .btn:hover {
+        transform: scale 0.9;
+        box-shadow: 0 0 20px #f0f, 0 0 40px #0ff;
+        background: linear-gradient 45deg, #f0f, #0ff;
+        color: #fff;
+        text-shadow: 0 0 5px #000;
+    }
+
+    .form-group {
+        margin: 2rem 0;
+    }
+
+    input, textarea, select {
+        width: 100%;
+        padding: 0.1rem 0.2rem;
+        background: #0a0a0a;
+        border: 1px solid #0ff;
+        border-radius: 8px;
+        color: #f0f;
+        font-size: 1rem;
+        margin: 0.5rem 0;
+        outline: none;
+        transition: 0.2s;
+    }
+
+    input:focus, textarea:focus {
+        border-color: #f0f;
+        box-shadow: 0 0 10px #f0f;
+    }
+
+    label {
+        color: #b0b0ff;
+        display: block;
+        margin: 0.5rem 0 0.2rem;
+        text-transform: uppercase;
+        letter-spacing: 0.1rem;
+        font-size: 0.8rem;
+    }
+
+    textarea {
+        min-height: 6rem;
+        resize: vertical;
+    }
+
+    .pop {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: #00000080;
+        backdrop-filter: blur( 4px);
+        z-index: 100;
+        align-items: center;
+        justify-content: center;
+        transition: 0.2s;
+    }
+
+    .pop.active {
+        display: flex;
+    }
+
+    .pop-box {
+        background: #0a0a0a;
+        border: 2px solid #0ff;
+        border-radius: 24px;
+        padding: 2.5rem 3.5rem;
+        box-shadow: 0 0 40px #0ff, 0 0 20px #f0f;
+        text-align: center;
+        max-width: 500px;
+        width: 90%;
+        animation: flick 0.3s;
+    }
+
+    .pop-box h2 {
+        font-size: 2rem;
+        color: #0ff;
+        text-shadow: 0 0 10px #0ff;
+    }
+
+    .pop-box p {
+        color: #b0b0ff;
+        margin: 1rem 0;
+    }
+
+    .close {
+        background: transparent;
+        border: 2px solid #f0f;
+        color: #f0f;
+        padding: 0.5rem 2rem;
+        border-radius: 50px;
+        font-size: 1.2rem;
+        cursor: pointer;
+        transition: 0.2s;
+        margin-top: 1rem;
+    }
+
+    .close:hover {
+        background: #f0f;
+        color: #000;
+    }
+
+    footer {
+        margin-top: 2rem;
+        color: #b0b0ff;
+        font-size: 0.8rem;
+        border-top: 1px solid #0ff4;
+        padding-top: 1rem;
+    }
+
+    @media (max-width: 600px) {
+        .card {
+        padding: 1.5rem;
+    }
+    h1 {
+        font-size: 2.2rem;
+    }
+    }
+    </script>
+    /* utility */
+    .flex { display: flex; flex-wrap: wrap; gap: 1rem; justify-content: center; }
+    .w-1 { flex: 1; min-width: 200px; }
+    .mt-2 { margin-top: 1.2rem; }
+    .mb-2 { margin-bottom: 1.2rem; }
+    .text-center { text-align: center; }
+    .gl-1 { letter-spacing: 0.1rem; }
+    .border-0 { border: none; }
+    .p-1 { padding: 0.5rem; }
+    .gl-2 { text-shadow: 0 0 5px #0ff; }
+    .glow { filter: drop-shadow 0 0 10px #0ff; }
+    .ne-1 { outline: none; }
+    .ne-1:focus { outline: 2px solid #f0f; outline-off: 2px; }
+    .bg-0 { background: transparent; }
+    .c-0 { color: #0ff; }
+    .c-1 { color: #f0f; }
+    .c-2 { color: #b0b0ff; }
+    .c-3 { color: #ff0; }
+    .c-4 { color: #f0f; }
+    .c-5 { color: #0ff; }
+    .c-6 { color: #fff; }
+    .c-7 { color: #000; }
+    .c-8 { color: #0a0a0a; }
+    .c-9 { color: #f0f; }
+    .c-10 { color: #0ff; }
+    .c-11 { color: #b0b0ff; }
+    .c-12 { color: #ff0; }
+    .c-13 { color: #f0f; }
+    .c-14 { color: #0ff; }
+    .c-15 { color: #fff; }
+    .c-16 { color: #000; }
+    .c-17 { color: #0a0a0a; }
+    .c-18 { color: #f0f; }
+    .c-19 { color: #0ff; }
+    .c-20 { color: #b0b0ff; }
+    .c-21 { color: #ff0; }
+    .c-22 { color: #f0f; }
+    .c-23 { color: #0ff; }
+    .c-24 { color: #fff; }
+    .c-25 { color: #000; }
+    .c-26 { color: #0a0a0a; }
+    .c-27 { color: #f0f; }
+    .c-28 { color: #0ff; }
+    .c-29 { color: #b0b0ff; }
+    .c-30 { color: #ff0; }
+    .c-31 { color: #f0f; }
+    .c-32 { color: #0ff; }
+    .c-33 { color: #fff; }
+    .c-34 { color: #000; }
+    .c-35 { color: #0a0a0a; }
+    .c-36 { color: #f0f; }
+    .c-37 { color: #0ff; }
+    .c-38 { color: #b0b0ff; }
+    .c-39 { color: #ff0; }
+    .c-40 { color: #f0f; }
+    .c-41 { color: #0ff; }
+    .c-42 { color: #fff; }
+    .c-43 { color: #000; }
+    .c-44 { color: #0a0a0a; }
+    .c-45 { color: #f0f; }
+    .c-46 { color: #0ff; }
+    .c-47 { color: #b0b0ff; }
+    .c-48 { color: #ff0; }
+    .c-49 { color: #f0f; }
+    .c-50 { color: #0ff; }
+    .c-51 { color: #fff; }
+    .c-52 { color: #000; }
+    .c-53 { color: #0a0a0a; }
+    .c-54 { color: #f0f; }
+    .c-55 { color: #0ff; }
+    .c-56 { color: #b0b0ff; }
+    .c-57 { color: #ff0; }
+    .c-58 { color: #f0f; }
+    .c-59 { color: #0ff; }
+    .c-60 { color: #fff; }
+    .c-61 { color: #000; }
+    .c-62 { color: #0a0a0a; }
+    .c-63 { color: #f0f; }
+    .c-64 { color: #0ff; }
+    .c-65 { color: #b0b0ff; }
+    .c-66 { color: #ff0; }
+    .c-67 { color: #f0f; }
+    .c-68 { color: #0ff; }
+    .c-69 { color: #fff; }
+    .c-70 { color: #000; }
+    .c-71 { color: #0a0a0a; }
+    .c-72 { color: #f0f; }
+    .c-73 { color: #0ff; }
+    .c-74 { color: #b0b0ff; }
+    .c-75 { color: #ff0; }
+    .c-76 { color: #f0f; }
+    .c-77 { color: #0ff; }
+    .c-78 { color: #fff; }
+    .c-79 { color: #000; }
+    .c-80 { color: #0a0a0a; }
+    .c-81 { color: #f0f; }
+    .c-82 { color: #0ff; }
+    .c-83 { color: #b0b0ff; }
+    .c-84 { color: #ff0; }
+    .c-85 { color: #f0f; }
+    .c-86 { color: #0ff; }
+    .c-87 { color: #fff; }
+    .c-88 { color: #000; }
+    .c-89 { color: #0a0a0a; }
+    .c-90 { color: #f0f; }
+    .c-91 { color: #0ff; }
+    .c-92 { color: #b0b0ff; }
+    .c-93 { color: #ff0; }
+    .c-94 { color: #f0f; }
+    .c-95 { color: #0ff; }
+    .c-96 { color: #fff; }
+    .c-97 { color: #000; }
+    .c-98 { color: #0a0a0a; }
+    .c-99 { color: #f0f; }
+    .c-100 { color: #0ff; }
+    .c-101 { color: #b0b0ff; }
+    .c-102 { color: #ff0; }
+    .c-103 { color: #f0f; }
+    .c-104 { color: #0ff; }
+    .c-105 { color: #fff; }
+    .c-106 { color: #000; }
+    .c-107 { color: #0a0a0a; }
+    .c-108 { color: #f0f; }
+    .c-109 { color: #0ff; }
+    .c-110 { color: #b0b0ff; }
+    .c-111 { color: #ff0; }
+    .c-112 { color: #f0f; }
+    .c-113 { color: #0ff; }
+    .c-114 { color: #fff; }
+    .c-115 { color: #000; }
+    .c-116 { color: #0a0a0a; }
+    .c-117 { color: #f0f; }
+    .c-118 { color: #0ff; }
+    .c-119 { color: #b0b0ff; }
+    .c-120 { color: #ff0; }
+    .c-121 { color: #f0f; }
+    .c-122 { color: #0ff; }
+    .c-123 { color: #fff; }
+    .c-124 { color: #000; }
+    .c-125 { color: #0a0a0a; }
+    .c-126 { color: #f0f; }
+    .c-127 { color: #0ff; }
+    .c-128 { color: #b0b0ff; }
+    .c-129 { color: #ff0; }
+    .c-

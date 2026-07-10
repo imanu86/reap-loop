@@ -1,0 +1,4 @@
+stem,variant,run_index,final_attempt_phase,stream_status,completion_tokens,stream_events,content_chars,emits_html_close,html_close_event,l0l3,client_stop_reason,first_client_stop_reason,retry_attempts,avg_tps,prompt_s,finish_s,loop_onset_event_est,coherent_until_event_est,loop_kind,loop_sample
+html_m1_w50_k23_rotate32_cache256_r01,m1_w50_k23_rotate32_cache256,1,measured,ok,4000,4003,14841,0,,2,,,0,2.47,150.783,1767.961,685,684,ngram3_window120_repeat3,0 0 20px
+html_m1_w50_k23_rotate32_cache256_r02,m1_w50_k23_rotate32_cache256,2,measured_retry01,stream_failed,4000,4003,10436,0,,0,,client_stop_repeat_token_ngram,1,2.33,199.455,1918.437,848,847,ngram3_window120_repeat3,0 0 10px
+html_m1_w50_k23_rotate32_cache256_r03,m1_w50_k23_rotate32_cache256,3,measured_retry01,stream_failed,,1937,7283,0,,1,client_stop_repeat_token_ngram,client_stop_repeat_token_ngram,1,,,,328,327,ngram3_window120_repeat3,0 0 20

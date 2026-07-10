@@ -1,0 +1,32 @@
+[
+  {
+    "attempt": 1,
+    "phase": "measured",
+    "wall_s": 516.481,
+    "content_chars": 636,
+    "client_stop": {
+      "reason": "client_stop_repeat_token_ngram",
+      "at_chars": 636,
+      "trim_to_chars": null,
+      "kind": "token_ngram",
+      "ngram_n": 3,
+      "repeat_count": 3,
+      "sample": "0 0 0"
+    }
+  },
+  {
+    "attempt": 2,
+    "phase": "measured_retry01",
+    "wall_s": 870.925,
+    "content_chars": 7283,
+    "client_stop": {
+      "reason": "client_stop_repeat_token_ngram",
+      "at_chars": 7283,
+      "trim_to_chars": null,
+      "kind": "token_ngram",
+      "ngram_n": 3,
+      "repeat_count": 3,
+      "sample": "// // //"
+    }
+  }
+]
