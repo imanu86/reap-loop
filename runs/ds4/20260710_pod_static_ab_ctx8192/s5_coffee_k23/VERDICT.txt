@@ -1,0 +1,5 @@
+T4 W-sweep freeze-safe verdict
+median L0-L3 by W: [(50, 2)]
+monotone non-decreasing: None
+level spread (max-min): 0
+Reading: monotone/rising => the W-table is real; flat/low spread => the old table was the freeze-point lottery (J44).

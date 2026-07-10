@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; <!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f3; padding: 20px; }
+        nav { background: #brown; padding: 10; }
+        nav a { margin-right: 10; }
+        section { margin: 20 0; }
+        button { margin: 10 0; }
+        form input { display: block; margin: 2 0; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, served with smiles.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Submit</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", "click", function() { alert("Thank you for your order!"); });
+        document.querySelector("form").addEventListener("submit", function(e) { e.preventDefault(); alert("Confirmation"); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,7 @@
+Here’s a compact, complete HTML page for a coffee shop that includes navigation, a hero section, an order button with an alert, and a contact form with confirmation logic.
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width

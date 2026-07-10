@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; ```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f8; padding: 1rem; }
+        nav { background: #brown; padding: 0.2rem 0; }
+        nav a { margin-right: 1.2rem; color: #brown; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        section { background: #brown; padding: 2rem; margin: 1rem 0; border-radius: 4px; }
+        h1 { font-size: 2.2rem; margin-bottom: 0.1rem; }
+        .subheading { font-size: 1.1rem; margin-bottom: 1rem; }
+        button { background: #brown; border: none; padding: 0.1rem 2.2rem; border-radius: 2px; cursor: pointer; }
+        form { background: #brown; padding: 1rem; border-radius: 4px; }
+        input { display: block; margin: 0.1rem 0; padding: 0.1rem; width: 100%; }
+        input[type="submit"] { width: auto; margin-top: 1rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p class="subheading">Freshly roasted · every sip</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="submit" value="Submit">
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function() {
+            alert("Thank you for your order!");
+        });
+        document.querySelector("form").addEventListener("submit", function(e) {
+            e.preventDefault();
+            alert("Confirmation: We will send your message.");
+        });
+    </script>
+</body>
+</html>
