@@ -662,3 +662,19 @@ configuration alone cannot do "fresh mask at each downward step": frequent
 rotate blocks tighten, slow rotate arrives after the descent, and raw collect
 without tighten-time apply only adds cost. Patch 0016 is required for the
 meaningful next A/B.
+
+## 2026-07-10 Open TODO - DS4 Mixed Compression And Further Quant
+
+- **DS4 mixed expert compression reale.** Audit 2026-07-10: il modello usato
+  (`/root/models/ds4-2bit.gguf`) e` una imatrix quant, ma i routed expert sono
+  uniformi (`gate/up=iq2_xxs`, `down=q2_k`) su tutti i 43 layer. DwarfStar non
+  sta gia` facendo "hot Q4 / cold 2-bit / frozen 1-bit" per expert. TODO:
+  costruire sidecar/hybrid runtime con hot native o high-precision, cold piu`
+  compresso, promozione/demozione guidata da PACE/router, e misurare
+  qualita`+latenza.
+- **Quantizzazione ulteriore sotto il native DS4.** I test finora sono
+  inconcludenti/negativi: lossless su bytes routed nativi salva <1%,
+  `staticQ4` non cambia i routed expert, CQ1 e` plumbing-only e degrada se
+  ammesso troppo presto. TODO: rifare esperimenti puliti su CQ1/1-bit/sub-CQ1
+  con prompt native warmup, hotset prompt-derived, metriche L0-L3, t/s
+  segmentato, memoria reale, e fallback native verificato.

@@ -98,6 +98,20 @@ native, with zero failures. That 0-token destructive smoke was still very slow
 and produced only a one-token malformed answer, so the usable path remains
 native prompt plus long native warmup before cold CQ1 experiments.
 
+Open TODO after the 2026-07-10 DS4 GGUF audit: do not assume DwarfStar already
+implements per-expert mixed compression. `/root/models/ds4-2bit.gguf` is an
+imatrix quant (`quantize.imatrix.*`, dataset
+`DeepSeek-V4-Flash-chat-v2-routed-moe-ds4-1p5m-fixed.dat`), but routed experts
+are uniform across all 43 layers: `ffn_gate_exps=iq2_xxs`,
+`ffn_up_exps=iq2_xxs`, `ffn_down_exps=q2_k`. Mixed/hybrid residency is
+therefore still our runtime/sidecar work: keep selected hot experts in native
+or higher-precision form, demote colder experts to a smaller cold format, and
+promote/repack only when PACE/router evidence requires it. Also keep a separate
+quantization-below-native TODO: generic lossless compression of native routed
+bytes was negative, CQ1 smokes are plumbing-only and quality-negative when used
+too early, and any 1-bit/sub-CQ1 path needs fresh end-to-end quality plus
+latency measurements before it becomes a claim.
+
 ## Current DS4 Facts To Preserve
 
 From the DS4 source inspected on `/root/ds4`:
