@@ -177,6 +177,40 @@ Tier movement is event-driven:
 - never destroy the original GGUF path, so every compressed miss has a correct
   fallback.
 
+## Latency model (E-LAT)
+
+2026-07-10 offline probe (`scripts/latency_tier_model.py`, full report
+`runs/ds4/20260710_elat_tier_latency/REPORT.md`). Measured per-expert recall
+cost (6.75 MiB expert, hardware stated; pod rates do NOT transfer to 3060):
+
+| Tier | HW | ms/expert | Source |
+|---|---|---:|---|
+| hot (VRAM resident hit) | 3060/3090 | ~0 | in t_compute; runtime resident hit ~0 today (J31) |
+| warm (RAM page-cache -> VRAM H2D) | 3060 WSL | 0.95-2.31 | copy_ms_batch/6, local cache sweep CSV |
+| cold SSD, bulk threaded page-in | 3060 WSL | 1.5-2.7 | coldest prefetch rates 2.5-4.4 GiB/s |
+| cold SSD, synchronous in decode path | 3060 WSL | 50-59 | copy_ms ~59 REAP-era; rotate cold 49.6-54.9 |
+| cold SSD fault-storm tail | 3060 WSL | ~230 | ">60 s/token" (PACE_DESIGN 7) / 258 |
+| CQ1 sync decompress+repack+copy | 3060 CPU | 64-74 | J38: 244.2 s / 14 tok / 258 = 67.6 ms |
+
+Throughput model `decode = W*t_k0 + (N-W)*(t_compute + 258*miss*t_b) +
+prefetch_s + rot*c_rot`, calibrated on hit~1 runs (pod cache1024 24.79 t/s ->
+t_compute 40.3 ms; local cache128 warm -> t_compute 74.9 ms, t_b 0.952 ms).
+Validated on 90 non-calibration runs: median error 15.4% (steady-state 7.8%,
+modeled-regime subset 10.5%).
+
+Scenario projections on the 3060: status quo 3.12 t/s; async CQ1 cold-in-RAM
+leaves steady unchanged (the hot path is H2D-copy-bound) but removes the
+tier-c cliffs (breath 2.7 s stalls, 60 s/token cold storms) and is the RAM
+enabler for the hot-capacity fix; full tiering (hot native VRAM cap258-407
+actually hitting + warm native RAM + cold CQ1 + frozen SSD) projects
+**3.7-4.1 t/s** (+20-32% steady). Worst-case recall of a single frozen-SSD
+expert: 1.5-2.7 ms if prefetched/batched (<2% of a token), 50-59 ms if
+synchronous inside the token (0.16-0.25 tokens), ~230 ms fault-storm tail.
+Caveat: measured CQ1 capacity gain is x1.5-x2.1 (J35), not x3; x3 needs
+unproven sub-CQ1 formats. Missing micro-benches are listed in the REPORT
+(single-expert cold-SSD latency distribution, isolated CQ1 decompress cost,
+async promotion under load, resident-hit=0 root cause).
+
 ## Candidate Formats
 
 The safest first target is not "better quality"; it is "less RAM/page-cache
