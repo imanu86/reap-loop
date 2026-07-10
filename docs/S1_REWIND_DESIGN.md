@@ -1,9 +1,26 @@
 # S1-guided rewind — design study (0022 candidate)
 
-> **Status: DESIGN STUDY, no patch yet.** The real patch `0022` is authored only
-> after the M1b stopper verdict and the pace-series canonization. This document
-> fixes the mechanism, the env surface, the validation plan, and an
-> honest feasibility verdict against the live engine tree.
+> **Status: 0022 AUTHORED (2026-07-11), pending pod smoke.** The actuator is
+> `patches/ds4/0022-pace-s1-rewind.patch` (388 lines, 9 hunks on `ds4.c`;
+> `git apply --check` clean on the full chain canonical v2 + 0027 + 0028, target
+> md5 `62ed2e71` → `044b32ce`; balance + symbol cross-check OK, no local gcc).
+> This document remains the mechanism/env/validation reference. **Two deliberate
+> divergences from the Appendix-A sketch, forced by the pod2 R1 lessons:**
+>   1. **The actuator does NOT live in `ds4_pace_tick`** (which has no
+>      `ds4_gpu_graph`/position and, on the greedy CLI path, cannot rewind the
+>      loop's local `pos`). It is a dedicated `ds4_pace_rewind_after_eval(g,…,
+>      pos,logits)` hook called AFTER the eval in **BOTH** decode loops
+>      (`generate_metal_graph_raw_swa` + `ds4_session_eval_internal`), returning
+>      the resume position; the detector (E-DET) stays in `ds4_pace_s1_update`.
+>      There is **no** public `ds4_session_rewind_kv` — the frontier restore is
+>      a static graph-level twin (`ds4_pace_rewind_restore_frontier(g)`) so it
+>      works with or without a `ds4_session`.
+>   2. **`DS4_PACE_REWIND_MARGIN` is realised by the rolling-checkpoint freeze
+>      at ARM, not by rewinding below the snapshot.** The frontier snapshot at
+>      `p` supports resuming at `p+1` only; the pre-onset lead comes from the
+>      rolling ARM checkpoint (refreshed every `EVERY` tok while healthy, frozen
+>      when ARM trips) landing before the confirmed collapse. Target = the
+>      frozen healthy onset (frontier floor).
 >
 > Engine evidence below is anchored to the local live tree
 > `/root/ds4/ds4.c`, 1314218 bytes, md5 `771a39a861e9512fed2fc4528780e080`

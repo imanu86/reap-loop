@@ -1,0 +1,531 @@
+From bddd626c5728439fdd3d3d2f45735c97c5292359 Mon Sep 17 00:00:00 2001
+From: reap-loop <dev@reap-loop.local>
+Date: Sat, 11 Jul 2026 01:29:18 +0200
+Subject: [PATCH] pace: 0022 S1-guided rewind actuator (both decode loops,
+ dedicated buffers, E-DET profiles)
+
+ANCHORED TO THE CANONICAL v2 CHAIN + 0027 + 0028 (base github.com/antirez/ds4
+@80ebbc3 + patches/ds4/canonical/ 21 patches -> ds4.c md5 1db4f799, + 0027 +
+0028 -> md5 62ed2e71; byte-identical to the live-tree pace0028 target, pod2
+canonical_build_v2). Applies AFTER 0028; rebase after further pace canonization.
+
+The PRODUCTION actuator for the prevention->correction->airbag ladder
+(docs/S1_REWIND_DESIGN.md), replacing the 0027 R1 diagnostic. It fixes the two
+coverage lessons the pod2 R1 smoke exposed:
+  (a) the 0027 hook lived only in ds4_session_eval_internal, muted for the
+      greedy CLI path (generate_metal_graph_raw_swa) -> 0022 drives its actuator
+      from BOTH decode loops (like 0028), so it is live in production greedy
+      A/B, not just the session/server path;
+  (b) the spec_* frontier buffers are MTP-gated (the greedy loop allocs with
+      enable_mtp=false) -> 0022 allocates its OWN spec_rewind_* buffer set,
+      gated on DS4_PACE_REWIND, independent of MTP being built or on, and never
+      clobbered by the speculative verifier between arm and fire.
+
+Mechanism (OFF by default; DS4_PACE_REWIND=0). Two halves:
+  - DETECTOR (host, ds4_pace_rewind_detect, run from ds4_pace_s1_update): the
+    tuned E-DET aggregate EWMA-CUSUM (runs/ds4/20260710_edet_s1_detector_tuning)
+    on the per-token aggregate S1 (pruned/total router mass, same PRE-bias
+    readback S1/0012/0026 share, FEED_AUDIT). One alpha=0.50 EWMA front-end
+    feeds two one-sided CUSUMs, sigma self-calibrated over the first CALWIN tok,
+    lagged-window baseline (BASE_LAG 32, BASE_WIN 128): ARM (k=0.5,h=4, cheap)
+    and FIRE (k=1.0,h=8, expensive).
+  - ACTUATOR (ds4_pace_rewind_after_eval, GPU, both loops, after each eval):
+    while ARM is quiet it takes/refreshes a rolling frontier snapshot every
+    EVERY tok (spec_rewind_* + onset logits + full PACE-accumulator blob incl
+    mass/rmass/bmass/admit + rings/clocks); ARM freezes it at the last healthy
+    onset. On FIRE (or the n-gram airbag as an independent fire source, gated on
+    a confirmed ARM so the flat aggressive regime falls through to the airbag
+    STOP), if the onset is inside the raw-ring slack (raw_cap-raw_window-GUARD)
+    it restores the frontier + PACE accumulators, relearns the mask from the
+    healthy-segment stats and widens to REWIND_KEEP (=keep_max), restores the
+    onset logits and rewinds the loop to onset+1 (no re-prefill). Anti-
+    oscillation: REWIND_MAX (2) + doubling BACKOFF (256). JSONL events
+    rewind_arm / rewind / rewind_skip {from,to,reason} on DS4_PACE_LOG for the
+    client-side stream retraction (S1_REWIND_DESIGN section 4); regenerated-
+    token counter.
+
+Scope (binding): SLOW-EROSION regime only (K91-family mild/wide static masks);
+the aggressive W50+K23+rotate32 regime never arms (S1 flat) and correctly falls
+to the airbag STOP. Rewind target is the frozen healthy checkpoint (frontier
+floor = snapshot pos; MARGIN is realised by the rolling-checkpoint freeze at
+ARM, not by rewinding below the snapshot). NOT yet covered: temp>0 RNG snapshot
+(greedy argmax only), MTP-on speculative multi-accept across a rewind, dynamic-
+mask relearn exactness under the window. Pending pod smoke.
+
+Env (all DS4_PACE_REWIND*, off by default): master REWIND; detector ALPHA(0.5)
+ARM_K(0.5) ARM_H(4) FIRE_K(1.0) FIRE_H(8) CALWIN(128) BASE_LAG(32) BASE_WIN(128);
+actuator EVERY(32) MARGIN(16) MAX(2) BACKOFF(256) GUARD(32) KEEP(0=>keep_max).
+Requires DS4_PACE=1 + DS4_PACE_S1=1 (the monitor). Off by default; the airbag
+stopper stays the independent fallback.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c | 389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 389 insertions(+)
+
+diff --git a/ds4.c b/ds4.c
+index 2189997..ab23532 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -10568,6 +10568,14 @@ typedef struct {
+     ds4_gpu_tensor *spec_prefix1_attn_state_score[DS4_MAX_LAYER];
+     ds4_gpu_tensor *spec_prefix1_index_state_kv[DS4_MAX_LAYER];
+     ds4_gpu_tensor *spec_prefix1_index_state_score[DS4_MAX_LAYER];
++    /* patch 0022: dedicated S1-rewind frontier snapshot (own buffer set, gated
++     * on DS4_PACE_REWIND instead of enable_mtp so the correction tier does not
++     * depend on MTP being built/on and does not clobber the spec_* buffers the
++     * speculative verifier reuses every token). */
++    ds4_gpu_tensor *spec_rewind_attn_state_kv[DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_attn_state_score[DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_index_state_kv[DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_index_state_score[DS4_MAX_LAYER];
+     ds4_gpu_tensor *spec_logits;
+     uint32_t layer_n_comp[DS4_MAX_LAYER];
+     uint32_t layer_n_index_comp[DS4_MAX_LAYER];
+@@ -10880,6 +10888,10 @@ static void metal_graph_free(ds4_gpu_graph *g) {
+         ds4_gpu_tensor_free(g->spec_prefix1_attn_state_score[il]);
+         ds4_gpu_tensor_free(g->spec_prefix1_index_state_kv[il]);
+         ds4_gpu_tensor_free(g->spec_prefix1_index_state_score[il]);
++        ds4_gpu_tensor_free(g->spec_rewind_attn_state_kv[il]);    /* 0022 */
++        ds4_gpu_tensor_free(g->spec_rewind_attn_state_score[il]);
++        ds4_gpu_tensor_free(g->spec_rewind_index_state_kv[il]);
++        ds4_gpu_tensor_free(g->spec_rewind_index_state_score[il]);
+     }
+     ds4_gpu_tensor_free(g->kv);
+     ds4_gpu_tensor_free(g->kv_raw);
+@@ -11194,6 +11206,12 @@ static bool metal_graph_alloc_raw_cap(
+         bool                    enable_mtp) {
+     memset(g, 0, sizeof(*g));
+     g->mtp_enabled = enable_mtp;
++    /* patch 0022: allocate the dedicated S1-rewind frontier snapshot buffers
++     * when DS4_PACE_REWIND is on, independently of enable_mtp (the greedy CLI
++     * loop allocs with enable_mtp=false, so the correction tier must not ride
++     * the MTP spec_* buffers). */
++    const char *rewind_env = getenv("DS4_PACE_REWIND");
++    const bool enable_rewind = rewind_env && atoi(rewind_env) != 0;
+     if (raw_cap == 0) raw_cap = 1;
+     if (ctx_size == 0) ctx_size = raw_cap;
+     if (prefill_cap == 0) prefill_cap = 1;
+@@ -11305,6 +11323,10 @@ static bool metal_graph_alloc_raw_cap(
+                 g->spec_prefix1_attn_state_kv[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
+                 g->spec_prefix1_attn_state_score[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
+             }
++            if (enable_rewind) {   /* 0022: own snapshot set */
++                g->spec_rewind_attn_state_kv[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
++                g->spec_rewind_attn_state_score[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
++            }
+             if (g->layer_attn_state_kv[il]) {
+                 state_init_ok = state_init_ok &&
+                                 metal_tensor_fill_f32(g->layer_attn_state_kv[il], 0.0f, attn_width * attn_rows);
+@@ -11328,6 +11350,10 @@ static bool metal_graph_alloc_raw_cap(
+                     g->spec_prefix1_index_state_kv[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
+                     g->spec_prefix1_index_state_score[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
+                 }
++                if (enable_rewind) {   /* 0022: own snapshot set (ratio-4 index) */
++                    g->spec_rewind_index_state_kv[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
++                    g->spec_rewind_index_state_score[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
++                }
+                 if (g->layer_index_state_kv[il]) {
+                     state_init_ok = state_init_ok &&
+                                     metal_tensor_fill_f32(g->layer_index_state_kv[il], 0.0f, index_width * index_rows);
+@@ -13685,6 +13711,151 @@ static void ds4_pace_emit_s1(const char *ev) {
+     }
+ }
+ 
++/* ============================================================================
++ * patch 0022: S1-guided rewind (correction tier) — controller state + E-DET
++ *
++ * The production actuator for the prevention->correction->airbag ladder
++ * (docs/S1_REWIND_DESIGN.md). Two halves that must both be reachable from the
++ * live decode loops (the 0027 harness proved the KV mechanics but lived only
++ * in ds4_session_eval_internal, muted for the greedy CLI path):
++ *   - the DETECTOR (host math, this block, run from ds4_pace_s1_update): the
++ *     tuned E-DET aggregate EWMA-CUSUM (runs/ds4/20260710_edet_s1_detector_
++ *     tuning) with two operating points on one smoothed S1 — ARM (cheap, arms
++ *     the rolling checkpoint) and FIRE (expensive, authorises the rewind);
++ *   - the ACTUATOR (ds4_pace_rewind_after_eval, GPU block near the frontier
++ *     primitives): takes/refreshes the frontier snapshot while healthy and, on
++ *     FIRE (or the n-gram airbag), restores the frontier + PACE accumulators,
++ *     relearns/widens the mask from the healthy segment and rewinds the loop.
++ * The controller state lives OUTSIDE g_pace (its own g_rewind) so the PACE-
++ * accumulator checkpoint can memcpy the whole g_pace blob back to the onset
++ * without clobbering the monotonic rewind bookkeeping. Frontier counters are
++ * kept inline (no ds4_spec_frontier dependency, which is GPU-only). Scope:
++ * SLOW-EROSION regime only; DS4_PACE_REWIND=0 default. ==========================*/
++#define DS4_PACE_REWIND_HIST_MAX 512   /* base_lag + base_win ring cap */
++
++static struct {
++    int      enabled;          /* -1 uninit, 0 off, 1 on */
++    /* detector params (E-DET v2 defaults from the tuning REPORT) */
++    double   alpha, k_arm, h_arm, k_fire, h_fire;
++    uint32_t cal_win, base_lag, base_win, every, margin, max, backoff, guard;
++    int      keep;             /* widen target on resume; <=0 => keep_max */
++    /* detector state */
++    double   ewma, sigma, cal_sum, cal_sq;
++    uint32_t cal_n;
++    int      calibrated;
++    double   hist[DS4_PACE_REWIND_HIST_MAX];  /* lagged-baseline EWMA ring */
++    uint32_t hist_len, hist_head;
++    double   cusum_arm, cusum_fire;
++    int      armed_latch;      /* ARM cusum has crossed (drift confirmed) */
++    /* onset checkpoint (frontier counters inline; tensors in g->spec_rewind_*) */
++    int      onset_valid, onset_pos, slack;
++    uint32_t rw_n_comp[DS4_MAX_LAYER];
++    uint32_t rw_n_index_comp[DS4_MAX_LAYER];
++    uint32_t rw_mtp_n_raw;
++    float   *onset_logits;                     /* [DS4_N_VOCAB] */
++    unsigned char pace_blob[sizeof(g_pace)];   /* scalars + inline rings + ptrs */
++    double  *save_mass, *save_rmass, *save_bmass, *save_admit_cusum;
++    uint32_t *save_admit_persist_ct, *save_admit_last_tok;
++    /* counters */
++    uint32_t rewinds_done, last_rewind_tok;
++    uint64_t regen_tokens, arm_events, fire_events, skip_events;
++} g_rewind = { .enabled = -1 };
++
++#ifndef DS4_NO_GPU
++/* actuator (GPU): defined next to the frontier primitives, called from both
++ * decode loops (the greedy CLI loop precedes the definition). */
++static int ds4_pace_rewind_after_eval(ds4_gpu_graph *g, const ds4_model *model,
++                                      const ds4_weights *weights, int pos,
++                                      float *logits);
++#endif
++
++static void ds4_pace_rewind_init(void) {
++    if (g_rewind.enabled >= 0) return;   /* once */
++    g_rewind.enabled  = pace_env_i("DS4_PACE_REWIND", 0) ? 1 : 0;
++    g_rewind.alpha    = pace_env_d("DS4_PACE_REWIND_ALPHA", 0.50);
++    g_rewind.k_arm    = pace_env_d("DS4_PACE_REWIND_ARM_K", 0.5);
++    g_rewind.h_arm    = pace_env_d("DS4_PACE_REWIND_ARM_H", 4.0);
++    g_rewind.k_fire   = pace_env_d("DS4_PACE_REWIND_FIRE_K", 1.0);
++    g_rewind.h_fire   = pace_env_d("DS4_PACE_REWIND_FIRE_H", 8.0);
++    g_rewind.cal_win  = (uint32_t)pace_env_i("DS4_PACE_REWIND_CALWIN", 128);
++    if (g_rewind.cal_win == 0) g_rewind.cal_win = 1;
++    g_rewind.base_lag = (uint32_t)pace_env_i("DS4_PACE_REWIND_BASE_LAG", 32);
++    g_rewind.base_win = (uint32_t)pace_env_i("DS4_PACE_REWIND_BASE_WIN", 128);
++    if (g_rewind.base_lag >= DS4_PACE_REWIND_HIST_MAX) g_rewind.base_lag = 0;
++    if (g_rewind.base_lag + g_rewind.base_win > DS4_PACE_REWIND_HIST_MAX)
++        g_rewind.base_win = DS4_PACE_REWIND_HIST_MAX - g_rewind.base_lag;
++    g_rewind.every    = (uint32_t)pace_env_i("DS4_PACE_REWIND_EVERY", 32);
++    if (g_rewind.every == 0) g_rewind.every = 1;
++    g_rewind.margin   = (uint32_t)pace_env_i("DS4_PACE_REWIND_MARGIN", 16);
++    g_rewind.max      = (uint32_t)pace_env_i("DS4_PACE_REWIND_MAX", 2);
++    g_rewind.backoff  = (uint32_t)pace_env_i("DS4_PACE_REWIND_BACKOFF", 256);
++    g_rewind.guard    = (uint32_t)pace_env_i("DS4_PACE_REWIND_GUARD", 32);
++    g_rewind.keep     = pace_env_i("DS4_PACE_REWIND_KEEP", 0);
++    g_rewind.sigma    = 1e-4;
++    if (g_rewind.enabled) {
++        const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++        g_rewind.onset_logits = xmalloc((size_t)DS4_N_VOCAB * sizeof(float));
++        g_rewind.save_mass  = xmalloc_zeroed(n, sizeof(double));
++        g_rewind.save_rmass = xmalloc_zeroed(n, sizeof(double));
++        g_rewind.save_bmass = xmalloc_zeroed(n, sizeof(double));
++        g_rewind.save_admit_cusum = xmalloc_zeroed(n, sizeof(double));
++        g_rewind.save_admit_persist_ct = xmalloc_zeroed(n, sizeof(uint32_t));
++        g_rewind.save_admit_last_tok = xmalloc_zeroed(n, sizeof(uint32_t));
++        fprintf(stderr,
++                "ds4: PACE REWIND on alpha=%.2f arm(k=%.2f,h=%.1f) "
++                "fire(k=%.2f,h=%.1f) every=%u margin=%u max=%u backoff=%u keep=%d\n",
++                g_rewind.alpha, g_rewind.k_arm, g_rewind.h_arm,
++                g_rewind.k_fire, g_rewind.h_fire, g_rewind.every,
++                g_rewind.margin, g_rewind.max, g_rewind.backoff, g_rewind.keep);
++    }
++}
++
++/* E-DET aggregate EWMA-CUSUM on the per-token aggregate S1 (pruned/total mass).
++ * One alpha=0.50 front-end feeds two one-sided CUSUMs (ARM cheap, FIRE
++ * expensive). sigma self-calibrates over the first cal_win post-mask-on tokens;
++ * the baseline is the lagged moving average (lag base_lag, win base_win) so a
++ * slow onset ramp is not absorbed into it. Host-only; run from s1_update. */
++static void ds4_pace_rewind_detect(double s1) {
++    ds4_pace_rewind_init();
++    if (g_rewind.enabled <= 0) return;
++    g_rewind.ewma = (1.0 - g_rewind.alpha) * g_rewind.ewma + g_rewind.alpha * s1;
++    if (!g_rewind.calibrated) {
++        g_rewind.cal_sum += s1;
++        g_rewind.cal_sq  += s1 * s1;
++        if (++g_rewind.cal_n >= g_rewind.cal_win) {
++            const double m = g_rewind.cal_sum / (double)g_rewind.cal_n;
++            double var = g_rewind.cal_sq / (double)g_rewind.cal_n - m * m;
++            g_rewind.sigma = sqrt(var > 1e-12 ? var : 1e-12);
++            if (g_rewind.sigma < 1e-4) g_rewind.sigma = 1e-4;
++            g_rewind.calibrated = 1;
++        }
++    }
++    const uint32_t cap = g_rewind.base_lag + g_rewind.base_win;
++    double baseline = g_rewind.ewma;
++    if (cap > 0 && g_rewind.hist_len >= cap && g_rewind.base_win > 0) {
++        double s = 0.0;
++        for (uint32_t j = 0; j < g_rewind.base_win; j++)
++            s += g_rewind.hist[(g_rewind.hist_head + j) % cap];
++        baseline = s / (double)g_rewind.base_win;
++    }
++    if (cap > 0) {
++        if (g_rewind.hist_len < cap) {
++            g_rewind.hist[(g_rewind.hist_head + g_rewind.hist_len) % cap] = g_rewind.ewma;
++            g_rewind.hist_len++;
++        } else {
++            g_rewind.hist[g_rewind.hist_head] = g_rewind.ewma;
++            g_rewind.hist_head = (g_rewind.hist_head + 1) % cap;
++        }
++    }
++    if (g_rewind.calibrated) {
++        const double z = (g_rewind.ewma - baseline) / g_rewind.sigma;
++        double a = g_rewind.cusum_arm  + z - g_rewind.k_arm;
++        double f = g_rewind.cusum_fire + z - g_rewind.k_fire;
++        g_rewind.cusum_arm  = a > 0.0 ? a : 0.0;
++        g_rewind.cusum_fire = f > 0.0 ? f : 0.0;
++    }
++}
++
+ /* Fold the last token's S1 sample into the EWMA, update the slope over the
+  * s1_slope_win window and the consecutive-over counter. Called once per
+  * decode token from ds4_pace_tick (the layer hooks of token N accumulate
+@@ -13695,6 +13866,7 @@ static void ds4_pace_s1_update(void) {
+         const double s1 = g_pace.s1_tok_pruned / g_pace.s1_tok_total;
+         g_pace.ema_s1 = (1.0 - g_pace.alpha_s1) * g_pace.ema_s1
+                       + g_pace.alpha_s1 * s1;
++        ds4_pace_rewind_detect(s1);   /* 0022: E-DET ARM/FIRE CUSUM off aggregate S1 */
+         const uint32_t w = g_pace.s1_slope_win;
+         if (g_pace.s1_ring_len < w) {
+             g_pace.s1_ring[(g_pace.s1_ring_head + g_pace.s1_ring_len) % w] =
+@@ -26347,6 +26519,14 @@ static int generate_metal_graph_raw_swa(
+                                             (uint32_t)pos,
+                                             logits);
+         if (!ok) break;
++        /* patch 0022: S1-guided rewind actuator (greedy CLI GPU loop). On a
++         * fire it restores the onset KV frontier + PACE state + widened mask
++         * and rewinds `pos` to the healthy onset; the loop resumes from the
++         * restored onset logits. No-op unless DS4_PACE_REWIND=1. */
++        {
++            int rw = ds4_pace_rewind_after_eval(&g, model, weights, pos, logits);
++            if (rw >= 0) { pos = rw; continue; }
++        }
+         if (token_timing) {
+             const double t_eval1 = now_sec();
+             fprintf(stderr, "ds4: gpu decode eval %d took %.3f ms\n", n_decode_eval + 1, (t_eval1 - t_eval0) * 1000.0);
+@@ -27432,6 +27612,203 @@ static bool spec_frontier_restore(ds4_spec_frontier *f, ds4_session *s) {
+     return ok;
+ }
+ 
++/* ---- patch 0022: rewind JSONL event + PACE-accumulator checkpoint (GPU-only
++ * users) ---- */
++static void ds4_rewind_emit(const char *ev, int from, int to, const char *reason) {
++    if (g_pace.evlog) {
++        fprintf(g_pace.evlog,
++                "{\"ev\":\"%s\",\"from\":%d,\"to\":%d,\"reason\":\"%s\","
++                "\"tok\":%u,\"keep\":%d,\"s1\":%.5f,\"cusum_arm\":%.3f,"
++                "\"cusum_fire\":%.3f,\"n\":%u,\"regen\":%llu}\n",
++                ev, from, to, reason ? reason : "", g_pace.tok, g_pace.cur_keep,
++                g_rewind.ewma, g_rewind.cusum_arm, g_rewind.cusum_fire,
++                g_rewind.rewinds_done, (unsigned long long)g_rewind.regen_tokens);
++        fflush(g_pace.evlog);
++    }
++    if (g_pace.debug)
++        fprintf(stderr, "ds4: PACE %-12s from=%d to=%d reason=%s cusum_fire=%.2f\n",
++                ev, from, to, reason ? reason : "", g_rewind.cusum_fire);
++}
++
++/* Whole-g_pace checkpoint (scalars + inline n-gram/s1 rings) plus the heap
++ * gate-mass / CUSUM arrays. Their pointers, saved in the blob, are stable for
++ * the run so restoring them is a no-op; the array bodies are copied. */
++static void ds4_pace_rewind_save_pace(void) {
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    memcpy(g_rewind.pace_blob, &g_pace, sizeof(g_pace));
++    if (g_pace.mass)  memcpy(g_rewind.save_mass,  g_pace.mass,  n * sizeof(double));
++    if (g_pace.rmass) memcpy(g_rewind.save_rmass, g_pace.rmass, n * sizeof(double));
++    if (g_pace.bmass) memcpy(g_rewind.save_bmass, g_pace.bmass, n * sizeof(double));
++    if (g_pace.admit_cusum)
++        memcpy(g_rewind.save_admit_cusum, g_pace.admit_cusum, n * sizeof(double));
++    if (g_pace.admit_persist_ct)
++        memcpy(g_rewind.save_admit_persist_ct, g_pace.admit_persist_ct, n * sizeof(uint32_t));
++    if (g_pace.admit_last_tok)
++        memcpy(g_rewind.save_admit_last_tok, g_pace.admit_last_tok, n * sizeof(uint32_t));
++}
++
++static void ds4_pace_rewind_restore_pace(void) {
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    memcpy(&g_pace, g_rewind.pace_blob, sizeof(g_pace));  /* rewinds tok/phase/rings too */
++    if (g_pace.mass)  memcpy(g_pace.mass,  g_rewind.save_mass,  n * sizeof(double));
++    if (g_pace.rmass) memcpy(g_pace.rmass, g_rewind.save_rmass, n * sizeof(double));
++    if (g_pace.bmass) memcpy(g_pace.bmass, g_rewind.save_bmass, n * sizeof(double));
++    if (g_pace.admit_cusum)
++        memcpy(g_pace.admit_cusum, g_rewind.save_admit_cusum, n * sizeof(double));
++    if (g_pace.admit_persist_ct)
++        memcpy(g_pace.admit_persist_ct, g_rewind.save_admit_persist_ct, n * sizeof(uint32_t));
++    if (g_pace.admit_last_tok)
++        memcpy(g_pace.admit_last_tok, g_rewind.save_admit_last_tok, n * sizeof(uint32_t));
++}
++
++/* ---- patch 0022: S1-rewind frontier snapshot/restore (dedicated buffers) ----
++ * Graph-level twins of spec_frontier_snapshot/restore that target the
++ * DS4_PACE_REWIND-gated g->spec_rewind_* set (not the MTP spec_* buffers the
++ * speculative verifier reuses every token) and take a bare ds4_gpu_graph, so
++ * BOTH the session path and the greedy CLI loop (which owns no ds4_session)
++ * drive them. Counters live inline in g_rewind (no ds4_spec_frontier type in
++ * the host detector block). */
++static bool ds4_pace_rewind_snapshot_frontier(ds4_gpu_graph *g) {
++    if (DS4_N_LAYER > 0 && !g->spec_rewind_attn_state_kv[0]) return false;
++    bool ok = ds4_gpu_begin_commands() != 0;
++    g_rewind.rw_mtp_n_raw = g->mtp_n_raw;
++    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
++        g_rewind.rw_n_comp[il] = g->layer_n_comp[il];
++        g_rewind.rw_n_index_comp[il] = g->layer_n_index_comp[il];
++        const uint32_t ratio = ds4_layer_compress_ratio(il);
++        if (ratio == 0) continue;
++        const uint64_t ab = ds4_gpu_tensor_bytes(g->layer_attn_state_kv[il]);
++        ok = ds4_gpu_tensor_copy(g->spec_rewind_attn_state_kv[il], 0,
++                                   g->layer_attn_state_kv[il], 0, ab) != 0 &&
++             ds4_gpu_tensor_copy(g->spec_rewind_attn_state_score[il], 0,
++                                   g->layer_attn_state_score[il], 0, ab) != 0;
++        if (ok && ratio == 4) {
++            const uint64_t ib = ds4_gpu_tensor_bytes(g->layer_index_state_kv[il]);
++            ok = ds4_gpu_tensor_copy(g->spec_rewind_index_state_kv[il], 0,
++                                       g->layer_index_state_kv[il], 0, ib) != 0 &&
++                 ds4_gpu_tensor_copy(g->spec_rewind_index_state_score[il], 0,
++                                       g->layer_index_state_score[il], 0, ib) != 0;
++        }
++    }
++    if (ok) ok = ds4_gpu_end_commands() != 0;
++    else (void)ds4_gpu_synchronize();
++    return ok;
++}
++
++static bool ds4_pace_rewind_restore_frontier(ds4_gpu_graph *g) {
++    bool ok = ds4_gpu_begin_commands() != 0;
++    g->mtp_n_raw = g_rewind.rw_mtp_n_raw;
++    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
++        g->layer_n_comp[il] = g_rewind.rw_n_comp[il];
++        g->layer_n_index_comp[il] = g_rewind.rw_n_index_comp[il];
++        const uint32_t ratio = ds4_layer_compress_ratio(il);
++        if (ratio == 0) continue;
++        const uint64_t ab = ds4_gpu_tensor_bytes(g->layer_attn_state_kv[il]);
++        ok = ds4_gpu_tensor_copy(g->layer_attn_state_kv[il], 0,
++                                   g->spec_rewind_attn_state_kv[il], 0, ab) != 0 &&
++             ds4_gpu_tensor_copy(g->layer_attn_state_score[il], 0,
++                                   g->spec_rewind_attn_state_score[il], 0, ab) != 0;
++        if (ok && ratio == 4) {
++            const uint64_t ib = ds4_gpu_tensor_bytes(g->layer_index_state_kv[il]);
++            ok = ds4_gpu_tensor_copy(g->layer_index_state_kv[il], 0,
++                                       g->spec_rewind_index_state_kv[il], 0, ib) != 0 &&
++                 ds4_gpu_tensor_copy(g->layer_index_state_score[il], 0,
++                                       g->spec_rewind_index_state_score[il], 0, ib) != 0;
++        }
++    }
++    if (ok) ok = ds4_gpu_end_commands() != 0;
++    else (void)ds4_gpu_synchronize();
++    return ok;
++}
++
++/* Once-per-decode-token actuator, called from BOTH decode loops AFTER the eval
++ * wrote logits for position `pos` (= the index just decoded). The greedy CLI
++ * loop and ds4_session_eval_internal both reach it — closing the coverage gap
++ * the 0027 R1 smoke exposed (that diagnostic hook only fired on the session
++ * path). Returns the resume position (onset+1) if a rewind fired, so the caller
++ * sets its position there and continues from the restored onset logits, else
++ * -1. The frontier snapshot at pos supports resuming at pos+1 only, so the
++ * rewind target is the frozen healthy checkpoint (DS4_PACE_REWIND_MARGIN is
++ * realised by the rolling-checkpoint freeze at ARM, not by rewinding below the
++ * snapshot). */
++static int ds4_pace_rewind_after_eval(ds4_gpu_graph *g, const ds4_model *model,
++                                      const ds4_weights *weights, int pos,
++                                      float *logits) {
++    ds4_pace_rewind_init();   /* idempotent: sets enabled + allocs onset buffers */
++    if (g_rewind.enabled <= 0 || !ds4_pace_active() || g_pace.in_prefill)
++        return -1;
++    if (g_pace.phase != PACE_HOLD || g_pace.cur_keep <= 0) return -1;
++    g_rewind.slack = (int)g->raw_cap - (int)g->raw_window;
++
++    const int arm_hi = g_rewind.calibrated && g_rewind.cusum_arm >= g_rewind.h_arm;
++
++    /* Rolling healthy checkpoint: while ARM is quiet, (re)take the frontier
++     * snapshot every `every` tokens so a later still-healthy onset supersedes
++     * an older one; freeze it the moment ARM trips. */
++    if (!arm_hi) {
++        g_rewind.armed_latch = 0;
++        if (!g_rewind.onset_valid ||
++            pos - g_rewind.onset_pos >= (int)g_rewind.every) {
++            if (ds4_pace_rewind_snapshot_frontier(g)) {
++                if (g_rewind.onset_logits)
++                    memcpy(g_rewind.onset_logits, logits,
++                           (size_t)DS4_N_VOCAB * sizeof(float));
++                ds4_pace_rewind_save_pace();
++                g_rewind.onset_pos = pos;
++                g_rewind.onset_valid = 1;
++            }
++        }
++        return -1;
++    }
++    if (!g_rewind.armed_latch) {
++        g_rewind.armed_latch = 1;
++        g_rewind.arm_events++;
++        ds4_rewind_emit("rewind_arm", pos, g_rewind.onset_pos, "s1_cusum_arm");
++    }
++
++    /* FIRE: the expensive rewind, gated on a confirmed ARM (so the flat
++     * aggressive regime, which never arms, falls through to the airbag STOP),
++     * with the n-gram airbag as an independent fire source. */
++    const int fire_hi = g_rewind.calibrated && g_rewind.cusum_fire >= g_rewind.h_fire;
++    const int airbag  = g_pace.sensor_armed && g_pace.ema_ngram >= g_pace.drift;
++    if (!(fire_hi || airbag) || !g_rewind.onset_valid) return -1;
++    if (g_rewind.rewinds_done >= g_rewind.max) return -1;
++    if (g_rewind.rewinds_done > 0 &&
++        (uint32_t)(pos - (int)g_rewind.last_rewind_tok) < g_rewind.backoff)
++        return -1;
++
++    const int target = g_rewind.onset_pos + 1;   /* frontier floor: resume just past snapshot */
++    const int floor_p = pos - (g_rewind.slack - (int)g_rewind.guard);
++    if (target < floor_p) {   /* onset aged past the ring slack (§1.5) */
++        g_rewind.skip_events++;
++        ds4_rewind_emit("rewind_skip", pos, target, "out_of_window");
++        return -1;            /* fall through to the airbag STOP */
++    }
++
++    if (!ds4_pace_rewind_restore_frontier(g)) {
++        g_rewind.skip_events++;
++        ds4_rewind_emit("rewind_skip", pos, target, "frontier_restore_failed");
++        return -1;
++    }
++    ds4_pace_rewind_restore_pace();              /* mass[]/rings/clocks -> onset */
++    const int keep = g_rewind.keep > 0 ? g_rewind.keep : g_pace.keep_max;
++    g_pace.keep = keep;                          /* widen: sticky HOLD baseline */
++    ds4_pace_apply_keep(model, weights, keep, "rewind");  /* relearn healthy + apply */
++    if (g_rewind.onset_logits)
++        memcpy(logits, g_rewind.onset_logits, (size_t)DS4_N_VOCAB * sizeof(float));
++
++    g_rewind.rewinds_done++;
++    g_rewind.last_rewind_tok = (uint32_t)pos;
++    g_rewind.regen_tokens += (uint64_t)(pos - g_rewind.onset_pos);
++    g_rewind.backoff = g_rewind.backoff ? g_rewind.backoff * 2 : 1;
++    g_rewind.onset_valid = 0;
++    g_rewind.armed_latch = 0;
++    g_rewind.cusum_arm = g_rewind.cusum_fire = 0.0;
++    g_rewind.fire_events++;
++    ds4_rewind_emit("rewind", pos, target, fire_hi ? "s1_cusum_fire" : "ngram_airbag");
++    return target;
++}
++
+ /* Commit the prefix-1 state captured by the N=2 speculative verifier.
+  *
+  * The verifier has already advanced every layer through both draft tokens.  On
+@@ -30739,6 +31116,18 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
+             fprintf(stderr, "ds4: mtp probe draft failed\n");
+         }
+     }
++    /* patch 0022: S1-guided rewind actuator (session/server GPU path). Same
++     * actuator as the greedy CLI loop, driving s->graph + s->checkpoint. On a
++     * fire ds4_session_rewind truncates the committed tokens back to the onset;
++     * s->logits already holds the restored onset distribution so the server
++     * re-samples and resumes without a re-prefill. The server relays the JSONL
++     * "rewind" event as a client-side stream retraction (S1_REWIND_DESIGN §4).
++     * No-op unless DS4_PACE_REWIND=1. */
++    {
++        int rw = ds4_pace_rewind_after_eval(&s->graph, &e->model, &e->weights,
++                                            (int)s->checkpoint.len - 1, s->logits);
++        if (rw >= 0) ds4_session_rewind(s, rw);
++    }
+     /* patch 0027: rewind-exactness diagnostic probe (DS4_REWIND_TEST). No-op
+      * unless the env is set; drives its own MTP-off replay when it fires. */
+     ds4_rewind_test_hook(s);
+-- 
+2.54.0.windows.1
+
