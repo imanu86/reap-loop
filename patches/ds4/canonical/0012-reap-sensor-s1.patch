@@ -1,0 +1,32 @@
+--- a/ds4.c
++++ b/ds4.c
+@@ -14511,6 +14511,29 @@
+      * router select and still live here.  Independent of the routing CSV. */
+     metal_graph_spex_trace_hidden_row(g->ffn_norm, 0, g->spex_trace_pos, il);
+ 
++    /* patch 0012: sensore S1 - massa di probabilita' del router sugli expert POTATI
++     * (il router calcola le prob di TUTTI i 256 anche mascherato: il bias agisce
++     * solo sulla selezione). Log: pos,layer,pruned_mass,total_mass. */
++    {
++        static FILE *s1fh; static bool s1checked;
++        if (!s1checked) {
++            s1checked = true;
++            const char *p = getenv("DS4_REAP_SENSOR_LOG");
++            if (p && *p) { s1fh = fopen(p, "w"); if (s1fh) fprintf(s1fh, "pos,layer,pruned_mass,total_mass\n"); }
++        }
++        if (s1fh && g_reap_mask_on && g->router_probs) {
++            float probs[DS4_MAX_EXPERT];
++            if (ds4_gpu_tensor_read(g->router_probs, 0, probs, (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
++                float tot = 0.f, pr = 0.f;
++                for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++                    tot += probs[e];
++                    if (il < DS4_MAX_LAYER && g_reap_mask_pruned[il][e]) pr += probs[e];
++                }
++                fprintf(s1fh, "%u,%u,%.6g,%.6g\n", g->spex_trace_pos, il, pr, tot);
++            }
++        }
++    }
++
+     FILE *fh = metal_graph_spex_trace_routing_file();
+     if (!fh) return;
+     fprintf(fh,

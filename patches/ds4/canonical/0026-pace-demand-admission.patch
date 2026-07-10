@@ -1,0 +1,354 @@
+From e471306821b7193930fbecf93c511d1ea91405a0 Mon Sep 17 00:00:00 2001
+From: reap-loop <dev@reap-loop.local>
+Date: Fri, 10 Jul 2026 12:05:00 +0200
+Subject: [PATCH] pace: 0026 demand-driven admission (DS4_PACE_ADMIT) - CUSUM
+ per-expert, constant-K targeted exchange
+
+ANCHORED TO LOCAL LIVE-TREE 2026-07-10 (post-0018 /root/ds4/ds4.c, md5
+771a39a861e9512fed2fc4528780e080; applies after 0020-pace-s1-slope-trigger
+and 0021-pace-rotate-delta-prefetch). Requires 0020+0021; rebase needed
+after pace-series canonization (the filed 0015/0016/0018 do not apply on a
+clean base, see patches/README.md "Stato apply").
+
+Demand-driven admission is a K-CONSTANT targeted exchange: a PRUNED (out-of-
+mask) expert whose blocked demand is strong and persistent is ADMITTED by
+evicting the least-used keep. It is qualitatively different from the wholesale
+rotate (0015/0021) already refuted live (E-CAL: static >> rotate at equal
+coverage, pod collapse ~gen126); here the warmup mask stays the anchor except
+for justified, per-layer, one-in/one-out swaps. Never K0, never wholesale
+re-ranking. Off by default; alternative to ROTATE (run with DS4_PACE_ROTATE=0).
+
+Reuses the 0020 per-expert rmass (non-biased router_probs, decay =
+DS4_PACE_ROTATE_DECAY, default 0.98) as the eviction EWMA - no new sensor. Per
+(layer, pruned expert) it runs a CUSUM on the per-token requested share
+S <- max(0, S + share - k_drift) with an excursion-length counter; on
+S >= h with persistence >= p the expert is admitted, the least-rmass keep in
+that layer (past its cooldown) is evicted, and only the ENTERED expert is paged
+in via the 0021 delta-prefetch (~6.75 MiB, no full WRAP). An anti-thrash
+cooldown protects the neo-admitted from eviction for N tokens; an optional
+per-100-tok rate cap bounds churn. The trigger test and physical swap run once
+per decode token in ds4_pace_tick (in PACE_HOLD, when no breath is due); the
+layer hook only accumulates the CUSUM. Wholesale mask rebuilds (breath/rotate/
+tighten) and prefill reset clear the CUSUM/cooldown state.
+
+Env (defaults = E-ADMIT sim recommended config C, run
+runs/ds4/20260710_eadmit_demand_admission, verdict positive):
+  DS4_PACE_ADMIT=0            master switch (off)
+  DS4_PACE_ADMIT_H=1.2        CUSUM admission threshold
+  DS4_PACE_ADMIT_KDRIFT=0.02  per-token CUSUM drift (leak)
+  DS4_PACE_ADMIT_PERSIST=2    min excursion length (tokens)
+  DS4_PACE_ADMIT_COOLDOWN=16  neo-admitted not evictable for N tok
+  DS4_PACE_ADMIT_MAX_PER_100=0  optional per-100-tok rate cap (0=off)
+
+Provenance: sim recovers 13.7 pt of the late coverage FROZEN loses (0.485 ->
+0.622; rotate32 0.662) at 5.4x less churn and ~zero rebounds; params stable
+across traces (median regret 3.4 pt). Structural-boundary boost (variant D) is
+deferred to v2 (needs a live boundary detector). Quality is NOT deducible from
+the sane-trajectory sim (limit 1): gated on the live A/B S3.
+
+JSONL: ev "admit" with layer, expert, evicted, cusum, keep; the reused 0021
+delta-prefetch also emits "rotate_delta" (entered/exited/bytes) per swap batch.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c | 191 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 188 insertions(+), 3 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index cd79d73..8e55dd6 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7449,6 +7449,13 @@ static struct {
+     double   s1_slope_thr;       /* slope threshold /tok (DS4_PACE_S1_SLOPE_THR) */
+     uint32_t s1_stable;          /* consecutive over-thr tokens to fire */
+     int      s1_action;          /* DS4_PACE_S1_ACT_ROTATE | _WIDEN */
++    /* demand-driven admission tunables (patch 0026) */
++    int      admit_on;           /* DS4_PACE_ADMIT: demand-driven admission */
++    double   admit_h;            /* CUSUM threshold (DS4_PACE_ADMIT_H) */
++    double   admit_kdrift;       /* CUSUM per-token drift (DS4_PACE_ADMIT_KDRIFT) */
++    uint32_t admit_persist;      /* min excursion length (DS4_PACE_ADMIT_PERSIST) */
++    uint32_t admit_cooldown;     /* neo-admitted not evictable N tok (DS4_PACE_ADMIT_COOLDOWN) */
++    uint32_t admit_max_per_100;  /* optional per-100-tok rate cap, 0=off (DS4_PACE_ADMIT_MAX_PER_100) */
+     int      wrap_on;
+     int      wrap_rotate;       /* allow WRAP page-in on K-constant rotate */
+     int      wrap_rotate_delta; /* page in ONLY the entered experts on rotate */
+@@ -7514,6 +7521,13 @@ static struct {
+     uint32_t s1_over;          /* consecutive ticks with slope >= thr */
+     uint32_t s1_last_fire_tok;
+     uint64_t s1_events;
++    /* demand-driven admission per (layer, expert) state (patch 0026) */
++    double  *admit_cusum;        /* [MAXL*MAXE] CUSUM S over pruned experts */
++    uint32_t *admit_persist_ct;  /* [MAXL*MAXE] excursion length in tokens */
++    uint32_t *admit_last_tok;    /* [MAXL*MAXE] last admit token (cooldown clock) */
++    uint64_t admit_events;       /* total admissions this decode */
++    uint32_t admit_win_start;    /* rate-cap window start token */
++    uint32_t admit_win_count;    /* admissions in the current window */
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -13058,6 +13072,24 @@ static void ds4_pace_init(void) {
+         g_pace.s1_action = DS4_PACE_S1_ACT_ROTATE;
+         if (a && !strcmp(a, "widen")) g_pace.s1_action = DS4_PACE_S1_ACT_WIDEN;
+     }
++    /* patch 0026: demand-driven admission (E-ADMIT sim, run
++     * runs/ds4/20260710_eadmit_demand_admission). CUSUM per pruned expert on
++     * the per-token requested share; on a persistent breach the expert is
++     * ADMITTED by evicting the least-used keep (min rmass EWMA, decay =
++     * DS4_PACE_ROTATE_DECAY, default 0.98) at constant K, paged in via the
++     * 0021 delta-prefetch. Defaults = the sim's recommended config C
++     * (h=1.2, k_drift=0.02, persist=2, cooldown=16). OFF by default; alternative
++     * to ROTATE - run with DS4_PACE_ROTATE=0. */
++    g_pace.admit_on       = pace_env_i("DS4_PACE_ADMIT", 0);
++    g_pace.admit_h        = pace_env_d("DS4_PACE_ADMIT_H", 1.2);
++    if (g_pace.admit_h <= 0.0) g_pace.admit_h = 1.2;
++    g_pace.admit_kdrift   = pace_env_d("DS4_PACE_ADMIT_KDRIFT", 0.02);
++    if (g_pace.admit_kdrift < 0.0) g_pace.admit_kdrift = 0.0;
++    g_pace.admit_persist  = (uint32_t)pace_env_i("DS4_PACE_ADMIT_PERSIST", 2);
++    if (g_pace.admit_persist == 0) g_pace.admit_persist = 1;
++    g_pace.admit_cooldown = (uint32_t)pace_env_i("DS4_PACE_ADMIT_COOLDOWN", 16);
++    g_pace.admit_max_per_100 =
++        (uint32_t)pace_env_i("DS4_PACE_ADMIT_MAX_PER_100", 0);
+     /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_PREFETCH */
+     {
+         const char *w = getenv("DS4_PACE_WRAP");
+@@ -13105,10 +13137,16 @@ static void ds4_pace_init(void) {
+     g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+     if (g_pace.prebreath_relearn)
+         g_pace.bmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+-    if (g_pace.rotate_on || g_pace.relearn_on_tighten ||
++    if (g_pace.rotate_on || g_pace.relearn_on_tighten || g_pace.admit_on ||
+         (g_pace.s1_on && g_pace.s1_trigger &&
+          g_pace.s1_action == DS4_PACE_S1_ACT_ROTATE))
+         g_pace.rmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++    if (g_pace.admit_on) {
++        const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++        g_pace.admit_cusum      = xmalloc_zeroed(n, sizeof(double));
++        g_pace.admit_persist_ct = xmalloc_zeroed(n, sizeof(uint32_t));
++        g_pace.admit_last_tok   = xmalloc_zeroed(n, sizeof(uint32_t));
++    }
+ 
+     fprintf(stderr,
+         "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
+@@ -13142,6 +13180,12 @@ static void ds4_pace_init(void) {
+             g_pace.alpha_s1, g_pace.s1_trigger, g_pace.s1_slope_win,
+             g_pace.s1_slope_thr, g_pace.s1_stable,
+             g_pace.s1_action == DS4_PACE_S1_ACT_WIDEN ? "widen" : "rotate");
++    if (g_pace.admit_on)
++        fprintf(stderr,
++            "ds4: PACE ADMIT on - h=%.3f k_drift=%.3f persist=%u cooldown=%u "
++            "max_per_100=%u (rmass EWMA decay=%.3f)\n",
++            g_pace.admit_h, g_pace.admit_kdrift, g_pace.admit_persist,
++            g_pace.admit_cooldown, g_pace.admit_max_per_100, g_pace.rotate_decay);
+ }
+ 
+ static inline int ds4_pace_active(void) {
+@@ -13233,8 +13277,18 @@ static inline int ds4_pace_rotate_wants_router(void) {
+            g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0;
+ }
+ 
++/* patch 0026: admission also needs the per-expert rmass EWMA (eviction
++ * ranking) fed from the same non-biased router readback. */
++static inline int ds4_pace_admit_wants_router(void) {
++    if (!ds4_pace_active()) return 0;
++    return g_pace.admit_on && g_pace.rmass && !g_pace.in_prefill &&
++           g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0 && g_reap_mask_on;
++}
++
+ static void ds4_pace_note_router_probs(uint32_t il, const float *probs) {
+-    if (!probs || il >= DS4_MAX_LAYER || !ds4_pace_rotate_wants_router()) return;
++    if (!probs || il >= DS4_MAX_LAYER ||
++        (!ds4_pace_rotate_wants_router() && !ds4_pace_admit_wants_router()))
++        return;
+     double *row = &g_pace.rmass[(size_t)il * DS4_MAX_EXPERT];
+     const double decay = g_pace.rotate_decay;
+     double any = 0.0;
+@@ -13270,6 +13324,31 @@ static void ds4_pace_s1_note_probs(uint32_t il, const float *probs) {
+     g_pace.s1_tok_total  += tot;
+ }
+ 
++/* ---- demand-driven admission CUSUM (patch 0026) ---- *
++ * Per (layer, PRUNED expert): CUSUM of the per-token requested share of the
++ * non-biased router mass, S <- max(0, S + share - k_drift), plus an
++ * excursion-length counter. Fed from the same raw-router readback as the
++ * 0020 rmass. This hook only ACCUMULATES; the threshold test and the physical
++ * targeted swap happen once per token in ds4_pace_tick. */
++static void ds4_pace_admit_note_probs(uint32_t il, const float *probs) {
++    if (!probs || il >= DS4_MAX_LAYER || !g_pace.admit_cusum ||
++        !ds4_pace_admit_wants_router())
++        return;
++    double tot = 0.0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++)
++        tot += (double)probs[e];
++    if (tot <= 0.0) return;
++    const double kd = g_pace.admit_kdrift;
++    double  *S = &g_pace.admit_cusum[(size_t)il * DS4_MAX_EXPERT];
++    uint32_t *P = &g_pace.admit_persist_ct[(size_t)il * DS4_MAX_EXPERT];
++    for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++        if (!g_reap_mask_pruned[il][e]) { S[e] = 0.0; P[e] = 0; continue; }
++        const double s = S[e] + (double)probs[e] / tot - kd;
++        if (s <= 0.0) { S[e] = 0.0; P[e] = 0; }
++        else { S[e] = s; P[e]++; }
++    }
++}
++
+ /* ---- learn keep-set from an accumulator into g_reap_mask_pruned ---- *
+  * top-keep experts per layer by accumulated mass are KEPT; rest pruned. */
+ static void ds4_pace_learn_mask(const double *acc, int keep) {
+@@ -13375,6 +13454,19 @@ static void ds4_pace_exchange_observe(
+     }
+ }
+ 
++/* patch 0026: clear per-expert admission state. Called on any WHOLESALE mask
++ * rebuild (breath/rotate/tighten/descent) and on prefill reset, since the
++ * pruned-set membership changed and the CUSUM/cooldown clocks are now stale. */
++static void ds4_pace_admit_reset_state(void) {
++    if (!g_pace.admit_cusum) return;
++    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
++    memset(g_pace.admit_cusum, 0, n * sizeof(double));
++    memset(g_pace.admit_persist_ct, 0, n * sizeof(uint32_t));
++    memset(g_pace.admit_last_tok, 0, n * sizeof(uint32_t));
++    g_pace.admit_win_start = g_pace.tok;
++    g_pace.admit_win_count = 0;
++}
++
+ static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *weights,
+                                     const double *acc, int keep, const char *why) {
+     uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+@@ -13385,6 +13477,7 @@ static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *w
+         memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
+     }
+     ds4_pace_learn_mask(acc ? acc : g_pace.mass, keep);
++    ds4_pace_admit_reset_state();   /* 0026: mask rebuilt, CUSUM state stale */
+     if (g_pace.exchange_observe) {
+         ds4_pace_exchange_observe(why, old_keep, keep, old_pruned);
+     }
+@@ -13482,6 +13575,8 @@ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+     g_pace.s1_over = 0;
+     g_pace.s1_last_fire_tok = 0;
+     g_pace.s1_events = 0;
++    ds4_pace_admit_reset_state();   /* 0026 */
++    g_pace.admit_events = 0;
+     ds4_pace_emit(why && *why ? why : "prefill_reset", 0.0, 1.0);
+ }
+ 
+@@ -13676,6 +13771,86 @@ static int ds4_pace_rotate_force(const ds4_model *model, const ds4_weights *weig
+     return 1;
+ }
+ 
++/* ---- demand-driven admission scan (patch 0026) ---- *
++ * Once per decode token in PACE_HOLD: for each layer, if a PRUNED expert's
++ * CUSUM crossed the threshold with enough persistence, ADMIT it by evicting
++ * the KEPT expert with the least rmass EWMA (constant K), honoring the
++ * anti-thrash cooldown and the optional per-100-tok rate cap. The physical
++ * page-in reuses the 0021 delta-prefetch (only the entered experts, ~6.75
++ * MiB each). Never K0, never wholesale re-ranking. Returns the number of
++ * admissions this token. */
++static int ds4_pace_admit_scan(const ds4_model *model, const ds4_weights *weights) {
++    if (!g_pace.admit_on || !g_pace.admit_cusum || !g_pace.rmass ||
++        g_pace.phase != PACE_HOLD || g_pace.cur_keep <= 0 || !g_reap_mask_on)
++        return 0;
++    /* fixed-window rate cap (optional): roll the window every 100 tok */
++    if (g_pace.admit_max_per_100 > 0 &&
++        g_pace.tok - g_pace.admit_win_start >= 100) {
++        g_pace.admit_win_start = g_pace.tok;
++        g_pace.admit_win_count = 0;
++    }
++    uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++    int snapped = 0, did = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        if (g_pace.admit_max_per_100 > 0 &&
++            g_pace.admit_win_count >= g_pace.admit_max_per_100)
++            break;
++        const size_t base = (size_t)il * DS4_MAX_EXPERT;
++        const double  *S = &g_pace.admit_cusum[base];
++        const uint32_t *P = &g_pace.admit_persist_ct[base];
++        /* strongest pruned expert past threshold + persistence */
++        int adm = -1; double adm_S = g_pace.admit_h;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            if (!g_reap_mask_pruned[il][e]) continue;
++            if (P[e] < g_pace.admit_persist) continue;
++            if (S[e] >= adm_S) { adm_S = S[e]; adm = (int)e; }
++        }
++        if (adm < 0) continue;
++        /* eviction victim: least-rmass keep that is past its cooldown */
++        const double  *M = &g_pace.rmass[base];
++        const uint32_t *LT = &g_pace.admit_last_tok[base];
++        int vic = -1; double vic_m = 0.0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            if (g_reap_mask_pruned[il][e]) continue;              /* kept only */
++            if (g_pace.tok - LT[e] < g_pace.admit_cooldown) continue; /* protected */
++            if (vic < 0 || M[e] < vic_m) { vic_m = M[e]; vic = (int)e; }
++        }
++        if (vic < 0) continue;   /* every keep still cooling down */
++        if (!snapped) {
++            memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
++            snapped = 1;
++        }
++        /* targeted swap, K unchanged */
++        g_reap_mask_pruned[il][vic] = 1;
++        g_reap_mask_pruned[il][adm] = 0;
++        g_pace.admit_cusum[base + (uint32_t)adm] = 0.0;
++        g_pace.admit_persist_ct[base + (uint32_t)adm] = 0;
++        g_pace.admit_cusum[base + (uint32_t)vic] = 0.0;
++        g_pace.admit_persist_ct[base + (uint32_t)vic] = 0;
++        g_pace.admit_last_tok[base + (uint32_t)adm] = g_pace.tok;
++        g_pace.admit_events++;
++        g_pace.admit_win_count++;
++        if (g_pace.evlog) {
++            fprintf(g_pace.evlog,
++                "{\"ev\":\"admit\",\"tok\":%u,\"layer\":%u,\"expert\":%d,"
++                "\"evicted\":%d,\"cusum\":%.5f,\"keep\":%d}\n",
++                g_pace.tok, il, adm, vic, adm_S, g_pace.cur_keep);
++            fflush(g_pace.evlog);
++        }
++        if (g_pace.debug) {
++            fprintf(stderr,
++                "ds4: PACE admit tok=%u L%u e%d<-evict e%d S=%.4f\n",
++                g_pace.tok, il, adm, vic, adm_S);
++        }
++        did++;
++    }
++    if (did) {
++        ds4_reap_mask_apply(model, weights);                        /* 0011 */
++        ds4_reap_prefetch_rotate_delta(model, weights, old_pruned); /* 0021 */
++    }
++    return did;
++}
++
+ /* ---- per-decode-token driver tick ---- */
+ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                           int token) {
+@@ -13779,6 +13954,14 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+             }
+         }
+ 
++        /* patch 0026: demand-driven admission (targeted constant-K exchange).
++         * Runs in HOLD when no breath is due; each fire swaps the least-used
++         * keep for a persistently-demanded pruned expert via the 0021 delta
++         * page-in. Takes precedence over ROTATE (run with DS4_PACE_ROTATE=0). */
++        if (!clock_due && !sensor_due && ds4_pace_admit_scan(model, weights)) {
++            break;
++        }
++
+         if (!clock_due && !sensor_due && ds4_pace_rotate_maybe(model, weights)) {
+             break;
+         }
+@@ -16581,12 +16764,14 @@ static void metal_graph_spex_note_selected(
+      * shared by the K-constant mask refresh and the S1 pruned-mass sensor.
+      * Off unless DS4_PACE_ROTATE=1 / relearn-on-tighten / DS4_PACE_S1=1. */
+     if (g && g->router_probs &&
+-        (ds4_pace_rotate_wants_router() || ds4_pace_s1_wants_router())) {
++        (ds4_pace_rotate_wants_router() || ds4_pace_s1_wants_router() ||
++         ds4_pace_admit_wants_router())) {
+         float probs[DS4_MAX_EXPERT];
+         if (ds4_gpu_tensor_read(g->router_probs, 0, probs,
+                                 (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
+             ds4_pace_note_router_probs(il, probs);
+             ds4_pace_s1_note_probs(il, probs);
++            ds4_pace_admit_note_probs(il, probs);
+         }
+     }
+     /* PACE (0014): in-memory gate-mass + hit-rate, including prefill.
+-- 
+2.54.0.windows.1
+

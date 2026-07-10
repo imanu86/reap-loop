@@ -1,0 +1,53 @@
+diff --git a/ds4.c b/ds4.c
+index 0299851..0d0aaeb 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7439,6 +7439,7 @@ static struct {
+     uint32_t stable, anneal_warm;
+     int      s1_on;
+     int      wrap_on;
++    int      wrap_rotate;       /* allow WRAP page-in on K-constant rotate */
+     int      cache_flush;
+     int      prefill_apply;
+     int      prefill_wait_wrap;
+@@ -12848,6 +12849,7 @@ static void ds4_pace_init(void) {
+         if (!w) w = getenv("DS4_REAP_PREFETCH");
+         g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1);
+     }
++    g_pace.wrap_rotate = pace_env_i("DS4_PACE_WRAP_ROTATE", 0);
+     g_pace.cache_flush = pace_env_i("DS4_PACE_CACHE_FLUSH", 0);
+     g_pace.prefill_apply = pace_env_i("DS4_PACE_PREFILL_APPLY", 1);
+     g_pace.prefill_wait_wrap = pace_env_i("DS4_PACE_PREFILL_WAIT_WRAP", 1);
+@@ -12887,7 +12889,7 @@ static void ds4_pace_init(void) {
+         "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
+         "drift=%.2f rel=%.2f hyst=%u breath(every=%u,len=%u,keep=%d,relearn=%d) "
+         "prebreath(on=%d,drift=%.2f,target=%.2f,every=%u,max=%d,adapt=%d,gain=%.2f,pow=%.2f,step_max=%d,relearn=%d,rdecay=%.2f) "
+-        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d "
++        "anneal_warm=%u wrap=%d wrap_rotate=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d "
+         "relearn_on_tighten=%d weighted(warmup=%d,relearn=%d) "
+         "rotate(on=%d,every=%u,decay=%.3f,preserve_stable=%d)\n",
+         g_pace.warmup, g_pace.keep, g_pace.keep_min, g_pace.keep_max,
+@@ -12900,7 +12902,8 @@ static void ds4_pace_init(void) {
+         g_pace.prebreath_adapt, g_pace.prebreath_adapt_gain,
+         g_pace.prebreath_adapt_power, g_pace.prebreath_step_max,
+         g_pace.prebreath_relearn, g_pace.prebreath_relearn_decay,
+-        g_pace.anneal_warm, g_pace.wrap_on, g_pace.cache_flush,
++        g_pace.anneal_warm, g_pace.wrap_on, g_pace.wrap_rotate,
++        g_pace.cache_flush,
+         g_pace.prefill_apply, g_pace.prefill_wait_wrap, g_pace.s1_on,
+         g_pace.exchange_observe, g_pace.relearn_on_tighten,
+         g_pace.weighted_warmup,
+@@ -13131,7 +13134,12 @@ static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *w
+     g_pace.stable_since = g_pace.tok;
+     /* reset hit-rate accounting for the new mask */
+     g_pace.sel_checked = g_pace.sel_inkeep = 0;
+-    if (g_pace.wrap_on)
++    int allow_wrap = g_pace.wrap_on;
++    if (allow_wrap && why && strcmp(why, "rotate") == 0 &&
++        !g_pace.wrap_rotate) {
++        allow_wrap = 0;
++    }
++    if (allow_wrap)
+         ds4_reap_prefetch_working_set(model, weights);   /* 0013 WRAP */
+ }
+ 

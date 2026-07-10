@@ -1,0 +1,1759 @@
+diff --git a/ds4.c b/ds4.c
+index 39e3d62..47a5efa 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7421,6 +7421,17 @@ static struct {
+     uint32_t breath_every, breath_every_min, breath_every_max;
+     uint32_t breath_len;
+     int      breath_keep;      /* 0 = full unmask */
++    int      prebreath_on;     /* gradual keep ramp before hard breath */
++    double   prebreath_drift;
++    double   prebreath_target;
++    uint32_t prebreath_every;
++    int      prebreath_keep_max;
++    int      prebreath_adapt;   /* scale ramp step by ngram overshoot */
++    double   prebreath_adapt_gain;
++    double   prebreath_adapt_power;
++    int      prebreath_step_max;
++    int      prebreath_relearn;
++    double   prebreath_relearn_decay;
+     int      relearn;
+     double   relearn_decay;
+     double   alpha_ngram, alpha_hit;
+@@ -7428,15 +7439,28 @@ static struct {
+     uint32_t stable, anneal_warm;
+     int      s1_on;
+     int      wrap_on;
++    int      cache_flush;
++    int      prefill_apply;
++    int      prefill_wait_wrap;
++    int      exchange_observe;
++    int      rotate_on;          /* DS4_PACE_ROTATE: K-constant raw-router mask rotation */
++    uint32_t rotate_every;       /* rotate at most once every N decode tokens */
++    double   rotate_decay;       /* per-layer EWMA decay for raw router probabilities */
++    int      weighted_warmup;     /* DS4_PACE_WEIGHTED_WARMUP: learn initial mask from slot weights */
++    int      weighted_relearn;    /* DS4_PACE_WEIGHTED_RELEARN: re-learn breath mass from slot weights */
++    uint64_t weighted_read_fail;
+ 
+     /* --- runtime state --- */
+     ds4_pace_phase phase;
++    int      in_prefill;
+     uint32_t tok;              /* decode tokens observed */
+     uint32_t phase_start_tok;
+     uint32_t last_breath_end_tok;
++    uint32_t last_prebreath_tok;
+     int      sensor_armed;
+     int      cur_keep;         /* keep-K currently applied (0 = no mask) */
+     uint32_t stable_since;     /* token of last keep change (tighten gate) */
++    uint32_t last_rotate_tok;    /* last K-constant rotation token */
+ 
+     /* n-gram ring of decode token-ids */
+     int      ring[DS4_PACE_NGRAM_MAX];
+@@ -7450,9 +7474,18 @@ static struct {
+     /* breath cadence auto-tune */
+     uint32_t breaths;
+ 
++    /* observe-only breath exchange accounting */
++    uint64_t exchange_events;
++    uint64_t exchange_promote;
++    uint64_t exchange_demote;
++
+     /* gate-mass accumulator (learn): mass[layer][expert] */
+     double  *mass;             /* [DS4_MAX_LAYER*DS4_MAX_EXPERT], lazy alloc */
+     uint32_t mass_rows;
++    /* raw router probability accumulator for K-constant rotation */
++    double  *rmass;
++    uint32_t rmass_rows;
++    uint64_t rotate_events;
+     /* breath re-learn window accumulator */
+     double  *bmass;
+     uint32_t bmass_rows;
+@@ -10537,6 +10570,9 @@ typedef struct {
+     ds4_gpu_tensor *router_probs;
+     ds4_gpu_tensor *router_selected;
+     ds4_gpu_tensor *router_weights;
++    ds4_gpu_tensor *spex_hidden_scores;
++    ds4_gpu_tensor *spex_hidden_topk;
++    ds4_gpu_async_read *spex_hidden_topk_readback;
+     ds4_gpu_tensor *routed_gate;
+     ds4_gpu_tensor *routed_up;
+     ds4_gpu_tensor *routed_mid;
+@@ -10637,6 +10673,9 @@ typedef struct {
+     uint32_t spex_prefetch_selected_layer;
+     uint32_t spex_prefetch_selected_count;
+     int32_t spex_prefetch_selected[DS4_MAX_EXPERT_USED];
++    bool spex_hidden_gpu_topk_valid;
++    uint32_t spex_hidden_gpu_topk_layer;
++    uint32_t spex_hidden_gpu_topk_count;
+     bool spex_trace_decode_active;
+     uint32_t spex_trace_pos;
+     bool mtp_enabled;
+@@ -10751,6 +10790,9 @@ static void metal_graph_free(ds4_gpu_graph *g) {
+     ds4_gpu_tensor_free(g->router_selected);
+     ds4_gpu_tensor_free(g->router_probs);
+     ds4_gpu_tensor_free(g->router_logits);
++    ds4_gpu_tensor_free(g->spex_hidden_topk);
++    ds4_gpu_tensor_free(g->spex_hidden_scores);
++    ds4_gpu_async_read_free(g->spex_hidden_topk_readback);
+     ds4_gpu_tensor_free(g->shared_out);
+     ds4_gpu_tensor_free(g->shared_mid);
+     ds4_gpu_tensor_free(g->shared_up);
+@@ -11285,6 +11327,10 @@ static bool metal_graph_alloc_raw_cap(
+     g->router_probs = ds4_gpu_tensor_alloc(DS4_N_EXPERT * sizeof(float));
+     g->router_selected = ds4_gpu_tensor_alloc(DS4_N_EXPERT_USED * sizeof(int));
+     g->router_weights = ds4_gpu_tensor_alloc(DS4_N_EXPERT_USED * sizeof(float));
++    g->spex_hidden_scores = ds4_gpu_tensor_alloc(DS4_N_EXPERT * sizeof(float));
++    g->spex_hidden_topk = ds4_gpu_tensor_alloc(DS4_N_EXPERT * sizeof(uint32_t));
++    g->spex_hidden_topk_readback =
++        ds4_gpu_async_read_alloc(DS4_N_EXPERT * sizeof(uint32_t));
+     g->routed_gate = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+     g->routed_up = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+     g->routed_mid = ds4_gpu_tensor_alloc((uint64_t)DS4_N_EXPERT_USED * routed_mid_dim * sizeof(float));
+@@ -11404,6 +11450,8 @@ static bool metal_graph_alloc_raw_cap(
+                     g->shared_gate && g->shared_up && g->shared_mid &&
+                     g->shared_out &&
+                     g->router_logits && g->router_probs && g->router_selected && g->router_weights &&
++                    g->spex_hidden_scores && g->spex_hidden_topk &&
++                    g->spex_hidden_topk_readback &&
+                     g->routed_gate && g->routed_up && g->routed_mid &&
+                     g->routed_down && g->routed_out &&
+                     g->after_ffn_hc &&
+@@ -12461,18 +12509,17 @@ static uint32_t metal_graph_stream_prefill_layer_prepare_ahead(void) {
+     return (uint32_t)v;
+ }
+ 
+-/* ---- patch 0013: REAP "WRAP" - bulk page-in of the masked working set.
++/* ---- patch 0013: REAP "fattorino" - bulk page-in of the masked working set.
+  * After a REAP mask reload (patch 0011), prefetch ALL kept routed experts
+  * (gate/up/down slices) into the page cache with one threaded sequential
+  * pass, so decode expert loads hit RAM instead of ~150 random SSD reads per
+  * token.  Host-side only (mmap touch + madvise WILLNEED, reusing the prefill
+  * union-load machinery): no CUDA stream interaction, no blocking-sync risk.
+- * Env: DS4_REAP_WRAP=1        enable
+- *      DS4_REAP_WRAP_THREADS  worker threads (default 8, max 16)
+- *      DS4_REAP_WRAP_LOCK=1   also mlock() the ranges (needs memlock rlimit;
++ * Env: DS4_REAP_PREFETCH=1        enable
++ *      DS4_REAP_PREFETCH_THREADS  worker threads (default 8, max 16)
++ *      DS4_REAP_PREFETCH_LOCK=1   also mlock() the ranges (needs memlock rlimit;
+  *                                 keeps the working set immune to page eviction) */
+ static volatile int g_reap_prefetch_busy;
+-static volatile int g_reap_prefetch_pending;   /* mask change seen while busy */
+ static uint64_t g_reap_prefetch_sig = 0;
+ 
+ typedef struct {
+@@ -12549,9 +12596,6 @@ static void *ds4_reap_prefetch_main(void *argp) {
+     if (n == 0) {
+         free(ranges);
+         g_reap_prefetch_busy = 0;
+-        /* WRAP-race fix: honor a mask change that arrived while busy. */
+-        if (__sync_lock_test_and_set(&g_reap_prefetch_pending, 0))
+-            ds4_reap_prefetch_working_set(model, weights);
+         return NULL;
+     }
+     qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
+@@ -12565,7 +12609,7 @@ static void *ds4_reap_prefetch_main(void *argp) {
+ 
+     uint32_t n_threads = 8;
+     {
+-        const char *tv = getenv("DS4_REAP_WRAP_THREADS");
++        const char *tv = getenv("DS4_REAP_PREFETCH_THREADS");
+         if (tv && *tv) {
+             char *end = NULL;
+             unsigned long v = strtoul(tv, &end, 10);
+@@ -12602,7 +12646,7 @@ static void *ds4_reap_prefetch_main(void *argp) {
+     }
+ 
+     uint64_t locked = 0;
+-    const char *lockv = getenv("DS4_REAP_WRAP_LOCK");
++    const char *lockv = getenv("DS4_REAP_PREFETCH_LOCK");
+     if (lockv && *lockv && strcmp(lockv, "0") != 0 && model->map) {
+         const uint64_t page = (uint64_t)getpagesize();
+         const uint8_t *base = (const uint8_t *)model->map;
+@@ -12618,7 +12662,7 @@ static void *ds4_reap_prefetch_main(void *argp) {
+     }
+ 
+     fprintf(stderr,
+-            "ds4: REAP prefetch (WRAP): %u layer, %u expert, %u range, "
++            "ds4: REAP prefetch (fattorino): %u layer, %u expert, %u range, "
+             "%.2f GiB touched in %.0f ms (%u thread%s%s)\n",
+             n_layers, n_experts_kept, n,
+             (double)touched / (1024.0 * 1024.0 * 1024.0),
+@@ -12631,12 +12675,6 @@ static void *ds4_reap_prefetch_main(void *argp) {
+     free(workers);
+     free(ranges);
+     g_reap_prefetch_busy = 0;
+-    /* WRAP-race fix: if a mask change arrived while this pass was busy, the
+-     * trigger set pending instead of dropping it. Re-run now with the LATEST
+-     * mask (re-read from the globals) so the working set is never left stale
+-     * (root cause of the "staircase cache-poisoned" behavior). */
+-    if (__sync_lock_test_and_set(&g_reap_prefetch_pending, 0))
+-        ds4_reap_prefetch_working_set(model, weights);
+     return NULL;
+ }
+ 
+@@ -12645,12 +12683,13 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+     static int checked, enabled;
+     if (!checked) {
+         checked = 1;
+-        /* WRAP (0013/0014): DS4_PACE_WRAP, with back-compat alias
+-         * DS4_REAP_WRAP. Default ON when PACE drives it (g_pace.wrap_on
+-         * already gates the call site); enabled here iff either is set non-zero,
++        /* WRAP (0013/0014): DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat
++         * DS4_REAP_PREFETCH. Default ON when PACE drives it (g_pace.wrap_on
++         * already gates the call site); enabled here iff any is set non-zero,
+          * OR PACE is active with wrap_on (so PACE need not set the env). */
+         const char *p = getenv("DS4_PACE_WRAP");
+         if (!p) p = getenv("DS4_REAP_WRAP");
++        if (!p) p = getenv("DS4_REAP_PREFETCH");
+         enabled = (p && *p && strcmp(p, "0") != 0)
+                   || (g_pace.enabled == 1 && g_pace.wrap_on);
+     }
+@@ -12666,10 +12705,7 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+     }
+     if (sig == g_reap_prefetch_sig) return;   /* same mask: nothing to do */
+     if (__sync_lock_test_and_set(&g_reap_prefetch_busy, 1)) {
+-        /* WRAP-race fix: a pass is in flight. Do NOT drop this mask change:
+-         * flag it pending so the running worker re-runs the prefetch with the
+-         * latest mask when it finishes (see ds4_reap_prefetch_main). */
+-        g_reap_prefetch_pending = 1;
++        fprintf(stderr, "ds4: REAP prefetch: gia' in corso, salto\n");
+         return;
+     }
+     g_reap_prefetch_sig = sig;
+@@ -12686,6 +12722,18 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+     pthread_detach(th);
+ }
+ 
++static void ds4_reap_prefetch_wait(const char *why) {
++    if (!__sync_fetch_and_add(&g_reap_prefetch_busy, 0)) return;
++    const double t0 = now_sec();
++    while (__sync_fetch_and_add(&g_reap_prefetch_busy, 0)) {
++        usleep(10000);
++    }
++    fprintf(stderr,
++            "ds4: REAP prefetch wait %s %.0f ms\n",
++            why && *why ? why : "complete",
++            (now_sec() - t0) * 1000.0);
++}
++
+ 
+ /* ======================================================================== *
+  * PACE - Perceptive Adaptive Control Engine (patch 0014)
+@@ -12737,12 +12785,6 @@ static void ds4_pace_init(void) {
+     g_pace.keep_max     = pace_env_i("DS4_PACE_KEEP_MAX", 64);
+     g_pace.keep_step    = pace_env_i("DS4_PACE_KEEP_STEP", 4);
+     g_pace.ngram_n      = pace_env_i("DS4_PACE_NGRAM_N", 3);
+-    /* clamp: n<1 degenerates the n-gram score (loops use n*4, len-n+1, k<n),
+-     * yielding meaningless/degenerate breath triggers. Non-numeric env already
+-     * falls back to 3 via pace_env_i; 0/negative parse fine but are invalid,
+-     * so floor at 3 and cap so a full n-gram fits the ring. */
+-    if (g_pace.ngram_n < 1) g_pace.ngram_n = 3;
+-    if (g_pace.ngram_n > DS4_PACE_NGRAM_MAX / 4) g_pace.ngram_n = DS4_PACE_NGRAM_MAX / 4;
+     g_pace.ngram_window = (uint32_t)pace_env_i("DS4_PACE_NGRAM_WINDOW", 120);
+     if (g_pace.ngram_window > DS4_PACE_NGRAM_MAX)
+         g_pace.ngram_window = DS4_PACE_NGRAM_MAX;
+@@ -12754,6 +12796,40 @@ static void ds4_pace_init(void) {
+     g_pace.breath_every_max = (uint32_t)pace_env_i("DS4_PACE_BREATH_EVERY_MAX", 1200);
+     g_pace.breath_len   = (uint32_t)pace_env_i("DS4_PACE_BREATH_LEN", 80);
+     g_pace.breath_keep  = pace_env_i("DS4_PACE_BREATH_KEEP", 64);
++    g_pace.prebreath_on = pace_env_i("DS4_PACE_PREBREATH", 0);
++    g_pace.prebreath_drift = pace_env_d("DS4_PACE_PREBREATH_DRIFT",
++                                         g_pace.drift * 0.70);
++    if (g_pace.prebreath_drift < 0.0) g_pace.prebreath_drift = 0.0;
++    if (g_pace.prebreath_drift >= g_pace.drift)
++        g_pace.prebreath_drift = g_pace.drift * 0.85;
++    g_pace.prebreath_target = pace_env_d("DS4_PACE_PREBREATH_TARGET",
++                                         g_pace.prebreath_drift);
++    if (g_pace.prebreath_target <= 0.0)
++        g_pace.prebreath_target = g_pace.prebreath_drift > 0.0
++            ? g_pace.prebreath_drift : 0.01;
++    g_pace.prebreath_every =
++        (uint32_t)pace_env_i("DS4_PACE_PREBREATH_EVERY", 64);
++    g_pace.prebreath_keep_max =
++        pace_env_i("DS4_PACE_PREBREATH_KEEP_MAX",
++                   g_pace.breath_keep > 0 ? g_pace.breath_keep : g_pace.keep_max);
++    if (g_pace.prebreath_keep_max < g_pace.keep)
++        g_pace.prebreath_keep_max = g_pace.keep;
++    if (g_pace.prebreath_keep_max > (int)DS4_N_EXPERT)
++        g_pace.prebreath_keep_max = (int)DS4_N_EXPERT;
++    g_pace.prebreath_adapt = pace_env_i("DS4_PACE_PREBREATH_ADAPT", 0);
++    g_pace.prebreath_adapt_gain = pace_env_d("DS4_PACE_PREBREATH_ADAPT_GAIN", 8.0);
++    if (g_pace.prebreath_adapt_gain < 0.0) g_pace.prebreath_adapt_gain = 0.0;
++    g_pace.prebreath_adapt_power = pace_env_d("DS4_PACE_PREBREATH_ADAPT_POWER", 1.0);
++    if (g_pace.prebreath_adapt_power < 0.10) g_pace.prebreath_adapt_power = 0.10;
++    g_pace.prebreath_step_max = pace_env_i("DS4_PACE_PREBREATH_STEP_MAX", 0);
++    if (g_pace.prebreath_step_max < 0) g_pace.prebreath_step_max = 0;
++    g_pace.prebreath_relearn = pace_env_i("DS4_PACE_PREBREATH_RELEARN", 0);
++    g_pace.prebreath_relearn_decay =
++        pace_env_d("DS4_PACE_PREBREATH_RELEARN_DECAY", 0.30);
++    if (g_pace.prebreath_relearn_decay < 0.0)
++        g_pace.prebreath_relearn_decay = 0.0;
++    if (g_pace.prebreath_relearn_decay > 1.0)
++        g_pace.prebreath_relearn_decay = 1.0;
+     g_pace.relearn      = pace_env_i("DS4_PACE_RELEARN", 1);
+     g_pace.relearn_decay= pace_env_d("DS4_PACE_RELEARN_DECAY", 0.3);
+     g_pace.alpha_ngram  = pace_env_d("DS4_PACE_ALPHA_NGRAM", 0.10);
+@@ -12763,29 +12839,66 @@ static void ds4_pace_init(void) {
+     g_pace.stable       = (uint32_t)pace_env_i("DS4_PACE_STABLE", 120);
+     g_pace.anneal_warm  = (uint32_t)pace_env_i("DS4_PACE_ANNEAL_WARM", 300);
+     g_pace.s1_on        = pace_env_i("DS4_PACE_S1", 0);
+-    /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_WRAP */
++    /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_PREFETCH */
+     {
+         const char *w = getenv("DS4_PACE_WRAP");
+         if (!w) w = getenv("DS4_REAP_WRAP");
+-        if (!w) w = getenv("DS4_REAP_WRAP");
++        if (!w) w = getenv("DS4_REAP_PREFETCH");
+         g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1);
+     }
++    g_pace.cache_flush = pace_env_i("DS4_PACE_CACHE_FLUSH", 0);
++    g_pace.prefill_apply = pace_env_i("DS4_PACE_PREFILL_APPLY", 1);
++    g_pace.prefill_wait_wrap = pace_env_i("DS4_PACE_PREFILL_WAIT_WRAP", 1);
++    g_pace.exchange_observe = pace_env_i("DS4_PACE_EXCHANGE_OBSERVE", 0);
++    g_pace.rotate_on = pace_env_i("DS4_PACE_ROTATE", 0);
++    g_pace.rotate_every = (uint32_t)pace_env_i("DS4_PACE_ROTATE_EVERY", 32);
++    if (g_pace.rotate_every == 0) g_pace.rotate_every = 1;
++    g_pace.rotate_decay = pace_env_d("DS4_PACE_ROTATE_DECAY", 0.98);
++    if (g_pace.rotate_decay < 0.0) g_pace.rotate_decay = 0.0;
++    if (g_pace.rotate_decay > 1.0) g_pace.rotate_decay = 1.0;
++    {
++        int weighted_all = pace_env_i("DS4_PACE_WEIGHTED_SELECTED", 0);
++        g_pace.weighted_warmup =
++            pace_env_i("DS4_PACE_WEIGHTED_WARMUP", weighted_all);
++        g_pace.weighted_relearn =
++            pace_env_i("DS4_PACE_WEIGHTED_RELEARN", weighted_all);
++    }
+ 
+     g_pace.phase = PACE_WARMUP;
++    g_pace.in_prefill = 0;
+     g_pace.sensor_armed = 1;
+     g_pace.cur_keep = 0;
+     g_pace.last_breath_end_tok = 0;
++    g_pace.last_prebreath_tok = 0;
++    g_pace.last_rotate_tok = 0;
+     g_pace.mass  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++    if (g_pace.prebreath_relearn)
++        g_pace.bmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++    if (g_pace.rotate_on)
++        g_pace.rmass = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
+ 
+     fprintf(stderr,
+         "ds4: PACE on - warmup=%u keep=%d[%d..%d] step=%d ngram(n=%d,win=%u) "
+         "drift=%.2f rel=%.2f hyst=%u breath(every=%u,len=%u,keep=%d,relearn=%d) "
+-        "anneal_warm=%u wrap=%d s1=%d\n",
++        "prebreath(on=%d,drift=%.2f,target=%.2f,every=%u,max=%d,adapt=%d,gain=%.2f,pow=%.2f,step_max=%d,relearn=%d,rdecay=%.2f) "
++        "anneal_warm=%u wrap=%d cache_flush=%d prefill_apply=%d prefill_wait_wrap=%d s1=%d exchange=%d weighted(warmup=%d,relearn=%d) "
++        "rotate(on=%d,every=%u,decay=%.3f)\n",
+         g_pace.warmup, g_pace.keep, g_pace.keep_min, g_pace.keep_max,
+         g_pace.keep_step, g_pace.ngram_n, g_pace.ngram_window,
+         g_pace.drift, g_pace.release, g_pace.hyst, g_pace.breath_every,
+         g_pace.breath_len, g_pace.breath_keep, g_pace.relearn,
+-        g_pace.anneal_warm, g_pace.wrap_on, g_pace.s1_on);
++        g_pace.prebreath_on, g_pace.prebreath_drift,
++        g_pace.prebreath_target,
++        g_pace.prebreath_every, g_pace.prebreath_keep_max,
++        g_pace.prebreath_adapt, g_pace.prebreath_adapt_gain,
++        g_pace.prebreath_adapt_power, g_pace.prebreath_step_max,
++        g_pace.prebreath_relearn, g_pace.prebreath_relearn_decay,
++        g_pace.anneal_warm, g_pace.wrap_on, g_pace.cache_flush,
++        g_pace.prefill_apply, g_pace.prefill_wait_wrap, g_pace.s1_on,
++        g_pace.exchange_observe, g_pace.weighted_warmup,
++        g_pace.weighted_relearn,
++        g_pace.rotate_on, g_pace.rotate_every,
++        g_pace.rotate_decay);
+ }
+ 
+ static inline int ds4_pace_active(void) {
+@@ -12794,23 +12907,49 @@ static inline int ds4_pace_active(void) {
+ }
+ 
+ /* ---- gate-mass accumulation (called per layer, per decode token) ---- */
++static inline int ds4_pace_wants_selected_weights(void) {
++    if (!ds4_pace_active()) return 0;
++    if (g_pace.phase == PACE_WARMUP) return g_pace.weighted_warmup != 0;
++    if (g_pace.phase == PACE_HOLD)
++        return g_pace.prebreath_relearn && g_pace.weighted_relearn;
++    if (g_pace.phase == PACE_BREATH)
++        return g_pace.relearn && g_pace.weighted_relearn;
++    return 0;
++}
++
+ static void ds4_pace_note_selected(uint32_t il, const int32_t *selected_ids,
++                                   const float *selected_weights,
+                                    uint32_t n_selected) {
+     if (!ds4_pace_active() || !selected_ids || il >= DS4_MAX_LAYER) return;
+-    /* learn windows: WARMUP -> main mass; BREATH re-learn -> breath mass */
+-    double *acc = NULL; uint32_t *rows = NULL;
+-    if (g_pace.phase == PACE_WARMUP) { acc = g_pace.mass; rows = &g_pace.mass_rows; }
++    if (n_selected == 0 || n_selected > DS4_MAX_EXPERT_USED) return;
++    /* learn windows: WARMUP -> main mass; optional HOLD/BREATH re-learn -> breath mass */
++    double *acc = NULL; uint32_t *rows = NULL; int use_weights = 0;
++    if (g_pace.phase == PACE_WARMUP) {
++        acc = g_pace.mass; rows = &g_pace.mass_rows;
++        use_weights = g_pace.weighted_warmup;
++    }
++    else if (g_pace.phase == PACE_HOLD && g_pace.prebreath_relearn && g_pace.bmass) {
++        acc = g_pace.bmass; rows = &g_pace.bmass_rows;
++        use_weights = g_pace.weighted_relearn;
++    }
+     else if (g_pace.phase == PACE_BREATH && g_pace.relearn && g_pace.bmass) {
+         acc = g_pace.bmass; rows = &g_pace.bmass_rows;
++        use_weights = g_pace.weighted_relearn;
+     }
+     if (acc) {
+-        /* unit weight (fidelity: sidecar falls back to w=1.0 when router
+-         * weights absent; taking g->router_weights here needs a GPU readback
+-         * we deliberately avoid on the hot path). */
++        /* Default is unit weight. With DS4_PACE_WEIGHTED_SELECTED=1 the decode
++         * path passes the six scaled router slot weights, matching the old
++         * routing CSV mass-ranking experiments more closely. */
+         for (uint32_t i = 0; i < n_selected; i++) {
+             int32_t eid = selected_ids[i];
+-            if (eid >= 0 && (uint32_t)eid < DS4_MAX_EXPERT)
+-                acc[(size_t)il * DS4_MAX_EXPERT + eid] += 1.0;
++            if (eid >= 0 && (uint32_t)eid < DS4_MAX_EXPERT) {
++                double w = 1.0;
++                if (use_weights && selected_weights && i < DS4_N_EXPERT_USED) {
++                    const float sw = selected_weights[i];
++                    if (isfinite(sw) && sw > 0.0f) w = (double)sw;
++                }
++                acc[(size_t)il * DS4_MAX_EXPERT + eid] += w;
++            }
+         }
+         (*rows)++;
+     }
+@@ -12825,6 +12964,42 @@ static void ds4_pace_note_selected(uint32_t il, const int32_t *selected_ids,
+     }
+ }
+ 
++static void ds4_pace_note_selected_batch(uint32_t il,
++                                         const int32_t *selected_ids,
++                                         uint32_t n_tokens,
++                                         uint32_t n_selected) {
++    if (!selected_ids || n_tokens == 0 || n_selected == 0 ||
++        n_selected > DS4_MAX_EXPERT_USED) {
++        return;
++    }
++    if (!ds4_pace_active()) return;
++    for (uint32_t t = 0; t < n_tokens; t++) {
++        ds4_pace_note_selected(il,
++                               selected_ids + (size_t)t * n_selected,
++                               NULL,
++                               n_selected);
++    }
++}
++
++static inline int ds4_pace_rotate_wants_router(void) {
++    if (!ds4_pace_active()) return 0;
++    return g_pace.rotate_on && g_pace.rmass && !g_pace.in_prefill &&
++           g_pace.phase == PACE_HOLD && g_pace.cur_keep > 0;
++}
++
++static void ds4_pace_note_router_probs(uint32_t il, const float *probs) {
++    if (!probs || il >= DS4_MAX_LAYER || !ds4_pace_rotate_wants_router()) return;
++    double *row = &g_pace.rmass[(size_t)il * DS4_MAX_EXPERT];
++    const double decay = g_pace.rotate_decay;
++    double any = 0.0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++        const double v = (double)probs[e];
++        row[e] = row[e] * decay + v;
++        any += v;
++    }
++    if (any > 0.0) g_pace.rmass_rows++;
++}
++
+ /* ---- learn keep-set from an accumulator into g_reap_mask_pruned ---- *
+  * top-keep experts per layer by accumulated mass are KEPT; rest pruned. */
+ static void ds4_pace_learn_mask(const double *acc, int keep) {
+@@ -12861,10 +13036,88 @@ static void ds4_pace_merge_decayed(double decay) {
+     g_pace.mass_rows = (uint32_t)(g_pace.mass_rows * decay) + g_pace.bmass_rows;
+ }
+ 
+-static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weights,
+-                                int keep) {
+-    ds4_pace_learn_mask(g_pace.mass, keep);
++static void ds4_pace_flush_expert_cache(const char *why) {
++    if (!g_pace.cache_flush) return;
++    uint32_t resident = ds4_gpu_stream_expert_cache_current_count();
++    if (resident == 0) return;
++    ds4_gpu_stream_expert_cache_release_resident();
++    if (g_pace.debug) {
++        fprintf(stderr,
++                "ds4: PACE cache_flush %s resident_before=%u\n",
++                why ? why : "mask-change",
++                resident);
++    }
++}
++
++static void ds4_pace_exchange_observe(
++        const char *why,
++        int old_keep,
++        int new_keep,
++        const uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT]) {
++    if (!g_pace.exchange_observe || !old_pruned) return;
++
++    uint64_t promote = 0;  /* old cold/pruned -> new warm/kept */
++    uint64_t demote  = 0;  /* old warm/kept -> new cold/pruned */
++    uint64_t kept    = 0;  /* warm in both masks */
++    uint64_t cold    = 0;  /* cold in both masks */
++
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            int oldp = old_pruned[il][e] != 0;
++            int newp = g_reap_mask_pruned[il][e] != 0;
++            if (oldp && !newp) {
++                promote++;
++            } else if (!oldp && newp) {
++                demote++;
++            } else if (!oldp && !newp) {
++                kept++;
++            } else {
++                cold++;
++            }
++        }
++    }
++
++    g_pace.exchange_events++;
++    g_pace.exchange_promote += promote;
++    g_pace.exchange_demote  += demote;
++
++    fprintf(stderr,
++            "ds4: PACE exchange %s tok=%u keep=%d->%d promote=%" PRIu64
++            " demote=%" PRIu64 " kept=%" PRIu64 " cold=%" PRIu64
++            " total_promote=%" PRIu64 " total_demote=%" PRIu64 "\n",
++            why && *why ? why : "mask-change",
++            g_pace.tok, old_keep, new_keep,
++            promote, demote, kept, cold,
++            g_pace.exchange_promote, g_pace.exchange_demote);
++
++    if (g_pace.evlog) {
++        fprintf(g_pace.evlog,
++                "{\"ev\":\"exchange\",\"why\":\"%s\",\"tok\":%u,"
++                "\"old_keep\":%d,\"new_keep\":%d,"
++                "\"promote\":%" PRIu64 ",\"demote\":%" PRIu64 ","
++                "\"kept\":%" PRIu64 ",\"cold\":%" PRIu64 ","
++                "\"total_promote\":%" PRIu64 ",\"total_demote\":%" PRIu64 "}\n",
++                why && *why ? why : "mask-change",
++                g_pace.tok, old_keep, new_keep,
++                promote, demote, kept, cold,
++                g_pace.exchange_promote, g_pace.exchange_demote);
++        fflush(g_pace.evlog);
++    }
++}
++
++static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *weights,
++                                    const double *acc, int keep, const char *why) {
++    uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++    int old_keep = g_pace.cur_keep;
++    if (g_pace.exchange_observe) {
++        memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
++    }
++    ds4_pace_learn_mask(acc ? acc : g_pace.mass, keep);
++    if (g_pace.exchange_observe) {
++        ds4_pace_exchange_observe(why, old_keep, keep, old_pruned);
++    }
+     ds4_reap_mask_apply(model, weights);           /* 0011 actuator */
++    ds4_pace_flush_expert_cache(why && *why ? why : "apply_keep");
+     g_pace.cur_keep = keep;
+     g_pace.stable_since = g_pace.tok;
+     /* reset hit-rate accounting for the new mask */
+@@ -12873,13 +13126,93 @@ static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weigh
+         ds4_reap_prefetch_working_set(model, weights);   /* 0013 WRAP */
+ }
+ 
++static void ds4_pace_apply_keep(const ds4_model *model, const ds4_weights *weights,
++                                int keep, const char *why) {
++    ds4_pace_apply_keep_acc(model, weights, g_pace.mass, keep, why);
++}
++
+ static void ds4_pace_unmask(const ds4_model *model, const ds4_weights *weights) {
++    uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++    int old_keep = g_pace.cur_keep;
++    if (g_pace.exchange_observe) {
++        memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
++    }
+     memset(g_reap_mask_pruned, 0, sizeof(g_reap_mask_pruned));
++    if (g_pace.exchange_observe) {
++        ds4_pace_exchange_observe("unmask", old_keep, 0, old_pruned);
++    }
+     ds4_reap_mask_apply(model, weights);
++    ds4_pace_flush_expert_cache("unmask");
+     g_pace.cur_keep = 0;
+     g_pace.sel_checked = g_pace.sel_inkeep = 0;
+ }
+ 
++static void ds4_pace_emit(const char *ev, double score, double hit);
++
++static void ds4_pace_reset_for_prefill(const ds4_model *model,
++                                       const ds4_weights *weights,
++                                       const char *why) {
++    if (!ds4_pace_active()) return;
++    if (g_pace.cur_keep > 0 && model && weights) {
++        ds4_pace_unmask(model, weights);
++    }
++    if (g_pace.mass) {
++        memset(g_pace.mass, 0,
++               (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++    }
++    if (g_pace.bmass) {
++        memset(g_pace.bmass, 0,
++               (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++    }
++    if (g_pace.rmass) {
++        memset(g_pace.rmass, 0,
++               (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++    }
++    g_pace.mass_rows = 0;
++    g_pace.bmass_rows = 0;
++    g_pace.rmass_rows = 0;
++    g_pace.rotate_events = 0;
++    g_pace.phase = PACE_WARMUP;
++    g_pace.in_prefill = 1;
++    g_pace.tok = 0;
++    g_pace.phase_start_tok = 0;
++    g_pace.last_breath_end_tok = 0;
++    g_pace.last_prebreath_tok = 0;
++    g_pace.last_rotate_tok = 0;
++    g_pace.sensor_armed = 1;
++    g_pace.cur_keep = 0;
++    g_pace.stable_since = 0;
++    g_pace.ring_len = 0;
++    g_pace.ring_head = 0;
++    g_pace.ema_ngram = 0.0;
++    g_pace.sel_checked = 0;
++    g_pace.sel_inkeep = 0;
++    g_pace.ema_hit = 1.0;
++    g_pace.breaths = 0;
++    ds4_pace_emit(why && *why ? why : "prefill_reset", 0.0, 1.0);
++}
++
++static void ds4_pace_apply_prefill_mask(const ds4_model *model,
++                                        const ds4_weights *weights,
++                                        const char *why) {
++    if (!ds4_pace_active() || !model || !weights) return;
++    g_pace.in_prefill = 0;
++    if (!g_pace.prefill_apply || g_pace.phase != PACE_WARMUP ||
++        g_pace.cur_keep > 0 || g_pace.mass_rows == 0) {
++        return;
++    }
++    ds4_pace_apply_keep(model, weights, g_pace.keep,
++                        why && *why ? why : "prefill_apply");
++    g_pace.phase = PACE_HOLD;
++    g_pace.phase_start_tok = g_pace.tok;
++    ds4_pace_emit(why && *why ? why : "prefill_apply",
++                  g_pace.ema_ngram,
++                  g_pace.ema_hit);
++    if (g_pace.wrap_on && g_pace.prefill_wait_wrap) {
++        ds4_reap_prefetch_wait(why && *why ? why : "prefill_apply");
++    }
++}
++
+ /* ---- n-gram degeneration score over the token-id ring ---- */
+ static double ds4_pace_ngram_score(void) {
+     uint32_t len = g_pace.ring_len;
+@@ -12945,10 +13278,26 @@ static void ds4_pace_tune_cadence(void) {
+         g_pace.breath_every += 50;
+ }
+ 
++static int ds4_pace_rotate_maybe(const ds4_model *model, const ds4_weights *weights) {
++    if (!g_pace.rotate_on || !g_pace.rmass || g_pace.phase != PACE_HOLD ||
++        g_pace.cur_keep <= 0 || g_pace.rmass_rows == 0) {
++        return 0;
++    }
++    const uint32_t last_change = g_pace.last_rotate_tok > g_pace.stable_since
++        ? g_pace.last_rotate_tok : g_pace.stable_since;
++    if (g_pace.tok - last_change < g_pace.rotate_every) return 0;
++    ds4_pace_apply_keep_acc(model, weights, g_pace.rmass, g_pace.cur_keep, "rotate");
++    g_pace.last_rotate_tok = g_pace.tok;
++    g_pace.rotate_events++;
++    ds4_pace_emit("rotate", g_pace.ema_ngram, g_pace.ema_hit);
++    return 1;
++}
++
+ /* ---- per-decode-token driver tick ---- */
+ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                           int token) {
+     if (!ds4_pace_active()) return;
++    if (g_pace.in_prefill) return;
+     ds4_pace_push_token(token);
+     g_pace.tok++;
+ 
+@@ -12971,7 +13320,7 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+         break;
+ 
+     case PACE_DESCENT:
+-        ds4_pace_apply_keep(model, weights, g_pace.keep);   /* direct */
++        ds4_pace_apply_keep(model, weights, g_pace.keep, "descent");   /* direct */
+         g_pace.phase = PACE_HOLD;
+         g_pace.phase_start_tok = g_pace.tok;
+         ds4_pace_emit("descent", g_pace.ema_ngram, g_pace.ema_hit);
+@@ -12989,6 +13338,51 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+         }
+         int sensor_due = g_pace.sensor_armed && g_pace.ema_ngram >= g_pace.drift;
+ 
++        if (!clock_due && !sensor_due &&
++            g_pace.prebreath_on &&
++            g_pace.sensor_armed &&
++            g_pace.ema_ngram >= g_pace.prebreath_drift &&
++            (g_pace.prebreath_every == 0 ||
++             g_pace.tok - g_pace.last_prebreath_tok >= g_pace.prebreath_every) &&
++            g_pace.keep < g_pace.prebreath_keep_max) {
++            int step = g_pace.keep_step > 0 ? g_pace.keep_step : 1;
++            if (g_pace.prebreath_adapt && g_pace.prebreath_target > 0.0) {
++                double overshoot = g_pace.ema_ngram - g_pace.prebreath_target;
++                if (overshoot > 0.0) {
++                    double ratio = overshoot / g_pace.prebreath_target;
++                    double scaled = pow(ratio, g_pace.prebreath_adapt_power) *
++                                    g_pace.prebreath_adapt_gain;
++                    int extra = (int)(scaled + 0.999999);
++                    if (extra > 0) step += extra;
++                }
++                if (g_pace.prebreath_step_max > 0 &&
++                    step > g_pace.prebreath_step_max) {
++                    step = g_pace.prebreath_step_max;
++                }
++            }
++            int next_keep = g_pace.keep + step;
++            if (next_keep > g_pace.prebreath_keep_max)
++                next_keep = g_pace.prebreath_keep_max;
++            if (next_keep > g_pace.keep) {
++                g_pace.keep = next_keep;
++                g_pace.last_prebreath_tok = g_pace.tok;
++                if (g_pace.prebreath_relearn && g_pace.bmass && g_pace.bmass_rows > 0) {
++                    ds4_pace_merge_decayed(g_pace.prebreath_relearn_decay);
++                    ds4_pace_emit("prebreath_relearn", g_pace.ema_ngram, g_pace.ema_hit);
++                    memset(g_pace.bmass, 0,
++                           (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++                    g_pace.bmass_rows = 0;
++                }
++                ds4_pace_apply_keep(model, weights, g_pace.keep, "prebreath");
++                ds4_pace_emit("prebreath", g_pace.ema_ngram, g_pace.ema_hit);
++                break;
++            }
++        }
++
++        if (!clock_due && !sensor_due && ds4_pace_rotate_maybe(model, weights)) {
++            break;
++        }
++
+         if (clock_due || sensor_due) {
+             g_pace.sensor_armed = 0;
+             g_pace.breaths++;
+@@ -13004,9 +13398,11 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                 g_pace.keep = g_pace.keep + g_pace.keep_step < g_pace.keep_max
+                     ? g_pace.keep + g_pace.keep_step : g_pace.keep_max;
+             if (g_pace.breath_keep <= 0) ds4_pace_unmask(model, weights);
+-            else ds4_pace_apply_keep(model, weights, g_pace.breath_keep);
++            else ds4_pace_apply_keep(model, weights, g_pace.breath_keep,
++                                     sensor_due ? "breath(ngram)" : "breath(clock)");
+             g_pace.phase = PACE_BREATH;
+             g_pace.phase_start_tok = g_pace.tok;
++            g_pace.last_prebreath_tok = g_pace.tok;
+             ds4_pace_emit(sensor_due ? "breath(ngram)" : "breath(clock)",
+                           g_pace.ema_ngram, g_pace.ema_hit);
+             break;
+@@ -13019,7 +13415,7 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+             && g_pace.keep > g_pace.keep_min) {
+             g_pace.keep = g_pace.keep - g_pace.keep_step > g_pace.keep_min
+                 ? g_pace.keep - g_pace.keep_step : g_pace.keep_min;
+-            ds4_pace_apply_keep(model, weights, g_pace.keep);
++            ds4_pace_apply_keep(model, weights, g_pace.keep, "tighten");
+             ds4_pace_emit("tighten", g_pace.ema_ngram, g_pace.ema_hit);
+         }
+         break;
+@@ -13031,7 +13427,7 @@ static void ds4_pace_tick(const ds4_model *model, const ds4_weights *weights,
+                 ds4_pace_merge_decayed(g_pace.relearn_decay);
+                 ds4_pace_emit("relearn", g_pace.ema_ngram, g_pace.ema_hit);
+             }
+-            ds4_pace_apply_keep(model, weights, g_pace.keep);
++            ds4_pace_apply_keep(model, weights, g_pace.keep, "breath_end");
+             g_pace.phase = PACE_HOLD;
+             g_pace.phase_start_tok = g_pace.tok;
+             g_pace.last_breath_end_tok = g_pace.tok;
+@@ -14558,13 +14954,36 @@ typedef struct {
+     ds4_spex_markov_row  *row;
+ } ds4_spex_markov_params;
+ 
++typedef struct {
++    bool                  attempted;
++    bool                  loaded;
++    bool                  warned;
++    char                 *path;
++    uint32_t              n_layer;
++    uint32_t              n_embd;
++    uint32_t              n_expert;
++    float                 ridge;
++    uint64_t              weight_bytes;
++    uint8_t              *data;
++    const uint16_t       *weights;
++    ds4_gpu_tensor       *gpu_weights;
++} ds4_spex_hidden_params;
++
+ static ds4_spex_markov_params g_spex_markov_params;
++static ds4_spex_hidden_params g_spex_hidden_params;
++
++static bool metal_graph_spex_hidden_prefetch_enabled(void);
++static bool metal_graph_spex_hidden_gpu_load_enabled(void);
++static bool metal_graph_spex_hidden_gpu_score_enabled(void);
++static bool metal_graph_spex_hidden_gpu_prefetch_enabled(void);
+ 
+ static const char *metal_graph_spex_file_path(void) {
+     const char *path = getenv("DS4_SPEX_FILE");
+     if (path && path[0]) return path;
+     path = getenv("DS4_SPEX_PATH");
+     if (path && path[0]) return path;
++    path = getenv("DS4_SPEX_HIDDEN_FILE");
++    if (path && path[0]) return path;
+     path = getenv("DS4_SPEX_MARKOV_FILE");
+     if (path && path[0]) return path;
+     return NULL;
+@@ -14698,6 +15117,135 @@ static void ds4_spex_markov_free(ds4_spex_markov_params *p) {
+     memset(p, 0, sizeof(*p));
+ }
+ 
++static void ds4_spex_hidden_free(ds4_spex_hidden_params *p) {
++    if (!p) return;
++    ds4_gpu_tensor_free(p->gpu_weights);
++    free(p->path);
++    free(p->data);
++    memset(p, 0, sizeof(*p));
++}
++
++static bool ds4_spex_path_magic_is(const char *path, const char magic[4]) {
++    if (!path || !magic) return false;
++    FILE *fh = fopen(path, "rb");
++    if (!fh) return false;
++    char got[4] = {0};
++    const size_t n = fread(got, 1, sizeof(got), fh);
++    fclose(fh);
++    return n == sizeof(got) && memcmp(got, magic, sizeof(got)) == 0;
++}
++
++static bool ds4_spex_hidden_load_path(
++        ds4_spex_hidden_params *out,
++        const char             *path,
++        char                   *err,
++        size_t                  err_cap) {
++    uint8_t *data = NULL;
++    size_t size = 0;
++    if (!ds4_spex_read_file(path, &data, &size, err, err_cap)) return false;
++    if (size < 32) {
++        free(data);
++        ds4_spex_set_error(err, err_cap, "truncated hidden SPX1 file '%s'", path);
++        return false;
++    }
++
++    ds4_spex_hidden_params tmp;
++    memset(&tmp, 0, sizeof(tmp));
++    tmp.path = ds4_strdup(path);
++    tmp.data = data;
++
++    size_t off = 0;
++    uint8_t magic[4];
++    uint32_t version = 0;
++    uint32_t predictor = 0;
++    uint32_t ridge_bits = 0;
++    uint32_t reserved = 0;
++    if (!ds4_spex_take(data, size, &off, magic, sizeof(magic), err, err_cap, "magic") ||
++        !ds4_spex_take_u32(data, size, &off, &version, err, err_cap, "version") ||
++        !ds4_spex_take_u32(data, size, &off, &predictor, err, err_cap, "predictor") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.n_layer, err, err_cap, "n_layer") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.n_embd, err, err_cap, "n_embd") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.n_expert, err, err_cap, "n_expert") ||
++        !ds4_spex_take_u32(data, size, &off, &ridge_bits, err, err_cap, "ridge") ||
++        !ds4_spex_take_u32(data, size, &off, &reserved, err, err_cap, "reserved")) {
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    memcpy(&tmp.ridge, &ridge_bits, sizeof(tmp.ridge));
++
++    if (memcmp(magic, "SPX1", 4) != 0) {
++        ds4_spex_set_error(err, err_cap, "'%s' is not a hidden SPX1 SPEX file", path);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    if (version != 1 || predictor != 2 || reserved != 0) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "unsupported hidden SPX1 header in '%s' (version=%u predictor=%u reserved=%u)",
++                           path,
++                           version,
++                           predictor,
++                           reserved);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    if (!isfinite(tmp.ridge)) {
++        ds4_spex_set_error(err, err_cap, "non-finite hidden SPX1 ridge in '%s'", path);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    if (tmp.n_layer != DS4_N_LAYER ||
++        tmp.n_embd != DS4_N_EMBD ||
++        tmp.n_expert != DS4_N_EXPERT) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "hidden SPX1 shape mismatch in '%s' (got L=%u D=%u E=%u, expected L=%u D=%u E=%u)",
++                           path,
++                           tmp.n_layer,
++                           tmp.n_embd,
++                           tmp.n_expert,
++                           (uint32_t)DS4_N_LAYER,
++                           (uint32_t)DS4_N_EMBD,
++                           (uint32_t)DS4_N_EXPERT);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    if (tmp.n_layer != 0 && tmp.n_embd > UINT64_MAX / tmp.n_layer) {
++        ds4_spex_set_error(err, err_cap, "hidden SPX1 weight count overflow in '%s'", path);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    uint64_t weight_count = (uint64_t)tmp.n_layer * tmp.n_embd;
++    if (tmp.n_expert != 0 && weight_count > UINT64_MAX / tmp.n_expert) {
++        ds4_spex_set_error(err, err_cap, "hidden SPX1 weight count overflow in '%s'", path);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    weight_count *= tmp.n_expert;
++    if (weight_count > (UINT64_MAX - 32u) / sizeof(uint16_t)) {
++        ds4_spex_set_error(err, err_cap, "hidden SPX1 weight byte count overflow in '%s'", path);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++    tmp.weight_bytes = weight_count * sizeof(uint16_t);
++    const uint64_t expected_size = 32u + tmp.weight_bytes;
++    if ((uint64_t)size != expected_size) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "hidden SPX1 size mismatch in '%s' (got %llu bytes, expected %llu)",
++                           path,
++                           (unsigned long long)size,
++                           (unsigned long long)expected_size);
++        ds4_spex_hidden_free(&tmp);
++        return false;
++    }
++
++    tmp.weights = (const uint16_t *)(const void *)(tmp.data + 32u);
++    tmp.loaded = true;
++    *out = tmp;
++    return true;
++}
++
+ static bool ds4_spex_markov_load_path(
+         ds4_spex_markov_params *out,
+         const char             *path,
+@@ -14868,6 +15416,52 @@ static bool ds4_spex_markov_load_path(
+     return true;
+ }
+ 
++static const ds4_spex_hidden_params *metal_graph_spex_hidden_params(void) {
++    const char *path = metal_graph_spex_file_path();
++    if (!path) return NULL;
++    if (!g_spex_hidden_params.attempted) {
++        char err[512] = {0};
++        g_spex_hidden_params.attempted = true;
++        if (ds4_spex_hidden_load_path(&g_spex_hidden_params, path, err, sizeof(err))) {
++            g_spex_hidden_params.attempted = true;
++            if (metal_graph_spex_hidden_gpu_load_enabled()) {
++                g_spex_hidden_params.gpu_weights =
++                    ds4_gpu_tensor_alloc(g_spex_hidden_params.weight_bytes);
++                if (g_spex_hidden_params.gpu_weights &&
++                    ds4_gpu_tensor_write(g_spex_hidden_params.gpu_weights,
++                                         0,
++                                         g_spex_hidden_params.weights,
++                                         g_spex_hidden_params.weight_bytes) != 0) {
++                    fprintf(stderr,
++                            "ds4: SPEX hidden GPU weights uploaded %.2f MiB\n",
++                            (double)g_spex_hidden_params.weight_bytes / 1048576.0);
++                } else {
++                    fprintf(stderr,
++                            "ds4: SPEX hidden GPU weight upload failed; CPU artifact remains loaded\n");
++                    ds4_gpu_tensor_free(g_spex_hidden_params.gpu_weights);
++                    g_spex_hidden_params.gpu_weights = NULL;
++                }
++            }
++            fprintf(stderr,
++                    "ds4: SPEX hidden SPX1 loaded '%s' L=%u D=%u E=%u weights=%llu bytes; "
++                    "hidden-readback prefetch=%s gpu-prefetch=%s\n",
++                    g_spex_hidden_params.path,
++                    g_spex_hidden_params.n_layer,
++                    g_spex_hidden_params.n_embd,
++                    g_spex_hidden_params.n_expert,
++                    (unsigned long long)g_spex_hidden_params.weight_bytes,
++                    metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off",
++                    metal_graph_spex_hidden_gpu_prefetch_enabled() ? "on" : "off");
++        } else {
++            fprintf(stderr, "ds4: SPEX hidden disabled: %s\n", err[0] ? err : "load failed");
++            ds4_spex_hidden_free(&g_spex_hidden_params);
++            g_spex_hidden_params.attempted = true;
++            g_spex_hidden_params.warned = true;
++        }
++    }
++    return g_spex_hidden_params.loaded ? &g_spex_hidden_params : NULL;
++}
++
+ static const ds4_spex_markov_params *metal_graph_spex_markov_params(void) {
+     const char *path = metal_graph_spex_file_path();
+     if (!path) return NULL;
+@@ -14883,7 +15477,11 @@ static const ds4_spex_markov_params *metal_graph_spex_markov_params(void) {
+                     g_spex_markov_params.n_expert,
+                     g_spex_markov_params.topN);
+         } else {
+-            fprintf(stderr, "ds4: SPEX markov disabled: %s\n", err[0] ? err : "load failed");
++            if (ds4_spex_path_magic_is(path, "SPX1")) {
++                (void)metal_graph_spex_hidden_params();
++            } else {
++                fprintf(stderr, "ds4: SPEX markov disabled: %s\n", err[0] ? err : "load failed");
++            }
+             ds4_spex_markov_free(&g_spex_markov_params);
+             g_spex_markov_params.attempted = true;
+             g_spex_markov_params.warned = true;
+@@ -14923,6 +15521,346 @@ static float metal_graph_spex_env_float(
+     return v;
+ }
+ 
++static bool metal_graph_spex_hidden_prefetch_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_PREFETCH");
++    return v && v[0] && strcmp(v, "0") != 0;
++}
++
++static bool metal_graph_spex_hidden_gpu_load_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_LOAD");
++    if (v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0) {
++        return true;
++    }
++    return metal_graph_spex_hidden_gpu_score_enabled() ||
++           metal_graph_spex_hidden_gpu_prefetch_enabled();
++}
++
++static bool metal_graph_spex_hidden_gpu_score_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_SCORE");
++    if (v && v[0] && strcmp(v, "0") != 0 &&
++            strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++            strcmp(v, "no") != 0) {
++        return true;
++    }
++    return metal_graph_spex_hidden_gpu_prefetch_enabled();
++}
++
++static bool metal_graph_spex_hidden_gpu_prefetch_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH");
++    return v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0;
++}
++
++static bool metal_graph_spex_hidden_gpu_prefetch_dry_run(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH_DRY_RUN");
++    return v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0;
++}
++
++static bool metal_graph_spex_prefetch_profile_enabled(void) {
++    const char *v = getenv("DS4_SPEX_PREFETCH_PROFILE");
++    return v && v[0] && strcmp(v, "0") != 0 &&
++           strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++           strcmp(v, "no") != 0;
++}
++
++typedef struct {
++    uint64_t scheduled;
++    uint64_t schedule_failed;
++    uint64_t ready;
++    uint64_t not_ready;
++    uint64_t zero_candidates;
++    uint64_t dry_run;
++    uint64_t seed_calls;
++    uint64_t seed_ok;
++    uint64_t seed_failed;
++    uint64_t seed_skipped_all_resident;
++    uint64_t candidate_experts;
++    uint64_t seed_experts;
++    uint64_t resident_before;
++    double   seed_seconds;
++    bool     atexit_registered;
++} ds4_spex_hidden_gpu_prefetch_stats;
++
++static ds4_spex_hidden_gpu_prefetch_stats g_spex_hidden_gpu_prefetch_stats;
++
++static bool metal_graph_spex_hidden_gpu_prefetch_stats_enabled(void) {
++    const char *v = getenv("DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS");
++    if (v && v[0] && strcmp(v, "0") != 0 &&
++            strcmp(v, "false") != 0 && strcmp(v, "off") != 0 &&
++            strcmp(v, "no") != 0) {
++        return true;
++    }
++    return metal_graph_spex_prefetch_profile_enabled();
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_print(const char *why) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    const ds4_spex_hidden_gpu_prefetch_stats *s =
++        &g_spex_hidden_gpu_prefetch_stats;
++    if (s->scheduled == 0 && s->seed_calls == 0 && s->ready == 0 &&
++        s->not_ready == 0) {
++        return;
++    }
++    const double seed_ms = s->seed_seconds * 1000.0;
++    fprintf(stderr,
++            "ds4: SPEX hidden-gpu prefetch stats %s "
++            "scheduled=%" PRIu64 " schedule_failed=%" PRIu64
++            " ready=%" PRIu64 " not_ready=%" PRIu64
++            " zero=%" PRIu64 " dry=%" PRIu64
++            " seed_calls=%" PRIu64 " seed_ok=%" PRIu64
++            " seed_failed=%" PRIu64 " skipped_all_resident=%" PRIu64
++            " candidate_experts=%" PRIu64
++            " seed_experts=%" PRIu64 " resident_before=%" PRIu64
++            " seed_ms=%.3f\n",
++            why ? why : "summary",
++            s->scheduled,
++            s->schedule_failed,
++            s->ready,
++            s->not_ready,
++            s->zero_candidates,
++            s->dry_run,
++            s->seed_calls,
++            s->seed_ok,
++            s->seed_failed,
++            s->seed_skipped_all_resident,
++            s->candidate_experts,
++            s->seed_experts,
++            s->resident_before,
++            seed_ms);
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_atexit(void) {
++    metal_graph_spex_hidden_gpu_prefetch_stats_print("exit");
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_touch(void) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    if (!g_spex_hidden_gpu_prefetch_stats.atexit_registered) {
++        atexit(metal_graph_spex_hidden_gpu_prefetch_stats_atexit);
++        g_spex_hidden_gpu_prefetch_stats.atexit_registered = true;
++    }
++}
++
++static void metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print(void) {
++    if (!metal_graph_spex_hidden_gpu_prefetch_stats_enabled()) return;
++    const uint32_t every = metal_graph_spex_env_u32(
++        "DS4_SPEX_HIDDEN_GPU_PREFETCH_STATS_EVERY",
++        256,
++        UINT32_MAX);
++    if (every == 0) return;
++    const uint64_t events =
++        g_spex_hidden_gpu_prefetch_stats.ready +
++        g_spex_hidden_gpu_prefetch_stats.not_ready +
++        g_spex_hidden_gpu_prefetch_stats.seed_calls;
++    if (events != 0 && events % every == 0) {
++        metal_graph_spex_hidden_gpu_prefetch_stats_print("periodic");
++    }
++}
++
++static uint32_t metal_graph_spex_hidden_cap(uint32_t out_cap) {
++    uint32_t fallback = metal_graph_spex_env_u32("DS4_SPEX_CAP",
++                                                 DS4_N_EXPERT_USED,
++                                                 out_cap);
++    return metal_graph_spex_env_u32("DS4_SPEX_HIDDEN_CAP", fallback, out_cap);
++}
++
++static uint32_t metal_graph_spex_hidden_predict_cpu(
++        const ds4_spex_hidden_params *p,
++        uint32_t                      il,
++        const float                  *hidden,
++        int32_t                      *out_ids,
++        uint32_t                      out_cap) {
++    if (!p || !p->weights || !hidden || !out_ids || out_cap == 0 ||
++        il + 1u >= p->n_layer ||
++        p->n_embd != DS4_N_EMBD ||
++        p->n_expert == 0 ||
++        p->n_expert > DS4_MAX_EXPERT) {
++        return 0;
++    }
++    const uint32_t cap = metal_graph_spex_hidden_cap(out_cap);
++    if (cap == 0) return 0;
++    float score[DS4_MAX_EXPERT];
++    bool picked[DS4_MAX_EXPERT];
++    memset(score, 0, sizeof(score));
++    memset(picked, 0, sizeof(picked));
++
++    const uint16_t *w = p->weights +
++        (uint64_t)il * p->n_embd * p->n_expert;
++    for (uint32_t i = 0; i < p->n_embd; i++) {
++        const float hi = hidden[i];
++        if (hi == 0.0f) continue;
++        const uint16_t *row = w + (uint64_t)i * p->n_expert;
++        for (uint32_t e = 0; e < p->n_expert; e++) {
++            score[e] += hi * f16_to_f32(row[e]);
++        }
++    }
++
++    uint32_t n_out = 0;
++    while (n_out < cap) {
++        int32_t best = -1;
++        float best_score = -INFINITY;
++        for (uint32_t e = 0; e < p->n_expert; e++) {
++            const float s = score[e];
++            if (picked[e] || !isfinite(s)) continue;
++            if (best < 0 || s > best_score ||
++                (s == best_score && e < (uint32_t)best)) {
++                best = (int32_t)e;
++                best_score = s;
++            }
++        }
++        if (best < 0) break;
++        picked[(uint32_t)best] = true;
++        out_ids[n_out++] = best;
++    }
++    return n_out;
++}
++
++static bool metal_graph_spex_hidden_score_gpu(
++        ds4_gpu_graph *g,
++        uint32_t       il) {
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (!metal_graph_spex_hidden_gpu_score_enabled()) return true;
++    if (!g || !g->ffn_norm || !g->spex_hidden_scores || !g->spex_hidden_topk) {
++        return false;
++    }
++    g->spex_hidden_gpu_topk_valid = false;
++    const ds4_spex_hidden_params *p = metal_graph_spex_hidden_params();
++    if (!p || !p->gpu_weights) return true;
++    if (il + 1u >= p->n_layer ||
++        p->n_embd != DS4_N_EMBD ||
++        p->n_expert == 0 ||
++        p->n_expert > DS4_MAX_EXPERT) {
++        return true;
++    }
++
++    const uint32_t cap = metal_graph_spex_hidden_cap(p->n_expert);
++    if (cap == 0) return true;
++    const uint64_t layer_weight_bytes =
++        (uint64_t)p->n_embd * p->n_expert * sizeof(uint16_t);
++    const uint64_t layer_weight_off = (uint64_t)il * layer_weight_bytes;
++    ds4_gpu_tensor *layer_weights =
++        ds4_gpu_tensor_view(p->gpu_weights, layer_weight_off, layer_weight_bytes);
++    if (!layer_weights) return false;
++
++    bool ok = ds4_gpu_spex_hidden_score_tensor(g->spex_hidden_scores,
++                                               layer_weights,
++                                               p->n_embd,
++                                               p->n_expert,
++                                               g->ffn_norm) != 0;
++    if (ok) {
++        ok = ds4_gpu_indexer_topk_tensor(g->spex_hidden_topk,
++                                         g->spex_hidden_scores,
++                                         p->n_expert,
++                                         1,
++                                         cap) != 0;
++    }
++    ds4_gpu_tensor_free(layer_weights);
++    if (!ok) return false;
++    if (metal_graph_spex_hidden_gpu_prefetch_enabled() &&
++        il + 1u < DS4_N_LAYER) {
++        if (g->spex_hidden_topk_readback &&
++            ds4_gpu_tensor_read_async(g->spex_hidden_topk_readback,
++                                      g->spex_hidden_topk,
++                                      0,
++                                      (uint64_t)cap * sizeof(uint32_t)) != 0) {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.scheduled++;
++            g->spex_hidden_gpu_topk_layer = il;
++            g->spex_hidden_gpu_topk_count = cap;
++            g->spex_hidden_gpu_topk_valid = true;
++        } else {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.schedule_failed++;
++            static bool warned;
++            if (!warned) {
++                fprintf(stderr,
++                        "ds4: SPEX hidden GPU topK async readback not scheduled "
++                        "(reported once)\n");
++                warned = true;
++            }
++        }
++    } else if (metal_graph_spex_hidden_gpu_prefetch_enabled()) {
++        g->spex_hidden_gpu_topk_valid = false;
++    } else {
++        g->spex_hidden_gpu_topk_layer = il;
++        g->spex_hidden_gpu_topk_count = cap;
++        g->spex_hidden_gpu_topk_valid = true;
++    }
++
++    static bool logged;
++    if (!logged) {
++        fprintf(stderr,
++                "ds4: SPEX hidden GPU scoring active cap=%u "
++                "(hidden-prefetch=%s gpu-prefetch=%s)\n",
++                cap,
++                metal_graph_spex_hidden_prefetch_enabled() ? "on" : "off",
++                metal_graph_spex_hidden_gpu_prefetch_enabled() ? "on" : "off");
++        logged = true;
++    }
++    return true;
++#else
++    (void)g;
++    (void)il;
++    return true;
++#endif
++}
++
++static uint32_t metal_graph_spex_hidden_gpu_topk_read(
++        ds4_gpu_graph *g,
++        uint32_t       il,
++        int32_t       *out_ids,
++        uint32_t       out_cap) {
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (!g || !out_ids || out_cap == 0 ||
++        !g->spex_hidden_topk ||
++        !g->spex_hidden_topk_readback ||
++        !g->spex_hidden_gpu_topk_valid ||
++        g->spex_hidden_gpu_topk_layer != il ||
++        g->spex_hidden_gpu_topk_count == 0) {
++        return 0;
++    }
++    uint32_t n = g->spex_hidden_gpu_topk_count;
++    if (n > out_cap) n = out_cap;
++    if (n > DS4_MAX_EXPERT) n = DS4_MAX_EXPERT;
++    if (!ds4_gpu_async_read_ready(g->spex_hidden_topk_readback)) {
++        metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++        g_spex_hidden_gpu_prefetch_stats.not_ready++;
++        metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++        return 0;
++    }
++    metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++    g_spex_hidden_gpu_prefetch_stats.ready++;
++    const uint32_t *tmp =
++        (const uint32_t *)ds4_gpu_async_read_host(g->spex_hidden_topk_readback);
++    if (!tmp) return 0;
++    uint32_t out_n = 0;
++    for (uint32_t i = 0; i < n; i++) {
++        if (tmp[i] >= DS4_N_EXPERT) continue;
++        bool seen = false;
++        for (uint32_t j = 0; j < out_n; j++) {
++            if ((uint32_t)out_ids[j] == tmp[i]) {
++                seen = true;
++                break;
++            }
++        }
++        if (!seen) out_ids[out_n++] = (int32_t)tmp[i];
++    }
++    g->spex_hidden_gpu_topk_valid = false;
++    return out_n;
++#else
++    (void)g;
++    (void)il;
++    (void)out_ids;
++    (void)out_cap;
++    return 0;
++#endif
++}
++
+ static uint32_t metal_graph_spex_markov_predict(
+         const ds4_spex_markov_params *p,
+         uint32_t                      il,
+@@ -15231,9 +16169,36 @@ static void metal_graph_spex_note_selected(
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
+     metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
+-    /* PACE (0014): in-memory gate-mass + hit-rate, decode tokens only. */
+-    if (g && g->spex_trace_decode_active && selected_ids && n_selected > 0)
+-        ds4_pace_note_selected(il, selected_ids, n_selected);
++    /* PACE rotate: optional raw-router probability readback for K-constant
++     * mask refresh. This stays off unless DS4_PACE_ROTATE=1. */
++    if (g && g->router_probs && ds4_pace_rotate_wants_router()) {
++        float probs[DS4_MAX_EXPERT];
++        if (ds4_gpu_tensor_read(g->router_probs, 0, probs,
++                                (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
++            ds4_pace_note_router_probs(il, probs);
++        }
++    }
++    /* PACE (0014): in-memory gate-mass + hit-rate, including prefill.
++     * Weighted mode pays one tiny readback per decode layer and is only used
++     * for experiments that need old routing-CSV-style mass ranking. */
++    if (g && selected_ids && n_selected > 0 && n_selected <= DS4_MAX_EXPERT_USED) {
++        float selected_weights[DS4_MAX_EXPERT_USED];
++        const float *weights_for_pace = NULL;
++        if (ds4_pace_wants_selected_weights() && g->router_weights) {
++            if (ds4_gpu_tensor_read(g->router_weights,
++                                    0,
++                                    selected_weights,
++                                    (uint64_t)DS4_N_EXPERT_USED *
++                                        sizeof(selected_weights[0])) != 0) {
++                weights_for_pace = selected_weights;
++            } else if (g_pace.weighted_read_fail++ == 0) {
++                fprintf(stderr,
++                        "ds4: PACE weighted selected: router_weights readback "
++                        "failed, falling back to unit mass (reported once)\n");
++            }
++        }
++        ds4_pace_note_selected(il, selected_ids, weights_for_pace, n_selected);
++    }
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
+     g->spex_prefetch_selected_valid = false;
+     if (!selected_ids ||
+@@ -15283,10 +16248,79 @@ static bool metal_graph_spex_prefetch_next_layer(
+ 
+     int32_t prefetch_ids[DS4_MAX_EXPERT];
+     const char *spex_path = metal_graph_spex_file_path();
+-    const ds4_spex_markov_params *spex = spex_path ? metal_graph_spex_markov_params() : NULL;
++    const bool hidden_path = spex_path &&
++        (g_spex_hidden_params.loaded ||
++         (!g_spex_markov_params.loaded &&
++          ds4_spex_path_magic_is(spex_path, "SPX1")));
++    const ds4_spex_hidden_params *hidden_spex =
++        hidden_path ? metal_graph_spex_hidden_params() : NULL;
++    const ds4_spex_markov_params *spex =
++        (!hidden_path && spex_path) ? metal_graph_spex_markov_params() : NULL;
+     uint32_t prefetch_n = 0;
+     const char *profile_label = "stage1";
+-    if (spex_path) {
++    bool used_hidden_gpu_prefetch = false;
++    if (hidden_spex) {
++        const bool gpu_prefetch =
++            metal_graph_spex_hidden_gpu_prefetch_enabled();
++        used_hidden_gpu_prefetch = gpu_prefetch;
++        if (!gpu_prefetch && !metal_graph_spex_hidden_prefetch_enabled()) {
++            return true;
++        }
++        const bool profile = metal_graph_spex_prefetch_profile_enabled();
++        const double t0 = profile ? now_sec() : 0.0;
++        if (gpu_prefetch) {
++            prefetch_n = metal_graph_spex_hidden_gpu_topk_read(g,
++                                                               il,
++                                                               prefetch_ids,
++                                                               DS4_MAX_EXPERT);
++            if (profile) {
++                const double t1 = now_sec();
++                fprintf(stderr,
++                        "ds4: SPEX hidden-gpu topk L%u->L%u experts=%u "
++                        "%.3f ms dry=%d\n",
++                        il,
++                        next_il,
++                        prefetch_n,
++                        (t1 - t0) * 1000.0,
++                        metal_graph_spex_hidden_gpu_prefetch_dry_run() ? 1 : 0);
++            }
++            profile_label = "hidden-gpu";
++            if (metal_graph_spex_hidden_gpu_prefetch_dry_run()) {
++                metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++                g_spex_hidden_gpu_prefetch_stats.dry_run++;
++                if (prefetch_n == 0) {
++                    g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
++                }
++                metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++                return true;
++            }
++        } else {
++            if (!g->cpu_router_norm || !g->ffn_norm) return true;
++            if (ds4_gpu_end_commands() == 0) return false;
++            const bool read_ok = ds4_gpu_tensor_read(g->ffn_norm,
++                                                     0,
++                                                     g->cpu_router_norm,
++                                                     (uint64_t)DS4_N_EMBD *
++                                                         sizeof(g->cpu_router_norm[0])) != 0;
++            if (ds4_gpu_begin_commands() == 0) return false;
++            if (!read_ok) return true;
++            prefetch_n = metal_graph_spex_hidden_predict_cpu(hidden_spex,
++                                                             il,
++                                                             g->cpu_router_norm,
++                                                             prefetch_ids,
++                                                             DS4_MAX_EXPERT);
++            if (profile) {
++                const double t1 = now_sec();
++                fprintf(stderr,
++                        "ds4: SPEX hidden-readback score L%u->L%u experts=%u %.3f ms\n",
++                        il,
++                        next_il,
++                        prefetch_n,
++                        (t1 - t0) * 1000.0);
++            }
++            profile_label = "hidden-readback";
++        }
++    } else if (spex_path) {
+         if (!spex) return true;
+         prefetch_n = metal_graph_spex_markov_predict(spex,
+                                                      il,
+@@ -15301,7 +16335,14 @@ static bool metal_graph_spex_prefetch_next_layer(
+             prefetch_ids[i] = g->spex_prefetch_selected[i];
+         }
+     }
+-    if (prefetch_n == 0) return true;
++    if (prefetch_n == 0) {
++        if (used_hidden_gpu_prefetch) {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
++            metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++        }
++        return true;
++    }
+ 
+     const ds4_gpu_stream_expert_table table =
+         graph_stream_expert_table_make(model,
+@@ -15309,18 +16350,66 @@ static bool metal_graph_spex_prefetch_next_layer(
+                                        next_il,
+                                        gate_expert_bytes,
+                                        down_expert_bytes);
++    uint32_t resident_before = 0;
++    int32_t seed_ids[DS4_MAX_EXPERT];
++    const int32_t *seed_ids_ptr = prefetch_ids;
++    uint32_t seed_n = prefetch_n;
++    if (used_hidden_gpu_prefetch) {
++        seed_n = ds4_gpu_stream_expert_cache_filter_missing(&table,
++                                                            prefetch_ids,
++                                                            prefetch_n,
++                                                            seed_ids,
++                                                            DS4_MAX_EXPERT,
++                                                            &resident_before);
++        seed_ids_ptr = seed_ids;
++        metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++        g_spex_hidden_gpu_prefetch_stats.candidate_experts += prefetch_n;
++        g_spex_hidden_gpu_prefetch_stats.resident_before += resident_before;
++        g_spex_hidden_gpu_prefetch_stats.seed_experts += seed_n;
++        if (seed_n == 0) {
++            g_spex_hidden_gpu_prefetch_stats.seed_skipped_all_resident++;
++            metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++            if (metal_graph_spex_prefetch_profile_enabled()) {
++                fprintf(stderr,
++                        "ds4: SPEX %s prefetch L%u->L%u experts=%u "
++                        "missing=%u resident=%u skip=all-resident\n",
++                        profile_label,
++                        il,
++                        next_il,
++                        prefetch_n,
++                        seed_n,
++                        resident_before);
++            }
++            return true;
++        }
++    }
++    const double seed_t0 = used_hidden_gpu_prefetch ? now_sec() : 0.0;
+     const bool ok = ds4_gpu_stream_expert_cache_seed_experts_async(
+                         &table,
+-                        prefetch_ids,
++                        seed_ids_ptr,
+                         NULL,
+-                        prefetch_n) != 0;
+-    if (getenv("DS4_SPEX_PREFETCH_PROFILE")) {
++                        seed_n) != 0;
++    if (used_hidden_gpu_prefetch) {
++        const double seed_t1 = now_sec();
++        g_spex_hidden_gpu_prefetch_stats.seed_calls++;
++        g_spex_hidden_gpu_prefetch_stats.seed_seconds += seed_t1 - seed_t0;
++        if (ok) {
++            g_spex_hidden_gpu_prefetch_stats.seed_ok++;
++        } else {
++            g_spex_hidden_gpu_prefetch_stats.seed_failed++;
++        }
++        metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++    }
++    if (metal_graph_spex_prefetch_profile_enabled()) {
+         fprintf(stderr,
+-                "ds4: SPEX %s prefetch L%u->L%u experts=%u ok=%d\n",
++                "ds4: SPEX %s prefetch L%u->L%u experts=%u missing=%u "
++                "resident=%u ok=%d\n",
+                 profile_label,
+                 il,
+                 next_il,
+                 prefetch_n,
++                seed_n,
++                resident_before,
+                 ok ? 1 : 0);
+     }
+     return ok;
+@@ -15908,6 +16997,12 @@ static bool metal_graph_cuda_stream_prefill_batch_selected_load(
+                                   selected_ids,
+                                   n_ids64 * sizeof(selected_ids[0])) != 0;
+     const double t_read = profile ? now_sec() : 0.0;
++    if (ok) {
++        ds4_pace_note_selected_batch(il,
++                                     selected_ids,
++                                     n_tokens,
++                                     DS4_N_EXPERT_USED);
++    }
+     if (ok) {
+         const ds4_gpu_stream_expert_table table =
+             graph_stream_expert_table_make(model,
+@@ -17120,6 +18215,7 @@ static bool metal_graph_encode_decode_layer(
+                                                                    g);
+     }
+     DS4_METAL_PROFILE_DECODE_STAGE("router");
++    if (ok) ok = metal_graph_spex_hidden_score_gpu(g, il);
+     if (ok) ok = metal_graph_profile_router_selection(g, layer, il, pos);
+     if (ok) {
+         metal_graph_debug_dump_tensor("ffn_moe_logits", g->router_logits, DS4_N_EXPERT, il, pos);
+@@ -24550,6 +25646,7 @@ static int generate_metal_graph_raw_swa(
+     const bool trace_top = getenv("DS4_TRACE_TOP") != NULL;
+     const bool token_timing = getenv("DS4_TOKEN_TIMING") != NULL;
+ 
++    ds4_pace_reset_for_prefill(model, weights, "prefill_reset");
+     const double t_prefill0 = now_sec();
+     if (prefill_cap < (uint32_t)prompt->len) {
+         ok = metal_graph_prefill_chunked(&g, model, weights, prompt,
+@@ -24571,6 +25668,7 @@ static int generate_metal_graph_raw_swa(
+         metal_graph_free(&g);
+         return 1;
+     }
++    ds4_pace_apply_prefill_mask(model, weights, "prefill_apply");
+     const char *dump_prefill_logits = getenv("DS4_METAL_DUMP_PREFILL_LOGITS");
+     if (dump_prefill_logits && dump_prefill_logits[0]) {
+         if (!write_f32_binary_file(dump_prefill_logits, logits, DS4_N_VOCAB)) {
+@@ -27025,6 +28123,79 @@ static bool ds4_engine_configure_streaming_auto_cache(ds4_engine *e) {
+ #endif
+ }
+ 
++static int ds4_env_truthy(const char *name) {
++    const char *v = getenv(name);
++    return v && v[0] && strcmp(v, "0") != 0;
++}
++
++static uint32_t ds4_env_u32(const char *name, uint32_t dflt) {
++    const char *v = getenv(name);
++    if (!v || !v[0]) return dflt;
++    char *end = NULL;
++    errno = 0;
++    unsigned long x = strtoul(v, &end, 10);
++    while (end && (*end == ' ' || *end == '\t')) end++;
++    if (end == v || errno != 0 || !end || *end != '\0') return dflt;
++    return x > UINT32_MAX ? UINT32_MAX : (uint32_t)x;
++}
++
++static uint32_t ds4_streaming_cache_token_working_set_slots(void) {
++    const uint64_t slots = (uint64_t)DS4_N_LAYER * (uint64_t)DS4_N_EXPERT_USED;
++    return slots > UINT32_MAX ? UINT32_MAX : (uint32_t)slots;
++}
++
++static void ds4_engine_apply_pace_cache_floor(ds4_engine *e) {
++#ifdef DS4_NO_GPU
++    (void)e;
++#else
++    if (!e || !e->ssd_streaming || !ds4_backend_supports_ssd_streaming(e->backend)) {
++        return;
++    }
++    if (!ds4_env_truthy("DS4_PACE") && !ds4_env_truthy("DS4_PACE_CACHE_FLOOR")) {
++        return;
++    }
++
++    uint32_t target = ds4_env_u32("DS4_PACE_CACHE_TARGET_SLOTS", 0);
++    if (target == 0) target = ds4_streaming_cache_token_working_set_slots();
++    const uint64_t max_slots = (uint64_t)DS4_N_LAYER * (uint64_t)DS4_N_EXPERT;
++    if (target == 0 || max_slots == 0) return;
++    if ((uint64_t)target > max_slots) target = max_slots > UINT32_MAX ? UINT32_MAX : (uint32_t)max_slots;
++
++    uint64_t per_expert_bytes = 0;
++    if (!ds4_streaming_routed_expert_bytes(&e->weights, &per_expert_bytes) ||
++        per_expert_bytes == 0) {
++        return;
++    }
++
++    if (e->ssd_streaming_cache_experts < target) {
++        const uint32_t before = e->ssd_streaming_cache_experts;
++        const double need_gib =
++            (double)((uint64_t)target * per_expert_bytes) / 1073741824.0;
++        if (ds4_env_truthy("DS4_PACE_CACHE_FLOOR")) {
++            e->ssd_streaming_cache_experts = target;
++            fprintf(stderr,
++                    "ds4: PACE cache floor raised resident expert budget %u -> %u "
++                    "(token working-set floor, %.2f GiB at %.2f MiB/expert)\n",
++                    before,
++                    target,
++                    need_gib,
++                    (double)per_expert_bytes / 1048576.0);
++        } else {
++            fprintf(stderr,
++                    "ds4: PACE cache diagnostic: resident expert budget %u < token "
++                    "working-set floor %u (%.2f GiB at %.2f MiB/expert); "
++                    "set DS4_PACE_CACHE_FLOOR=1 or --ssd-streaming-cache-experts %u "
++                    "to avoid guaranteed cache thrash\n",
++                    before,
++                    target,
++                    need_gib,
++                    (double)per_expert_bytes / 1048576.0,
++                    target);
++        }
++    }
++#endif
++}
++
+ static bool ds4_engine_preload_pro_q4_expert_tables(
+         ds4_engine *e,
+         bool        load_slice,
+@@ -27251,15 +28422,12 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+     }
+     if (opt->mtp_path && opt->mtp_path[0] &&
+         opt->distributed.role == DS4_DISTRIBUTED_NONE) {
+-        if (e->ssd_streaming && getenv("DS4_MTP_STREAMING_UNSAFE") == NULL) {
++        if (e->ssd_streaming) {
+             fprintf(stderr, "ds4: --ssd-streaming is not compatible with --mtp yet\n");
+             ds4_engine_close(e);
+             *out = NULL;
+             return 1;
+         }
+-        if (e->ssd_streaming) {
+-            fprintf(stderr, "ds4: DS4_MTP_STREAMING_UNSAFE=1: MTP+streaming sperimentale (probe-only)\n");
+-        }
+         model_open(&e->mtp_model, opt->mtp_path, graph_backend, true);
+         mtp_weights_bind(&e->mtp_weights, &e->mtp_model);
+         e->mtp_ready = true;
+@@ -27301,6 +28469,7 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+             *out = NULL;
+             return 1;
+         }
++        ds4_engine_apply_pace_cache_floor(e);
+         ds4_gpu_set_streaming_expert_cache_budget(e->ssd_streaming_cache_experts);
+         if (e->ssd_streaming) {
+             /*
+@@ -28349,6 +29518,11 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+         s->mtp_draft_valid = false;
+         const int suffix = prompt->len - s->checkpoint.len;
+         const uint32_t resume_min = metal_graph_resume_prefill_min_tokens();
++        if (suffix > 0) {
++            ds4_pace_reset_for_prefill(&e->model,
++                                       &e->weights,
++                                       "prefill_reset");
++        }
+         if (suffix > 0 && (uint32_t)suffix >= resume_min) {
+             bool cancelled = false;
+             ds4_sync_progress progress = {
+@@ -28384,6 +29558,9 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+                 s->checkpoint_valid = false;
+                 return 1;
+             }
++            ds4_pace_apply_prefill_mask(&e->model,
++                                        &e->weights,
++                                        "prefill_apply");
+             ds4_tokens_copy(&s->checkpoint, prompt);
+             s->checkpoint_valid = true;
+             return 0;
+@@ -28407,6 +29584,11 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+             }
+             token_vec_push(&s->checkpoint, prompt->v[i]);
+         }
++        if (suffix > 0) {
++            ds4_pace_apply_prefill_mask(&e->model,
++                                        &e->weights,
++                                        "prefill_apply");
++        }
+         return 0;
+     }
+ 
+@@ -28418,6 +29600,7 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+         snprintf(err, errlen, "%s prefill state reset failed", backend_name);
+         return 1;
+     }
++    ds4_pace_reset_for_prefill(&e->model, &e->weights, "prefill_reset");
+     if (s->prefill_cap < (uint32_t)prompt->len) {
+         bool cancelled = false;
+         ds4_sync_progress progress = {
+@@ -28459,6 +29642,7 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+         s->checkpoint_valid = false;
+         return 1;
+     }
++    ds4_pace_apply_prefill_mask(&e->model, &e->weights, "prefill_apply");
+     ds4_tokens_copy(&s->checkpoint, prompt);
+     s->checkpoint_valid = true;
+     s->mtp_draft_valid = false;

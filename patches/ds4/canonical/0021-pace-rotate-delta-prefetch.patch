@@ -1,0 +1,271 @@
+From 1dc5c7a8ed3cabe66b8d5003c84b5ebdf8f449e7 Mon Sep 17 00:00:00 2001
+From: reap-loop <dev@reap-loop.local>
+Date: Fri, 10 Jul 2026 11:51:46 +0200
+Subject: [PATCH] pace: 0021 rotate delta-prefetch (DS4_PACE_WRAP_ROTATE_DELTA)
+ - page in only entered experts
+
+ANCHORED TO LOCAL LIVE-TREE 2026-07-10 (post-0018 /root/ds4/ds4.c, applies
+after 0020-pace-s1-slope-trigger); rebase needed after pace-series
+canonization (see patches/README.md "Stato apply").
+
+A K-constant raw-router rotate (0015) swaps ~43 experts per step
+(measured), but WRAP re-pages the ENTIRE working set: 75-699 GiB measured,
+699.54 GiB / 65.6 s on rotate4 2026-07-10 - which is why 0018 turned WRAP
+off on rotate. With DS4_PACE_WRAP_ROTATE_DELTA=1 (default 0) the rotate
+computes the old->new mask delta in ds4_pace_apply_keep_acc and pages in
+ONLY the entered experts (gate/up/down rows) via the 0013 pagein machinery
+on a detached host thread. Works even with DS4_PACE_WRAP_ROTATE=0: the
+full WRAP stays off on rotate, the delta alone is paged.
+
+Shares g_reap_prefetch_busy with the full WRAP (skips if one is in flight,
+matching the live-tree "salto" behavior) and does NOT update the 0013 mask
+signature, so a later K-changing WRAP still fires. Threads:
+DS4_REAP_PREFETCH_THREADS (live-tree env name; default 8, max 16).
+
+JSONL: ev "rotate_delta" with entered, exited, bytes (estimated); stderr
+line with GiB estimated/touched and ms.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c | 196 +++++++++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 193 insertions(+), 3 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index eff6019..cd79d73 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7451,6 +7451,7 @@ static struct {
+     int      s1_action;          /* DS4_PACE_S1_ACT_ROTATE | _WIDEN */
+     int      wrap_on;
+     int      wrap_rotate;       /* allow WRAP page-in on K-constant rotate */
++    int      wrap_rotate_delta; /* page in ONLY the entered experts on rotate */
+     int      cache_flush;
+     int      prefill_apply;
+     int      prefill_wait_wrap;
+@@ -12758,6 +12759,179 @@ static void ds4_reap_prefetch_wait(const char *why) {
+             (now_sec() - t0) * 1000.0);
+ }
+ 
++/* ---- patch 0021: rotate delta-prefetch ---- *
++ * A K-constant rotate swaps only a few experts per step. Instead of
++ * re-WRAPping the full working set (0013), page in ONLY the experts that
++ * ENTERED the keep set (old mask pruned -> new mask kept). Host-side
++ * threaded page-in on the 0013 machinery; shares g_reap_prefetch_busy with
++ * the full WRAP but does NOT update its mask signature, so a later full
++ * WRAP still sees the mask as changed. */
++typedef struct {
++    const ds4_model                 *model;
++    metal_graph_stream_pagein_range *ranges;
++    uint32_t                         n_ranges;
++    uint32_t                         n_entered;
++    uint64_t                         bytes;
++    double                           t0;
++} ds4_reap_delta_args;
++
++static void *ds4_reap_prefetch_delta_main(void *argp) {
++    ds4_reap_delta_args args = *(ds4_reap_delta_args *)argp;
++    free(argp);
++
++    metal_graph_stream_pagein_job job;
++    memset(&job, 0, sizeof(job));
++    job.model = args.model;
++    job.ranges = args.ranges;
++    job.n_ranges = args.n_ranges;
++    job.ok = true;
++
++    uint32_t n_threads = 8;
++    {
++        const char *tv = getenv("DS4_REAP_PREFETCH_THREADS");
++        if (tv && *tv) {
++            char *end = NULL;
++            unsigned long v = strtoul(tv, &end, 10);
++            if (end != tv && *end == '\0' && v > 0) {
++                n_threads = v > 16 ? 16u : (uint32_t)v;
++            }
++        }
++    }
++    if (n_threads > args.n_ranges) n_threads = args.n_ranges;
++
++    metal_graph_stream_pagein_worker *workers =
++        xmalloc(n_threads * sizeof(*workers));
++    pthread_t *threads = xmalloc(n_threads * sizeof(*threads));
++    memset(workers, 0, n_threads * sizeof(*workers));
++    uint32_t started = 0;
++    for (uint32_t i = 0; i < n_threads; i++) {
++        workers[i].job = &job;
++        workers[i].first = i;
++        workers[i].stride = n_threads;
++        if (pthread_create(&threads[i], NULL,
++                           metal_graph_stream_pagein_worker_main,
++                           &workers[i]) != 0) {
++            workers[i].stride = 0;
++            break;
++        }
++        started++;
++    }
++    uint64_t touched = 0;
++    bool ok = started > 0;
++    for (uint32_t i = 0; i < started; i++) {
++        pthread_join(threads[i], NULL);
++        touched += workers[i].touched;
++        ok = ok && workers[i].ok;
++    }
++
++    fprintf(stderr,
++            "ds4: REAP delta-prefetch (rotate): %u expert entrati, %u range, "
++            "%.3f GiB stimati, %.3f GiB touched in %.0f ms (%u thread%s)\n",
++            args.n_entered, args.n_ranges,
++            (double)args.bytes / (1024.0 * 1024.0 * 1024.0),
++            (double)touched / (1024.0 * 1024.0 * 1024.0),
++            (now_sec() - args.t0) * 1000.0,
++            started,
++            ok ? "" : ", ERRORI");
++
++    free(threads);
++    free(workers);
++    free(args.ranges);
++    g_reap_prefetch_busy = 0;
++    return NULL;
++}
++
++/* Compute the old->new mask delta and page in the ENTERED experts only.
++ * Called from ds4_pace_apply_keep_acc on a rotate when
++ * DS4_PACE_WRAP_ROTATE_DELTA=1; old_pruned is the mask BEFORE the rotate. */
++static void ds4_reap_prefetch_rotate_delta(
++        const ds4_model *model, const ds4_weights *weights,
++        const uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT]) {
++    if (!model || !weights || !old_pruned) return;
++
++    const double t0 = now_sec();
++    uint32_t cap = 256, n = 0;
++    metal_graph_stream_pagein_range *ranges = xmalloc(cap * sizeof(*ranges));
++    uint64_t bytes = 0;
++    uint32_t n_entered = 0, n_exited = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_exp_probs_b || !layer->ffn_gate_exps ||
++            !layer->ffn_up_exps || !layer->ffn_down_exps) {
++            continue;
++        }
++        const uint64_t gate_eb = layer->ffn_gate_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_gate_exps);
++        const uint64_t up_eb = layer->ffn_up_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_up_exps);
++        const uint64_t down_eb = layer->ffn_down_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_down_exps);
++        if (gate_eb == 0 || up_eb == 0 || down_eb == 0) continue;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            const int oldp = old_pruned[il][e] != 0;
++            const int newp = g_reap_mask_pruned[il][e] != 0;
++            if (!oldp && newp) { n_exited++; continue; }
++            if (!(oldp && !newp)) continue;   /* not an entered expert */
++            n_entered++;
++            if (n + 3u > cap) {
++                cap *= 2u;
++                ranges = xrealloc(ranges, cap * sizeof(*ranges));
++            }
++            ranges[n].off = layer->ffn_gate_exps->abs_offset +
++                (uint64_t)e * gate_eb;
++            ranges[n].size = gate_eb;
++            n++;
++            ranges[n].off = layer->ffn_up_exps->abs_offset +
++                (uint64_t)e * up_eb;
++            ranges[n].size = up_eb;
++            n++;
++            ranges[n].off = layer->ffn_down_exps->abs_offset +
++                (uint64_t)e * down_eb;
++            ranges[n].size = down_eb;
++            n++;
++            bytes += gate_eb + up_eb + down_eb;
++        }
++    }
++
++    if (g_pace.evlog) {
++        fprintf(g_pace.evlog,
++                "{\"ev\":\"rotate_delta\",\"tok\":%u,\"keep\":%d,"
++                "\"entered\":%u,\"exited\":%u,\"bytes\":%" PRIu64 "}\n",
++                g_pace.tok, g_pace.cur_keep, n_entered, n_exited, bytes);
++        fflush(g_pace.evlog);
++    }
++    if (n == 0) {
++        fprintf(stderr,
++                "ds4: REAP delta-prefetch (rotate): nessun expert entrato "
++                "(usciti %u), niente da paginare\n", n_exited);
++        free(ranges);
++        return;
++    }
++    if (__sync_lock_test_and_set(&g_reap_prefetch_busy, 1)) {
++        fprintf(stderr, "ds4: REAP delta-prefetch: WRAP gia' in corso, salto\n");
++        free(ranges);
++        return;
++    }
++    qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
++
++    ds4_reap_delta_args *args = xmalloc(sizeof(*args));
++    args->model = model;
++    args->ranges = ranges;
++    args->n_ranges = n;
++    args->n_entered = n_entered;
++    args->bytes = bytes;
++    args->t0 = t0;
++    pthread_t th;
++    if (pthread_create(&th, NULL, ds4_reap_prefetch_delta_main, args) != 0) {
++        free(args->ranges);
++        free(args);
++        g_reap_prefetch_busy = 0;
++        fprintf(stderr, "ds4: REAP delta-prefetch: pthread_create fallita\n");
++        return;
++    }
++    pthread_detach(th);
++}
++
+ 
+ /* ======================================================================== *
+  * PACE - Perceptive Adaptive Control Engine (patch 0014)
+@@ -12892,6 +13066,13 @@ static void ds4_pace_init(void) {
+         g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1);
+     }
+     g_pace.wrap_rotate = pace_env_i("DS4_PACE_WRAP_ROTATE", 0);
++    /* patch 0021: delta-prefetch on rotate. A K-constant rotate swaps a
++     * handful of experts per step (~43 measured) but a full WRAP re-pages
++     * the whole working set (75-699 GiB measured): with DELTA=1 only the
++     * experts that ENTERED the keep set are paged in, and that holds even
++     * when DS4_PACE_WRAP_ROTATE=0 (0018 keeps the full WRAP off on rotate,
++     * the delta alone is paged). */
++    g_pace.wrap_rotate_delta = pace_env_i("DS4_PACE_WRAP_ROTATE_DELTA", 0);
+     g_pace.cache_flush = pace_env_i("DS4_PACE_CACHE_FLUSH", 0);
+     g_pace.prefill_apply = pace_env_i("DS4_PACE_PREFILL_APPLY", 1);
+     g_pace.prefill_wait_wrap = pace_env_i("DS4_PACE_PREFILL_WAIT_WRAP", 1);
+@@ -13198,7 +13379,9 @@ static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *w
+                                     const double *acc, int keep, const char *why) {
+     uint8_t old_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+     int old_keep = g_pace.cur_keep;
+-    if (g_pace.exchange_observe) {
++    const int is_rotate = why && strcmp(why, "rotate") == 0;
++    const int want_delta = is_rotate && g_pace.wrap_rotate_delta;
++    if (g_pace.exchange_observe || want_delta) {
+         memcpy(old_pruned, g_reap_mask_pruned, sizeof(old_pruned));
+     }
+     ds4_pace_learn_mask(acc ? acc : g_pace.mass, keep);
+@@ -13211,9 +13394,16 @@ static void ds4_pace_apply_keep_acc(const ds4_model *model, const ds4_weights *w
+     g_pace.stable_since = g_pace.tok;
+     /* reset hit-rate accounting for the new mask */
+     g_pace.sel_checked = g_pace.sel_inkeep = 0;
++    /* patch 0021: on rotate, page in only the mask delta (entered experts).
++     * Takes precedence over the 0013 full WRAP for this refresh; active
++     * even when DS4_PACE_WRAP_ROTATE=0 (0018 keeps the full WRAP off on
++     * rotate, the delta alone is paged). */
++    if (want_delta) {
++        ds4_reap_prefetch_rotate_delta(model, weights, old_pruned);
++        return;
++    }
+     int allow_wrap = g_pace.wrap_on;
+-    if (allow_wrap && why && strcmp(why, "rotate") == 0 &&
+-        !g_pace.wrap_rotate) {
++    if (allow_wrap && is_rotate && !g_pace.wrap_rotate) {
+         allow_wrap = 0;
+     }
+     if (allow_wrap)
+-- 
+2.54.0.windows.1
+

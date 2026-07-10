@@ -1,0 +1,261 @@
+From 6776af62bf81dae1cd0d7e2c8da541f9e9f00d38 Mon Sep 17 00:00:00 2001
+From: root <root@WORKSTATION.localdomain>
+Date: Sun, 5 Jul 2026 07:42:21 +0200
+Subject: [PATCH] chore(spex): add stage0 cuda stats
+
+---
+ ds4_cuda.cu | 144 +++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 132 insertions(+), 12 deletions(-)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 188b341..0043306 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -93,6 +93,99 @@ static int g_cublas_ready;
+ static int g_quality_mode;
+ static int g_ssd_streaming_mode;
+ 
++struct cuda_spex_stats {
++    uint64_t expert_cache_hits;
++    uint64_t expert_cache_misses;
++    uint64_t selected_load_batches;
++    uint64_t selected_expert_requests;
++    uint64_t selected_direct_loads;
++    uint64_t selected_copy_calls;
++    uint64_t selected_copy_bytes;
++    uint64_t selected_sync_calls;
++    double selected_copy_seconds;
++    double selected_sync_seconds;
++};
++
++static cuda_spex_stats g_spex_stats;
++static int g_spex_stats_enabled = -1;
++static int g_spex_stats_atexit_registered;
++static int g_spex_stats_printed;
++
++static int cuda_spex_stats_is_enabled(void) {
++    if (g_spex_stats_enabled < 0) {
++        const char *v = getenv("DS4_SPEX_STATS");
++        g_spex_stats_enabled = (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++    }
++    return g_spex_stats_enabled;
++}
++
++static double cuda_spex_now_sec(void) {
++    struct timespec ts;
++    if (clock_gettime(CLOCK_MONOTONIC, &ts) != 0) return 0.0;
++    return (double)ts.tv_sec + (double)ts.tv_nsec / 1000000000.0;
++}
++
++static int cuda_spex_stats_finish_copy(int ok, uint64_t bytes, double t0) {
++    if (t0 > 0.0) {
++        const double t1 = cuda_spex_now_sec();
++        g_spex_stats.selected_copy_calls++;
++        if (ok) g_spex_stats.selected_copy_bytes += bytes;
++        if (t1 >= t0) g_spex_stats.selected_copy_seconds += t1 - t0;
++    }
++    return ok;
++}
++
++static void cuda_spex_stats_print(void) {
++    if (g_spex_stats_printed || !cuda_spex_stats_is_enabled()) return;
++    const uint64_t lookups =
++        g_spex_stats.expert_cache_hits + g_spex_stats.expert_cache_misses;
++    if (lookups == 0 &&
++        g_spex_stats.selected_load_batches == 0 &&
++        g_spex_stats.selected_copy_calls == 0) {
++        return;
++    }
++    g_spex_stats_printed = 1;
++
++    const double hit_rate = lookups ?
++        (double)g_spex_stats.expert_cache_hits / (double)lookups : 0.0;
++    const double miss_per_expert = g_spex_stats.selected_expert_requests ?
++        (double)g_spex_stats.expert_cache_misses /
++            (double)g_spex_stats.selected_expert_requests : 0.0;
++    const double copy_ms = g_spex_stats.selected_copy_seconds * 1000.0;
++    const double sync_ms = g_spex_stats.selected_sync_seconds * 1000.0;
++    const double copy_ms_per_batch = g_spex_stats.selected_load_batches ?
++        copy_ms / (double)g_spex_stats.selected_load_batches : 0.0;
++    const double sync_ms_per_batch = g_spex_stats.selected_load_batches ?
++        sync_ms / (double)g_spex_stats.selected_load_batches : 0.0;
++    const double copied_mib =
++        (double)g_spex_stats.selected_copy_bytes / 1048576.0;
++
++    fprintf(stderr,
++            "ds4: SPEX stats: selected_batches=%llu selected_experts=%llu "
++            "cache_hits=%llu cache_misses=%llu hit_rate=%.4f "
++            "miss_per_expert=%.4f direct_loads=%llu copy_calls=%llu "
++            "copied=%.2f MiB copy_ms=%.3f copy_ms_per_batch=%.3f "
++            "sync_calls=%llu sync_ms=%.3f sync_ms_per_batch=%.3f\n",
++            (unsigned long long)g_spex_stats.selected_load_batches,
++            (unsigned long long)g_spex_stats.selected_expert_requests,
++            (unsigned long long)g_spex_stats.expert_cache_hits,
++            (unsigned long long)g_spex_stats.expert_cache_misses,
++            hit_rate,
++            miss_per_expert,
++            (unsigned long long)g_spex_stats.selected_direct_loads,
++            (unsigned long long)g_spex_stats.selected_copy_calls,
++            copied_mib,
++            copy_ms,
++            copy_ms_per_batch,
++            (unsigned long long)g_spex_stats.selected_sync_calls,
++            sync_ms,
++            sync_ms_per_batch);
++}
++
++static void cuda_spex_stats_print_atexit(void) {
++    cuda_spex_stats_print();
++}
++
+ struct cuda_model_range {
+     const void *host_base;
+     uint64_t offset;
+@@ -1958,9 +2051,11 @@ static int cuda_stream_expert_cache_find(
+             slot.down_offset == down_offset &&
+             slot.gate_expert_bytes == gate_expert_bytes &&
+             slot.down_expert_bytes == down_expert_bytes) {
++            if (cuda_spex_stats_is_enabled()) g_spex_stats.expert_cache_hits++;
+             return (int)i;
+         }
+     }
++    if (cuda_spex_stats_is_enabled()) g_spex_stats.expert_cache_misses++;
+     return -1;
+ }
+ 
+@@ -2160,18 +2255,25 @@ static int cuda_model_copy_to_device_streamed(
+         return 0;
+     }
+     if (bytes == 0) return 1;
++    const double spex_t0 =
++        cuda_spex_stats_is_enabled() ? cuda_spex_now_sec() : 0.0;
+     if (g_model_fd < 0 ||
+         (g_model_fd_host_base != NULL && model_map != g_model_fd_host_base)) {
+-        return cuda_ok(cudaMemcpy(dst,
+-                                  (const char *)model_map + offset,
+-                                  (size_t)bytes,
+-                                  cudaMemcpyHostToDevice),
+-                       what ? what : "stream selected expert copy");
++        return cuda_spex_stats_finish_copy(
++                cuda_ok(cudaMemcpy(dst,
++                                   (const char *)model_map + offset,
++                                   (size_t)bytes,
++                                   cudaMemcpyHostToDevice),
++                        what ? what : "stream selected expert copy"),
++                bytes,
++                spex_t0);
+     }
+ 
+     const uint64_t chunk = cuda_model_copy_chunk_bytes();
+     const uint64_t stage_bytes = chunk + (g_model_direct_align > 1 ? g_model_direct_align : 1);
+-    if (!cuda_stream_selected_stage_pool_alloc(stage_bytes)) return 0;
++    if (!cuda_stream_selected_stage_pool_alloc(stage_bytes)) {
++        return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
++    }
+ 
+     cudaError_t err = cudaSuccess;
+     uint64_t copied = 0;
+@@ -2187,7 +2289,7 @@ static int cuda_model_copy_to_device_streamed(
+                         what ? what : "expert",
+                         cudaGetErrorString(err));
+                 (void)cudaGetLastError();
+-                return 0;
++                return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+             }
+         }
+ 
+@@ -2202,7 +2304,7 @@ static int cuda_model_copy_to_device_streamed(
+                     what ? what : "expert",
+                     (double)copied / 1048576.0,
+                     strerror(errno));
+-            return 0;
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+         err = cudaMemcpyAsync(dst + copied,
+                               payload,
+@@ -2216,7 +2318,7 @@ static int cuda_model_copy_to_device_streamed(
+                     (double)copied / 1048576.0,
+                     cudaGetErrorString(err));
+             (void)cudaGetLastError();
+-            return 0;
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+         err = cudaEventRecord(g_stream_selected_stage_event[bi],
+                               g_stream_selected_upload_stream);
+@@ -2226,7 +2328,7 @@ static int cuda_model_copy_to_device_streamed(
+                     what ? what : "expert",
+                     cudaGetErrorString(err));
+             (void)cudaGetLastError();
+-            return 0;
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+         cuda_model_drop_file_pages(offset + copied, n);
+         cuda_model_discard_source_pages(model_map, model_size, offset + copied, n);
+@@ -2234,16 +2336,24 @@ static int cuda_model_copy_to_device_streamed(
+         chunk_idx++;
+     }
+ 
++    const double spex_sync_t0 = spex_t0 > 0.0 ? cuda_spex_now_sec() : 0.0;
+     err = cudaStreamSynchronize(g_stream_selected_upload_stream);
++    if (spex_sync_t0 > 0.0) {
++        const double spex_sync_t1 = cuda_spex_now_sec();
++        g_spex_stats.selected_sync_calls++;
++        if (spex_sync_t1 >= spex_sync_t0) {
++            g_spex_stats.selected_sync_seconds += spex_sync_t1 - spex_sync_t0;
++        }
++    }
+     if (err != cudaSuccess) {
+         fprintf(stderr,
+                 "ds4: CUDA streaming selected upload sync failed for %s: %s\n",
+                 what ? what : "expert",
+                 cudaGetErrorString(err));
+         (void)cudaGetLastError();
+-        return 0;
++        return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+     }
+-    return 1;
++    return cuda_spex_stats_finish_copy(1, bytes, spex_t0);
+ }
+ 
+ static int cublas_ok(cublasStatus_t st, const char *what) {
+@@ -2255,6 +2365,10 @@ static int cublas_ok(cublasStatus_t st, const char *what) {
+ extern "C" int ds4_gpu_init(void) {
+     int dev = 0;
+     if (!cuda_ok(cudaSetDevice(dev), "set device")) return 0;
++    if (cuda_spex_stats_is_enabled() && !g_spex_stats_atexit_registered) {
++        atexit(cuda_spex_stats_print_atexit);
++        g_spex_stats_atexit_registered = 1;
++    }
+     cudaDeviceProp prop;
+     if (cudaGetDeviceProperties(&prop, dev) == cudaSuccess) {
+         fprintf(stderr, "ds4: CUDA backend initialized on %s (sm_%d%d)\n",
+@@ -2274,6 +2388,7 @@ extern "C" int ds4_gpu_init(void) {
+ 
+ extern "C" void ds4_gpu_cleanup(void) {
+     (void)cudaDeviceSynchronize();
++    cuda_spex_stats_print();
+     if (g_cublas_ready) {
+         (void)cublasDestroy(g_cublas);
+         g_cublas_ready = 0;
+@@ -2962,6 +3077,10 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     uint32_t cache_hits = 0;
+     uint32_t cache_misses = 0;
+     uint32_t direct_loads = 0;
++    if (cuda_spex_stats_is_enabled()) {
++        g_spex_stats.selected_load_batches++;
++        g_spex_stats.selected_expert_requests += compact_count;
++    }
+ 
+     for (uint32_t i = 0; i < compact_count; i++) {
+         if (compact_ids[i] < 0 || (uint32_t)compact_ids[i] >= n_total_expert) {
+@@ -3044,6 +3163,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+             const uint64_t up_src = up_offset + expert * gate_expert_bytes;
+             const uint64_t down_src = down_offset + expert * down_expert_bytes;
+             direct_loads++;
++            if (cuda_spex_stats_is_enabled()) g_spex_stats.selected_direct_loads++;
+             if (!cuda_model_copy_to_device_streamed(g_stream_selected_cache.gate_ptr + gate_dst,
+                                                     model_map,
+                                                     model_size,
+-- 
+2.43.0
+

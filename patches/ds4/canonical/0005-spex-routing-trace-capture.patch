@@ -1,0 +1,89 @@
+diff --git a/ds4.c b/ds4.c
+index b9425b6..93fe549 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -10494,6 +10494,8 @@ typedef struct {
+     uint32_t spex_prefetch_selected_layer;
+     uint32_t spex_prefetch_selected_count;
+     int32_t spex_prefetch_selected[DS4_MAX_EXPERT_USED];
++    bool spex_trace_decode_active;
++    uint32_t spex_trace_pos;
+     bool mtp_enabled;
+     float *cpu_router_norm;
+ } ds4_gpu_graph;
+@@ -14267,11 +14269,66 @@ static bool metal_graph_spex_prefetch_next_layer_enabled(
+ #endif
+ }
+ 
++static FILE *g_spex_trace_routing_fh;
++static char *g_spex_trace_routing_path;
++static bool g_spex_trace_routing_failed;
++
++static FILE *metal_graph_spex_trace_routing_file(void) {
++    if (g_spex_trace_routing_failed) return NULL;
++    const char *path = getenv("DS4_SPEX_TRACE_ROUTING");
++    if (!path || !path[0]) return NULL;
++    if (g_spex_trace_routing_fh) return g_spex_trace_routing_fh;
++
++    g_spex_trace_routing_fh = fopen(path, "w");
++    if (!g_spex_trace_routing_fh) {
++        fprintf(stderr,
++                "ds4: cannot open DS4_SPEX_TRACE_ROUTING '%s': %s\n",
++                path,
++                strerror(errno));
++        g_spex_trace_routing_failed = true;
++        return NULL;
++    }
++    g_spex_trace_routing_path = ds4_strdup(path);
++    fprintf(g_spex_trace_routing_fh,
++            "pos,layer,n,e0,e1,e2,e3,e4,e5\n");
++    fprintf(stderr, "ds4: SPEX routing trace enabled: %s\n", path);
++    return g_spex_trace_routing_fh;
++}
++
++static void metal_graph_spex_trace_selected(
++        const ds4_gpu_graph *g,
++        uint32_t             il,
++        const int32_t       *selected_ids,
++        uint32_t             n_selected) {
++    if (!g || !g->spex_trace_decode_active || !selected_ids ||
++        n_selected == 0 || n_selected > DS4_MAX_EXPERT_USED) {
++        return;
++    }
++    for (uint32_t i = 0; i < n_selected; i++) {
++        if (selected_ids[i] < 0 || (uint32_t)selected_ids[i] >= DS4_N_EXPERT) {
++            return;
++        }
++    }
++    FILE *fh = metal_graph_spex_trace_routing_file();
++    if (!fh) return;
++    fprintf(fh,
++            "%u,%u,%u",
++            g->spex_trace_pos,
++            il,
++            n_selected);
++    for (uint32_t i = 0; i < DS4_MAX_EXPERT_USED; i++) {
++        const int32_t eid = i < n_selected ? selected_ids[i] : -1;
++        fprintf(fh, ",%d", eid);
++    }
++    fputc('\n', fh);
++}
++
+ static void metal_graph_spex_note_selected(
+         ds4_gpu_graph *g,
+         uint32_t       il,
+         const int32_t *selected_ids,
+         uint32_t       n_selected) {
++    metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
+     g->spex_prefetch_selected_valid = false;
+     if (!selected_ids ||
+@@ -19889,6 +19946,8 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+     const bool batch_static_decode =
+         static_decode_map && metal_graph_stream_decode_layer_batch_enabled(g);
+     bool ok = true;
++    g->spex_trace_decode_active = logits != NULL;
++    g->spex_trace_pos = pos;
+     if (static_decode_map) {
+         if (!static_map_state_cache || !g->streaming_static_decode_map_current) {
+             ok = metal_graph_stream_map_decode_static_all(model, weights);

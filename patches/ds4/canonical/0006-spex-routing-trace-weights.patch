@@ -1,0 +1,77 @@
+diff --git a/ds4.c b/ds4.c
+index 93fe549..78cae24 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14272,6 +14272,22 @@ static bool metal_graph_spex_prefetch_next_layer_enabled(
+ static FILE *g_spex_trace_routing_fh;
+ static char *g_spex_trace_routing_path;
+ static bool g_spex_trace_routing_failed;
++static uint64_t g_spex_trace_routing_weight_read_fail;
++
++/* DS4_SPEX_TRACE_ROUTING_WEIGHTS=1 appends the six scaled router weights
++ * (g->router_weights, same slot order as the selected ids) to every trace
++ * row.  The weights live in a tiny GPU tensor written by the same router
++ * select kernel that produced the selected ids; every trace call site runs
++ * after a blocking readback of those ids, so a synchronous 24-byte
++ * ds4_gpu_tensor_read here observes the finished kernel. */
++static bool metal_graph_spex_trace_routing_weights_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_SPEX_TRACE_ROUTING_WEIGHTS");
++        cached = (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++    }
++    return cached == 1;
++}
+ 
+ static FILE *metal_graph_spex_trace_routing_file(void) {
+     if (g_spex_trace_routing_failed) return NULL;
+@@ -14289,9 +14305,16 @@ static FILE *metal_graph_spex_trace_routing_file(void) {
+         return NULL;
+     }
+     g_spex_trace_routing_path = ds4_strdup(path);
+-    fprintf(g_spex_trace_routing_fh,
+-            "pos,layer,n,e0,e1,e2,e3,e4,e5\n");
+-    fprintf(stderr, "ds4: SPEX routing trace enabled: %s\n", path);
++    if (metal_graph_spex_trace_routing_weights_enabled()) {
++        fprintf(g_spex_trace_routing_fh,
++                "pos,layer,n,e0,e1,e2,e3,e4,e5,w0,w1,w2,w3,w4,w5\n");
++    } else {
++        fprintf(g_spex_trace_routing_fh,
++                "pos,layer,n,e0,e1,e2,e3,e4,e5\n");
++    }
++    fprintf(stderr, "ds4: SPEX routing trace enabled: %s (weights: %s)\n",
++            path,
++            metal_graph_spex_trace_routing_weights_enabled() ? "on" : "off");
+     return g_spex_trace_routing_fh;
+ }
+ 
+@@ -14320,6 +14343,29 @@ static void metal_graph_spex_trace_selected(
+         const int32_t eid = i < n_selected ? selected_ids[i] : -1;
+         fprintf(fh, ",%d", eid);
+     }
++    if (metal_graph_spex_trace_routing_weights_enabled()) {
++        float weights[DS4_MAX_EXPERT_USED];
++        const bool weights_ok = g->router_weights &&
++            ds4_gpu_tensor_read(g->router_weights,
++                                0,
++                                weights,
++                                (uint64_t)DS4_N_EXPERT_USED *
++                                    sizeof(weights[0])) != 0;
++        if (!weights_ok) {
++            if (g_spex_trace_routing_weight_read_fail++ == 0) {
++                fprintf(stderr,
++                        "ds4: SPEX routing trace: router_weights readback "
++                        "failed, emitting nan (reported once)\n");
++            }
++        }
++        for (uint32_t i = 0; i < DS4_MAX_EXPERT_USED; i++) {
++            if (weights_ok && i < n_selected && i < DS4_N_EXPERT_USED) {
++                fprintf(fh, ",%.9g", weights[i]);
++            } else {
++                fprintf(fh, ",nan");
++            }
++        }
++    }
+     fputc('\n', fh);
+ }
+ 

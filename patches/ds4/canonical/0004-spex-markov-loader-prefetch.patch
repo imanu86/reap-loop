@@ -1,0 +1,512 @@
+diff --git a/ds4.c b/ds4.c
+index a370c39..b9425b6 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -13810,12 +13810,456 @@ static bool metal_graph_decode_cuda_selected_slots_expected(
+ #endif
+ }
+ 
++typedef struct {
++    uint16_t  n;
++    uint16_t *expert;
++    uint32_t *count;
++} ds4_spex_markov_row;
++
++typedef struct {
++    bool                  attempted;
++    bool                  loaded;
++    bool                  warned;
++    char                 *path;
++    uint32_t              n_layer;
++    uint32_t              n_expert;
++    uint32_t              topN;
++    float                *a;
++    float                *b;
++    float                *temp;
++    ds4_spex_markov_row  *row;
++} ds4_spex_markov_params;
++
++static ds4_spex_markov_params g_spex_markov_params;
++
++static const char *metal_graph_spex_file_path(void) {
++    const char *path = getenv("DS4_SPEX_FILE");
++    if (path && path[0]) return path;
++    path = getenv("DS4_SPEX_PATH");
++    if (path && path[0]) return path;
++    path = getenv("DS4_SPEX_MARKOV_FILE");
++    if (path && path[0]) return path;
++    return NULL;
++}
++
++static void ds4_spex_set_error(char *err, size_t err_cap, const char *fmt, ...) {
++    if (!err || err_cap == 0) return;
++    va_list ap;
++    va_start(ap, fmt);
++    vsnprintf(err, err_cap, fmt, ap);
++    va_end(ap);
++}
++
++static bool ds4_spex_read_file(
++        const char *path,
++        uint8_t   **data_out,
++        size_t     *size_out,
++        char       *err,
++        size_t      err_cap) {
++    *data_out = NULL;
++    *size_out = 0;
++    struct stat st;
++    if (stat(path, &st) != 0) {
++        ds4_spex_set_error(err, err_cap, "cannot stat '%s': %s", path, strerror(errno));
++        return false;
++    }
++    if (st.st_size <= 0) {
++        ds4_spex_set_error(err, err_cap, "empty SPEX file '%s'", path);
++        return false;
++    }
++    if ((uint64_t)st.st_size > SIZE_MAX) {
++        ds4_spex_set_error(err, err_cap, "SPEX file '%s' is too large", path);
++        return false;
++    }
++    FILE *fh = fopen(path, "rb");
++    if (!fh) {
++        ds4_spex_set_error(err, err_cap, "cannot open '%s': %s", path, strerror(errno));
++        return false;
++    }
++    const size_t size = (size_t)st.st_size;
++    uint8_t *data = xmalloc(size);
++    const size_t got = fread(data, 1, size, fh);
++    const int close_rc = fclose(fh);
++    if (got != size || close_rc != 0) {
++        free(data);
++        ds4_spex_set_error(err, err_cap, "cannot read '%s'", path);
++        return false;
++    }
++    *data_out = data;
++    *size_out = size;
++    return true;
++}
++
++static bool ds4_spex_take(
++        const uint8_t *data,
++        size_t         size,
++        size_t        *off,
++        void          *dst,
++        size_t         n,
++        char          *err,
++        size_t         err_cap,
++        const char    *what) {
++    if (*off > size || n > size - *off) {
++        ds4_spex_set_error(err, err_cap, "truncated SPEX file while reading %s", what);
++        return false;
++    }
++    memcpy(dst, data + *off, n);
++    *off += n;
++    return true;
++}
++
++static bool ds4_spex_take_u16(
++        const uint8_t *data,
++        size_t         size,
++        size_t        *off,
++        uint16_t      *out,
++        char          *err,
++        size_t         err_cap,
++        const char    *what) {
++    uint8_t b[2];
++    if (!ds4_spex_take(data, size, off, b, sizeof(b), err, err_cap, what)) return false;
++    *out = (uint16_t)b[0] | ((uint16_t)b[1] << 8);
++    return true;
++}
++
++static bool ds4_spex_take_u32(
++        const uint8_t *data,
++        size_t         size,
++        size_t        *off,
++        uint32_t      *out,
++        char          *err,
++        size_t         err_cap,
++        const char    *what) {
++    uint8_t b[4];
++    if (!ds4_spex_take(data, size, off, b, sizeof(b), err, err_cap, what)) return false;
++    *out = (uint32_t)b[0] |
++           ((uint32_t)b[1] << 8) |
++           ((uint32_t)b[2] << 16) |
++           ((uint32_t)b[3] << 24);
++    return true;
++}
++
++static bool ds4_spex_take_f32(
++        const uint8_t *data,
++        size_t         size,
++        size_t        *off,
++        float         *out,
++        char          *err,
++        size_t         err_cap,
++        const char    *what) {
++    uint32_t u = 0;
++    if (!ds4_spex_take_u32(data, size, off, &u, err, err_cap, what)) return false;
++    memcpy(out, &u, sizeof(*out));
++    return true;
++}
++
++static void ds4_spex_markov_free(ds4_spex_markov_params *p) {
++    if (!p) return;
++    if (p->row) {
++        const uint64_t n_rows = (uint64_t)p->n_layer * p->n_expert;
++        for (uint64_t i = 0; i < n_rows; i++) {
++            free(p->row[i].expert);
++            free(p->row[i].count);
++        }
++    }
++    free(p->path);
++    free(p->a);
++    free(p->b);
++    free(p->temp);
++    free(p->row);
++    memset(p, 0, sizeof(*p));
++}
++
++static bool ds4_spex_markov_load_path(
++        ds4_spex_markov_params *out,
++        const char             *path,
++        char                   *err,
++        size_t                  err_cap) {
++    uint8_t *data = NULL;
++    size_t size = 0;
++    if (!ds4_spex_read_file(path, &data, &size, err, err_cap)) return false;
++
++    ds4_spex_markov_params tmp;
++    memset(&tmp, 0, sizeof(tmp));
++    tmp.path = ds4_strdup(path);
++
++    size_t off = 0;
++    uint8_t magic[4];
++    uint32_t version = 0;
++    uint32_t predictor = 0;
++    uint32_t n_embd = 0;
++    uint32_t reserved = 0;
++    if (!ds4_spex_take(data, size, &off, magic, sizeof(magic), err, err_cap, "magic") ||
++        !ds4_spex_take_u32(data, size, &off, &version, err, err_cap, "version") ||
++        !ds4_spex_take_u32(data, size, &off, &predictor, err, err_cap, "predictor") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.n_layer, err, err_cap, "n_layer") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.n_expert, err, err_cap, "n_expert") ||
++        !ds4_spex_take_u32(data, size, &off, &n_embd, err, err_cap, "n_embd") ||
++        !ds4_spex_take_u32(data, size, &off, &tmp.topN, err, err_cap, "topN") ||
++        !ds4_spex_take_u32(data, size, &off, &reserved, err, err_cap, "reserved")) {
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++
++    if (memcmp(magic, "SPEX", 4) != 0) {
++        ds4_spex_set_error(err, err_cap, "'%s' is not a SPEX file", path);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++    if (version != 1 || predictor != 0 || n_embd != 0 || reserved != 0) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "unsupported SPEX header in '%s' (version=%u predictor=%u n_embd=%u reserved=%u)",
++                           path,
++                           version,
++                           predictor,
++                           n_embd,
++                           reserved);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++    if (tmp.n_layer != DS4_N_LAYER || tmp.n_expert != DS4_N_EXPERT) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "SPEX shape mismatch in '%s' (got L=%u E=%u, expected L=%u E=%u)",
++                           path,
++                           tmp.n_layer,
++                           tmp.n_expert,
++                           (uint32_t)DS4_N_LAYER,
++                           (uint32_t)DS4_N_EXPERT);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++    if (tmp.topN > tmp.n_expert) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "SPEX topN=%u exceeds expert count %u in '%s'",
++                           tmp.topN,
++                           tmp.n_expert,
++                           path);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++
++    if (tmp.n_layer > UINT64_MAX / tmp.n_expert) {
++        ds4_spex_set_error(err, err_cap, "SPEX row count overflow in '%s'", path);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++    const uint64_t n_rows64 = (uint64_t)tmp.n_layer * tmp.n_expert;
++    if (n_rows64 > SIZE_MAX / sizeof(tmp.row[0])) {
++        ds4_spex_set_error(err, err_cap, "SPEX row table too large in '%s'", path);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++
++    tmp.a = xmalloc((size_t)tmp.n_layer * sizeof(tmp.a[0]));
++    tmp.b = xmalloc((size_t)tmp.n_layer * sizeof(tmp.b[0]));
++    tmp.temp = xmalloc((size_t)tmp.n_layer * sizeof(tmp.temp[0]));
++    tmp.row = xmalloc_zeroed((size_t)n_rows64, sizeof(tmp.row[0]));
++
++    for (uint32_t il = 0; il < tmp.n_layer; il++) {
++        if (!ds4_spex_take_f32(data, size, &off, &tmp.a[il], err, err_cap, "layer a") ||
++            !ds4_spex_take_f32(data, size, &off, &tmp.b[il], err, err_cap, "layer b") ||
++            !ds4_spex_take_f32(data, size, &off, &tmp.temp[il], err, err_cap, "layer T")) {
++            ds4_spex_markov_free(&tmp);
++            free(data);
++            return false;
++        }
++        if (!isfinite(tmp.a[il]) || !isfinite(tmp.b[il]) || !isfinite(tmp.temp[il])) {
++            ds4_spex_set_error(err, err_cap, "non-finite SPEX calibration at layer %u", il);
++            ds4_spex_markov_free(&tmp);
++            free(data);
++            return false;
++        }
++    }
++
++    for (uint64_t ri = 0; ri < n_rows64; ri++) {
++        uint16_t n = 0;
++        if (!ds4_spex_take_u16(data, size, &off, &n, err, err_cap, "markov row count")) {
++            ds4_spex_markov_free(&tmp);
++            free(data);
++            return false;
++        }
++        if (n > tmp.topN || n > tmp.n_expert) {
++            ds4_spex_set_error(err,
++                               err_cap,
++                               "invalid SPEX row length %u in '%s'",
++                               (uint32_t)n,
++                               path);
++            ds4_spex_markov_free(&tmp);
++            free(data);
++            return false;
++        }
++        tmp.row[ri].n = n;
++        if (n == 0) continue;
++        tmp.row[ri].expert = xmalloc((size_t)n * sizeof(tmp.row[ri].expert[0]));
++        tmp.row[ri].count = xmalloc((size_t)n * sizeof(tmp.row[ri].count[0]));
++        for (uint16_t j = 0; j < n; j++) {
++            if (!ds4_spex_take_u16(data, size, &off, &tmp.row[ri].expert[j], err, err_cap, "markov expert") ||
++                !ds4_spex_take_u32(data, size, &off, &tmp.row[ri].count[j], err, err_cap, "markov count")) {
++                ds4_spex_markov_free(&tmp);
++                free(data);
++                return false;
++            }
++            if (tmp.row[ri].expert[j] >= tmp.n_expert || tmp.row[ri].count[j] == 0) {
++                ds4_spex_set_error(err,
++                                   err_cap,
++                                   "invalid SPEX entry expert=%u count=%u in '%s'",
++                                   (uint32_t)tmp.row[ri].expert[j],
++                                   tmp.row[ri].count[j],
++                                   path);
++                ds4_spex_markov_free(&tmp);
++                free(data);
++                return false;
++            }
++        }
++    }
++
++    if (off != size) {
++        ds4_spex_set_error(err,
++                           err_cap,
++                           "SPEX file '%s' has %zu trailing bytes",
++                           path,
++                           size - off);
++        ds4_spex_markov_free(&tmp);
++        free(data);
++        return false;
++    }
++
++    tmp.loaded = true;
++    *out = tmp;
++    free(data);
++    return true;
++}
++
++static const ds4_spex_markov_params *metal_graph_spex_markov_params(void) {
++    const char *path = metal_graph_spex_file_path();
++    if (!path) return NULL;
++    if (!g_spex_markov_params.attempted) {
++        char err[512] = {0};
++        g_spex_markov_params.attempted = true;
++        if (ds4_spex_markov_load_path(&g_spex_markov_params, path, err, sizeof(err))) {
++            g_spex_markov_params.attempted = true;
++            fprintf(stderr,
++                    "ds4: SPEX markov loaded '%s' L=%u E=%u topN=%u\n",
++                    g_spex_markov_params.path,
++                    g_spex_markov_params.n_layer,
++                    g_spex_markov_params.n_expert,
++                    g_spex_markov_params.topN);
++        } else {
++            fprintf(stderr, "ds4: SPEX markov disabled: %s\n", err[0] ? err : "load failed");
++            ds4_spex_markov_free(&g_spex_markov_params);
++            g_spex_markov_params.attempted = true;
++            g_spex_markov_params.warned = true;
++        }
++    }
++    return g_spex_markov_params.loaded ? &g_spex_markov_params : NULL;
++}
++
++static uint32_t metal_graph_spex_env_u32(
++        const char *name,
++        uint32_t    fallback,
++        uint32_t    max_value) {
++    const char *env = getenv(name);
++    if (!env || !env[0]) return fallback;
++    char *end = NULL;
++    errno = 0;
++    unsigned long v = strtoul(env, &end, 10);
++    if (errno != 0 || end == env || *end != '\0') return fallback;
++    if (v == 0) return 0;
++    if (v > max_value) return max_value;
++    return (uint32_t)v;
++}
++
++static float metal_graph_spex_env_float(
++        const char *name,
++        float       fallback,
++        float       lo,
++        float       hi) {
++    const char *env = getenv(name);
++    if (!env || !env[0]) return fallback;
++    char *end = NULL;
++    errno = 0;
++    float v = strtof(env, &end);
++    if (errno != 0 || end == env || *end != '\0' || !isfinite(v)) return fallback;
++    if (v < lo) return lo;
++    if (v > hi) return hi;
++    return v;
++}
++
++static uint32_t metal_graph_spex_markov_predict(
++        const ds4_spex_markov_params *p,
++        uint32_t                      il,
++        const int32_t                *selected_ids,
++        uint32_t                      n_selected,
++        int32_t                      *out_ids,
++        uint32_t                      out_cap) {
++    if (!p || il + 1u >= p->n_layer || !selected_ids || !out_ids || out_cap == 0) {
++        return 0;
++    }
++    if (out_cap > DS4_MAX_EXPERT) out_cap = DS4_MAX_EXPERT;
++    const uint32_t cap = metal_graph_spex_env_u32("DS4_SPEX_CAP",
++                                                  DS4_N_EXPERT_USED,
++                                                  out_cap);
++    if (cap == 0) return 0;
++    const float tau = metal_graph_spex_env_float("DS4_SPEX_TAU", 0.5f, 0.0f, 1.0f);
++    const float layer_temp = p->temp[il] > 1.0e-6f ? p->temp[il] : 1.0f;
++    uint64_t score[DS4_MAX_EXPERT];
++    bool picked[DS4_MAX_EXPERT];
++    memset(score, 0, sizeof(score));
++    memset(picked, 0, sizeof(picked));
++
++    for (uint32_t i = 0; i < n_selected; i++) {
++        const int32_t cur = selected_ids[i];
++        if (cur < 0 || (uint32_t)cur >= p->n_expert) continue;
++        const ds4_spex_markov_row *row = &p->row[(uint64_t)il * p->n_expert + (uint32_t)cur];
++        for (uint16_t j = 0; j < row->n; j++) {
++            score[row->expert[j]] += row->count[j];
++        }
++    }
++
++    uint32_t n_out = 0;
++    while (n_out < cap) {
++        int32_t best = -1;
++        float best_prob = -1.0f;
++        uint64_t best_score = 0;
++        for (uint32_t e = 0; e < p->n_expert; e++) {
++            if (picked[e] || score[e] == 0) continue;
++            const float feat = log1pf((float)score[e]);
++            const float z = (p->a[il] * feat + p->b[il]) / layer_temp;
++            const float prob = sigmoid_stable(z);
++            if (prob <= tau) continue;
++            if (best < 0 ||
++                prob > best_prob ||
++                (prob == best_prob && score[e] > best_score) ||
++                (prob == best_prob && score[e] == best_score && e < (uint32_t)best)) {
++                best = (int32_t)e;
++                best_prob = prob;
++                best_score = score[e];
++            }
++        }
++        if (best < 0) break;
++        picked[(uint32_t)best] = true;
++        out_ids[n_out++] = best;
++    }
++    return n_out;
++}
++
+ static bool metal_graph_spex_prefetch_next_layer_enabled(
+         const ds4_gpu_graph *g) {
+ #if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
+     return g &&
+            g->ssd_streaming &&
+-           getenv("DS4_SPEX_PREFETCH_NEXT_LAYER") != NULL &&
++           (getenv("DS4_SPEX_PREFETCH_NEXT_LAYER") != NULL ||
++            metal_graph_spex_file_path() != NULL) &&
+            getenv("DS4_SPEX_DISABLE_PREFETCH_NEXT_LAYER") == NULL;
+ #else
+     (void)g;
+@@ -13875,6 +14319,28 @@ static bool metal_graph_spex_prefetch_next_layer(
+         return false;
+     }
+ 
++    int32_t prefetch_ids[DS4_MAX_EXPERT];
++    const char *spex_path = metal_graph_spex_file_path();
++    const ds4_spex_markov_params *spex = spex_path ? metal_graph_spex_markov_params() : NULL;
++    uint32_t prefetch_n = 0;
++    const char *profile_label = "stage1";
++    if (spex_path) {
++        if (!spex) return true;
++        prefetch_n = metal_graph_spex_markov_predict(spex,
++                                                     il,
++                                                     g->spex_prefetch_selected,
++                                                     g->spex_prefetch_selected_count,
++                                                     prefetch_ids,
++                                                     DS4_MAX_EXPERT);
++        profile_label = "markov";
++    } else {
++        prefetch_n = g->spex_prefetch_selected_count;
++        for (uint32_t i = 0; i < prefetch_n; i++) {
++            prefetch_ids[i] = g->spex_prefetch_selected[i];
++        }
++    }
++    if (prefetch_n == 0) return true;
++
+     const ds4_gpu_stream_expert_table table =
+         graph_stream_expert_table_make(model,
+                                        next_layer,
+@@ -13883,15 +14349,16 @@ static bool metal_graph_spex_prefetch_next_layer(
+                                        down_expert_bytes);
+     const bool ok = ds4_gpu_stream_expert_cache_seed_experts_async(
+                         &table,
+-                        g->spex_prefetch_selected,
++                        prefetch_ids,
+                         NULL,
+-                        g->spex_prefetch_selected_count) != 0;
++                        prefetch_n) != 0;
+     if (getenv("DS4_SPEX_PREFETCH_PROFILE")) {
+         fprintf(stderr,
+-                "ds4: SPEX stage1 prefetch L%u->L%u experts=%u ok=%d\n",
++                "ds4: SPEX %s prefetch L%u->L%u experts=%u ok=%d\n",
++                profile_label,
+                 il,
+                 next_il,
+-                g->spex_prefetch_selected_count,
++                prefetch_n,
+                 ok ? 1 : 0);
+     }
+     return ok;

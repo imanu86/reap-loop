@@ -1,0 +1,416 @@
+diff --git a/ds4.c b/ds4.c
+index b0674cb..a370c39 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -10490,6 +10490,10 @@ typedef struct {
+     bool ssd_streaming;
+     bool ssd_streaming_cold;
+     bool streaming_static_decode_map_current;
++    bool spex_prefetch_selected_valid;
++    uint32_t spex_prefetch_selected_layer;
++    uint32_t spex_prefetch_selected_count;
++    int32_t spex_prefetch_selected[DS4_MAX_EXPERT_USED];
+     bool mtp_enabled;
+     float *cpu_router_norm;
+ } ds4_gpu_graph;
+@@ -13806,6 +13810,100 @@ static bool metal_graph_decode_cuda_selected_slots_expected(
+ #endif
+ }
+ 
++static bool metal_graph_spex_prefetch_next_layer_enabled(
++        const ds4_gpu_graph *g) {
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    return g &&
++           g->ssd_streaming &&
++           getenv("DS4_SPEX_PREFETCH_NEXT_LAYER") != NULL &&
++           getenv("DS4_SPEX_DISABLE_PREFETCH_NEXT_LAYER") == NULL;
++#else
++    (void)g;
++    return false;
++#endif
++}
++
++static void metal_graph_spex_note_selected(
++        ds4_gpu_graph *g,
++        uint32_t       il,
++        const int32_t *selected_ids,
++        uint32_t       n_selected) {
++    if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
++    g->spex_prefetch_selected_valid = false;
++    if (!selected_ids ||
++        n_selected == 0 ||
++        n_selected > DS4_MAX_EXPERT_USED) {
++        return;
++    }
++    for (uint32_t i = 0; i < n_selected; i++) {
++        if (selected_ids[i] < 0 || (uint32_t)selected_ids[i] >= DS4_N_EXPERT) {
++            return;
++        }
++        g->spex_prefetch_selected[i] = selected_ids[i];
++    }
++    g->spex_prefetch_selected_layer = il;
++    g->spex_prefetch_selected_count = n_selected;
++    g->spex_prefetch_selected_valid = true;
++}
++
++static bool metal_graph_spex_prefetch_next_layer(
++        ds4_gpu_graph     *g,
++        const ds4_model   *model,
++        const ds4_weights *weights,
++        uint32_t           il) {
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return true;
++    if (!model || !weights || !g->spex_prefetch_selected_valid ||
++        g->spex_prefetch_selected_layer != il) {
++        return true;
++    }
++    g->spex_prefetch_selected_valid = false;
++    if (il + 1u >= DS4_N_LAYER) return true;
++
++    const uint32_t next_il = il + 1u;
++    const ds4_layer_weights *next_layer = &weights->layer[next_il];
++    if (!metal_graph_decode_cuda_selected_slots_expected(g, next_layer) ||
++        next_layer->ffn_gate_tid2eid != NULL) {
++        return true;
++    }
++
++    uint64_t gate_expert_bytes = 0;
++    uint64_t down_expert_bytes = 0;
++    if (!streaming_layer_gate_down_expert_bytes(next_layer,
++                                                &gate_expert_bytes,
++                                                &down_expert_bytes)) {
++        return false;
++    }
++
++    const ds4_gpu_stream_expert_table table =
++        graph_stream_expert_table_make(model,
++                                       next_layer,
++                                       next_il,
++                                       gate_expert_bytes,
++                                       down_expert_bytes);
++    const bool ok = ds4_gpu_stream_expert_cache_seed_experts_async(
++                        &table,
++                        g->spex_prefetch_selected,
++                        NULL,
++                        g->spex_prefetch_selected_count) != 0;
++    if (getenv("DS4_SPEX_PREFETCH_PROFILE")) {
++        fprintf(stderr,
++                "ds4: SPEX stage1 prefetch L%u->L%u experts=%u ok=%d\n",
++                il,
++                next_il,
++                g->spex_prefetch_selected_count,
++                ok ? 1 : 0);
++    }
++    return ok;
++#else
++    (void)g;
++    (void)model;
++    (void)weights;
++    (void)il;
++    return true;
++#endif
++}
++
+ static uint32_t metal_graph_streaming_prefill_cache_seed_k(const ds4_gpu_graph *g) {
+     if (!g ||
+         !g->ssd_streaming ||
+@@ -14296,6 +14394,9 @@ static bool metal_graph_decode_cuda_selected_load(
+                                       sizeof(selected_ids[0])) != 0;
+     const double t_read = profile ? now_sec() : 0.0;
+ 
++    if (ok) {
++        metal_graph_spex_note_selected(g, il, selected_ids, DS4_N_EXPERT_USED);
++    }
+     if (ok) {
+         const ds4_gpu_stream_expert_table table =
+             graph_stream_expert_table_make(model,
+@@ -15840,6 +15941,12 @@ static bool metal_graph_encode_decode_layer(
+             const bool finish_ok =
+                 metal_graph_selected_async_load_finish(&async_load);
+             ok = ok && flush_ok && finish_ok;
++            if (ok) {
++                metal_graph_spex_note_selected(g,
++                                               il,
++                                               async_load.selected_ids,
++                                               DS4_N_EXPERT_USED);
++            }
+         } else if (ok) {
+             ok = ds4_gpu_commit_and_wait_selected_readback(selected_event,
+                                                            "selected-id shared-overlap") != 0;
+@@ -15852,6 +15959,9 @@ static bool metal_graph_encode_decode_layer(
+                                      (uint64_t)DS4_N_EXPERT_USED * sizeof(selected_ids[0])) != 0 &&
+                  ds4_gpu_routed_moe_set_selected_override(selected_ids,
+                                                           DS4_N_EXPERT_USED) != 0;
++            if (ok) {
++                metal_graph_spex_note_selected(g, il, selected_ids, DS4_N_EXPERT_USED);
++            }
+             if (ok) {
+                 const ds4_gpu_stream_expert_table table =
+                     graph_stream_expert_table_make(model,
+@@ -19352,6 +19462,9 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+                 g->cur_hc = g->after_ffn_hc;
+                 g->after_ffn_hc = tmp;
+             }
++            if (ok && logits) {
++                ok = metal_graph_spex_prefetch_next_layer(g, model, weights, il);
++            }
+         }
+         if (ok && logits) {
+             ok = metal_graph_encode_output_head(g, model, weights, weights->output->dim[1]);
+@@ -19418,6 +19531,9 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+             g->cur_hc = g->after_ffn_hc;
+             g->after_ffn_hc = tmp;
+         }
++        if (ok && encoded_layer && logits) {
++            ok = metal_graph_spex_prefetch_next_layer(g, model, weights, il);
++        }
+         const double tl_encoded = profile ? now_sec() : 0.0;
+         if (ok) ok = ds4_gpu_end_commands() != 0;
+         const double tl_done = profile ? now_sec() : 0.0;
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 34a0555..f80de86 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1887,6 +1887,28 @@ static int cuda_stream_selected_upload_done_event_ensure(void) {
+     return 1;
+ }
+ 
++static int cuda_stream_selected_upload_wait_if_recorded(const char *what) {
++    if (!cuda_stream_selected_upload_event_enabled()) return 1;
++    if (!g_stream_selected_upload_done_recorded ||
++        !g_stream_selected_upload_done_event) {
++        return 1;
++    }
++    cudaError_t err =
++        cudaStreamWaitEvent((cudaStream_t)0,
++                            g_stream_selected_upload_done_event,
++                            0);
++    if (err != cudaSuccess) {
++        fprintf(stderr,
++                "ds4: CUDA streaming selected upload wait failed for %s: %s\n",
++                what ? what : "selected upload",
++                cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++    g_stream_selected_upload_done_recorded = 0;
++    return 1;
++}
++
+ static int cuda_stream_selected_ensure_bytes(
+         char **ptr,
+         uint64_t *capacity,
+@@ -2149,7 +2171,8 @@ static int cuda_stream_expert_cache_load_slot(
+         uint64_t up_offset,
+         uint64_t down_offset,
+         uint64_t gate_expert_bytes,
+-        uint64_t down_expert_bytes) {
++        uint64_t down_expert_bytes,
++        int defer_upload_sync) {
+     const uint64_t gate_src =
+         gate_offset + (uint64_t)expert * gate_expert_bytes;
+     const uint64_t up_src =
+@@ -2164,21 +2187,21 @@ static int cuda_stream_expert_cache_load_slot(
+                                             gate_src,
+                                             gate_expert_bytes,
+                                             "cached moe_gate",
+-                                            0) ||
++                                            defer_upload_sync) ||
+         !cuda_model_copy_to_device_streamed(cache->up_ptr + gate_dst,
+                                             model_map,
+                                             model_size,
+                                             up_src,
+                                             gate_expert_bytes,
+                                             "cached moe_up",
+-                                            0) ||
++                                            defer_upload_sync) ||
+         !cuda_model_copy_to_device_streamed(cache->down_ptr + down_dst,
+                                             model_map,
+                                             model_size,
+                                             down_src,
+                                             down_expert_bytes,
+                                             "cached moe_down",
+-                                            0)) {
++                                            defer_upload_sync)) {
+         return 0;
+     }
+     cuda_stream_expert_cache_slot &entry = cache->slots[slot];
+@@ -2208,7 +2231,8 @@ static int cuda_stream_expert_cache_seed_one(
+         uint64_t up_offset,
+         uint64_t down_offset,
+         uint64_t gate_expert_bytes,
+-        uint64_t down_expert_bytes) {
++        uint64_t down_expert_bytes,
++        int defer_upload_sync) {
+     int cache_slot = cuda_stream_expert_cache_find(cache,
+                                                    model_map,
+                                                    model_size,
+@@ -2238,7 +2262,8 @@ static int cuda_stream_expert_cache_seed_one(
+                                             up_offset,
+                                             down_offset,
+                                             gate_expert_bytes,
+-                                            down_expert_bytes)) {
++                                            down_expert_bytes,
++                                            defer_upload_sync)) {
+         return 0;
+     }
+     if (append && cache->count < cache->capacity) cache->count++;
+@@ -2649,24 +2674,7 @@ extern "C" int ds4_gpu_tensor_copy(ds4_gpu_tensor *dst, uint64_t dst_offset,
+ extern "C" int ds4_gpu_begin_commands(void) { return 1; }
+ 
+ extern "C" int ds4_gpu_wait_selected_upload(void) {
+-    if (!cuda_stream_selected_upload_event_enabled()) return 1;
+-    if (!g_stream_selected_upload_done_recorded ||
+-        !g_stream_selected_upload_done_event) {
+-        return 1;
+-    }
+-    cudaError_t err =
+-        cudaStreamWaitEvent((cudaStream_t)0,
+-                            g_stream_selected_upload_done_event,
+-                            0);
+-    if (err != cudaSuccess) {
+-        fprintf(stderr,
+-                "ds4: CUDA streaming selected upload wait failed: %s\n",
+-                cudaGetErrorString(err));
+-        (void)cudaGetLastError();
+-        return 0;
+-    }
+-    g_stream_selected_upload_done_recorded = 0;
+-    return 1;
++    return cuda_stream_selected_upload_wait_if_recorded("selected compact load");
+ }
+ extern "C" int ds4_gpu_flush_commands(void) { return cuda_ok(cudaDeviceSynchronize(), "flush"); }
+ extern "C" int ds4_gpu_signal_selected_readback_ready(uint64_t *event_value) {
+@@ -3055,7 +3063,8 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_selected(
+                                                up_offset,
+                                                down_offset,
+                                                gate_expert_bytes,
+-                                               down_expert_bytes)) {
++                                               down_expert_bytes,
++                                               0)) {
+             cuda_stream_expert_cache_invalidate();
+             return 1;
+         }
+@@ -3157,6 +3166,9 @@ static int cuda_stream_selected_cache_begin_compact_load(
+         g_spex_stats.selected_load_batches++;
+         g_spex_stats.selected_expert_requests += compact_count;
+     }
++    if (!cuda_stream_selected_upload_wait_if_recorded("global expert cache")) {
++        return strict_failure ? 0 : 1;
++    }
+ 
+     for (uint32_t i = 0; i < compact_count; i++) {
+         if (compact_ids[i] < 0 || (uint32_t)compact_ids[i] >= n_total_expert) {
+@@ -3206,7 +3218,8 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                                                        up_offset,
+                                                        down_offset,
+                                                        gate_expert_bytes,
+-                                                       down_expert_bytes)) {
++                                                       down_expert_bytes,
++                                                       0)) {
+                     if (append && expert_cache->count < expert_cache->capacity) {
+                         expert_cache->count++;
+                     }
+@@ -3442,11 +3455,13 @@ extern "C" int ds4_gpu_stream_expert_cache_prepare_selected_batch(
+             0);
+ }
+ 
+-extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
++static int cuda_stream_expert_cache_seed_experts_impl(
+         const ds4_gpu_stream_expert_table *table,
+         const int32_t                     *expert_ids,
+         const uint32_t                    *expert_priorities,
+-        uint32_t                           n_experts) {
++        uint32_t                           n_experts,
++        int                                defer_upload_sync,
++        const char                        *label) {
+     if (!g_ssd_streaming_mode) return 1;
+     if (!table) return 0;
+     const void *model_map = table->model_map;
+@@ -3466,7 +3481,7 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
+                                                down_offset,
+                                                gate_expert_bytes,
+                                                down_expert_bytes,
+-                                               "seed hotlist")) {
++                                               label ? label : "seed hotlist")) {
+         return 0;
+     }
+ 
+@@ -3489,7 +3504,8 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
+         const int32_t expert = expert_ids[i];
+         if (expert < 0 || (uint32_t)expert >= n_total_expert) {
+             fprintf(stderr,
+-                    "ds4: CUDA streaming hotlist seed expert id %d is outside 0..%u at layer %u\n",
++                    "ds4: CUDA streaming %s expert id %d is outside 0..%u at layer %u\n",
++                    label ? label : "seed",
+                     expert,
+                     n_total_expert,
+                     layer);
+@@ -3527,14 +3543,16 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
+                                                up_offset,
+                                                down_offset,
+                                                gate_expert_bytes,
+-                                               down_expert_bytes)) {
++                                               down_expert_bytes,
++                                               defer_upload_sync)) {
+             cuda_stream_expert_cache_invalidate();
+             return 1;
+         }
+     }
+     if (getenv("DS4_CUDA_STREAMING_EXPERT_CACHE_VERBOSE")) {
+         fprintf(stderr,
+-                "ds4: CUDA streaming hotlist seeded layer=%u requested=%u cached=%u cap=%u\n",
++                "ds4: CUDA streaming %s layer=%u requested=%u cached=%u cap=%u\n",
++                label ? label : "seeded",
+                 layer,
+                 n_experts,
+                 n,
+@@ -3543,6 +3561,32 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
+     return 1;
+ }
+ 
++extern "C" int ds4_gpu_stream_expert_cache_seed_experts(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        const uint32_t                    *expert_priorities,
++        uint32_t                           n_experts) {
++    return cuda_stream_expert_cache_seed_experts_impl(table,
++                                                      expert_ids,
++                                                      expert_priorities,
++                                                      n_experts,
++                                                      0,
++                                                      "hotlist seed");
++}
++
++extern "C" int ds4_gpu_stream_expert_cache_seed_experts_async(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        const uint32_t                    *expert_priorities,
++        uint32_t                           n_experts) {
++    return cuda_stream_expert_cache_seed_experts_impl(table,
++                                                      expert_ids,
++                                                      expert_priorities,
++                                                      n_experts,
++                                                      1,
++                                                      "async prefetch seed");
++}
++
+ __global__ static void embed_token_hc_kernel(float *out, const unsigned short *w, uint32_t token, uint32_t n_embd, uint32_t n_hc) {
+     uint32_t i = blockIdx.x * blockDim.x + threadIdx.x;
+     uint32_t n = n_embd * n_hc;
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index af40090..025e7c5 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -127,6 +127,11 @@ int ds4_gpu_stream_expert_cache_seed_experts(
+         const int32_t                     *expert_ids,
+         const uint32_t                    *expert_priorities,
+         uint32_t                           n_experts);
++int ds4_gpu_stream_expert_cache_seed_experts_async(
++        const ds4_gpu_stream_expert_table *table,
++        const int32_t                     *expert_ids,
++        const uint32_t                    *expert_priorities,
++        uint32_t                           n_experts);
+ void ds4_gpu_print_memory_report(const char *label);
+ 
+ /* =========================================================================

@@ -1,0 +1,173 @@
+From 8c83b2aa0300c240b6bfabc91daf073e6d1f281f Mon Sep 17 00:00:00 2001
+From: REAP-LOOP contributors <noreply@users.noreply.github.com>
+Date: Tue, 7 Jul 2026 09:03:43 +0200
+Subject: [PATCH] pace: 0014e - WRAP env rename honored inside 0013 guard
+
+ds4_reap_prefetch_working_set now honors DS4_PACE_WRAP (alias DS4_REAP_WRAP,
+back-compat DS4_REAP_WRAP), and auto-enables when PACE drives it with
+wrap_on. Moves ds4_pace_phase + g_pace state up beside the g_reap_* globals so
+the 0013 WRAP function can read g_pace.wrap_on. No behavior change when PACE off.
+
+Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+---
+ ds4.c | 130 ++++++++++++++++++++++++++++++++--------------------------
+ 1 file changed, 71 insertions(+), 59 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 36cb124..88263f4 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7397,6 +7397,67 @@ static float g_reap_bias_masked[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static const void *g_reap_bias_tensor[DS4_MAX_LAYER];
+ static uint32_t g_reap_bias_n;
+ 
++/* ---- PACE (patch 0014) state - declared here (ahead of the 0013 WRAP
++ * function) so ds4_reap_prefetch_working_set can read g_pace.wrap_on. Full
++ * controller logic lives after the 0013 block. Design: reap/PACE_DESIGN.md. */
++#define DS4_PACE_NGRAM_MAX 512   /* max sliding window in tokens */
++
++typedef enum {
++    PACE_OFF = 0, PACE_WARMUP, PACE_DESCENT, PACE_HOLD, PACE_BREATH
++} ds4_pace_phase;
++
++static struct {
++    int    enabled;            /* -1 = not yet checked (0 = uninit) */
++    int    debug;              /* DS4_PACE_DEBUG: stderr signal trace */
++    FILE  *evlog;              /* DS4_PACE_LOG: optional JSONL */
++
++    /* --- tunables (env) --- */
++    uint32_t warmup;
++    int      keep, keep_min, keep_max, keep_step;
++    int      ngram_n;
++    uint32_t ngram_window;
++    double   drift, release;
++    uint32_t hyst;
++    uint32_t breath_every, breath_every_min, breath_every_max;
++    uint32_t breath_len;
++    int      breath_keep;      /* 0 = full unmask */
++    int      relearn;
++    double   relearn_decay;
++    double   alpha_ngram, alpha_hit;
++    double   tighten_lo, hit_hi;
++    uint32_t stable, anneal_warm;
++    int      s1_on;
++    int      wrap_on;
++
++    /* --- runtime state --- */
++    ds4_pace_phase phase;
++    uint32_t tok;              /* decode tokens observed */
++    uint32_t phase_start_tok;
++    uint32_t last_breath_end_tok;
++    int      sensor_armed;
++    int      cur_keep;         /* keep-K currently applied (0 = no mask) */
++    uint32_t stable_since;     /* token of last keep change (tighten gate) */
++
++    /* n-gram ring of decode token-ids */
++    int      ring[DS4_PACE_NGRAM_MAX];
++    uint32_t ring_len, ring_head;
++    double   ema_ngram;
++
++    /* hit-rate (in-keep selections) */
++    uint64_t sel_checked, sel_inkeep;
++    double   ema_hit;
++
++    /* breath cadence auto-tune */
++    uint32_t breaths;
++
++    /* gate-mass accumulator (learn): mass[layer][expert] */
++    double  *mass;             /* [DS4_MAX_LAYER*DS4_MAX_EXPERT], lazy alloc */
++    uint32_t mass_rows;
++    /* breath re-learn window accumulator */
++    double  *bmass;
++    uint32_t bmass_rows;
++} g_pace;
++
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+     if (!g_reap_mask_on || !bias_tensor) return NULL;
+     for (uint32_t i = 0; i < g_reap_bias_n; i++) {
+@@ -12574,8 +12635,14 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+     static int checked, enabled;
+     if (!checked) {
+         checked = 1;
+-        const char *p = getenv("DS4_REAP_WRAP");
+-        enabled = p && *p && strcmp(p, "0") != 0;
++        /* WRAP (0013/0014): DS4_PACE_WRAP, with back-compat alias
++         * DS4_REAP_WRAP. Default ON when PACE drives it (g_pace.wrap_on
++         * already gates the call site); enabled here iff either is set non-zero,
++         * OR PACE is active with wrap_on (so PACE need not set the env). */
++        const char *p = getenv("DS4_PACE_WRAP");
++        if (!p) p = getenv("DS4_REAP_WRAP");
++        enabled = (p && *p && strcmp(p, "0") != 0)
++                  || (g_pace.enabled == 1 && g_pace.wrap_on);
+     }
+     if (!enabled || !model || !weights) return;
+     uint64_t sig = 1469598103934665603ull;
+@@ -12625,63 +12693,8 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+  *   degeneration.  All signals in memory; no disk on the hot path.
+  * ======================================================================== */
+ 
+-#define DS4_PACE_NGRAM_MAX 512   /* max sliding window in tokens */
+-
+-typedef enum {
+-    PACE_OFF = 0, PACE_WARMUP, PACE_DESCENT, PACE_HOLD, PACE_BREATH
+-} ds4_pace_phase;
+-
+-static struct {
+-    int    enabled;            /* -1 = not yet checked */
+-    int    debug;              /* DS4_PACE_DEBUG: stderr signal trace */
+-    FILE  *evlog;              /* DS4_PACE_LOG: optional JSONL */
+-
+-    /* --- tunables (env) --- */
+-    uint32_t warmup;
+-    int      keep, keep_min, keep_max, keep_step;
+-    int      ngram_n;
+-    uint32_t ngram_window;
+-    double   drift, release;
+-    uint32_t hyst;
+-    uint32_t breath_every, breath_every_min, breath_every_max;
+-    uint32_t breath_len;
+-    int      breath_keep;      /* 0 = full unmask */
+-    int      relearn;
+-    double   relearn_decay;
+-    double   alpha_ngram, alpha_hit;
+-    double   tighten_lo, hit_hi;
+-    uint32_t stable, anneal_warm;
+-    int      s1_on;
+-    int      wrap_on;
+-
+-    /* --- runtime state --- */
+-    ds4_pace_phase phase;
+-    uint32_t tok;              /* decode tokens observed */
+-    uint32_t phase_start_tok;
+-    uint32_t last_breath_end_tok;
+-    int      sensor_armed;
+-    int      cur_keep;         /* keep-K currently applied (0 = no mask) */
+-    uint32_t stable_since;     /* token of last keep change (tighten gate) */
+-
+-    /* n-gram ring of decode token-ids */
+-    int      ring[DS4_PACE_NGRAM_MAX];
+-    uint32_t ring_len, ring_head;
+-    double   ema_ngram;
+-
+-    /* hit-rate (in-keep selections) */
+-    uint64_t sel_checked, sel_inkeep;
+-    double   ema_hit;
+-
+-    /* breath cadence auto-tune */
+-    uint32_t breaths;
+-
+-    /* gate-mass accumulator (learn): mass[layer][expert] */
+-    double  *mass;             /* [DS4_MAX_LAYER*DS4_MAX_EXPERT], lazy alloc */
+-    uint32_t mass_rows;
+-    /* breath re-learn window accumulator */
+-    double  *bmass;
+-    uint32_t bmass_rows;
+-} g_pace;
++/* PACE state (ds4_pace_phase + g_pace) is defined up with the g_reap_* globals
++ * so patch-0013 ds4_reap_prefetch_working_set can honor g_pace.wrap_on. */
+ 
+ static int pace_env_i(const char *name, int dflt) {
+     const char *v = getenv(name);
+-- 
+2.43.0
+

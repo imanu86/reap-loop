@@ -1,0 +1,269 @@
+diff --git a/ds4.c b/ds4.c
+index 640511e..b0674cb 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14064,6 +14064,7 @@ static bool metal_graph_decode_set_hash_selected_override(
+                     DS4_N_EXPERT_USED) == 0) {
+             return false;
+         }
++        if (ds4_gpu_wait_selected_upload() == 0) return false;
+     }
+     return ds4_gpu_routed_moe_set_selected_override(selected_i32, DS4_N_EXPERT_USED) != 0;
+ }
+@@ -14245,6 +14246,7 @@ static bool metal_graph_decode_selected_readahead_override(
+         return false;
+     }
+     if (ds4_gpu_begin_commands() == 0) return false;
++    if (ds4_gpu_wait_selected_upload() == 0) return false;
+     const double t_done = profile ? now_sec() : 0.0;
+ 
+     if (profile) {
+@@ -14309,6 +14311,7 @@ static bool metal_graph_decode_cuda_selected_load(
+     const double t_load = profile ? now_sec() : 0.0;
+ 
+     if (ds4_gpu_begin_commands() == 0) ok = false;
++    if (ok && ds4_gpu_wait_selected_upload() == 0) ok = false;
+     const double t_done = profile ? now_sec() : 0.0;
+ 
+     if (profile) {
+@@ -14392,6 +14395,7 @@ static bool metal_graph_cuda_stream_prefill_batch_selected_load(
+     const double t_load = profile ? now_sec() : 0.0;
+ 
+     if (ds4_gpu_begin_commands() == 0) ok = false;
++    if (ok && ds4_gpu_wait_selected_upload() == 0) ok = false;
+     const double t_done = profile ? now_sec() : 0.0;
+ 
+     if (profile) {
+@@ -15861,6 +15865,7 @@ static bool metal_graph_encode_decode_layer(
+                             DS4_N_EXPERT_USED) != 0;
+             }
+         }
++        if (ok) ok = ds4_gpu_wait_selected_upload() != 0;
+         if (ok) ok = ds4_gpu_routed_moe_one_tensor(g->routed_out,
+                                                      g->routed_gate,
+                                                      g->routed_up,
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 0043306..34a0555 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -313,6 +313,9 @@ static void *g_stream_selected_stage[4];
+ static cudaEvent_t g_stream_selected_stage_event[4];
+ static uint64_t g_stream_selected_stage_bytes;
+ static cudaStream_t g_stream_selected_upload_stream;
++static cudaEvent_t g_stream_selected_upload_done_event;
++static int g_stream_selected_upload_done_recorded;
++static int g_stream_selected_upload_event_enabled = -1;
+ 
+ static int cuda_ok(cudaError_t err, const char *what);
+ static const char *cuda_model_range_ptr_from_fd(
+@@ -327,7 +330,8 @@ static int cuda_model_copy_to_device_streamed(
+         uint64_t model_size,
+         uint64_t offset,
+         uint64_t bytes,
+-        const char *what);
++        const char *what,
++        int defer_upload_sync);
+ static uint64_t cuda_model_cache_limit_bytes(void);
+ static uint64_t cuda_model_local_model_limit_bytes(void);
+ static int cuda_model_cache_limit_explicit(void);
+@@ -1799,6 +1803,11 @@ static void cuda_stream_selected_stage_release(void) {
+         (void)cudaStreamDestroy(g_stream_selected_upload_stream);
+         g_stream_selected_upload_stream = NULL;
+     }
++    if (g_stream_selected_upload_done_event) {
++        (void)cudaEventDestroy(g_stream_selected_upload_done_event);
++        g_stream_selected_upload_done_event = NULL;
++    }
++    g_stream_selected_upload_done_recorded = 0;
+ }
+ 
+ static int cuda_stream_selected_stage_pool_alloc(uint64_t bytes) {
+@@ -1853,6 +1862,31 @@ static int cuda_stream_selected_stage_pool_alloc(uint64_t bytes) {
+     return 1;
+ }
+ 
++static int cuda_stream_selected_upload_event_enabled(void) {
++    if (g_stream_selected_upload_event_enabled < 0) {
++        const char *v = getenv("DS4_SELECTED_UPLOAD_EVENT");
++        if (!v) v = getenv("DS4_CUDA_SELECTED_UPLOAD_EVENT");
++        g_stream_selected_upload_event_enabled =
++            (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++    }
++    return g_stream_selected_upload_event_enabled;
++}
++
++static int cuda_stream_selected_upload_done_event_ensure(void) {
++    if (g_stream_selected_upload_done_event) return 1;
++    cudaError_t err =
++        cudaEventCreateWithFlags(&g_stream_selected_upload_done_event,
++                                 cudaEventDisableTiming);
++    if (err != cudaSuccess) {
++        fprintf(stderr,
++                "ds4: CUDA streaming selected upload event creation failed: %s\n",
++                cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++    return 1;
++}
++
+ static int cuda_stream_selected_ensure_bytes(
+         char **ptr,
+         uint64_t *capacity,
+@@ -2129,19 +2163,22 @@ static int cuda_stream_expert_cache_load_slot(
+                                             model_size,
+                                             gate_src,
+                                             gate_expert_bytes,
+-                                            "cached moe_gate") ||
++                                            "cached moe_gate",
++                                            0) ||
+         !cuda_model_copy_to_device_streamed(cache->up_ptr + gate_dst,
+                                             model_map,
+                                             model_size,
+                                             up_src,
+                                             gate_expert_bytes,
+-                                            "cached moe_up") ||
++                                            "cached moe_up",
++                                            0) ||
+         !cuda_model_copy_to_device_streamed(cache->down_ptr + down_dst,
+                                             model_map,
+                                             model_size,
+                                             down_src,
+                                             down_expert_bytes,
+-                                            "cached moe_down")) {
++                                            "cached moe_down",
++                                            0)) {
+         return 0;
+     }
+     cuda_stream_expert_cache_slot &entry = cache->slots[slot];
+@@ -2250,7 +2287,8 @@ static int cuda_model_copy_to_device_streamed(
+         uint64_t model_size,
+         uint64_t offset,
+         uint64_t bytes,
+-        const char *what) {
++        const char *what,
++        int defer_upload_sync) {
+     if (!dst || !model_map || offset > model_size || bytes > model_size - offset) {
+         return 0;
+     }
+@@ -2336,22 +2374,39 @@ static int cuda_model_copy_to_device_streamed(
+         chunk_idx++;
+     }
+ 
+-    const double spex_sync_t0 = spex_t0 > 0.0 ? cuda_spex_now_sec() : 0.0;
+-    err = cudaStreamSynchronize(g_stream_selected_upload_stream);
+-    if (spex_sync_t0 > 0.0) {
+-        const double spex_sync_t1 = cuda_spex_now_sec();
+-        g_spex_stats.selected_sync_calls++;
+-        if (spex_sync_t1 >= spex_sync_t0) {
+-            g_spex_stats.selected_sync_seconds += spex_sync_t1 - spex_sync_t0;
++    if (defer_upload_sync && cuda_stream_selected_upload_event_enabled()) {
++        if (!cuda_stream_selected_upload_done_event_ensure()) {
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
++        }
++        err = cudaEventRecord(g_stream_selected_upload_done_event,
++                              g_stream_selected_upload_stream);
++        if (err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: CUDA streaming selected upload event record failed for %s: %s\n",
++                    what ? what : "expert",
++                    cudaGetErrorString(err));
++            (void)cudaGetLastError();
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
++        }
++        g_stream_selected_upload_done_recorded = 1;
++    } else {
++        const double spex_sync_t0 = spex_t0 > 0.0 ? cuda_spex_now_sec() : 0.0;
++        err = cudaStreamSynchronize(g_stream_selected_upload_stream);
++        if (spex_sync_t0 > 0.0) {
++            const double spex_sync_t1 = cuda_spex_now_sec();
++            g_spex_stats.selected_sync_calls++;
++            if (spex_sync_t1 >= spex_sync_t0) {
++                g_spex_stats.selected_sync_seconds += spex_sync_t1 - spex_sync_t0;
++            }
++        }
++        if (err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: CUDA streaming selected upload sync failed for %s: %s\n",
++                    what ? what : "expert",
++                    cudaGetErrorString(err));
++            (void)cudaGetLastError();
++            return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+-    }
+-    if (err != cudaSuccess) {
+-        fprintf(stderr,
+-                "ds4: CUDA streaming selected upload sync failed for %s: %s\n",
+-                what ? what : "expert",
+-                cudaGetErrorString(err));
+-        (void)cudaGetLastError();
+-        return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+     }
+     return cuda_spex_stats_finish_copy(1, bytes, spex_t0);
+ }
+@@ -2592,6 +2647,27 @@ extern "C" int ds4_gpu_tensor_copy(ds4_gpu_tensor *dst, uint64_t dst_offset,
+ }
+ 
+ extern "C" int ds4_gpu_begin_commands(void) { return 1; }
++
++extern "C" int ds4_gpu_wait_selected_upload(void) {
++    if (!cuda_stream_selected_upload_event_enabled()) return 1;
++    if (!g_stream_selected_upload_done_recorded ||
++        !g_stream_selected_upload_done_event) {
++        return 1;
++    }
++    cudaError_t err =
++        cudaStreamWaitEvent((cudaStream_t)0,
++                            g_stream_selected_upload_done_event,
++                            0);
++    if (err != cudaSuccess) {
++        fprintf(stderr,
++                "ds4: CUDA streaming selected upload wait failed: %s\n",
++                cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++    g_stream_selected_upload_done_recorded = 0;
++    return 1;
++}
+ extern "C" int ds4_gpu_flush_commands(void) { return cuda_ok(cudaDeviceSynchronize(), "flush"); }
+ extern "C" int ds4_gpu_signal_selected_readback_ready(uint64_t *event_value) {
+     if (event_value) *event_value = 1;
+@@ -3169,19 +3245,22 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                                                     model_size,
+                                                     gate_src,
+                                                     gate_expert_bytes,
+-                                                    "selected moe_gate") ||
++                                                    "selected moe_gate",
++                                                    1) ||
+                 !cuda_model_copy_to_device_streamed(g_stream_selected_cache.up_ptr + gate_dst,
+                                                     model_map,
+                                                     model_size,
+                                                     up_src,
+                                                     gate_expert_bytes,
+-                                                    "selected moe_up") ||
++                                                    "selected moe_up",
++                                                    1) ||
+                 !cuda_model_copy_to_device_streamed(g_stream_selected_cache.down_ptr + down_dst,
+                                                     model_map,
+                                                     model_size,
+                                                     down_src,
+                                                     down_expert_bytes,
+-                                                    "selected moe_down")) {
++                                                    "selected moe_down",
++                                                    1)) {
+                 cuda_stream_selected_cache_invalidate();
+                 return strict_failure ? 0 : 1;
+             }
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index b58aca9..af40090 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -40,6 +40,7 @@ int ds4_gpu_tensor_copy_f32_to_f16(ds4_gpu_tensor *dst, uint64_t dst_offset,
+ 
+ int ds4_gpu_begin_commands(void);
+ int ds4_gpu_flush_commands(void);
++int ds4_gpu_wait_selected_upload(void);
+ int ds4_gpu_signal_selected_readback_ready(uint64_t *event_value);
+ int ds4_gpu_commit_and_wait_selected_readback(uint64_t event_value, const char *label);
+ int ds4_gpu_wait_selected_readback_ready(uint64_t event_value, const char *label);

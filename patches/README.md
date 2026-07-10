@@ -117,3 +117,125 @@ dimostrato che **la serie NON applica pulita end-to-end**:
   le leve L2/L3 non si possono buildare dalla serie canonica.
 
 Fonte: `runs/ds4/20260710_pod_t1_full_positive_control/README.md` (sezione gap / Runtime).
+
+## Serie canonica v2 (post-canonizzazione) — `patches/ds4/canonical/`
+
+**Chiude il TODO bloccante di S0** (`docs/SOTA_ROADMAP.md` §S0 "Canonizzazione serie
+pace"). La dir `patches/ds4/canonical/` è una catena **auto-contenuta e LF-pulita** che
+**applica pulita end-to-end da base `80ebbc3` fino a 0026**, ricostruendo `ds4.c`
+**byte-identico** al live-tree (md5 `771a39a8`) su cui 0020/0021/0026 sono ancorate.
+Gli originali in `patches/ds4/*.patch` **NON sono toccati** (un pod agent li usa).
+`.gitattributes` locale marca `*.patch -text` così la serie resta LF su qualunque
+checkout (niente trappola CRLF della regola 1).
+
+**Verifica reale (2026-07-10, CPU-only, `git apply --check` + apply su repo git
+temporaneo da 80ebbc3):** 19/19 patch applicano clean nell'ordine sotto; `ds4.c` finale
+md5 `1db4f799` == live-tree+0020+0021+0026. Stato intermedio dopo `0018-pace-canonical`:
+`ds4.c` md5 `771a39a8` (= live-tree, l'ancora richiesta). Base: `ds4.c` blob `640511eb`
+(md5 `bf9a0b6f`). Riproducibile: estrai `git -C <ds4> show 80ebbc3:{ds4.c,ds4_cuda.cu,ds4_gpu.h}`
+in un repo pulito e applica in ordine.
+
+### Tabella (ordine di apply = ordine tabella; hash = `git hash-object`, 8 char)
+
+| # | ordine | File in `canonical/` | Hash | Origine |
+|---|---|---|---|---|
+| 1 | 0001 | 0001-spex-stage0-cuda-stats.patch | 4300266a | copia LF, ≡ originale |
+| 2 | 0002 | 0002-spex-selected-upload-event.patch | 8cd334d3 | copia LF, ≡ originale |
+| 3 | 0003 | 0003-spex-stage1-next-layer-prefetch.patch | 7463a782 | copia LF, ≡ originale |
+| 4 | 0004 | 0004-spex-markov-loader-prefetch.patch | bb099112 | copia LF, ≡ originale |
+| 5 | 0005 | 0005-spex-routing-trace-capture.patch | b23d655e | copia LF, ≡ originale |
+| 6 | 0006 | 0006-spex-routing-trace-weights.patch | be4a17a3 | copia LF, ≡ originale |
+| 7 | 0007 | 0007-spex-trace-hidden.patch | c17c27e1 | copia LF, ≡ originale |
+| 8 | 0008 | 0008-dspark-mtp-streaming-probe-unsafe.patch | 4cf57001 | copia LF, ≡ originale |
+| 9 | 0011 | 0011-reap-runtime-mask.patch | c57bee11 | copia LF, ≡ originale |
+| 10 | 0012 | 0012-reap-sensor-s1.patch | f5e2ca3a | copia LF, ≡ originale |
+| 11 | 0013 | 0013-reap-wrap.patch | 70f0e2b6 | copia LF, ≡ originale |
+| 12 | 0014 | 0014-pace-controller.patch | 7939a305 | copia LF, ≡ originale |
+| 13 | 0014e | 0014e-pace-wrap-rename.patch | 75d2ceae | copia LF, ≡ originale |
+| 14 | 0015 | **0015-pace-canonical.patch** | **86d67a95** | **RIGENERATA** — vedi nota fattorizzazione |
+| 15 | 0016 | **0016-pace-canonical.patch** | 73cfa4ab | RIGENERATA, **byte-identica** all'originale `0016-pace-rebuild-on-tighten` (73cfa4ab) |
+| 16 | 0018 | **0018-pace-canonical.patch** | 5b018a3b | RIGENERATA, **byte-identica** all'originale `0018-pace-skip-wrap-on-rotate` (5b018a3b) |
+| 17 | 0020 | 0020-pace-s1-slope-trigger.patch | 089da7cd | copia LF, ≡ originale (applica invariata sopra la v2) |
+| 18 | 0021 | 0021-pace-rotate-delta-prefetch.patch | 7fb78678 | copia LF, ≡ originale (applica invariata) |
+| 19 | 0026 | 0026-pace-demand-admission.patch | d933dec1 | copia LF, ≡ originale (applica invariata) |
+
+**Fuori dalla v2 (per progetto):** `0009/0010` (dspark-MTP, arena diversa, non applicano
+su base pulita), `0017` (proposta mai applicata), rami `0015/0016-spex-hidden`
+(serie SPEX-hidden, regola 3). `0027` (rewind-harness, appena registrata) è ANCORA fuori
+scope (mandato = base→0026): applica invariata sopra la v2 (stessa ancora live-tree) e sarà
+l'incremento successivo — aggiungere una sola riga per estendere la catena.
+
+### Fattorizzazione scelta e perché
+
+Le tre patch pace originali sono state ri-ancorate **NON** invertendole sulla base pulita
+(non applicano), ma **reverse-peel** dal live-tree: `git apply -R 0018` poi `-R 0016`
+riescono **esatti** ⇒ `0018-pace-canonical` e `0016-pace-canonical` sono byte-identici agli
+originali (stessi hash). `git apply -R 0015` **fallisce** (2/13 hunk in `ds4_pace_init`):
+il lavoro "tiering" non committato del live-tree ha **riscritto le regioni che 0015
+toccava**, quindi il rotate di 0015 **non è più separabile** dal substrato. Perciò:
+
+- **`0015-pace-canonical` = delta `fine-0014e → live-tree` MENO (0016+0018)**: un unico
+  patch che riproduce il rotate raw-router (intento originale di `0015-pace`, ~46 righe:
+  `rotate_on/every/decay`, `rmass`, `ds4_pace_note_router_probs`, `ds4_pace_rotate_maybe`,
+  readback `router_probs`) **INSIEME** a tutto il substrato live-only mai formalizzato
+  (vedi audit sotto). Non c'è confine pulito rotate-vs-substrato: struct `g_pace` e
+  `ds4_pace_init` sono condivisi riga-per-riga. `0014f` separato **non è recuperabile
+  fedelmente**; il 3-patch ai confini reversibili è la fattorizzazione più pulita ottenibile.
+- **`0016-pace-canonical`** = rebuild mask on tighten (≡ originale).
+- **`0018-pace-canonical`** = skip full WRAP on rotate (≡ originale).
+
+### AUDIT — cosa contiene il live-tree che NESSUNA patch aveva catturato
+
+Il delta `fine-0014e → live-tree` (~1213 righe nette, 51 hunk) è **molto più largo** della
+lista "campi live-only" già in §"Stato apply". Oltre al substrato pace lì elencato
+(`prebreath_*`, `cache_flush`, `prefill_apply/wait_wrap`, `exchange_*`, `weighted_*`,
+`in_prefill`, `last_prebreath_tok`, helper fn, variante WRAP-live), `0015-pace-canonical`
+**canonizza per la prima volta** i seguenti sottosistemi **mai presenti in alcuna patch**:
+
+- **Sottosistema SPEX-hidden GPU (~162 righe):** typedef `ds4_spex_hidden_params`,
+  `metal_graph_spex_hidden_*` (load/prefetch/score/`gpu_topk_read`/stats), campi
+  `spex_hidden_gpu_topk_count/layer`. È il ramo SPEX-hidden (regola 3, teoricamente arena
+  separata) **fisicamente presente nel `ds4.c` live-tree** — quindi ora dentro la v2.
+- **Scheduler seed/prefetch "cq1/tiering cold-sidecar" (~58 righe):** secondo typedef
+  con `seed_calls/experts/ok/failed/skipped_all_resident`, `scheduled/schedule_failed`,
+  `candidate_experts/resident_before/ready/not_ready/zero_candidates/dry_run/seed_seconds`.
+  Combacia coi commit live-tree "tiering: add cq1 cold sidecar", "gate cq1 by prompt
+  hotset", "observe pace breath exchange" (mai patchati).
+- **Utility env/cache-floor:** `ds4_env_truthy`, `ds4_env_u32`,
+  `ds4_streaming_cache_token_working_set_slots`, `ds4_engine_apply_pace_cache_floor`
+  (`DS4_PACE_CACHE_FLOOR`, `DS4_PACE_CACHE_TARGET_SLOTS`), `ds4_spex_path_magic_is`.
+- **Integrazione engine/session:** hunk in `ds4_engine_configure_streaming_auto_cache`,
+  `ds4_engine_open`, `ds4_session_sync` (apply mask prefill + wiring cache-floor);
+  estensioni `ds4_spex_markov_*` oltre 0004.
+
+Solo ~46 delle ~1213 righe sono il rotate originale di 0015; il resto è substrato live-only.
+
+### Regola di switchover
+
+Gli **originali restano la serie operativa** finché non c'è uno **SMOKE su pod della v2**
+(build da `80ebbc3` + apply `canonical/` in ordine + boot + smoke di meccanismo rotate32).
+**Solo dopo lo smoke verde** la v2 diventa canonica e `0015-pace-raw-router-k-rotation`
+/ `0016-pace-rebuild-on-tighten` / `0018-pace-skip-wrap-on-rotate` vengono marcati
+**deprecati** (NON rimossi finché il pod agent in corso li usa). `0020/0021/0026` sono
+identici in entrambe le serie.
+
+### Rischi (dichiarati)
+
+1. **BUILD NON VERIFICATO (mandato CPU-only):** apply-clean ≠ compila. La v2 riproduce
+   `ds4.c` byte-identico al live-tree, ma i file GPU fratelli `ds4_cuda.cu`/`ds4_gpu.h`
+   sono ricostruiti **solo a livello fine-0014e** (patch 0001-0008/0011), NON allo stato
+   live-tree. Se il codice SPEX-hidden/GPU-prefetch in `ds4.c` referenzia dichiarazioni
+   CUDA che vivono solo nel `ds4_cuda.cu`/`ds4_gpu.h` live-tree (avanzati oltre 0014e), la
+   v2 **applica ma non builda**. Il path pace/rotate usa solo API GPU base (`router_probs`
+   via `ds4_gpu_tensor_read`) e dovrebbe buildare. ⇒ **lo smoke di switchover DEVE essere
+   build+boot su pod, non solo apply-check.**
+2. **OVER-SCOPE:** `0015-pace-canonical` canonizza sottosistemi non-pace (SPEX-hidden,
+   cq1/tiering) perché entangled nello snapshot live a cui le leve sono ancorate. Fedele al
+   binario reale, ma mischia i rami. Un refactor "pace-minimale" futuro potrà sfoltire — ma
+   solo dopo aver verificato che 0020/0021/0026 applicano ancora sull'albero sfoltito.
+3. **ENTANGLEMENT irreversibile:** l'originale `0015-pace` non è più reverse-applicabile
+   (tiering ha riscritto `ds4_pace_init`); un `0014f`+0015 sottile non è ricostruibile
+   fedelmente. La 3-patch è il massimo di separazione onesta ottenibile.
+
+Provenienza base pulita: live-tree WSL `/root/ds4` (remote `github.com/antirez/ds4`,
+commit `80ebbc3` in history) — coerente con `runs/ds4/20260710_pod_t1_full_positive_control/README.md`.
