@@ -58,7 +58,13 @@ Il run in corso `20260710_w100_rotate32_..._compact_prompt` è di fatto un pre-T
 | L7 | Exchange asincrono compressione (step 8 del piano dinamico) | Cap effettivo 512-1024 (hit sim 0.59-0.76 vs 0.34); mai CQ1 sincrono nel path caldo |
 
 Backlog (dopo L1-L7): temporal same-layer prefetch (recall 0.55, finding 05-07 mai implementato); sidecar int4 top-expert;
-rewind/rollback parziale; prefetch-dal-prompt senza mask apply (unica cura nota per il prefill 115-213 s).
+**S1-guided rewind (correzione) → `docs/S1_REWIND_DESIGN.md`** (candidate patch 0022): posizione nella scala =
+CORREZIONE, subito dopo L2/L3 (prevenzione slope-S1 → rotate/widen) e **prima** dello stopper come strategia primaria.
+Lo stopper M1b resta AIRBAG (ultima risorsa) e benchmark di confronto nell'A/B, non la cura. Verdetto fattibilità
+engine = CLEAR/low-risk: i primitivi hard (frontier snapshot/restore `spec_frontier_*`, rewind del contatore
+`ds4_session_rewind`) esistono già e girano ogni token per la speculazione MTP; il rewind è un macro su di essi + un
+evento di retraction nello stream. Da fare dopo il verdetto M1b + canonizzazione pace-series.
+Prefetch-dal-prompt senza mask apply (unica cura nota per il prefill 115-213 s).
 
 ## Definition of done per il goal
 
