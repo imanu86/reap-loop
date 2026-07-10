@@ -60,3 +60,22 @@ primi 8 caratteri.
    (`/root/ds4/ds4.c`, verifica simboli 2026-07-10) non contiene il simbolo.
 5. `moe:patches/ds4/archive/2026-07-04-stall-instrumentation-uncommitted.patch` (ad71e31b) è
    materiale storico dell'arena moe: resta in moe e non entra nella serie canonica.
+
+## Stato apply — deploy T1 pod (2026-07-10)
+
+Il deploy T1 su base **pulita e pinnata `80ebbc3`** (pod RunPod, build da sorgente) ha
+dimostrato che **la serie NON applica pulita end-to-end**:
+
+- **Applicati clean solo `0001-0008` e `0011-0014e`** (dopo aver strippato il CRLF raccolto
+  dal checkout Windows — esattamente la trappola della regola 1).
+- **`0009/0010` falliscono sulla base pulita** (context mismatch; sono dspark-MTP, inutili in
+  T1 → saltati).
+- **`0015/0016-pace + 0018` richiedono contesto live-tree NON canonizzato**: dipendono da
+  campi struct (`prefill_apply`, `prefill_wait_wrap`) che esistono solo nel live-tree locale
+  non committato, in nessuna patch canonica ⇒ la rotazione (rotate32) **non è disponibile nel
+  binario pod** costruito dalla serie.
+- **TODO bloccante: canonizzare la serie pace** (`0015/0016-pace`, `0018`, con i campi struct
+  che oggi vivono solo nel live-tree) **prima di qualunque smoke `0020/0021` su pod** — altrimenti
+  le leve L2/L3 non si possono buildare dalla serie canonica.
+
+Fonte: `runs/ds4/20260710_pod_t1_full_positive_control/README.md` (sezione gap / Runtime).

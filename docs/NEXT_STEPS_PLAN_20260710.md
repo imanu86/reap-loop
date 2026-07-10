@@ -35,21 +35,23 @@ sul 3060, e ogni verdetto recente poggia su n=1 + grading a regex.
 
 | # | Test | Decide |
 |---|---|---|
-| T1 | Full @800 tok 3060 (controllo positivo) | Se la degenerazione è colpa di K23 o del prompt/2-bit |
-| T2 | rotate32 vs static K23, n=3, L0-L3, cache 128 e 256 | Il candidato SOTA attuale: i −0.4 t/s di rotate comprano qualità vera? |
+| T1 — **FATTO** | Full @800 tok (controllo positivo, eseguito su pod 3090, non 3060) | **Budget-confound: il full è L0 a 800 E 2000 sul cyberpunk (colpa del budget/prompt, non di K23 né del 2-bit), pagina completa L2 a 3498 tok, 13/13 repeat=0. Resta attribuibile alla mask SOLO la firma loop. Fonte: runs/ds4/20260710_pod_t1_full_positive_control/README.md** |
+| T2 | rotate32 vs static K23, n=3, L0-L3, cache 128 e 256 | Il candidato SOTA attuale: i −0.4 t/s di rotate comprano qualità vera? **Ridefinito post-T1: confronto a 2000-4000 tok ctx8192 con grading L0-L3 (il budget 800 non è un banco di prova valido sul cyberpunk); coincide con M1a in HANDOFF_CODEX.** |
 | T3 | stale vs relearn_on_tighten, n=3 | Se il delta 2.61→2.76 è reale o rumore |
 | T4 | W-sweep con freeze a boundary sicuro (`}`/`;`), W=30..150, render | Riabilita/uccide la tabella W (oggi lotteria del punto di taglio) |
 | T5 | weighted OFFLINE (`build_session_mask.py`) vs unit in-engine, n=3 | Riconcilia il drift metodologico; cosa deve calcolare il relearn |
 
 Il run in corso `20260710_w100_rotate32_..._compact_prompt` è di fatto un pre-T2/T4 (attacca la prompt-sensitivity): integrarlo a ledger.
 
+**T4/T5 hanno gli harness pronti** (commit `561552d`, offline prep): T4 → `scripts/run_w_sweep_freeze_safe.py` + `scripts/freeze_boundary.py` (+test); T5 → `scripts/build_session_mask_canonical.py` (+test); runbook in `docs/T4_T5_RUNBOOK.md`. Mancano solo i run (scheda locale / pod).
+
 ## Fase 3 — Leve (per valore atteso; una alla volta, un solo delta rispetto a SOTA_LOCAL_3060)
 
 | # | Leva | Razionale |
 |---|---|---|
 | L1 | **Two-phase W50-100 in-engine** con freeze sicuro, senza re-prefill | Fase2/fase1 = 14.6/2.03 ≈ 7×: la più grande leva velocità+qualità misurata |
-| L2 | **Slope-S1 come trigger** (0012 → nuovo `DS4_PACE_S1_TRIGGER`) | Unico segnale con ~200 tok di preavviso; n-gram dimostrato tardivo 6 volte |
-| L3 | **Rotation triggered + delta-prefetch** (~43 slot/step, non WRAP full 75-699 GiB) | Il "next" dichiarato; non esiste ancora `DS4_PACE_ROTATE_TRIGGER` |
+| L2 | **Slope-S1 come trigger** (0012 → nuovo `DS4_PACE_S1_TRIGGER`) | Unico segnale con ~200 tok di preavviso; n-gram dimostrato tardivo 6 volte. **Patch in authoring: 0020.** |
+| L3 | **Rotation triggered + delta-prefetch** (~43 slot/step, non WRAP full 75-699 GiB) | Il "next" dichiarato; non esiste ancora `DS4_PACE_ROTATE_TRIGGER`. **Patch in authoring: 0021.** |
 | L4 | **SPEX hidden consumer** (bridge pronto, ready=624) | selected_direct 99.98% = stall; testare SOLO locale SSD-bound |
 | L5 | **Adaptive-K coverage runtime** (`DS4_PACE_COVERAGE`) | Manopola task-indipendente (cov90→L2/L3), mai provata sul 3060 |
 | L6 | clock_breath64 corto/precoce esteso a 800 tok | Unico attuatore breath con segnale positivo (2.78-2.97 t/s repeat=0) |

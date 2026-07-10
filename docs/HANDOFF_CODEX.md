@@ -31,6 +31,7 @@
 - `docs/NEXT_STEPS_PLAN_20260710.md` — piano fasi/test/leve
 - `runs/ds4/20260710_retro_grade_l0l3/REPORT.md` — retro-grade L0-L3 dei 105 output (87/89 HTML = L0)
 - `runs/ds4/20260710_w50_rotate32_k23_cache256_html4000/ANALYSIS.md` — non-determinismo greedy + repetition-lock
+- `runs/ds4/20260710_pod_t1_full_positive_control/README.md` — T1: budget-confound dimostrato; firma loop resta della mask; test cyberpunk validi solo a ~4000 tok o prompt compatto
 - `patches/README.md` — mappa canonica patch
 
 ## §MANDATO CORRENTE — M1 (aperto 2026-07-10)
