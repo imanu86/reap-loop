@@ -1,0 +1,9 @@
+{
+  "coherent_until_token_est": 2000,
+  "first_bad_token_est": null,
+  "body_starts_token_est": 1541,
+  "repeat_conclusive_token_est": null,
+  "result_text": "No early repetition loop: stream reached max token 2000 and the browser should render a visible partial page. With W50, body markup starts around token/event 1541, earlier than the W100 rotate32 run, and the output continues into product-card markup. Form, script, confirmation text, and html close are absent because the run ended at the token limit, not because a degeneration loop was observed.",
+  "verdict": "visually_renderable_token_budget_limited_w50_no_loop",
+  "method": "Measured from stream_events_measured.jsonl plus content_measured.txt. <body appears at stream event 1542 / content event 1541; <form, <script, richiesta inviata, and </html> are absent; repeat detector stayed off through completion_tokens=2000."
+}
