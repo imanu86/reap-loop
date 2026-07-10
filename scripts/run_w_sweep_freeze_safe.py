@@ -52,6 +52,8 @@ import sys
 
 DEFAULT_W = [30, 50, 70, 90, 110, 130, 150]
 _TPS_RE = re.compile(r"prefill:\s*([0-9.]+)\s*t/s,\s*generation:\s*([0-9.]+)\s*t/s")
+_FENCE_OPEN_RE = re.compile(r"^\s*```[a-zA-Z0-9_-]*[ \t]*\r?\n")
+_FENCE_CLOSE_RE = re.compile(r"\n```[ \t]*(?:\r?\n|$)")
 _SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(.*?)</script>", re.IGNORECASE | re.DOTALL)
 _ALERT_RE = re.compile(r"alert\s*\(|confirm\s*\(|showModal", re.IGNORECASE)
 _REPEAT_RE = re.compile(r"(.{24,160})\1\1", re.S)
@@ -81,6 +83,29 @@ except Exception:  # pragma: no cover - grading is optional
 
 
 # ----------------------------- pure helpers -----------------------------------
+
+def strip_markdown_fence(text):
+    """Strip a leading markdown code fence and cut at its closing fence.
+
+    The local live-tree binary (post-0018) wraps the phase-1 HTML in a
+    ```` ```html ```` fence even with --nothink; the pod replay output had none.
+    Unstripped, the backticks read as an unterminated JS template literal in
+    ``freeze_boundary._safe_boundaries`` (zero safe boundaries -> raw-cut
+    lottery, the exact J44 confound T4 removes) and the fence would contaminate
+    the phase-2 re-prefill (the historical recipe prefills pure HTML). Pure
+    string function; no-op when there is no leading fence.
+    """
+    if not text:
+        return text
+    m = _FENCE_OPEN_RE.match(text)
+    if not m:
+        return text
+    text = text[m.end():]
+    m2 = _FENCE_CLOSE_RE.search(text)
+    if m2:
+        text = text[:m2.start() + 1]  # keep the newline that precedes the fence
+    return text
+
 
 def default_w_values():
     return list(DEFAULT_W)
@@ -216,8 +241,9 @@ def run_one(args, w, run, prompt_text):
     env1, cmd1 = phase1_cmd(args, w, args.prompt_file, route_csv, seed)
     _run(env1, cmd1, tw, p1diag, args.timeout)
 
-    # --- freeze at a safe boundary <= W tokens ---
-    gen_text = _read(tw)
+    # --- freeze at a safe boundary <= W tokens (fence-stripped: the local
+    # live-tree binary emits a ```html fence that blinds the boundary scanner) ---
+    gen_text = strip_markdown_fence(_read(tw))
     fp = freeze_boundary.find_safe_freeze_point(gen_text, w)
     frozen_path.write_text(fp.frozen_text, encoding="utf-8", newline="\n")
 

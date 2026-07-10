@@ -102,3 +102,31 @@ def test_default_w_values() -> None:
 def test_w_run_dir_layout() -> None:
     d = hs.w_run_dir("/out", 50, 2)
     assert d.parts[-2:] == ("W050", "r02")
+
+
+def test_strip_markdown_fence_leading_html_fence() -> None:
+    # local live-tree binary wraps phase-1 output in a ```html fence: without
+    # stripping, the backticks blind freeze_boundary (unterminated template
+    # literal -> zero safe boundaries) — observed in the 20260710 local smoke.
+    raw = "```html\n<!DOCTYPE html>\n<html>\n<head>\n</head>\n"
+    got = hs.strip_markdown_fence(raw)
+    assert got.startswith("<!DOCTYPE html>")
+    assert "```" not in got
+
+
+def test_strip_markdown_fence_cuts_at_closing_fence() -> None:
+    raw = "```html\n<p>hi</p>\n```\nSome chatter after the fence."
+    got = hs.strip_markdown_fence(raw)
+    assert got == "<p>hi</p>\n"
+
+
+def test_strip_markdown_fence_noop_without_fence() -> None:
+    raw = "<!DOCTYPE html>\n<html></html>\n"
+    assert hs.strip_markdown_fence(raw) == raw
+    assert hs.strip_markdown_fence("") == ""
+
+
+def test_strip_markdown_fence_restores_boundaries() -> None:
+    raw = "```html\n<!DOCTYPE html>\n<html>\n<head>\n<style>body { margin: 0; }\n"
+    fp = hs.freeze_boundary.find_safe_freeze_point(hs.strip_markdown_fence(raw), 50)
+    assert fp.boundary != "none"
