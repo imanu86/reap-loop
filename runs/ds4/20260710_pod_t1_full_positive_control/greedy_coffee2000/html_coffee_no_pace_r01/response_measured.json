@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 821,
+  "stream_content_events": 818,
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 819,
+    "total_tokens": 1050,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 231
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "```html\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Bean & Brew</title>\n    <style>\n        /* minimal reset + layout */\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body { font-family: system-ui, sans-serif; background: #faf7f0; color: #2e2e2e; }\n        nav { background: #4b2e2e; padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem; }\n        nav a { color: #f5e6d3; text-decoration: none; font-weight: 500; }\n        nav a:hover { color: #fff; }\n        .hero { background: #d9b89c; padding: 3rem 1.5rem; text-align: center; }\n        .hero h1 { font-size: 2.5rem; color: #2e1a1a; }\n        .hero p { font-size: 1.2rem; margin-top: 0.5rem; color: #3d2b2b; }\n        #order { margin-top: 1.2rem; padding: 0.6rem 1.8rem; font-size: 1.1rem; background: #2e1a1a; color: #f5e6d3; border: none; border-radius: 6px; cursor: pointer; }\n        #order:hover { background: #4b2e2e; }\n        form { margin: 2rem 1.5rem; max-width: 320px; display: flex; flex-direction: column; gap: 0.8rem; }\n        input { padding: 0.5rem; border: 1px solid #b29782; border-radius: 4px; background: #fff; }\n        input[type=\"submit\"] { background: #4b2e2e; color: #f5e6d3; border: none; padding: 0.6rem; border-radius: 6px; cursor: pointer; font-size: 1rem; }\n        input[type=\"submit\"]:hover { background: #2e1a1a; }\n        footer { text-align: center; padding: 1rem; color: #5c4a3a; font-size: 0.9rem; }\n    </style>\n</head>\n<body>\n    <!-- nav -->\n    <nav>\n        <a href=\"#\">Home</a>\n        <a href=\"#\">Menu</a>\n        <a href=\"#\">Contact</a>\n    </nav>\n\n    <!-- hero -->\n    <section class=\"hero\">\n        <h1>Bean & Brew</h1>\n        <p>Freshly roasted · crafted with care</p>\n        <button id=\"order\">Order Now</button>\n    </section>\n\n    <!-- form -->\n    <form action=\"/submit\" id=\"contactForm\">\n        <input type=\"text\" name=\"name\" placeholder=\"Your name\" required>\n        <input type=\"email\" name=\"email\" placeholder=\"Email address\" required>\n        <input type=\"submit\" value=\"Send\">\n    </form>\n\n    <footer>☕ Bean & Brew — your daily cup</footer>\n\n    <script>\n        document.getElementById('order').addEventListener('click', function() {\n            alert('Thank you for your order!');\n        });\n\n        document.getElementById('contactForm').addEventListener('submit', function(e) {\n            e.preventDefault();\n            alert('Thank you for reaching out! We’ll get back to you soon.');\n        });\n    </script>\n</body>\n</html>\n```"
+      },
+      "finish_reason": "stop"
+    }
+  ]
+}

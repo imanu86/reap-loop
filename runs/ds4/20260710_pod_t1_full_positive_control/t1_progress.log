@@ -1,0 +1,48 @@
+[08:02:22] START
+[08:02:22] step1 greedy 800 html+coffee n=3 abab
+[matrix] start html_no_pace_r01
+[08:04:17] WAIT_STEP1
+[matrix] done html_no_pace_r01 wall=174.3s avg=4.91 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=0
+[matrix] start html_no_pace_r02
+[matrix] done html_no_pace_r02 wall=167.5s avg=5.13 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=0
+[matrix] start html_no_pace_r03
+[matrix] done html_no_pace_r03 wall=166.1s avg=5.18 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=0
+[matrix] start html_coffee_no_pace_r01
+[matrix] done html_coffee_no_pace_r01 wall=192.1s avg=4.8 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=1
+[matrix] start html_coffee_no_pace_r02
+[matrix] done html_coffee_no_pace_r02 wall=185.5s avg=5.01 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=1
+[matrix] start html_coffee_no_pace_r03
+[matrix] done html_coffee_no_pace_r03 wall=176.9s avg=5.19 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=3
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_800/summary.csv
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_800/summary_median.csv
+[08:20:38] STEP1_FINISHED_RESUMING
+[08:20:38] step2 greedy 2000 html n=2
+[matrix] start html_no_pace_r01
+[matrix] done html_no_pace_r01 wall=426.2s avg=4.82 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=0
+[matrix] start html_no_pace_r02
+[matrix] done html_no_pace_r02 wall=420.8s avg=4.88 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=0
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_html2000/summary.csv
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_html2000/summary_median.csv
+[08:34:51] step2 exit=0
+[08:34:51] step3 greedy 2000 html_coffee n=1
+[matrix] start html_coffee_no_pace_r01
+[matrix] done html_coffee_no_pace_r01 wall=203.3s avg=4.61 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=3
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_coffee2000/summary.csv
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_coffee2000/summary_median.csv
+[08:38:18] step3 exit=0
+[08:38:18] step4 sampled 2000 html n=2 (temp0.7 top_p0.95 seed42)
+[sampling] done html_no_pace_sampled_r01 wall=509.3s avg=4.02 l0l3=0
+[sampling] done html_no_pace_sampled_r02 wall=502.9s avg=4.07 l0l3=0
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/sampled_html2000/summary_sampling.json
+[08:55:18] step4 exit=0
+[08:55:18] step5 sampled 800 html n=1
+[sampling] done html_no_pace_sampled_r01 wall=201.9s avg=4.2 l0l3=0
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/sampled_html800/summary_sampling.json
+[08:58:45] step5 exit=0
+[08:58:45] step6 greedy 4000 html n=1
+[matrix] start html_no_pace_r01
+[matrix] done html_no_pace_r01 wall=739.7s avg=4.8 pace_pre=0 pace_br=0 pace_rot=0 promote=0 l0l3=2
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_html4000/summary.csv
+/root/reap-loop/runs/ds4/20260710_pod_t1_full_positive_control/greedy_html4000/summary_median.csv
+[09:11:08] step6 exit=0
+[09:11:08] ALL_DONE

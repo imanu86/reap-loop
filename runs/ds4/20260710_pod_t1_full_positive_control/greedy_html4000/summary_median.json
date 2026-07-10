@@ -1,0 +1,16 @@
+[
+  {
+    "prompt": "html",
+    "variant": "no_pace",
+    "run_count": 1,
+    "variant_rationale": "Quality/perf control with PACE disabled.",
+    "avg_tps_median": 4.8,
+    "first50_tps_median": 4.32,
+    "prompt_s_median": 11.1,
+    "l0l3_median": 2.0,
+    "doctype": 1,
+    "has_popup": 1,
+    "alert_in_script": 1,
+    "repeat_flag": 0
+  }
+]

@@ -1,0 +1,2 @@
+prompt,variant,run_count,variant_rationale,avg_tps_median,first50_tps_median,prompt_s_median,l0l3_median,doctype,has_popup,alert_in_script,repeat_flag
+html,no_pace,1,Quality/perf control with PACE disabled.,4.8,4.32,11.1,2.0,1,1,1,0

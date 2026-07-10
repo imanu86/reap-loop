@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 800,
+    "total_tokens": 1031,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 231
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "```html\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Bean & Brew</title>\n    <style>\n        /* minimal reset + layout */\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body { font-family: system-ui, sans-serif; background: #f5f0e8; color: #2e1f0e; }\n        nav { background: #3e2c1a; padding: 0.5rem 1rem; display: flex; gap: 1.5rem; }\n        nav a { color: #f5f0e8; text-decoration: none; font-weight: 500; }\n        nav a:hover { color: #d4b48c; }\n        .hero { background: #d4b48c; padding: 2rem 1rem; text-align: center; }\n        .hero h1 { font-size: 2.5rem; margin-bottom: 0.25rem; }\n        .hero p { font-size: 1.1rem; opacity: 0.9; }\n        #order { margin: 1.5rem auto; display: block; padding: 0.75rem 2rem; font-size: 1.2rem; border: none; border-radius: 8px; background: #3e2c1a; color: #f5f0e8; cursor: pointer; }\n        #order:hover { background: #2e1f0e; }\n        form { max-width: 400px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }\n        form input { width: 100%; padding: 0.5rem; margin-bottom: 0.75rem; border: 1px solid #ccc; border-radius: 4px; }\n        form input[type=\"submit\"] { background: #3e2c1a; color: #f5f0e8; border: none; cursor: pointer; font-size: 1rem; }\n        form input[type=\"submit\"]:hover { background: #2e1f0e; }\n        footer { text-align: center; padding: 1rem; font-size: 0.9rem; color: #5a4a3a; }\n    </style>\n</head>\n<body>\n    <!-- nav -->\n    <nav>\n        <a href=\"#\">Home</a>\n        <a href=\"#\">Menu</a>\n        <a href=\"#\">Contact</a>\n    </nav>\n\n    <!-- hero -->\n    <section class=\"hero\">\n        <h1>Bean & Brew</h1>\n        <p>Freshly roasted coffee, crafted with care.</p>\n    </section>\n\n    <!-- order button -->\n    <button id=\"order\">Order Now</button>\n\n    <!-- contact form -->\n    <form action=\"/submit\" id=\"contactForm\">\n        <input type=\"text\" name=\"name\" placeholder=\"Your name\" required>\n        <input type=\"email\" name=\"email\" placeholder=\"Your email\" required>\n        <input type=\"submit\" value=\"Submit\">\n    </form>\n\n    <footer>© Bean & Brew — sip happiness</footer>\n\n    <script>\n        // order button alert\n        document.getElementById('order').addEventListener('click', function() {\n            alert('Thank you for your order!');\n        });\n\n        // form handler\n        document.getElementById('contactForm').addEventListener('submit"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

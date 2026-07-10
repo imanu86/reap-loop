@@ -1,0 +1,23 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi in modo diretto, utile e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Write a COMPLETE and COMPACT single-file HTML page for a coffee shop. Output ONLY the HTML, nothing else. Keep the CSS SHORT (about 10-15 rules max) — prioritize a COMPLETE, working page over elaborate styling. The page MUST be fully closed with </html> and MUST contain all of these:\n1. A <nav> with three links: Home, Menu, Contact.\n2. A hero <section> with <h1>Bean & Brew</h1> and a one-line subheading.\n3. A <button id=\"order\">Order Now</button> wired in <script> with addEventListener that shows alert(\"Thank you for your order!\").\n4. A <form action=\"/submit\"> with a name text input, an email input, a submit button, and an onsubmit handler that calls preventDefault and shows a confirmation.\n5. Minimal embedded CSS in <style> and the JS in <script>.\nWrite the entire compact HTML document now and finish it.\n"
+    }
+  ],
+  "max_tokens": 2000,
+  "temperature": 0,
+  "stream": true,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  },
+  "stream_options": {
+    "include_usage": true
+  }
+}

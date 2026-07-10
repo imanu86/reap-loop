@@ -1,0 +1,60 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        /* minimal reset + layout */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f5f0e8; color: #2e1f0e; }
+        nav { background: #3e2c1a; padding: 0.5rem 1rem; display: flex; gap: 1.5rem; }
+        nav a { color: #f5f0e8; text-decoration: none; font-weight: 500; }
+        nav a:hover { color: #d4b48c; }
+        .hero { background: #d4b48c; padding: 2rem 1rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 0.25rem; }
+        .hero p { font-size: 1.1rem; opacity: 0.9; }
+        #order { margin: 1.5rem auto; display: block; padding: 0.75rem 2rem; font-size: 1.2rem; border: none; border-radius: 8px; background: #3e2c1a; color: #f5f0e8; cursor: pointer; }
+        #order:hover { background: #2e1f0e; }
+        form { max-width: 400px; margin: 2rem auto; padding: 1rem; background: #fff; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+        form input { width: 100%; padding: 0.5rem; margin-bottom: 0.75rem; border: 1px solid #ccc; border-radius: 4px; }
+        form input[type="submit"] { background: #3e2c1a; color: #f5f0e8; border: none; cursor: pointer; font-size: 1rem; }
+        form input[type="submit"]:hover { background: #2e1f0e; }
+        footer { text-align: center; padding: 1rem; font-size: 0.9rem; color: #5a4a3a; }
+    </style>
+</head>
+<body>
+    <!-- nav -->
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+
+    <!-- hero -->
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted coffee, crafted with care.</p>
+    </section>
+
+    <!-- order button -->
+    <button id="order">Order Now</button>
+
+    <!-- contact form -->
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <input type="submit" value="Submit">
+    </form>
+
+    <footer>© Bean & Brew — sip happiness</footer>
+
+    <script>
+        // order button alert
+        document.getElementById('order').addEventListener('click', function() {
+            alert('Thank you for your order!');
+        });
+
+        // form handler
+        document.getElementById('contactForm').addEventListener('submit

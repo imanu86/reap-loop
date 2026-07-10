@@ -1,0 +1,22 @@
+{
+  "stream": true,
+  "stream_events": 803,
+  "stream_content_events": 800,
+  "usage": {
+    "prompt_tokens": 231,
+    "completion_tokens": 800,
+    "total_tokens": 1031,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 231
+    }
+  },
+  "choices": [
+    {
+      "message": {
+        "content": "```html\n<!DOCTYPE html>\n<html>\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Bean & Brew</title>\n    <style>\n        /* minimal reset + layout */\n        * { margin: 0; padding: 0; box-sizing: border-box; }\n        body { font-family: system-ui, sans-serif; background: #faf7f0; color: #2e2e2e; padding: 16px; }\n        nav { background: #4b2e1e; padding: 10px 16px; border-radius: 12px; margin-bottom: 20px; }\n        nav a { color: #f5e6d3; margin-right: 20px; text-decoration: none; font-weight: 500; }\n        nav a:hover { color: #fff; }\n        .hero { background: #d9b89c; padding: 28px 20px; border-radius: 20px; margin-bottom: 20px; text-align: center; }\n        .hero h1 { font-size: 2.2rem; color: #2e1a0f; }\n        .hero p { font-size: 1.1rem; margin-top: 6px; color: #3d2b1c; }\n        #order { background: #2e1a0f; color: #f5e6d3; border: none; padding: 12px 28px; font-size: 1.2rem; border-radius: 40px; cursor: pointer; margin-top: 12px; }\n        #order:hover { background: #4b2e1e; }\n        form { background: #ede3d6; padding: 20px; border-radius: 20px; max-width: 400px; margin-top: 20px; }\n        form input { display: block; width: 100%; padding: 10px; margin-bottom: 12px; border: 1px solid #b29782; border-radius: 20px; background: #fff; }\n        form input[type=\"submit\"] { background: #4b2e1e; color: #f5e6d3; border: none; font-size: 1rem; cursor: pointer; }\n        form input[type=\"submit\"]:hover { background: #2e1a0f; }\n        /* small spacing */\n        .gap { height: 10px; }\n    </style>\n</head>\n<body>\n    <!-- nav -->\n    <nav>\n        <a href=\"#\">Home</a>\n        <a href=\"#\">Menu</a>\n        <a href=\"#\">Contact</a>\n    </nav>\n\n    <!-- hero -->\n    <section class=\"hero\">\n        <h1>Bean & Brew</h1>\n        <p>Freshly roasted coffee · cozy vibes</p>\n        <button id=\"order\">Order Now</button>\n    </section>\n\n    <!-- form -->\n    <form action=\"/submit\" id=\"contactForm\">\n        <label for=\"name\">Name</label>\n        <input type=\"text\" id=\"name\" name=\"name\" placeholder=\"Your name\" required>\n        <label for=\"email\">Email</label>\n        <input type=\"email\" id=\"email\" name=\"email\" placeholder=\"you@example.com\" required>\n        <input type=\"submit\" value=\"Send message\">\n    </form>\n\n    <script>\n        // order button alert\n        document.getElementById('order').addEventListener('click', function() {\n            alert('Thank you for your order!');\n        });\n\n        // form handler\n        document.getElementById('"
+      },
+      "finish_reason": "length"
+    }
+  ]
+}

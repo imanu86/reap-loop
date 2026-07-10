@@ -1,0 +1,19 @@
+[
+  {
+    "stem": "html_no_pace_sampled_r01",
+    "evidence_type": "measured",
+    "wall_s": 201.863,
+    "prompt_tokens": 78,
+    "completion_tokens": 800,
+    "avg_tps_pod_diagnostic": 4.2,
+    "l0l3": "0",
+    "content_chars": 2457,
+    "prefix": "Ecco una landing page cyberpunk per un negozio di programmazione AI, completa di modulo contatti e popup di conferma.\\n``",
+    "s_init_count": 0,
+    "html_balance": 1,
+    "doctype": 1,
+    "has_popup": 1,
+    "alert_in_script": 0,
+    "repeat_flag": 0
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi in modo diretto, utile e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Crea una landing page HTML/CSS/JS single-file per un negozio di programmazione AI in stile cyberpunk. Deve avere un modulo contatti e un popup JS che dice richiesta inviata. Codice valido e compatto."
+    }
+  ],
+  "max_tokens": 2000,
+  "temperature": 0.7,
+  "top_p": 0.95,
+  "seed": 42,
+  "stream": false,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  }
+}

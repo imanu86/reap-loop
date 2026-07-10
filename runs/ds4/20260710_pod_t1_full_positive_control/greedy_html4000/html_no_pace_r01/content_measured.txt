@@ -1,0 +1,425 @@
+Ecco una landing page HTML/CSS/JS single-file per un negozio di programmazione AI in stile cyberpunk, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Emporium • Cyberpunk</title>
+    <!-- Font futuristico -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f1e;
+            font-family: 'Orbitron', sans-serif;
+            color: #d0f0ff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 20% 30%, #1f2b3a 0%, #0a0f1e 80%);
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(4px);
+            border: 2px solid #00f7ff;
+            box-shadow: 0 0 40px #00f7ff44, inset 0 0 20px #00f7ff22;
+            border-radius: 28px;
+            padding: 40px 30px;
+            transition: 0.3s;
+        }
+
+        /* cyberpunk heading */
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #f0f8ff;
+            text-shadow: 0 0 10px #00f7ff, 0 0 30px #0077ff, 0 0 60px #0044ff;
+            margin-bottom: 10px;
+        }
+
+        .sub-glow {
+            text-align: center;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            color: #b0e0ff;
+            border-bottom: 1px solid #00f7ff55;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 8px #00aaff;
+        }
+
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .card {
+            background: #121827dd;
+            border: 1px solid #33ffff;
+            border-radius: 20px;
+            padding: 25px 20px;
+            flex: 1 1 280px;
+            max-width: 320px;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 0 20px #00ffff33, inset 0 0 10px #00ffff22;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            border-color: #ff00ff;
+            box-shadow: 0 0 30px #ff00ff55;
+            transform: scale(1.02);
+        }
+
+        .card h3 {
+            font-size: 1.6rem;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            color: #aaffff;
+            text-shadow: 0 0 6px #00ffff;
+        }
+
+        .price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 12px #ffbb00;
+            margin: 10px 0;
+        }
+
+        .desc {
+            font-size: 0.9rem;
+            color: #b0d0e0;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .btn-neon {
+            background: transparent;
+            border: 2px solid #00f7ff;
+            color: #00f7ff;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 2px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: fit-content;
+            margin: 0 auto;
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .btn-neon:hover {
+            background: #00f7ff;
+            color: #0a0f1e;
+            box-shadow: 0 0 30px #00f7ff, 0 0 60px #00aaff;
+        }
+
+        /* modulo contatti */
+        .contact-section {
+            margin-top: 40px;
+            border-top: 2px dashed #ff00ff55;
+            padding-top: 30px;
+        }
+
+        .contact-inner {
+            max-width: 580px;
+            margin: 0 auto;
+            background: #0e1424dd;
+            border: 1px solid #ff66ff;
+            border-radius: 24px;
+            padding: 30px 25px;
+            backdrop-filter: blur(4px);
+            box-shadow: 0 0 30px #ff00ff33;
+        }
+
+        .contact-inner h2 {
+            text-align: center;
+            font-size: 1.8rem;
+            letter-spacing: 4px;
+            margin-bottom: 20px;
+            color: #f0aaff;
+            text-shadow: 0 0 10px #ff00ff;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 6px;
+            color: #b0f0ff;
+            font-size: 0.9rem;
+            letter-spacing: 1px;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            background: #1a1f2e;
+            border: 1px solid #33ffff;
+            border-radius: 30px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: #e0f0ff;
+            outline: none;
+            transition: 0.2s;
+        }
+
+        input:focus, textarea:focus {
+            border-color: #ff00ff;
+            box-shadow: 0 0 20px #ff00ff44;
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            background: #ff00ff;
+            border: none;
+            color: #0a0f1e;
+            font-weight: 700;
+            font-size: 1.2rem;
+            letter-spacing: 3px;
+            padding: 12px 30px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: 100%;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            box-shadow: 0 0 20px #ff00ff88;
+        }
+
+        .btn-submit:hover {
+            background: #ff33ff;
+            box-shadow: 0 0 40px #ff00ff, 0 0 80px #ff00ff88;
+            transform: scale(1.02);
+        }
+
+        /* popup */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: #000000aa;
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .popup-box {
+            background: #121827;
+            border: 3px solid #00f7ff;
+            border-radius: 40px;
+            padding: 40px 50px;
+            max-width: 420px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 0 60px #00f7ff66;
+            animation: flicker 0.3s;
+        }
+
+        .popup-box h3 {
+            font-size: 2rem;
+            color: #aaffff;
+            text-shadow: 0 0 20px #00ffff;
+            margin-bottom: 10px;
+        }
+
+        .popup-box p {
+            color: #b0e0ff;
+            margin: 15px 0;
+            font-size: 1rem;
+        }
+
+        .popup-close {
+            background: transparent;
+            border: 2px solid #ff00ff;
+            color: #ff00ff;
+            padding: 8px 30px;
+            border-radius: 40px;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 10px;
+        }
+
+        .popup-close:hover {
+            background: #ff00ff;
+            color: #0a0f1e;
+            box-shadow: 0 0 30px #ff00ff;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 30px;
+            font-size: 0.7rem;
+            color: #667788;
+            letter-spacing: 2px;
+        }
+
+        @media (max-width: 600px) {
+            h1 { font-size: 2rem; }
+            .container { padding: 20px 15px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>⚡ AI CODE EMPORIUM</h1>
+        <div class="sub-glow">✦ cyberpunk programming • neural shop ✦</div>
+
+        <!-- prodotti -->
+        <div class="grid">
+            <div class="card">
+                <h3>NEURAL ENGINE</h3>
+                <div class="price">$499</div>
+                <div class="desc">Predictive AI core • TensorFlow 4.0<br>Edge deployment ready</div>
+                <button class="btn-neon" onclick="alert('🔧 Aggiunto al sistema neurale')">ACQUISTA</button>
+            </div>
+            <div class="card">
+                <h3>DEEP SYNTAX</h3>
+                <div class="price">$799</div>
+                <div class="desc">Compiler AI • NLP • code generation<br>Zero-shot reasoning</div>
+                <button class="btn-neon" onclick="alert('🔧 Modulo Deep Syntax inizializzato')">ACQUISTA</button>
+            </div>
+            <div class="card">
+                <h3>CYBER DREAM</h3>
+                <div class="price">$1,299</div>
+                <div class="desc">Full-stack AI dev kit • 10 models<br>API cybernetiche</div>
+                <button class="btn-neon" onclick="alert('🔧 Cyber Dream installato')">ACQUISTA</button>
+            </div>
+        </div>
+
+        <!-- modulo contatti -->
+        <div class="contact-section">
+            <div class="contact-inner">
+                <h2>📡 CONTACT NODE</h2>
+                <form id="contactForm">
+                    <div class="form-group">
+                        <label for="name">◈ NOME / ID</label>
+                        <input type="text" id="name" placeholder="il tuo tag" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">◈ EMAIL / CYBERBOX</label>
+                        <input type="email" id="email" placeholder="nome@dominio" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="message">◈ MESSAGGIO</label>
+                        <textarea id="message" placeholder="Richiedi un modello AI, assistenza o connessione..." required></textarea>
+                    </div>
+                    <button type="submit" class="btn-submit">◈ INVIA RICHIESTA</button>
+                </form>
+            </div>
+        </div>
+
+        <footer>✦ AI-2077 • tutti i dati sono criptati con firma quantica ✦</footer>
+    </div>
+
+    <!-- popup -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-box">
+            <h3>✔ RICHIESTA INVIATA</h3>
+            <p>Il tuo messaggio è entrato nella rete neurale.<br>Risposta entro 2.4 nanosecondi.</p>
+            <button class="popup-close" id="closePopup">CHIUDI</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const form = document.getElementById('contactForm');
+            const popup = document.getElementById('popupOverlay');
+            const closeBtn = document.getElementById('closePopup');
+
+            // mostra popup
+            function showPopup() {
+                popup.style.display = 'flex';
+            }
+
+            // nascondi popup
+            function hidePopup() {
+                popup.style.display = 'none';
+            }
+
+            // gestione invio form
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+
+                // piccola validazione base
+                const name = document.getElementById('name').value.trim();
+                const email = document.getElementById('email').value.trim();
+                const message = document.getElementById('message').value.trim();
+
+                if (!name || !email || !message) {
+                    alert('⚠️ Compila tutti i campi, operatore.');
+                    return;
+                }
+
+                // simula invio e mostra popup
+                showPopup();
+
+                // reset opzionale
+                form.reset();
+            });
+
+            // chiusura popup
+            closeBtn.addEventListener('click', hidePopup);
+
+            // click fuori dal popup? (opzionale)
+            popup.addEventListener('click', function(e) {
+                if (e.target === popup) {
+                    hidePopup();
+                }
+            });
+
+            // tasto ESC per chiudere
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape' && popup.style.display === 'flex') {
+                    hidePopup();
+                }
+            });
+        })();
+    </script>
+</body>
+</html>
+```
+
+### Caratteristiche principali
+
+- **Stile cyberpunk** con colori neon, bordi luminosi, sfondo scuro e font futuristico "Orbitron".
+- **Tre prodotti** in griglia con pulsanti "Acquista" (simulano aggiunta al sistema).
+- **Modulo contatti** completo (nome, email, messaggio) con validazione base.
+- **Popup JS** che appare all'invio del modulo con il testo "Richiesta inviata" e pulsante di chiusura.
+- **Codice compatto e valido** in un unico file HTML, con CSS e JS integrati.
+
+Il popup si attiva solo dopo aver compilato tutti i campi del modulo e cliccato "Invia richiesta". Puoi chiuderlo con il pulsante "CHIUDI", cliccando fuori dalla finestra o premendo ESC.

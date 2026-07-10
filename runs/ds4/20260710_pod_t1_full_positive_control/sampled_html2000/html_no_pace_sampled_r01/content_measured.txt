@@ -1,0 +1,243 @@
+Ecco una landing page cyberpunk per un negozio di programmazione AI, completa di modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CYBER•AI • NEGOZIO</title>
+  <!-- Font futuristico -->
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    /* RESET + base cyberpunk */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    body {
+      background: radial-gradient(circle at 20% 30%, #0a0f1e, #020204);
+      color: #d0f0ff;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    /* griglia neon sottile */
+    body::before {
+      content: '';
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background-image: 
+        linear-gradient(rgba(0,255,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,255,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* main card */
+    .cyber-card {
+      max-width: 900px;
+      width: 100%;
+      background: rgba(8, 12, 25, 0.75);
+      backdrop-filter: blur(6px);
+      border: 2px solid #00f7ff;
+      box-shadow: 0 0 40px rgba(0, 255, 255, 0.3), 0 0 80px rgba(0, 255, 255, 0.1);
+      padding: 2.5rem 2rem;
+      border-radius: 32px 12px 32px 12px;
+      position: relative;
+      z-index: 10;
+      transition: box-shadow 0.3s;
+    }
+
+    .cyber-card:hover {
+      box-shadow: 0 0 60px #00f7ff, 0 0 120px #0044ff66;
+    }
+
+    /* header */
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid #00f7ff88;
+      padding-bottom: 1rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .logo {
+      font-size: 1.8rem;
+      font-weight: 900;
+      text-shadow: 0 0 15px #00f7ff, 0 0 30px #0055ff;
+      letter-spacing: 4px;
+      background: linear-gradient(45deg, #00f7ff, #a284ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .logo span {
+      -webkit-text-fill-color: #ff00c8;
+      background: none;
+      text-shadow: 0 0 20px #ff00c8;
+    }
+
+    .nav-badge {
+      background: #000b1a;
+      padding: 8px 18px;
+      border: 1px solid #ff00c8;
+      border-radius: 40px;
+      color: #ff9cfb;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 2px;
+      box-shadow: 0 0 20px #ff00c866;
+    }
+
+    /* hero */
+    .hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .hero h1 {
+      font-size: 2.8rem;
+      font-weight: 900;
+      text-transform: uppercase;
+      background: linear-gradient(135deg, #f0f, #00f7ff);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      filter: drop-shadow(0 0 20px #ff00c8);
+      margin-bottom: 0.5rem;
+    }
+
+    .hero p {
+      font-size: 1.1rem;
+      max-width: 600px;
+      color: #b0e0ff;
+      text-shadow: 0 0 8px #0000ff80;
+      letter-spacing: 1px;
+      line-height: 1.5;
+      background: #00040880;
+      padding: 10px 20px;
+      border-radius: 40px;
+      border: 1px solid #00f7ff40;
+    }
+
+    /* servizi / cards */
+    .services {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1.2rem;
+      justify-content: center;
+      margin-bottom: 2.5rem;
+    }
+
+    .service-item {
+      background: #010713cc;
+      border: 1px solid #33ffff;
+      padding: 1rem 1.3rem;
+      border-radius: 24px 8px 24px 8px;
+      flex: 1 1 140px;
+      text-align: center;
+      box-shadow: 0 0 20px #00aaff33;
+      transition: 0.2s;
+      color: #ccf6ff;
+      font-weight: 700;
+      font-size: 0.9rem;
+      letter-spacing: 1px;
+      backdrop-filter: blur(2px);
+    }
+
+    .service-item:hover {
+      border-color: #ff00c8;
+      box-shadow: 0 0 30px #ff00c8;
+      background: #0a001a;
+    }
+
+    .service-item i {
+      display: block;
+      font-size: 2rem;
+      margin-bottom: 6px;
+      filter: drop-shadow(0 0 12px cyan);
+    }
+
+    /* modulo contatti */
+    .contact-section {
+      background: #030812cc;
+      padding: 1.8rem 1.5rem;
+      border-radius: 28px 8px 28px 8px;
+      border: 1px solid #ff66d980;
+      box-shadow: inset 0 0 60px #0000ff40, 0 0 30px #ff00c840;
+      margin-bottom: 1.2rem;
+    }
+
+    .contact-section h3 {
+      font-size: 1.6rem;
+      margin-bottom: 1rem;
+      text-align: center;
+      text-shadow: 0 0 10px #ff00c8;
+      letter-spacing: 3px;
+    }
+
+    .form-row {
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+    }
+
+    .input-group {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .input-group input, .input-group textarea {
+      flex: 1;
+      padding: 14px 18px;
+      background: #0b142ccc;
+      border: 1px solid #00f7ffaa;
+      border-radius: 30px 8px 30px 8px;
+      color: #f0faff;
+      font-weight: 400;
+      font-size: 0.95rem;
+      outline: none;
+      transition: 0.2s;
+      box-shadow: 0 0 10px #0000ff40;
+      letter-spacing: 1px;
+    }
+
+    .input-group input:focus, .input-group textarea:focus {
+      border-color: #ff00c8;
+      box-shadow: 0 0 20px #ff00c8, inset 0 0 8px #ff00c8;
+      background: #0a001a;
+    }
+
+    .input-group textarea {
+      min-height: 100px;
+      resize: vertical;
+    }
+
+    .btn-submit {
+      background: transparent;
+      border: 2px solid #ff00c8;
+      color: #ff9cfb;
+      padding: 14px 30px;
+      font-weight: 900;
+      font-size: 1.3rem;
+      text-transform: uppercase;
+      letter-spacing: 6px;
+      border-radius: 40px 12px 40px 12px;
+      cursor: pointer;
+      transition

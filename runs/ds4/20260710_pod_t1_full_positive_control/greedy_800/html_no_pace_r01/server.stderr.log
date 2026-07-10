@@ -1,0 +1,32 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.420s
+ds4: cuda backend initialized for graph diagnostics
+0710 08:02:24 ds4-server: context buffers 62.81 MiB (ctx=3072, backend=cuda, prefill_chunk=128, raw_kv_rows=256, compressed_kv_rows=770)
+0710 08:02:24 ds4-server: listening on http://127.0.0.1:8014
+0710 08:02:24 ds4-server: chat ctx=0..78:78 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+0710 08:02:36 ds4-server: chat ctx=0..78:78 prompt done 11.282s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0710 08:02:46 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=4.63 t/s avg=4.63 t/s 10.810s
+0710 08:02:57 ds4-server: chat ctx=128..178:50 gen=100 decoding chunk=4.71 t/s avg=4.67 t/s 21.422s
+0710 08:03:06 ds4-server: chat ctx=178..228:50 gen=150 decoding chunk=5.35 t/s avg=4.87 t/s 30.770s
+0710 08:03:17 ds4-server: chat ctx=228..278:50 gen=200 decoding chunk=4.80 t/s avg=4.86 t/s 41.192s
+0710 08:03:27 ds4-server: chat ctx=278..328:50 gen=250 decoding chunk=4.99 t/s avg=4.88 t/s 51.203s
+0710 08:03:36 ds4-server: chat ctx=328..378:50 gen=300 decoding chunk=5.40 t/s avg=4.96 t/s 60.465s
+0710 08:03:46 ds4-server: chat ctx=378..428:50 gen=350 decoding chunk=5.08 t/s avg=4.98 t/s 70.301s
+0710 08:03:56 ds4-server: chat ctx=428..478:50 gen=400 decoding chunk=4.93 t/s avg=4.97 t/s 80.447s
+0710 08:04:05 ds4-server: chat ctx=478..528:50 gen=450 decoding chunk=5.28 t/s avg=5.00 t/s 89.920s
+0710 08:04:15 ds4-server: chat ctx=528..578:50 gen=500 decoding chunk=5.03 t/s avg=5.01 t/s 99.867s
+0710 08:04:25 ds4-server: chat ctx=578..628:50 gen=550 decoding chunk=5.04 t/s avg=5.01 t/s 109.792s
+0710 08:04:36 ds4-server: chat ctx=628..678:50 gen=600 decoding chunk=4.69 t/s avg=4.98 t/s 120.452s
+0710 08:04:46 ds4-server: chat ctx=678..728:50 gen=650 decoding chunk=4.95 t/s avg=4.98 t/s 130.556s
+0710 08:04:57 ds4-server: chat ctx=728..778:50 gen=700 decoding chunk=4.60 t/s avg=4.95 t/s 141.431s
+0710 08:05:07 ds4-server: chat ctx=778..828:50 gen=750 decoding chunk=4.83 t/s avg=4.94 t/s 151.792s
+0710 08:05:19 ds4-server: chat ctx=828..878:50 gen=800 decoding chunk=4.46 t/s avg=4.91 t/s 163.009s
+0710 08:05:19 ds4-server: chat ctx=0..78:78 gen=800 finish=length 174.292s
+0710 08:05:19 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=34443 selected_experts=210619 cache_hits=121429 cache_misses=85995 hit_rate=0.5854 miss_per_expert=0.4083 direct_loads=4219 copy_calls=270642 copied=608944.50 MiB copy_ms=138349.960 copy_ms_per_batch=4.017 sync_calls=270642 sync_ms=31442.935 sync_ms_per_batch=0.913

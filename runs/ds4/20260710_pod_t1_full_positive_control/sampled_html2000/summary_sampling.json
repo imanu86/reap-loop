@@ -1,0 +1,36 @@
+[
+  {
+    "stem": "html_no_pace_sampled_r01",
+    "evidence_type": "measured",
+    "wall_s": 509.322,
+    "prompt_tokens": 78,
+    "completion_tokens": 2000,
+    "avg_tps_pod_diagnostic": 4.02,
+    "l0l3": "0",
+    "content_chars": 6036,
+    "prefix": "Ecco una landing page cyberpunk per un negozio di programmazione AI, completa di modulo contatti e popup di conferma.\\n``",
+    "s_init_count": 0,
+    "html_balance": 1,
+    "doctype": 1,
+    "has_popup": 1,
+    "alert_in_script": 0,
+    "repeat_flag": 0
+  },
+  {
+    "stem": "html_no_pace_sampled_r02",
+    "evidence_type": "measured",
+    "wall_s": 502.927,
+    "prompt_tokens": 78,
+    "completion_tokens": 2000,
+    "avg_tps_pod_diagnostic": 4.07,
+    "l0l3": "0",
+    "content_chars": 6036,
+    "prefix": "Ecco una landing page cyberpunk per un negozio di programmazione AI, completa di modulo contatti e popup di conferma.\\n``",
+    "s_init_count": 0,
+    "html_balance": 1,
+    "doctype": 1,
+    "has_popup": 1,
+    "alert_in_script": 0,
+    "repeat_flag": 0
+  }
+]
