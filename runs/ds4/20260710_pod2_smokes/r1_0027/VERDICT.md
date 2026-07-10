@@ -11,7 +11,7 @@ Model: ds4-2bit.gguf (efc7ed60…) + MTP support model ds4-mtp.gguf (3,807,602,4
 | 219 | 50  | -1 | PASS (sanity) |
 | 400 | 50  | -1 | PASS |
 | 400 | 200 | -1 | PASS (verify_rewind_exactness.py: 1/1 PASS, exit 0) |
-| 400 | 300 | see R1_SUMMARY.txt | (sweep) |
+| 400 | 300 | -1 | PASS (sweep) |
 
 Bit-identical rewind confirmed at depth up to 200 (and 300 sweep). No divergence — proves the
 S1_REWIND_DESIGN Risk-R1 claim: in-memory rewind (spec_frontier_restore + PACE checkpoint restore +
