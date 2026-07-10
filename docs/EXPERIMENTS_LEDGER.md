@@ -729,3 +729,53 @@ It does **not** reproduce the better-quality old manual result. The likely next
 controlled variable is cache/session condition: rerun direct K23 with the old
 cache1024/large-cache setup or reconstruct the exact old session-learned mask
 before judging the trajectory itself.
+
+## 2026-07-10 Pod Cache1024 Follow-up
+
+Question: does the old cache1024/RAM-hot pod regime restore the quality that
+local cache256 direct K23 failed to reproduce?
+
+Evidence:
+
+| Run | Variant | Hardware/cache | Schedule | Throughput | Quality observation |
+| --- | --- | --- | --- | --- | --- |
+| `20260710_pod_cache1024_html800` | `local_k23_cache1024` | RunPod RTX 3090 24GB, cache1024 | Cyberpunk HTML prompt, W50 full/K0 -> fixed K23, unit-count warmup, no breath/prebreath/rotation | wall 94.576 s, avg 14.12 t/s, last chunk 24.79 t/s, prefetch 6.07 GiB / 219 ms | Fast but invalid: 2501 chars, `repeat_flag=1`, one `<!DOCTYPE>`, no `</html>`, no `<form>`, no `<script>`; tail loops CSS comments. |
+| `20260710_pod_cache1024_html800` | `local_k23_weighted_warmup_cache1024` | Same pod/cache | Same, but W50 weighted warmup ranking | wall 79.577 s, avg 16.37 t/s, last chunk 24.71 t/s, prefetch 6.07 GiB / 63 ms | Fastest direct run, but invalid: 2367 chars, `repeat_flag=1`, one `<!DOCTYPE>`, no `</html>`, no `<form>`, no `<script>`; tail loops `Stai attento` comments. |
+| `20260710_pod_cache1024_warmup_replay` | W50 two-phase session mask | Same pod/cache; compact coffee-shop prompt recovered from Claude artifacts | Phase 1: W50 wide with routing+weights trace. Phase 2: build keep-23 mask by gate-mass, re-prefill prompt+wide prefix, continue frozen for 950 tokens. | phase1 generation 2.03 t/s; phase2 generation 14.60 t/s | Functionally complete-ish and no repeat: `doctype=2`, `</html>=1`, `<form>=1`, `<script>=1`, `alert=2`, `repeat=0`. Has one restart/duplicate doctype and imperfect JS text, so treat as L2/L3 pending render, not a clean universal L3. |
+| `20260710_pod_cache1024_warmup_replay` | W130 two-phase session mask | Same pod/cache/prompt | Same as W50 with W130 and 870-token frozen continuation | phase1 generation 2.30 t/s; phase2 generation 16.24 t/s | Fast but failed quality: `doctype=1`, `</html>=0`, `<form>=1`, `<script>=1`, `alert=0`, `repeat=1`; tail loops `document.addEventListener("DOM"...`. |
+
+Conclusion: cache1024 alone restores the high-throughput regime but not quality
+on the current cyberpunk prompt. The old positive result depends on the compact
+prompt plus two-phase session-learning recipe. W50 reproduces a useful
+functionally complete-ish output at high speed; W130 did not replicate cleanly
+in this run. Keep the old cache1024 claims with explicit caveats: pod/RAM-hot,
+n=1 greedy, prompt/freeze-point sensitive, and not directly transferable to the
+3060 absolute t/s.
+
+## 2026-07-10 Claude Recovery Index
+
+Read-only recovery pass delegated to a sub-agent. Purpose: make historical
+Claude/Claude Code findings discoverable without turning them into fresh
+measurements. Raw secrets files were not read or quoted. Rows marked "medium"
+need raw artifact recovery or rerun before use as headline evidence.
+
+| Historical id | Source | Measured data recovered | Ledger status |
+| --- | --- | --- | --- |
+| `HIST-CLAUDE-SPEX-30B-20260703` | Claude export/consolidation under `Documents/Codex/2026-07-05/.../outputs/` and `.claude/projects/...` | Qwen3-30B SPEX hidden recall: domain @8/@16/@32 = `.9316/.9906/.9978`; general = `.8292/.9560/.9861`; Markov lower. 235B hidden remained estimated, not measured. | Medium: consolidated Claude output, not rerun here. |
+| `HIST-REAP-DS4-K50-V1-20260705` | `runs/reap/2026-07-05_eval_biasmask/README.md` | Full dom ppl 3.811 / gen 5.344; `reap_k50` dom 3.860 ratio 1.013x; random K50 dom 5.200 ratio 1.365x; V0 violations 0/11280. | High for PPL/actuator; speed not present. |
+| `HIST-REAP-DS4-K50-V2-20260705` | `runs/reap/2026-07-05_eval_biasmask_v2/README.md` | Same-machine H200 eval: domain full 3.852; `reap_k50` 3.891 ratio 1.010x CI `[0.996,1.025]`; `reap_k67` 1.076x; random about 1.388x; general K50 about 1.403x. | High for PPL; not a generation-quality/tps result. |
+| `HIST-K91-CODING-FIT-20260706` | `.claude` memory and `runs/reap/k91_coding_vram/README.md` | RTX 3080 Ti 12GB: K0 full hit 0.35, 2.16 t/s; K91 keep23 hit 0.67, 3.67 t/s; K96 keep9 hit 0.96, 12.02 t/s. Coding quality degraded: full K0 rendered, K50 pseudo-HTML, K91/K96 looped. | High: raw run notes recovered; confirms "fits in 12GB" and "codes well" are different axes. |
+| `HIST-CACHE1024-STATIC-K23-20260707` | `docs/CLAIMS_CURRENT.md`, `docs/paper/PAPER.md`, Claude memory | Static file-mask keep-23 17.3 t/s hit 0.986; runtime static-from-token0 11.4 t/s hit 0.923; full no-mask 3.6 t/s hit 0.607; dynamic staircase 2.5 t/s hit 0.557. | Medium: documented in paper/claims; raw summary not found in current tree. Keep as pod diagnostic, not 3060 claim. |
+| `HIST-W50-W130-SESSION-CACHE1024-20260707` | `docs/CLAIMS_CURRENT.md`, `docs/paper/PAPER.md`, recovered prompt/scripts | Old claim: cold-static keep-23 L0; session-learned keep-23 L2/L3 from W>=50; W50 L3 peak 13.6 t/s comp about 65 s; W130 L3 comp about 81 s; full L3 peak 3.4 t/s comp about 164 s. New 2026-07-10 replay partially confirms W50 high-speed functional output, but W130 failed in this build. | Medium/open: old raw not found; freeze-point sensitive; new replay narrows the claim. |
+| `DS4-K23-CACHE-SWEEP-LOCAL-20260709` | `runs/ds4/20260709_local_cache_sweep_k23_RESULTS.md` | Local 3060 cache sweep: cache128 warm around 3.34 t/s; cache258 around 3.23 t/s; cache64 around 1.85 t/s; HTML repeat remained. | High; already superseded by later controlled cache256/cache1024 runs for current question. |
+| `DS4-K23-ROTATE-POD-20260709` | `docs/DS4_K23_ROTATION_POD_RESULTS_20260709.md` | RunPod 4070 Ti 12GB: static64 html avg 3.15 repeat1; rotate16 avg 2.71 repeat0; rotate32 avg 2.74 repeat0; cache128 unsafe for rotation; cache258 failed. | High for 12GB pod rotation; not comparable to cache1024 3090. |
+
+Open recovery gaps:
+
+- Locate or reconstruct the raw `runs/reap/multiseed_2026-07-07/` speed
+  diagnostic that backs static keep-23 11-17 t/s. If not found, leave as
+  documented medium-confidence paper claim.
+- For the session-learning floor, run a real multi-W sweep on the current
+  pinned build (`W=30,50,80,110,130,150`) and grade rendered HTML, because the
+  2026-07-10 W50/W130 replay showed the expected sensitivity but did not fully
+  reproduce the old W130 L3 note.

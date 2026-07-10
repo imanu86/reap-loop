@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: sans-serif;
+            padding: 16;
+            max-width: 800;
+            margin: auto;
+        }
+        nav {
+            background: 216;
+            padding: 8;
+            gap: 16;
+            display: flex;
+            justify-content: center;
+        }
+        nav a {
+            color: white;
+            padding: 0 8;
+        }
+        section {
+            text-align: center;
+            padding: 20 0;
+        }
+        h1 {
+            font-size: 32;
+            margin: 8 0;
+        }
+        button {
+            margin: 16 0;
+            padding: 8 16;
+            background: 3;
+            color: white;
+            border-radius: 4;
+            cursor: pointer;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 8;
+            max-width: 300;
+            margin: auto;
+        }
+        input {
+            padding: 8;
+            border: 1 solid 1;
+            border-radius: 4;
+        }
+        form button {
+            background: 4;
+            color: white;
+            padding: 8 16;
+            border-radius: 4;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, bre crafted.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Submit</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", "click", alert("Thank you for your order!");
+        document.addEventListener("submit", "submit", function(e) {
+            e.preventDefault();
+            alert("Thank for your order!");
+        });
+    </script>
+</body>
+</html>

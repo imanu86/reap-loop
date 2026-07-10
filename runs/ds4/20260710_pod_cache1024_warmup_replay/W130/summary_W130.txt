@@ -1,0 +1,35 @@
+W=130
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p1_W130.diag:ds4: prefill: 7.09 t/s, generation: 2.30 t/s
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask reload da /root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/sess_W130.txt: 9320 entry potate
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+/root/reap-loop/runs/ds4/20260710_pod_cache1024_warmup_replay/W130/p2_W130.diag:ds4: prefill: 8.93 t/s, generation: 16.24 t/s
+chars 4612
+doctype 1 html_close 0 form 1 script 1 alert 0 repeat 1
+tail document.addEventListener("DOM", document.addEventListener("DOM", document.addEventListener("DOM", document.addEventListener("DOM", document.addEventListener("DOM", document.addEventListener("DOM", document.addEventListener("DOM", document\n

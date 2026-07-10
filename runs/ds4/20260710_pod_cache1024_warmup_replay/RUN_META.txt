@@ -1,0 +1,7 @@
+pod=zcdysuk9q0c08d
+gpu=RTX 3090 24GB
+bin_sha256=8746a87386b9727bb8dfa57abc8266994867bd42afcb28894a339ec9d79e2d74
+model=/root/models/ds4-2bit.gguf
+cache=1024
+ntotal=1000
+2026-07-10T04:40:39+00:00
