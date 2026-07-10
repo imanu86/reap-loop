@@ -284,6 +284,41 @@ Reuse the patch-0020 S1 machinery. Split the single slope threshold into two:
   supersedes an older one) as long as no FIRE has happened; this keeps the
   rewind shallow.
 
+**E-DET v2 tuned detector (recommended over the raw slope).** Offline replay of
+both real per-layer S1 series — the static-K91 collapse (onset ~pos 2286,
+ground-truth text lock 2476) and the aggressive pod r1 (flat ~0.815, adversarial
+control) — plus synthetic ramps calibrated on the K91 healthy noise, re-derives
+ARM/FIRE from an **aggregate EWMA-CUSUM** instead of the single slope threshold
+(`runs/ds4/20260710_edet_s1_detector_tuning/`, `REPORT.md`; script
+`scripts/tune_s1_detector.py`). Detector: EWMA α=0.50 front-end → one-sided
+CUSUM, σ self-calibrated over the first 128 tok after mask-on, lagged-window
+baseline (lag 32, win 128) that tracks benign drift but not the onset ramp. Two
+operating points on the normalized statistic g/σ:
+
+* **ARM** = `k_σ 0.5, h_σ 4` → median detection delay ≈ **31 tok** (p90 55),
+  false alarms ≈ 8/1k healthy (≈ 3/1k on the aggressive control), zero synthetic
+  misses; fires ~225 tok before the K91 text lock. Cheap actions
+  (rotate/widen/relearn/admit) absorb its false arms.
+* **FIRE** = `k_σ 1.0, h_σ 8` → median delay ≈ **40 tok** (p90 80), false alarms
+  ≈ 2/1k healthy and **0/1k** on the aggressive control, zero misses; ~214 tok of
+  lead. Reserve for the expensive rewind. Ultra-conservative option: `h_σ 12`
+  (delay ≈ 42, FA ≈ 2.2/1k). Both share the α=0.50 EWMA, so two cheap CUSUM
+  accumulators run off one smoothed S1. This **halves** the baseline-0020 median
+  delay (~78 tok at its shipped `thr=3e-4`, which also misses 6–54 % of
+  collapses when tightened) at equal-or-lower false-alarm rates.
+
+The per-layer k-of-N vote — finally tunable on the now-real per-layer data — does
+**not** beat the aggregate at conservative FA (e.g. FA_real ≤ 3/1k: aggregate
+delay 34 vs vote 54), so the aggregate EWMA-CUSUM is the recommendation.
+
+**Scope (binding): this S1 early-warning only buys lead in the SLOW-EROSION
+regime** — mild/wide *static* masks (K91-family) whose divergence escalates
+slowly (S1 drifts 0.845 → ~0.895 over hundreds of tokens). In the aggressive
+dynamic regime (W50+K23+rotate32) S1 is pinned flat ~0.815 from mask-engage and
+the output loops almost at once (~gen 126), with **no S1 lead**; there the S1 arm
+of this ladder is inert and a run must fall through to the n-gram airbag STOP.
+Tuning for the aggressive regime is out of scope (nothing in S1 to detect).
+
 **Checkpoint memory cost.** Dominated by the per-layer frontier tensors. FLASH =
 43 layers; layers 0-1 dense; ~21 ratio-128 layers (`128·head_dim·2` floats each)
 + ~20 ratio-4 layers (`16·head_dim·2` + `16·idx_head_dim·2` floats each). With

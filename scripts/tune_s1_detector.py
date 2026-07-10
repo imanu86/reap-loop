@@ -8,26 +8,44 @@ delta-prefetch, rewind = ~10-20 tok margin, stopper = last resort).
 
 ONLY offline analysis on recorded data. No GPU, no pod.
 
+SCOPE (E-DET v2, binding). The S1-slope early warning only buys lead time in the
+SLOW-EROSION regime: a mild/wide STATIC mask (K91-family) that drifts up over
+hundreds of tokens (0.845 -> ~0.895, onset ~190 tok before the text lock). In the
+AGGRESSIVE dynamic regime (W50+K23+rotate32) S1 is PINNED FLAT ~0.815 from the
+instant the mask engages and the output loops almost at once (~gen 126) with NO
+S1 lead. This detector is tuned for, and only claimed on, the slow-erosion regime
+(runs/ds4/20260710_scope_divergence_pod/README.md). The aggressive pod series is
+used here ONLY as an adversarial false-alarm control (a flat-but-high series a
+slope/CUSUM/vote detector must NOT fire on).
+
 Real inputs (read-only):
   A) s1_sensor.csv  (patch 0012, LIVE per-layer sensor: pos,layer,pruned_mass,
      total_mass; 40 layers, pos 138..2736) from the moe-aggressive-commit k91
      worktree, run `gen_s1` (pod 3090, ctx3072). Mask empty until pos~294,
      then K91-family mask ON (S1 jumps 0 -> ~0.82). Text (gen_s1.log) loops
-     `// <cjk>` from char-proportional pos ~2476 (first marker), exact
-     repetition-lock ~2508.
+     `// <cjk>` from char-proportional pos ~2476 (first marker; GROUND-TRUTH
+     collapse), exact repetition-lock ~2508. This is the PRIMARY slow-erosion
+     onset series (the scope repo's `k91_collapse.divergence` scene is this CSV).
   B) trace_k0.csv (patch 0006 top-6 routing trace of the FULL model, 799 tok)
      + reap_mask_coding_k91.json -> counterfactual S1 proxy per token/layer
      (mass of full-model top-6 falling on k91-pruned experts). Healthy series
-     (K0 never degenerates) for false-alarm measurement.
-  C) runs/ds4/20260710_pod_smoke_0020_0021/s1trig.jsonl: sparse real events of
+     (K0 "router libero" never degenerates) for false-alarm measurement.
+  C) runs/ds4/20260710_scope_divergence_pod/r1/s1_r1.csv.gz  (patch 0012 sensor,
+     AGGRESSIVE W50+K23+rotate32 pod run; 98k rows, 40 layers, pos 128..2577).
+     Aggregate S1 FLAT ~0.815, no drift. Used as the ADVERSARIAL false-alarm
+     control for the aggressive regime (per-layer, so it also stresses the vote).
+  D) runs/ds4/20260710_pod_smoke_0020_0021/s1trig.jsonl: sparse real events of
      the new 0020 code (forced params thr=1e-6 win=16 stable=4) - used as a
      sanity anchor for the replay semantics, not as a series.
 
-Because only ONE real collapse-labeled series exists (A), the delay/false-alarm
-statistics are computed on SYNTHETIC series calibrated on (A): AR(1) noise
-matched to the healthy-regime per-token std and lag-1 autocorrelation, plus
+Because only ONE real collapse-labeled series exists (A), the delay-from-onset
+distribution (p50/p90) is estimated on SYNTHETIC series calibrated on (A): AR(1)
+noise matched to the healthy-regime per-token std and lag-1 autocorrelation, plus
 ramps of measured amplitude (+0.04..0.08 over 100-300 tok; provenance
-CLAIM-011 +0.058/~200tok and the local sensor ramp +0.05/~300tok).
+CLAIM-011 +0.058/~200tok and the local sensor ramp +0.05/~300tok). On the real
+series (A) we additionally report the single measured LEAD = ground-truth text
+lock (2476) - first collapse-region fire (defensible, non-circular: the deadline
+is the text lock, not the baseline-detected onset).
 
 Usage:
   python scripts/tune_s1_detector.py \
@@ -47,6 +65,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import gzip
 import json
 import math
 import os
@@ -56,13 +75,28 @@ import tarfile
 import tempfile
 from collections import defaultdict
 
+REPO_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+
+
+def _open_text(path):
+    """Open a possibly gzipped CSV as a text stream."""
+    if path.endswith(".gz"):
+        return gzip.open(path, "rt", newline="")
+    return open(path, newline="")
+
 # ----------------------------------------------------------------------------
 # Constants: labels on the real collapse series (provenance in the docstring)
 # ----------------------------------------------------------------------------
 SENSOR_MASK_ON = 294      # first pos with aggregate S1 > 0.1 (mask flip k91)
 SENSOR_HEALTHY = (350, 2250)   # text confirmed clean until >=2476
-SENSOR_TEXT_FIRST = 2476  # first loop-marker occurrence (char-proportional)
+SENSOR_TEXT_FIRST = 2476  # first loop-marker occurrence (GROUND-TRUTH collapse)
 SENSOR_TEXT_LOCK = 2508   # exact repetition-lock (char-proportional)
+# A collapse-region fire (used for the real LEAD metric) is the first fire past
+# the healthy plateau; fires before are counted as false alarms. Fires after the
+# text lock give a non-positive lead (too late).
+COLLAPSE_REGION = (SENSOR_HEALTHY[1], 2577)  # (2250, end-of-sensor]
+POD_R1 = os.path.join(REPO_ROOT, "runs", "ds4",
+                      "20260710_scope_divergence_pod", "r1", "s1_r1.csv.gz")
 SEED = 20260710
 
 
@@ -74,7 +108,7 @@ def load_sensor_csv(path):
     pruned = defaultdict(float)
     total = defaultdict(float)
     per_layer = defaultdict(dict)
-    with open(path, newline="") as f:
+    with _open_text(path) as f:
         rd = csv.reader(f)
         next(rd)
         for row in rd:
@@ -405,6 +439,9 @@ def main():
     ap.add_argument("--trace-k0", default=None,
                     help="extracted trace_k0.csv (default: auto-extract from "
                          "<k91-root>/loop/loop_traces.tgz)")
+    ap.add_argument("--pod-r1", default=POD_R1,
+                    help="aggressive-regime pod S1 sensor (gz ok); adversarial "
+                         "false-alarm control. Set to '' to skip.")
     ap.add_argument("--out", default="runs/ds4/20260710_edet_s1_detector_tuning")
     ap.add_argument("--quick", action="store_true",
                     help="smaller synthetic ensembles (smoke)")
@@ -428,6 +465,41 @@ def main():
             tf.extract("trace_k0.csv", tmpdir)
         trace_k0 = os.path.join(tmpdir, "trace_k0.csv")
     k0_poss, k0_agg, k0_layers = load_k0_proxy(trace_k0, mask_json)
+
+    # ---- aggressive-regime pod series (adversarial false-alarm control) ----
+    pod_poss = pod_agg = None
+    pod_layers = {}
+    pod_stats = None
+    if args.pod_r1 and os.path.exists(args.pod_r1):
+        pod_poss, pod_agg, pod_layers = load_sensor_csv(args.pod_r1)
+        # full-run slope via least squares (per token) to show it is flat
+        n = len(pod_agg)
+        xs = list(range(n))
+        mx = sum(xs) / n
+        my = sum(pod_agg) / n
+        sxx = sum((x - mx) ** 2 for x in xs)
+        sxy = sum((xs[i] - mx) * (pod_agg[i] - my) for i in range(n))
+        pod_slope = sxy / sxx if sxx > 0 else 0.0
+        pod_mu, pod_sd = mean_std(pod_agg)
+        pod_stats = {
+            "path": args.pod_r1,
+            "tokens": n,
+            "pos_range": [pod_poss[0], pod_poss[-1]],
+            "n_layers": len(pod_layers),
+            "mean": round(pod_mu, 5),
+            "std_per_token": round(pod_sd, 5),
+            "lag1_autocorr": round(lag1_rho(pod_agg), 4),
+            "full_run_slope_per_tok": round(pod_slope, 8),
+        }
+        with open(os.path.join(args.out, "s1_pod_r1_agg.csv"),
+                  "w", newline="") as f:
+            w = csv.writer(f)
+            w.writerow(["pos", "s1"])
+            for q, v in zip(pod_poss, pod_agg):
+                w.writerow([q, f"{v:.6f}"])
+    else:
+        print("WARN: pod r1 series not found (%s); skipping the aggressive-"
+              "regime false-alarm control." % args.pod_r1, file=sys.stderr)
 
     # export derived aggregates for reproducibility
     with open(os.path.join(args.out, "s1_sensor_agg.csv"), "w", newline="") as f:
@@ -495,6 +567,8 @@ def main():
         "k0_proxy_std": round(mean_std(k0_agg)[1], 5),
         "per_layer_rbar": round(rbar, 4),
         "per_layer_beta_mean": round(sum(lay_beta) / len(lay_beta), 5),
+        "collapse_region": list(COLLAPSE_REGION),
+        "pod_r1_aggressive": pod_stats,
         "seed": SEED,
     }
     with open(os.path.join(args.out, "calibration.json"), "w") as f:
@@ -527,6 +601,36 @@ def main():
         return [poss[pos_index[SENSOR_MASK_ON]] + i for i in
                 (f for f in fires)]
 
+    # aggressive-regime pod: per-layer arrays + self-calibrated per-layer sigma
+    # (the run is flat, so its own per-token std IS its noise scale). Used as an
+    # adversarial false-alarm control for both aggregate and vote detectors.
+    pod_lay = None
+    pod_lay_sd = None
+    if pod_agg is not None:
+        pod_lay = [pod_layers[l] for l in lay_ids if l in pod_layers]
+        pod_lay_sd = [max(1e-4, mean_std(xs)[1]) if len(xs) > 1 else 1e-4
+                      for xs in pod_lay]
+
+    def pod_fa_agg(runner):
+        """fires/1k on the aggressive pod aggregate; None if pod unavailable."""
+        if pod_agg is None:
+            return None
+        fires = runner(pod_agg, 0)
+        return 1000.0 * len(fires) / len(pod_agg)
+
+    def real_k91_lead(rc_fires):
+        """(first collapse-region fire pos, lead = text_lock(2476) - pos).
+
+        Non-circular: the deadline is the ground-truth text repetition-lock, not
+        the baseline-detected onset. Positive lead = warned before the text
+        visibly loops; <=0 = too late. Fires in [mask_on, 2250] are FALSE alarms
+        (accounted separately) and are ignored here.
+        """
+        for p in (rc_fires or []):
+            if COLLAPSE_REGION[0] < p <= COLLAPSE_REGION[1]:
+                return p, SENSOR_TEXT_FIRST - p
+        return None, None
+
     # ---------------- configs ----------------
     results = []
     curve_rows = []
@@ -536,8 +640,10 @@ def main():
         ("slope_base_a10_w64_s16_init0", 0.10, 64, 16, False),
         ("slope_base_a10_w64_s16_initx0", 0.10, 64, 16, True),
         ("slope_a10_w64_s8_initx0", 0.10, 64, 8, True),
+        ("slope_a15_w32_s6_initx0", 0.15, 32, 6, True),
         ("slope_a20_w16_s4_initx0", 0.20, 16, 4, True),
         ("slope_a20_w16_s8_initx0", 0.20, 16, 8, True),
+        ("slope_a20_w24_s6_initx0", 0.20, 24, 6, True),
         ("slope_a20_w32_s8_initx0", 0.20, 32, 8, True),
         ("slope_a30_w16_s4_initx0", 0.30, 16, 4, True),
     ]
@@ -554,6 +660,9 @@ def main():
             m["params"] = {"alpha": alpha, "win": win, "stable": stable,
                            "thr": thr, "ema_init_first": initx}
             m["real_collapse_fires"] = real_collapse_fires(runner)
+            m["fa_per_1k_pod"] = pod_fa_agg(runner)
+            m["real_k91_first_fire"], m["real_k91_lead"] = \
+                real_k91_lead(m["real_collapse_fires"])
             results.append(m)
             curve_rows.append(m)
             print(f"{m['name']:44s} p50={m['delay_p50']} p90={m['delay_p90']} "
@@ -573,25 +682,34 @@ def main():
         return mean_std(out[32:])[1]
 
     cusum_variants = [
-        ("cusum_raw", None),
-        ("cusum_ewma30", 0.30),
+        # (label, pre_alpha, base_lag, base_win)
+        ("cusum_raw", None, 32, 128),
+        ("cusum_ewma15", 0.15, 32, 128),
+        ("cusum_ewma30", 0.30, 32, 128),
+        ("cusum_ewma50", 0.50, 32, 128),
+        ("cusum_ewma30_fast", 0.30, 16, 96),
     ]
     h_grid = [2, 3, 4, 6, 8, 12, 16, 24]
-    for label, pre_alpha in cusum_variants:
+    for label, pre_alpha, base_lag, base_win in cusum_variants:
         sig = transformed_sigma(pre_alpha)
         for k_sigma in (0.25, 0.5, 1.0):
             for h_sigma in h_grid:
-                def runner(x, start, k=k_sigma, h=h_sigma, p=pre_alpha):
+                def runner(x, start, k=k_sigma, h=h_sigma, p=pre_alpha,
+                           bl=base_lag, bw=base_win):
                     # det_cusum self-calibrates sigma; pass k_sigma,h_sigma only
-                    return det_cusum(x, k, h, pre_alpha=p, start=start)
+                    return det_cusum(x, k, h, pre_alpha=p, base_lag=bl,
+                                     base_win=bw, start=start)
                 m = eval_agg_config(
                     f"{label}_k{k_sigma:g}_h{h_sigma:g}", runner,
                     synth_c, synth_h, real_healthy)
                 m["family"] = label
                 m["params"] = {"k_sigma": k_sigma, "h_sigma": h_sigma,
-                               "pre_alpha": pre_alpha,
-                               "sigma_cal": round(sig, 5)}
+                               "pre_alpha": pre_alpha, "base_lag": base_lag,
+                               "base_win": base_win, "sigma_cal": round(sig, 5)}
                 m["real_collapse_fires"] = real_collapse_fires(runner)
+                m["fa_per_1k_pod"] = pod_fa_agg(runner)
+                m["real_k91_first_fire"], m["real_k91_lead"] = \
+                    real_k91_lead(m["real_collapse_fires"])
                 results.append(m)
                 curve_rows.append(m)
                 print(f"{m['name']:44s} p50={m['delay_p50']} "
@@ -616,9 +734,9 @@ def main():
                                  lay_beta, collapse=False)
 
     vote_rows = []
-    for K in (4, 8, 12, 16):
+    for k_sigma in (0.25, 0.5):
+      for K in (4, 8, 12, 16):
         for h_sigma in (2, 4, 6, 8, 12):
-            k_sigma = 0.5
             delays, misses, fa_f, fa_t = [], 0, 0, 0
             for lays, onset in synth_lc:
                 fires = det_vote_kofn(lays, lay_sd, k_sigma, h_sigma, K)
@@ -641,6 +759,12 @@ def main():
             real_c_f = [p for p in fpos if p > SENSOR_HEALTHY[1]]
             # k0 proxy healthy (per-layer sigmas of the proxy itself)
             fires_k0 = det_vote_kofn(k0_lay, k0_lay_sd, k_sigma, h_sigma, K)
+            # aggressive pod adversarial FA (per-layer, self-calibrated sigmas)
+            pod_fa = None
+            if pod_lay is not None:
+                pfires = det_vote_kofn(pod_lay, pod_lay_sd, k_sigma, h_sigma, K)
+                pod_fa = 1000.0 * len(pfires) / len(pod_lay[0])
+            ff, lead = real_k91_lead(real_c_f)
             dsort = sorted(delays)
             def pct(p):
                 if not dsort:
@@ -648,7 +772,7 @@ def main():
                 i = min(len(dsort) - 1, int(math.ceil(p * len(dsort))) - 1)
                 return dsort[i]
             row = {
-                "name": f"vote_{K}of40_k0.5_h{h_sigma:g}",
+                "name": f"vote_{K}of40_k{k_sigma:g}_h{h_sigma:g}",
                 "family": "vote_kofN",
                 "params": {"K": K, "k_sigma": k_sigma, "h_sigma": h_sigma},
                 "delay_p50": pct(0.50), "delay_p90": pct(0.90),
@@ -660,7 +784,10 @@ def main():
                 "real_fa_fires": real_h_f + len(fires_k0),
                 "real_fa_tokens": (SENSOR_HEALTHY[1] - SENSOR_MASK_ON) +
                                   len(k0_lay[0]),
+                "fa_per_1k_pod": pod_fa,
                 "real_collapse_fires": real_c_f,
+                "real_k91_first_fire": ff,
+                "real_k91_lead": lead,
             }
             results.append(row)
             vote_rows.append(row)
@@ -681,8 +808,9 @@ def main():
         w = csv.writer(f)
         w.writerow(["name", "family", "params", "delay_p50", "delay_p90",
                     "miss_rate", "fa_per_1k_synth", "fa_per_1k_real",
-                    "real_fa_fires", "real_fa_tokens",
-                    "real_collapse_first_fire_pos"])
+                    "fa_per_1k_pod_aggressive", "real_fa_fires",
+                    "real_fa_tokens", "real_collapse_first_fire_pos",
+                    "real_k91_lead_vs_lock"])
         for m in results:
             rc = m.get("real_collapse_fires") or []
             rc_first = ""
@@ -693,10 +821,114 @@ def main():
             w.writerow([m["name"], m["family"], json.dumps(m["params"]),
                         fmt(m["delay_p50"]), fmt(m["delay_p90"]),
                         fmt(m["miss_rate"]), fmt(m["fa_per_1k_synth"]),
-                        fmt(m["fa_per_1k_real"]), m.get("real_fa_fires", ""),
-                        m.get("real_fa_tokens", ""), rc_first])
+                        fmt(m["fa_per_1k_real"]), fmt(m.get("fa_per_1k_pod")),
+                        m.get("real_fa_fires", ""),
+                        m.get("real_fa_tokens", ""), rc_first,
+                        fmt(m.get("real_k91_lead"))])
+
+    # ---------------- recommendation: two operating profiles ----------------
+    def _delay(m):
+        v = m.get("delay_p50")
+        return v if v is not None else 10 ** 9
+
+    def _rfa(m):
+        v = m.get("fa_per_1k_real")
+        return v if v is not None else 10 ** 9
+
+    def _pfa(m):
+        v = m.get("fa_per_1k_pod")
+        return v if v is not None else 0.0  # unavailable -> do not penalize
+
+    def _lead(m):
+        return m.get("real_k91_lead")
+
+    # eligible: reliable on the synthetic slow ramps (few misses)
+    elig = [m for m in results
+            if m.get("delay_p50") is not None
+            and (m.get("miss_rate") or 0.0) <= 0.10]
+
+    def _pick(pool, cap_real, cap_pod):
+        c = [m for m in pool if _rfa(m) <= cap_real and _pfa(m) <= cap_pod
+             and _lead(m) is not None and _lead(m) > 0]
+        return min(c, key=lambda m: (_delay(m), _rfa(m))) if c else None
+
+    # RECOMMENDED detectors are restricted to the smoothed aggregate EWMA-CUSUM
+    # family: it dominates the per-layer vote at conservative FA and is robust to
+    # per-token spikes (a single S1 EWMA can drive both thresholds, cheaply).
+    RECO_FAMILIES = ("cusum_ewma15", "cusum_ewma30", "cusum_ewma50",
+                     "cusum_ewma30_fast")
+    smoothed = [m for m in elig if m["family"] in RECO_FAMILIES]
+
+    # arm-relearn/admit: cheap corrective action (rotate/widen/relearn/admit) ->
+    # tolerate false alarms to cut latency. Cap FA ~8/1k healthy; minimize delay.
+    admit = _pick(smoothed, 8.0, 4.0)
+    # arm-rewind: expensive corrective action -> false alarms costly. Cap FA hard
+    # (FA_real ~2/1k, near-zero on the aggressive control), then minimize delay.
+    rewind = _pick(smoothed, 2.5, 0.5)
+
+    # unconstrained delay-minimizers over ALL families (context: the pure
+    # latency floor, which the tight-slope / vote configs reach only at high FA).
+    admit_any = _pick(elig, 8.0, 6.0)
+    rewind_any = _pick(elig, 2.5, 1.0)
+
+    def _slim(m):
+        if m is None:
+            return None
+        return {k: m.get(k) for k in (
+            "name", "family", "params", "delay_p50", "delay_p90",
+            "miss_rate", "fa_per_1k_synth", "fa_per_1k_real", "fa_per_1k_pod",
+            "real_k91_first_fire", "real_k91_lead")}
+
+    reco = {
+        "note": ("Detector scoped to the SLOW-EROSION regime only (static/wide "
+                 "masks, K91-family). No usable S1 lead in the aggressive "
+                 "W50+K23+rotate32 regime (S1 pinned flat ~0.815); the pod r1 "
+                 "series is used only as an adversarial false-alarm control. "
+                 "delay_p50/p90 are synthetic ramps calibrated on the real K91 "
+                 "noise; real_k91_lead is the single measured lead vs the "
+                 "ground-truth text lock (pos 2476)."),
+        "recommended_detector": ("aggregate EWMA-CUSUM (alpha=0.30, "
+                                 "self-calibrated sigma over first 128 tok, "
+                                 "lagged-window baseline base_lag=32 base_win=128); "
+                                 "two thresholds on the normalized CUSUM g/sigma."),
+        "profile_arm_relearn_admit": _slim(admit),
+        "profile_arm_rewind": _slim(rewind),
+        "delay_floor_any_family_admit_cap": _slim(admit_any),
+        "delay_floor_any_family_rewind_cap": _slim(rewind_any),
+        "baseline_0020_default_thr3e-4": _slim(next(
+            (m for m in results
+             if m["name"] == "slope_base_a10_w64_s16_init0_thr0.0003"), None)),
+    }
+    with open(os.path.join(args.out, "recommendation.json"), "w") as f:
+        json.dump(reco, f, indent=2)
+
+    # summary table (top configs by family at acceptable FA) for the report
+    def _row_md(m):
+        return ("| {name} | {fam} | {d50} | {d90} | {miss} | {rfa} | {pfa} | "
+                "{ff} | {lead} |").format(
+            name=m["name"], fam=m["family"],
+            d50=fmt(m.get("delay_p50")), d90=fmt(m.get("delay_p90")),
+            miss=fmt(m.get("miss_rate")), rfa=fmt(m.get("fa_per_1k_real")),
+            pfa=fmt(m.get("fa_per_1k_pod")),
+            ff=(m.get("real_k91_first_fire") or ""),
+            lead=fmt(m.get("real_k91_lead")))
+
+    with open(os.path.join(args.out, "summary_table.md"), "w") as f:
+        f.write("# S1 onset detector tuning — summary (auto-generated)\n\n")
+        f.write("Slow-erosion regime only. delay_p50/p90 = synthetic ramps; "
+                "FA_real = K91 healthy plateau + K0 router-libero; "
+                "FA_pod = aggressive pod r1 (adversarial); "
+                "lead = 2476 - first collapse-region fire (real K91).\n\n")
+        f.write("| config | family | d_p50 | d_p90 | miss | FA_real | FA_pod | "
+                "K91 first fire | K91 lead |\n")
+        f.write("|---|---|---|---|---|---|---|---|---|\n")
+        for m in sorted(elig, key=lambda z: (_rfa(z), _delay(z)))[:25]:
+            f.write(_row_md(m) + "\n")
+        f.write("\n## Recommended profiles\n\n")
+        f.write(json.dumps(reco, indent=2) + "\n")
 
     print("\nwrote", os.path.join(args.out, "curves_all.csv"))
+    print("recommendation:", json.dumps(reco, indent=2))
     print("done.")
 
 

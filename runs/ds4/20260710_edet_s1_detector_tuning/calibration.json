@@ -1,0 +1,42 @@
+{
+  "sensor_tokens": 2599,
+  "sensor_pos_range": [
+    138,
+    2736
+  ],
+  "mask_on_pos": 294,
+  "healthy_segment": [
+    350,
+    2250
+  ],
+  "healthy_mean": 0.8525,
+  "healthy_std_per_token": 0.0174,
+  "healthy_lag1_autocorr": 0.536,
+  "ramp_fit_t0_pos": 2133,
+  "ramp_fit_slope_per_tok": 8.835e-05,
+  "text_first_marker_pos": 2476,
+  "text_repetition_lock_pos": 2508,
+  "k0_proxy_tokens": 799,
+  "k0_proxy_mean": 0.85931,
+  "k0_proxy_std": 0.05874,
+  "per_layer_rbar": 0.2892,
+  "per_layer_beta_mean": 0.0485,
+  "collapse_region": [
+    2250,
+    2577
+  ],
+  "pod_r1_aggressive": {
+    "path": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs\\ds4\\20260710_scope_divergence_pod\\r1\\s1_r1.csv.gz",
+    "tokens": 2450,
+    "pos_range": [
+      128,
+      2577
+    ],
+    "n_layers": 40,
+    "mean": 0.81488,
+    "std_per_token": 0.01656,
+    "lag1_autocorr": 0.5017,
+    "full_run_slope_per_tok": 5.63e-06
+  },
+  "seed": 20260710
+}
