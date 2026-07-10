@@ -1,0 +1,149 @@
+Ecco una landing page HTML/CSS/JS single-file per un negozio di programmazione AI in stile cyberpunk, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code Emporium • Cyberpunk</title>
+    <!-- Font futuristico -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f1e;
+            font-family: 'Orbitron', sans-serif;
+            color: #d0f0ff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 20% 30%, #1f2b3a 0%, #0a0f1e 80%);
+        }
+
+        .container {
+            max-width: 1100px;
+            width: 100%;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(4px);
+            border: 2px solid #00f7ff;
+            box-shadow: 0 0 40px #00f7ff44, inset 0 0 20px #00f7ff22;
+            border-radius: 28px;
+            padding: 40px 30px;
+            transition: 0.3s;
+        }
+
+        /* cyberpunk heading */
+        h1 {
+            font-size: 2.8rem;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            color: #f0f8ff;
+            text-shadow: 0 0 10px #00f7ff, 0 0 30px #0077ff, 0 0 60px #0044ff;
+            margin-bottom: 10px;
+        }
+
+        .sub-glow {
+            text-align: center;
+            font-size: 1.1rem;
+            letter-spacing: 3px;
+            color: #b0e0ff;
+            border-bottom: 1px solid #00f7ff55;
+            padding-bottom: 15px;
+            margin-bottom: 30px;
+            text-shadow: 0 0 8px #00aaff;
+        }
+
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 30px;
+            justify-content: center;
+        }
+
+        .card {
+            background: #121827dd;
+            border: 1px solid #33ffff;
+            border-radius: 20px;
+            padding: 25px 20px;
+            flex: 1 1 280px;
+            max-width: 320px;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 0 20px #00ffff33, inset 0 0 10px #00ffff22;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            border-color: #ff00ff;
+            box-shadow: 0 0 30px #ff00ff55;
+            transform: scale(1.02);
+        }
+
+        .card h3 {
+            font-size: 1.6rem;
+            letter-spacing: 2px;
+            margin-bottom: 12px;
+            color: #aaffff;
+            text-shadow: 0 0 6px #00ffff;
+        }
+
+        .price {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #ffd700;
+            text-shadow: 0 0 12px #ffbb00;
+            margin: 10px 0;
+        }
+
+        .desc {
+            font-size: 0.9rem;
+            color: #b0d0e0;
+            margin-bottom: 20px;
+            line-height: 1.4;
+        }
+
+        .btn-neon {
+            background: transparent;
+            border: 2px solid #00f7ff;
+            color: #00f7ff;
+            padding: 10px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            letter-spacing: 2px;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            width: fit-content;
+            margin: 0 auto;
+            display: block;
+            font-size: 0.9rem;
+        }
+
+        .btn-neon:hover {
+            background: #00f7ff;
+            color: #0a0f1e;
+            box-shadow: 0 0 30px #00f7ff, 0 0 60px #00aaff;
+        }
+
+        /* modulo contatti */
+        .contact-section {
+            margin-top: 40px;
+            border-top: 2px dashed #ff00ff55;
+            padding-top: 30px;
+        }
+
+        .contact-inner {
+            max-width: 580px;
+            margin: 0 auto;
+            background: #0e1424dd;
+            border: 1px solid #ff66ff;
+            border-radius

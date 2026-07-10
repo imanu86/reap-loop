@@ -1,0 +1,49 @@
+{
+  "run_group": "20260710_scope_divergence_pod",
+  "purpose": "Instrumented REAP-LOOP divergence capture for the Scope 3D divergence view: per-layer S1 (router probability mass on masked experts / total) through a real collapse, TRACE ON (diagnostic, NOT a speed benchmark).",
+  "pod": {
+    "id": "1o7eg981j8gmp4",
+    "cloud": "SECURE",
+    "gpu": "NVIDIA GeForce RTX 3090 24GB",
+    "datacenter": "EU-CZ-1",
+    "cost_per_hr_usd": 0.46,
+    "image": "runpod/pytorch:1.0.7-cu1290-torch280-ubuntu2404 (CUDA 12.9)",
+    "cuda_gate": "PASS (cuda_count=1, GPU tensor compute ok)",
+    "ssh": "root@213.192.2.118 -p 40065 (workstation key ~/.ssh/id_ed25519)"
+  },
+  "build": {
+    "source": "WSL live-tree /root/ds4 ds4.c md5 771a39a861e9512fed2fc4528780e080 (base 0bdad9a + uncommitted rotation/sensor/PACE live changes; the exact tree the 0020/0021 patch headers anchor to)",
+    "extracted_to": "/root/ds4-live",
+    "build_cmd": "make cuda CUDA_ARCH=sm_86",
+    "build_exit": 0,
+    "binary": "/root/ds4-live/ds4-server",
+    "includes_inline": ["0011 reap runtime mask", "0012 S1 sensor (DS4_REAP_SENSOR_LOG)", "0013 reap-wrap", "0014 PACE", "0015-0018 rotation"],
+    "note": "0020/0021 (S1 trigger / rotate-delta) NOT in this build; not needed for runs 1-2."
+  },
+  "model": {
+    "file": "/root/models/ds4-2bit.gguf",
+    "source_url": "https://huggingface.co/antirez/deepseek-v4-gguf/resolve/main/DeepSeek-V4-Flash-IQ2XXS-w2Q2K-AProjQ8-SExpQ8-OutQ8-chat-v2-imatrix.gguf",
+    "bytes": 86720111488,
+    "download": "aria2c -x8 on the secure pod, ~343 MB/s, complete"
+  },
+  "S1_sensor_provenance": {
+    "claim_001": "CONFIRMED at source. ds4.c: the mask applies -1e9 only to the top-k SELECTION bias tensor (g_reap_bias_masked, line ~7512); g->router_probs stays the UNBIASED softmax over all 256 experts (comment ~7384: 'choose the six experts by biased top-k, but weight them using the unbiased router probabilities'). The sensor (patch 0012, inside metal_graph_spex_trace_selected) reads g->router_probs, so the CSV logs PRE-bias router mass on pruned experts.",
+    "granularity": "per (token, layer); one row per (spex_trace_pos, layer). Emitted only while g_reap_mask_on (so nothing during the 50-token PACE warmup; rows start at pos = prompt_len + warmup).",
+    "columns": "pos,layer,pruned_mass,total_mass  (S1 = pruned_mass/total_mass)"
+  },
+  "protocol": {
+    "prompt": "html (cyberpunk landing page, Italian, ~78 tok) from run_ds4_exchange_matrix.py PROMPTS['html']",
+    "decoding": "greedy (temperature 0), think disabled",
+    "ctx": 4096,
+    "max_tokens": 2500,
+    "cache_experts": 256,
+    "prefill_chunk": 512,
+    "endpoint": "POST /v1/chat/completions (ds4-server)",
+    "trace": "ON — DS4_SPEX_TRACE_ROUTING + DS4_SPEX_TRACE_ROUTING_WEIGHTS=1 (diagnostic; overhead accepted, NOT a timing run)"
+  },
+  "variants": {
+    "mask": "W50+K23+rotate32 — exact m1a env (DS4_PACE=1 WARMUP=50 KEEP=23 KEEP_MIN=23 KEEP_MAX=96 KEEP_STEP=0 BREATH_EVERY=999999 RELEARN=0 ROTATE=1 ROTATE_EVERY=32 ROTATE_DECAY=0.98 WRAP=1) + DS4_REAP_SENSOR_LOG",
+    "full": "DS4_PACE=0 full router, no mask (positive control / 'router libero'); sensor does not log (nothing masked)."
+  },
+  "results": "SEE README.md (filled after runs)."
+}
