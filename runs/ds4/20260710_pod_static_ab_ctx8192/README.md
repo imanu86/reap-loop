@@ -96,6 +96,23 @@ contiene il doctype del prefisso congelato E un secondo doctype emesso dalla
 fase-2 (attrattore restart J44 parzialmente presente anche con freeze `;`
 su questo binario/pod), ma il modello richiude comunque la pagina (L2).
 
+### (a) static K23 — cyberpunk W50, fase2 4000, ctx8192, n=3 (DONE 20:34Z, rc=0)
+
+| run | freeze | freeze_tok | L | `</html>` | repeat | form | script | chars | p2 gen t/s (pod) |
+|---|---|---:|---|---|---|---|---|---:|---:|
+| r00 | `>` | 17 | **L0** | 0 | **1** | 0 | 0 | 13424 | 1.17 |
+| r01 | `>` | 17 | **L0** | 0 | **1** | 0 | 0 | 13424 | 1.12 |
+| r02 | `>` | 17 | **L0** | 0 | **1** | 0 | 0 | 13424 | 1.02 |
+
+**I 3 deliverable sono BYTE-IDENTICI** (sha256 `bbf29589…` × 3): la mask
+statica ripristina il determinismo greedy pieno che rotate32 rompeva (M1a:
+3 seed divergenti, onset di loop diversi). Coda del deliverable: loop
+`https.com.` ripetuto. Nota interpretativa: dopo lo strip prosa+fence il
+prefisso congelato è ~17 token di HTML (fino a `<meta charset>`); la mask
+W50 è appresa sui 66 token di fase-1 (in maggioranza prosa italiana) —
+stessa distribuzione dei primi ~50 token che vede il warmup in-engine M1a
+su questo prompt (parità mantenuta).
+
 ## Confronto con M1a rotate32 (per-seed)
 
 M1a (locale 3060, ctx8192, html 4000, cache256, rotate32 decay 0.98):
