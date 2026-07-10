@@ -1,0 +1,219 @@
+{
+  "sources": {
+    "html_W50": {
+      "task": "html",
+      "path": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs/ds4/20260710_pod_cache1024_warmup_replay/W50/route_W50.csv",
+      "tokens": 49,
+      "med_distinct_experts": 73.5,
+      "masked": false
+    },
+    "html_W130": {
+      "task": "html",
+      "path": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs/ds4/20260710_pod_cache1024_warmup_replay/W130/route_W130.csv",
+      "tokens": 129,
+      "med_distinct_experts": 109.0,
+      "masked": false
+    },
+    "code_p00_c00_python-csv": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p00_c00_python-csv.csv",
+      "tokens": 255,
+      "med_distinct_experts": 151.5,
+      "masked": false
+    },
+    "code_p01_c01_js-debounce": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p01_c01_js-debounce.csv",
+      "tokens": 255,
+      "med_distinct_experts": 154.0,
+      "masked": false
+    },
+    "code_p02_c02_sql-window": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p02_c02_sql-window.csv",
+      "tokens": 255,
+      "med_distinct_experts": 162.5,
+      "masked": false
+    },
+    "code_p03_c03_c-pointers": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p03_c03_c-pointers.csv",
+      "tokens": 255,
+      "med_distinct_experts": 150.0,
+      "masked": false
+    },
+    "code_p04_c04_py-asyncio": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p04_c04_py-asyncio.csv",
+      "tokens": 255,
+      "med_distinct_experts": 148.5,
+      "masked": false
+    },
+    "code_p05_c05_regex-email": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p05_c05_regex-email.csv",
+      "tokens": 255,
+      "med_distinct_experts": 139.5,
+      "masked": false
+    },
+    "code_p06_c06_git-rebase": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p06_c06_git-rebase.csv",
+      "tokens": 255,
+      "med_distinct_experts": 146.0,
+      "masked": false
+    },
+    "code_p07_c07_docker-multi": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p07_c07_docker-multi.csv",
+      "tokens": 255,
+      "med_distinct_experts": 142.0,
+      "masked": false
+    },
+    "code_p08_c08_rust-owner": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p08_c08_rust-owner.csv",
+      "tokens": 255,
+      "med_distinct_experts": 152.5,
+      "masked": false
+    },
+    "code_p09_c09_api-paging": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p09_c09_api-paging.csv",
+      "tokens": 255,
+      "med_distinct_experts": 152.0,
+      "masked": false
+    },
+    "code_p10_c10_test-mock": {
+      "task": "coding",
+      "path": "C:\\Users\\imanu\\AppData\\Local\\Temp\\e1_coding_m1eahbbo\\trace_coding\\trace_p10_c10_test-mock.csv",
+      "tokens": 52,
+      "med_distinct_experts": 63.0,
+      "masked": false
+    }
+  },
+  "html_labels": [
+    "html_W50",
+    "html_W130"
+  ],
+  "code_labels": [
+    "code_p00_c00_python-csv",
+    "code_p01_c01_js-debounce",
+    "code_p02_c02_sql-window",
+    "code_p03_c03_c-pointers",
+    "code_p04_c04_py-asyncio",
+    "code_p05_c05_regex-email",
+    "code_p06_c06_git-rebase",
+    "code_p07_c07_docker-multi",
+    "code_p08_c08_rust-owner",
+    "code_p09_c09_api-paging",
+    "code_p10_c10_test-mock"
+  ],
+  "q1": {
+    "pooled_top1_mean": 0.30485787442936946,
+    "pooled_top1_median": 0.2886756644603965,
+    "layer_median_of_medians": 0.2941471760261864,
+    "layer_top1_mean": {
+      "mean": 0.30485850631630684,
+      "med": 0.30602056898777164,
+      "p10": 0.2714404062399048,
+      "p90": 0.33473789438683066
+    },
+    "layer_top1_median": {
+      "mean": 0.29138203743142055,
+      "med": 0.2941471760261864,
+      "p10": 0.2606772279512649,
+      "p90": 0.3168284640321617
+    },
+    "layer_top2_cum_mean": {
+      "mean": 0.5119080408440657,
+      "med": 0.517375755004006,
+      "p10": 0.4747045989341641,
+      "p90": 0.5452109403532821
+    },
+    "layer_top3_cum_mean": {
+      "mean": 0.6678855910467691,
+      "med": 0.6717453123028394,
+      "p10": 0.6367280552956547,
+      "p90": 0.696994953991896
+    },
+    "html_pooled_top1_mean": 0.33306318611153674,
+    "code_pooled_top1_mean": 0.30292815713705074
+  },
+  "q2": {
+    "xtask_top1_overlap": 0.025,
+    "xtask_layers": 40,
+    "xtask_jaccard_top2": 0.041666666666666664,
+    "xtask_jaccard_top3": 0.045,
+    "code_pairwise_top1": 0.07818181818181816,
+    "code_pairwise_jaccard2": 0.09893939393939394,
+    "html_pairwise_top1": 0.3,
+    "html_pairwise_jaccard2": 0.21666666666666665,
+    "phase_top1_overlap": 0.5363636363636364,
+    "cover1_mean": 0.05718781540959361,
+    "cover1_agg": {
+      "mean": 0.05718781540959361,
+      "med": 0.05124753860777832,
+      "p10": 0.03757103704276757,
+      "p90": 0.08550416033037568
+    },
+    "cover2_agg": {
+      "mean": 0.10113665432719139,
+      "med": 0.09562713811313608,
+      "p10": 0.07397988486903812,
+      "p90": 0.14048055342036583
+    },
+    "cover3_agg": {
+      "mean": 0.13766292846800704,
+      "med": 0.13312913618265693,
+      "p10": 0.10061168947022801,
+      "p90": 0.18014297771131546
+    },
+    "top1_role_agg": {
+      "mean": 0.07988177971476723,
+      "med": 0.07159541887900259,
+      "p10": 0.035791366906474824,
+      "p90": 0.125651934731452
+    },
+    "sel_freq1_agg": {
+      "mean": 0.27723549695687855,
+      "med": 0.24532374100719423,
+      "p10": 0.15509175962576466,
+      "p90": 0.42705035971223027
+    },
+    "cover1_html_pool": 0.15502865297038856,
+    "cover1_code_pool": 0.059216417257725286,
+    "within_run_cover1_mean": 0.16672456138426373
+  },
+  "q3": {
+    "base_mib": 6.75,
+    "base_bpw": 2.0625,
+    "q4_bpw": 4.5,
+    "q4_mib": 14.727272727272727,
+    "usable_cache_experts": 407,
+    "budget": {
+      "1": {
+        "experts": 40,
+        "gross_mib": 589.090909090909,
+        "gross_gib": 0.5752840909090908,
+        "slots": 87.27272727272727,
+        "pct_of_cache": 0.21442930533839624
+      },
+      "2": {
+        "experts": 80,
+        "gross_mib": 1178.181818181818,
+        "gross_gib": 1.1505681818181817,
+        "slots": 174.54545454545453,
+        "pct_of_cache": 0.4288586106767925
+      },
+      "3": {
+        "experts": 120,
+        "gross_mib": 1767.2727272727273,
+        "gross_gib": 1.7258522727272727,
+        "slots": 261.8181818181818,
+        "pct_of_cache": 0.6432879160151888
+      }
+    }
+  },
+  "verdict": "FRANKEN-GGUF STATICO NON VIABLE: la dominanza per-token e' reale (30.5% del gate mass sul top-1) MA non e' concentrata su un expert stabile. Il top-1 come identita' ruota su ~150 esperti/layer: un singolo pin statico cattura solo 5.7% della massa/layer (best-case per-task pool 15.5%, single-run 16.7%), e l'identita' non trasferisce cross-task (top-1 overlap 2.5%, Jaccard-top2 0.04). Nemmeno le varianti per output-type salvano (within-coding prompt-a-prompt overlap 7.8%). L'unica versione con margine e' un pin LIVE per-sessione (tetto ~16.7% della massa), cioe' la macchina session-mask gia' esistente, NON un gguf statico. Costo comunque alto: top-1 x40 = 21.4% del cache 407-slot."
+}

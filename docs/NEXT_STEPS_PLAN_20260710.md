@@ -57,7 +57,12 @@ Il run in corso `20260710_w100_rotate32_..._compact_prompt` è di fatto un pre-T
 | L6 | clock_breath64 corto/precoce esteso a 800 tok | Unico attuatore breath con segnale positivo (2.78-2.97 t/s repeat=0) |
 | L7 | Exchange asincrono compressione (step 8 del piano dinamico) | Cap effettivo 512-1024 (hit sim 0.59-0.76 vs 0.34); mai CQ1 sincrono nel path caldo |
 
-Backlog (dopo L1-L7): temporal same-layer prefetch (recall 0.55, finding 05-07 mai implementato); sidecar int4 top-expert;
+Backlog (dopo L1-L7): temporal same-layer prefetch (recall 0.55, finding 05-07 mai implementato);
+**top-mass precision pin (franken-gguf Q4 top-1/layer, pin fuori cache): E1 fatto →** esito NEGATIVO per il gguf STATICO
+(`runs/ds4/20260710_e1_top_expert_mass/`): dominanza per-token top-1 reale ~30.5% (top-3 ~67%) ma identità NON stabile
+(cross-task top-1 overlap 2.5%, within-coding 7.8%) → un pin statico cattura solo ~5.7% massa/layer (tetto live-sessione
+16.7%) a costo 21.4% del cache 407-slot. Prossimo passo solo se si vuole la variante **live per-sessione** (non statica):
+E2 pod A/B ppl + L0-L3 su Q4-top-1-pin-per-sessione vs q2 puro, ~$1-2 — altrimenti CHIUSA.
 **S1-guided rewind (correzione) → `docs/S1_REWIND_DESIGN.md`** (candidate patch 0022): posizione nella scala =
 CORREZIONE, subito dopo L2/L3 (prevenzione slope-S1 → rotate/widen) e **prima** dello stopper come strategia primaria.
 Lo stopper M1b resta AIRBAG (ultima risorsa) e benchmark di confronto nell'A/B, non la cura. Verdetto fattibilità
