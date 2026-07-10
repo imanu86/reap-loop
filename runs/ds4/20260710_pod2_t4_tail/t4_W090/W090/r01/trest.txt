@@ -1,0 +1,20 @@
+<nav>
+    <a href="#">Home</a>
+    <a href="#">Menu</a>
+    <a href="#">Contact</a>
+</nav>
+<section>
+    <h1>Bean & Brew</h1>
+    <p>Freshly roasted, every sip — every story.</p>
+    <button id="order">Order Now</button>
+</section>
+<form action="/submit">
+    <input type="text" name="name" placeholder="Name" required>
+    <input type="email" name="email" placeholder="Email" required>
+    <button type="submit">Submit</button>
+</form>
+<script>
+    document.getElementById("order").addEventListener("click", alert("Thank us for your order!");
+    document.querySelector("form").addEventListener("submit", event.preventDefault(); alert("Confirmation");
+</script>
+</html>

@@ -1,0 +1,11 @@
+Here is a compact, complete HTML page for a coffee shop. It includes all the required elements: navigation, hero section, order button with alert, and a contact form with submission handling.
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        /* minimal styling — about 12 rules */
+        * { margin

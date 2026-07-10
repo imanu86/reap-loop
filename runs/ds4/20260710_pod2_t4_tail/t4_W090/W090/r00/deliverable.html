@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        nav { background: #brown; padding: 1.5; text-align: center; }
+        nav a { margin: 0 10; text-decoration: none; color: brown; }
+        section { text-align: center; padding: 2; }
+        h1 { font-size: 2; margin: 0; }
+        button { margin: 1; padding: 8; background: brown; color: brown; border: 1; }
+        form { margin: 1; padding: 8; }
+        input { display: block; margin: 1 0; padding: 8; }
+        input[type="submit"] { background: brown; color: brown; border: 1; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Your cozy coffee, crafted since perfection.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <input type="submit" value="Send">
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function() {
+            alert("Thank you for your order!");
+        });
+        document.querySelector("form").addEventListener("submit", function() {
+            event.preventDefault();
+            alert("Thank you for your order!");
+        });
+    </script>
+</body>
+</html>
