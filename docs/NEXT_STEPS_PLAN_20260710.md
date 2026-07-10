@@ -1,3 +1,5 @@
+> SUPERSEDED in parte: la roadmap completa e aggiornata e' docs/SOTA_ROADMAP.md (2026-07-10 sera); questo file resta per il dettaglio di Fase 0-2.
+
 # Piano operativo post-revisione — 2026-07-10
 
 Esito della revisione trasversale (repo reap-loop + moe-aggressive-commit + transcript Claude/Codex 5→10 luglio).
