@@ -197,6 +197,29 @@ default: requires `DS4_PACE_S1=1` + `DS4_PACE_S1_TRIGGER=1`. JSONL events:
 `s1_trigger` (s1, slope, over, action) and `rotate(s1)`. Not yet
 compiled/measured — CLAIM-011 stays OPEN until the pod A/B.
 
+### Demand-driven admission (constant-K targeted exchange) [OPEN]
+
+**Update 2026-07-10 — patch `0026-pace-demand-admission` authored, pending pod
+smoke** (anchored to live-tree + 0020 + 0021, same base md5 771a39a8; `git
+apply --check` OK on the 0020→0021→0026 chain over a clean base). Instead of the
+wholesale rotate (refuted live: E-CAL static ≫ rotate at equal coverage), a
+PRUNED expert whose blocked demand is strong and persistent is ADMITTED by
+evicting the least-used keep — K constant, never K0, never a wholesale re-rank,
+so the warmup mask stays the anchor except for justified per-layer swaps. It
+reuses the 0020 per-expert `rmass` (non-biased router probs, decay =
+`DS4_PACE_ROTATE_DECAY`, default 0.98) as the eviction EWMA (no new sensor) and
+the 0021 delta-prefetch for the page-in of the entered expert only (~6.75 MiB).
+Env (OFF by default; alternative to ROTATE — run with `DS4_PACE_ROTATE=0`):
+`DS4_PACE_ADMIT` (0), `DS4_PACE_ADMIT_H` (1.2, CUSUM threshold),
+`DS4_PACE_ADMIT_KDRIFT` (0.02, per-token drift), `DS4_PACE_ADMIT_PERSIST` (2,
+min excursion), `DS4_PACE_ADMIT_COOLDOWN` (16 tok anti-thrash),
+`DS4_PACE_ADMIT_MAX_PER_100` (0 = off, optional rate cap). Defaults are the
+E-ADMIT offline sim's recommended config C (`runs/ds4/20260710_eadmit_demand_admission/REPORT.md`,
+verdict positive: recovers 13.7 pt of the late coverage FROZEN loses at 5.4×
+less churn, params stable across traces, median regret 3.4 pt). JSONL `admit`
+(layer, expert, evicted, cusum, keep). Quality is NOT deducible from the
+sane-trajectory sim — gated on the live A/B S3.
+
 ---
 
 ## 5. Parameters (env, `DS4_PACE_*`), with sidecar-measured defaults
