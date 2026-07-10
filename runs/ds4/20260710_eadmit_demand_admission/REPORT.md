@@ -54,23 +54,32 @@ Per ogni trace: mask iniziale = **top-23/layer dalla massa dei primi 50 tok**
   3×3×3: h ∈ {0.3, 0.6, 1.2}, k_d ∈ {0.01, 0.02, 0.04}, p ∈ {2, 4, 8}.
 - **(D) C + confini strutturali** — per 16 tok dopo un confine E-PHASE la
   sensibilità è raddoppiata (h/2, p/2).
+- **(E) ROTATE-1** — re-ranking completo top-23 dalla EWMA a OGNI token
+  (il limite a soglia-zero della famiglia: puro inseguimento EWMA).
+- **(E′) ROTATE-1 + isteresi** — come E ma lo swap avviene solo se l'entrante
+  supera l'uscente di un margine relativo ε = 10% di EWMA (anti-flapping
+  minimo).
 
 Metriche (regione eval): copertura istantanea def-1 (media, p10, ultimo terzo
 "tardivo", per fase); churn (scambi totali, per-100-tok, GiB a 6.75 MiB/exp);
 lag di recupero post-confine (vs livello pre-confine, smussato 5 tok, tolleranza
 2 pt); dip/plateau di transizione ([b,b+16) e [b+16,b+48)); scambi-rimbalzo
-(ammesso→ri-sfrattato entro 100 tok).
+(ammesso→ri-sfrattato entro 100 tok); distribuzione degli swap per token
+(frazione di token senza swap, p50/p95 swap/token — decide se il churn è
+sparso o continuo).
 
 ## Risultati
 
 ### Tabella pooled (11 trace, config C/D raccomandata h=1.2, k_d=0.02, p=2)
 
-| Politica | cov media | cov p10 | **cov tardiva** | scambi/100tok | GiB totali | rimbalzi |
-|---|---|---|---|---|---|---|
-| (A) FROZEN | 0.510 | 0.328 | **0.485** | 0 | 0 | 0 |
-| (B) ROTATE-32 | 0.641 | 0.478 | **0.662** | 706.3 | 99.9 | 7826 (**51.7%** dei 15149 ingressi) |
-| (C) DEMAND-ADMIT | 0.612 | 0.489 | **0.622** | **130.2** | **18.3** | **8 (0.3%** di 2778 ammissioni) |
-| (D) C + confini | 0.620 | 0.498 | 0.632 | 142.7 | 20.2 | 23 |
+| Politica | cov media | cov p10 | **cov tardiva** | scambi/100tok | GiB totali | rimbalzi | tok senza swap | swap/tok p50 / p95 |
+|---|---|---|---|---|---|---|---|---|
+| (A) FROZEN | 0.510 | 0.328 | **0.485** | 0 | 0 | 0 | 100% | 0 / 0 |
+| (B) ROTATE-32 | 0.641 | 0.478 | **0.662** | 706.3 | 99.9 | 7826 (**51.7%** dei 15149 ingressi) | 97.1% (burst ogni 32) | 0 / 0 |
+| (E) ROTATE-1 | 0.709 | 0.599 | 0.708 | 1785.0 | 251.2 | 29753 | **0.0%** | **17.0 / 27.5** |
+| (E′) +isteresi 10% | 0.704 | 0.592 | 0.703 | 1418.1 | 199.6 | 21966 | **0.0%** | 13.5 / 23.1 |
+| (C) DEMAND-ADMIT | 0.612 | 0.489 | **0.622** | **130.2** | **18.3** | **8 (0.3%** di 2778 ammissioni) | 42.0% | 0.7 / 4.4 |
+| (D) C + confini | 0.620 | 0.498 | 0.632 | 142.7 | 20.2 | 23 | 45.1% | 0.5 / 4.8 |
 
 **C recupera 13.7 pt della copertura tardiva persa da A (48.5→62.2) = 77% del
 gap A→B, con 5.4× meno churn di B** (0.86 vs 4.7 GiB/100tok) e rimbalzi
@@ -105,8 +114,10 @@ resta ancorata al passato, il CUSUM mirato no).
 |---|---|---|
 | (A) FROZEN | 0.408 | 0.363 (continua a scendere) |
 | (B) ROTATE-32 | 0.578 | 0.639 |
+| (E) ROTATE-1 | 0.703 | 0.699 |
+| (E′) +isteresi | 0.698 | 0.695 |
 | (C) DEMAND-ADMIT | 0.558 | 0.567 |
-| (D) C + confini | **0.621** | 0.600 |
+| (D) C + confini | **0.621** (miglior K-costante mirato) | 0.600 |
 
 Il **lag classico è risultato non informativo** (media ~0 tok, 0/5 non
 recuperati per TUTTE le politiche): al confine non c'è un gradino secco perché
@@ -114,6 +125,38 @@ il livello pre-confine è già eroso — la firma vera è il **livello** dip/pla
 qui sopra. C dimezza il buco di transizione di A e si stabilizza ~20 pt sopra;
 D (boost al confine) recupera altri +6.3 pt nel dip a +10% di churn: il confine
 strutturale **aggiunge**, ma è un raffinamento, non il grosso dell'effetto.
+
+### (E) ROTATE-1 continuo: la soglia serve, o basta inseguire l'EWMA?
+
+(E) è (C) a soglia zero. Sui trace, (E) copre di più (tardiva 0.708 vs 0.622,
++8.6 pt su C, sopra perfino B) — ma il come è squalificante:
+
+- **il churn NON è sparso**: 0.0% dei token è senza swap; **p50 = 17
+  swap/token** (p95 27.5) ≈ **115 MiB/token** di delta-prefetch, 251 GiB
+  totali = **13.7× C** e 2.5× perfino del rotate32. Non è "qualche ritocco
+  continuo": è un flapping permanente su ~metà dei layer a ogni token.
+- **rimbalzi 29753** (59% degli ingressi entro 100 tok): la testa della
+  classifica EWMA oscilla di continuo; l'isteresi minima (E′, ε=10%) taglia
+  solo il 20% del churn (1418/100tok, p50 13.5) e NON ripristina la
+  sparsità — il flapping è strutturale, non un artefatto di pareggi.
+- **rischio feedback non catturabile qui** (il punto decisivo): questi trace
+  sono traiettorie SANE full-model — ogni politica che insegue il router
+  sembra buona perché il router è sano. Nel runtime reale la mask per-token
+  **plasma la traiettoria che genera il segnale che plasma la mask**: anello
+  auto-referenziale SENZA ancora (con E la mask è funzione pura degli ultimi
+  ~50 tok). Il monito E-CAL è esattamente questo: **a parità di coverage
+  (~0.79), K23 STATIC sopravvive e K23 ROTATE collassa a ~gen126**
+  (`runs/ds4/20260710_ecal_coverage_threshold/REPORT.md`,
+  `runs/ds4/20260710_scope_divergence_pod/README.md`) — la coverage simulata
+  NON predice l'esito live per la famiglia rotate, e (E) ne è il caso
+  estremo. (C) è qualitativamente diverso: l'ancora (la mask warmup) resta
+  intatta salvo scambi mirati giustificati da domanda persistente — 58% dei
+  token non tocca nulla, p95 4.4 swap/token.
+
+**Risposta**: la soglia CUSUM non è un dettaglio: compra il 92% di trasporti
+in meno, rimbalzi ~zero e — soprattutto — conserva un'ancora fuori
+dall'anello di feedback. Il puro inseguimento EWMA vince solo nella metrica
+che il monito E-CAL dichiara inaffidabile per quella famiglia.
 
 ### Stabilità dei parametri tra trace
 
@@ -131,7 +174,11 @@ con churn **5.4× sotto** il rotate wholesale (130 vs 706 scambi/100tok; 0.86 vs
 4.7 GiB/100tok) e **rimbalzi ~zero** (0.3% vs 51.7% di B). I parametri CUSUM
 sono stabili tra trace (regret mediano 3.4 pt). (D) aggiunge +1.0 pt pooled e
 +6.3 pt nel dip di transizione per +10% churn: opzionale, dipende da un
-detector di confini live. Merita la **candidata patch 0026** e l'A/B live S3.
+detector di confini live. (E) rotate-1 per-token copre di più sui trace sani
+(0.708) ma con churn 13.7× C, zero token senza swap e nessuna ancora fuori
+dal loop di feedback — è l'estremo della famiglia rotate già bocciata live, e
+l'isteresi (E′) non lo salva. Merita la **candidata patch 0026** e l'A/B live
+S3.
 
 ## Limiti (onestà)
 
@@ -139,7 +186,10 @@ detector di confini live. Merita la **candidata patch 0026** e l'A/B live S3.
    traiettoria NON mascherata. Nel runtime reale la domanda è condizionata alla
    traiettoria mascherata: questi numeri stimano il **potenziale di copertura**
    del meccanismo, non l'esito di qualità — quello lo decide **solo l'A/B live
-   (S3)**.
+   (S3)**. Il bias cresce con la reattività della politica: è massimo per (E)
+   rotate-1 (mask = funzione pura della traiettoria recente, anello
+   auto-referenziale senza ancora) e minimo per (A)/(C) che conservano
+   l'ancora warmup. Monito E-CAL: static ≫ rotate a parità di coverage.
 2. **Visibilità top-6**: il trace logga solo i 6 expert selezionati dal router
    libero; la domanda fuori-mask è visibile solo quando l'expert entra nel
    top-6. Il segnale live (router_probs non-biased su tutti i 256, come letto

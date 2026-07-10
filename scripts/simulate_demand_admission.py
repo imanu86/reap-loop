@@ -29,6 +29,12 @@ observable):
                     <script>, ``` fences), admission sensitivity is boosted
                     (h/2, p/2). Measures whether structure awareness adds
                     anything on top of pure demand.
+  (E) ROTATE-1      continuous per-token FULL re-rank of the top-K mask from
+                    the same EWMA (decay 0.98). The zero-threshold limit of
+                    the exchange family: pure EWMA chasing.
+  (E') ROTATE-1+HYST same, but a swap happens only if the incoming expert's
+                    EWMA exceeds the outgoing keep's by a relative margin
+                    epsilon (10%): minimal anti-flapping hysteresis.
 
 Metrics per policy per trace (eval region = tokens after the 50-tok warmup):
   - instantaneous def-1 coverage (mean over layers of in-mask routed mass /
@@ -89,6 +95,8 @@ LATE_FRAC = 1 / 3              # "late" = last third of the eval region
 H_GRID = (0.3, 0.6, 1.2)       # CUSUM threshold (accumulated mass share)
 KD_GRID = (0.01, 0.02, 0.04)   # CUSUM drift per token
 P_GRID = (2, 4, 8)             # persistence: requested tokens in excursion
+EPS_HYST = 0.10                # E': relative EWMA margin for a swap
+POLICIES = ("A", "B", "E", "F", "C", "D")   # F = E' (rotate-1 + hysteresis)
 
 
 # ---- loading ----------------------------------------------------------------
@@ -214,12 +222,14 @@ def coverage_t(M_t, tot_t, mask):
 def simulate(M, tot, policy, params=None, boundaries=()):
     """Run one policy over the eval region. Returns dict with per-token
     coverage (eval region), churn events [(t, li, admitted, evicted)], bounce
-    count. policy in {'A','B','C','D'}."""
+    count, per-token swap counts. policy in {'A','B','C','D','E','F'}
+    (E = per-token full re-rank; F = E + relative hysteresis EPS_HYST)."""
     ntok = M.shape[0]
     mask, ewma, warm_end = warmup_state(M, tot)
     cov = []
     churn_events = []            # (t, li, e_in, e_out_or_-1)
-    admit_time = {}              # (li, e) -> t admitted (C/D) / entered (B)
+    swaps_per_tok = []           # swaps decided at each eval token
+    admit_time = {}              # (li, e) -> t admitted (C/D) / entered (B/E/F)
     bounce = 0
     cus = np.zeros((N_LAYERS, N_EXP))
     per = np.zeros((N_LAYERS, N_EXP), dtype=np.int32)
@@ -228,9 +238,16 @@ def simulate(M, tot, policy, params=None, boundaries=()):
     if policy in ("C", "D"):
         h, kd, p = params
 
+    def note_leave(li, e, t):
+        nonlocal bounce
+        tin = admit_time.pop((li, e), None)
+        if tin is not None and t - tin <= BOUNCE_WIN:
+            bounce += 1
+
     for t in range(warm_end, ntok):
         cov.append(coverage_t(M[t], tot[t], mask))
         ewma = EWMA_DECAY * ewma + M[t]
+        n_swaps_before = len(churn_events)
 
         if policy == "B":
             if (t - warm_end + 1) % ROTATE_EVERY == 0:
@@ -241,13 +258,44 @@ def simulate(M, tot, policy, params=None, boundaries=()):
                 entered = new_mask & ~mask
                 left = mask & ~new_mask
                 for li, e in zip(*np.where(left)):
-                    tin = admit_time.pop((li, e), None)
-                    if tin is not None and t - tin <= BOUNCE_WIN:
-                        bounce += 1
+                    note_leave(li, e, t)
                 for li, e in zip(*np.where(entered)):
                     churn_events.append((t, int(li), int(e), -1))
                     admit_time[(li, e)] = t
                 mask = new_mask
+
+        elif policy == "E":
+            new_mask = np.zeros_like(mask)
+            for li in range(N_LAYERS):
+                top = np.argsort(-ewma[li])[:K_KEEP]
+                new_mask[li, top] = True
+            entered = new_mask & ~mask
+            left = mask & ~new_mask
+            for li, e in zip(*np.where(left)):
+                note_leave(li, e, t)
+            for li, e in zip(*np.where(entered)):
+                churn_events.append((t, int(li), int(e), -1))
+                admit_time[(li, e)] = t
+            mask = new_mask
+
+        elif policy == "F":
+            # per-token re-rank with relative hysteresis: pair the strongest
+            # incoming candidate with the weakest outgoing keep; swap only if
+            # ewma_in > ewma_out * (1 + EPS_HYST).
+            for li in range(N_LAYERS):
+                ideal = np.argsort(-ewma[li])[:K_KEEP]
+                ideal_set = set(int(x) for x in ideal)
+                cur = np.where(mask[li])[0]
+                incoming = [e for e in ideal if not mask[li, e]]
+                outgoing = sorted((e for e in cur if int(e) not in ideal_set),
+                                  key=lambda e: ewma[li, e])
+                for e_in, e_out in zip(incoming, outgoing):
+                    if ewma[li, e_in] > ewma[li, e_out] * (1.0 + EPS_HYST):
+                        mask[li, e_out] = False
+                        mask[li, e_in] = True
+                        note_leave(li, int(e_out), t)
+                        churn_events.append((t, int(li), int(e_in), int(e_out)))
+                        admit_time[(li, int(e_in))] = t
 
         elif policy in ("C", "D"):
             h_eff, p_eff = h, p
@@ -275,13 +323,14 @@ def simulate(M, tot, policy, params=None, boundaries=()):
                         cooldown_until[li, e] = t + COOLDOWN
                         cus[li, e] = 0.0; per[li, e] = 0
                         cus[li, evict] = 0.0; per[li, evict] = 0
-                        tin = admit_time.pop((li, int(evict)), None)
-                        if tin is not None and t - tin <= BOUNCE_WIN:
-                            bounce += 1
+                        note_leave(li, int(evict), t)
                         admit_time[(li, int(e))] = t
                         churn_events.append((t, int(li), int(e), int(evict)))
 
+        swaps_per_tok.append(len(churn_events) - n_swaps_before)
+
     return dict(cov=np.array(cov), churn=churn_events, bounce=bounce,
+                swaps_per_tok=np.array(swaps_per_tok, dtype=int),
                 warm_end=warm_end, final_mask=mask)
 
 
@@ -327,6 +376,11 @@ def policy_metrics(sim, ntok, phases, boundaries):
         churn_gib=churn_n * MIB_PER_EXPERT / 1024.0,
         bounce=sim["bounce"],
     )
+    spt = sim["swaps_per_tok"]
+    out["swap0_frac"] = float((spt == 0).mean()) if len(spt) else float("nan")
+    out["swap_p50"] = float(np.percentile(spt, 50)) if len(spt) else float("nan")
+    out["swap_p95"] = float(np.percentile(spt, 95)) if len(spt) else float("nan")
+    out["swap_max"] = int(spt.max()) if len(spt) else 0
     # per-phase coverage: post-warmup slice of each structural phase (>=12 tok)
     ph = {}
     for name, t0, t1 in phases:
@@ -407,11 +461,11 @@ def main():
     print(f"eval traces: {labels}")
     print(f"excluded: {excluded}")
 
-    # ---- run A and B on every trace ------------------------------------------
+    # ---- run A, B, E (rotate-1), F (rotate-1 + hysteresis) on every trace ----
     results = defaultdict(dict)   # label -> policy_key -> metrics
     for label, M, tot, phases, bounds in sources:
         ntok = M.shape[0]
-        for pol in ("A", "B"):
+        for pol in ("A", "B", "E", "F"):
             sim = simulate(M, tot, pol)
             results[label][pol] = policy_metrics(sim, ntok, phases, bounds)
 
@@ -493,16 +547,17 @@ def main():
     curve_path = os.path.join(out_dir, "cov_curves_bestC.csv")
     with open(curve_path, "w", newline="") as fh:
         w = csv.writer(fh)
-        w.writerow(["trace", "t_gen", "cov_A", "cov_B", "cov_C", "cov_D"])
+        w.writerow(["trace", "t_gen", "cov_A", "cov_B", "cov_C", "cov_D",
+                    "cov_E", "cov_F"])
         for label, M, tot, phases, bounds in sources:
-            sA = simulate(M, tot, "A")
-            sB = simulate(M, tot, "B")
-            sC = simulate(M, tot, "C", params=best_key)
-            sD = simulate(M, tot, "D", params=best_key, boundaries=bounds)
-            we = sA["warm_end"]
-            for i in range(len(sA["cov"])):
+            sims = [simulate(M, tot, "A"), simulate(M, tot, "B"),
+                    simulate(M, tot, "C", params=best_key),
+                    simulate(M, tot, "D", params=best_key, boundaries=bounds),
+                    simulate(M, tot, "E"), simulate(M, tot, "F")]
+            we = sims[0]["warm_end"]
+            for i in range(len(sims[0]["cov"])):
                 w.writerow([label, we + i] +
-                           [f"{x['cov'][i]:.4f}" for x in (sA, sB, sC, sD)])
+                           [f"{x['cov'][i]:.4f}" for x in sims])
 
     # ---- write CSVs ------------------------------------------------------------
     with open(os.path.join(out_dir, "sweep_C.csv"), "w", newline="") as fh:
@@ -516,14 +571,17 @@ def main():
         w = csv.writer(fh)
         w.writerow(["trace", "policy", "n_eval", "cov_mean", "cov_p10", "cov_late",
                     "churn", "churn_per100", "churn_gib", "bounce",
+                    "swap0_frac", "swap_p50", "swap_p95",
                     "lag_mean", "lag_unrecovered", "phase_cov"])
         for label in labels:
-            for pol in ("A", "B", "C", "D"):
+            for pol in POLICIES:
                 m = results[label][pol]
                 w.writerow([label, pol, m["n_eval"], f"{m['cov_mean']:.4f}",
                             f"{m['cov_p10']:.4f}", f"{m['cov_late']:.4f}",
                             m["churn"], f"{m['churn_per100']:.2f}",
                             f"{m['churn_gib']:.3f}", m["bounce"],
+                            f"{m['swap0_frac']:.3f}", f"{m['swap_p50']:.1f}",
+                            f"{m['swap_p95']:.1f}",
                             f"{m['lag_mean']:.1f}", m["lag_unrecovered"],
                             ";".join(f"{k}={v:.3f}" for k, v in m["phase_cov"].items())])
 
@@ -535,7 +593,7 @@ def main():
             nb = len(results[label]["A"]["lags"])
             if nb == 0:
                 continue
-            for pol in ("A", "B", "C", "D"):
+            for pol in POLICIES:
                 m = results[label][pol]
                 w.writerow([label, pol, nb, f"{m['bdry_dip']:.4f}",
                             f"{m['bdry_plateau']:.4f}"])
@@ -563,16 +621,32 @@ def main():
         per_trace_best_config={l: str(per_trace_best[l]) for l in labels},
         recommended_regret_pts={l: 100 * regret[l] for l in labels},
         pooled=dict(
-            cov_mean={p: pool_mean(p, "cov_mean") for p in "ABCD"},
-            cov_p10={p: pool_mean(p, "cov_p10") for p in "ABCD"},
-            cov_late={p: pool_mean(p, "cov_late") for p in "ABCD"},
-            churn_per100={p: pool_mean(p, "churn_per100") for p in "ABCD"},
-            churn_gib_total={p: float(np.sum([results[l][p]["churn_gib"] for l in labels])) for p in "ABCD"},
-            bounce_total={p: int(np.sum([results[l][p]["bounce"] for l in labels])) for p in "ABCD"},
-            lag={p: pool_lag(p) for p in "ABCD"},
-            bdry_dip={p: float(np.nanmean([results[l][p]["bdry_dip"] for l in labels])) for p in "ABCD"},
-            bdry_plateau={p: float(np.nanmean([results[l][p]["bdry_plateau"] for l in labels])) for p in "ABCD"},
+            cov_mean={p: pool_mean(p, "cov_mean") for p in POLICIES},
+            cov_p10={p: pool_mean(p, "cov_p10") for p in POLICIES},
+            cov_late={p: pool_mean(p, "cov_late") for p in POLICIES},
+            churn_per100={p: pool_mean(p, "churn_per100") for p in POLICIES},
+            churn_gib_total={p: float(np.sum([results[l][p]["churn_gib"] for l in labels])) for p in POLICIES},
+            bounce_total={p: int(np.sum([results[l][p]["bounce"] for l in labels])) for p in POLICIES},
+            lag={p: pool_lag(p) for p in POLICIES},
+            bdry_dip={p: float(np.nanmean([results[l][p]["bdry_dip"] for l in labels])) for p in POLICIES},
+            bdry_plateau={p: float(np.nanmean([results[l][p]["bdry_plateau"] for l in labels])) for p in POLICIES},
+            swap0_frac={p: pool_mean(p, "swap0_frac") for p in POLICIES},
+            swap_p50={p: pool_mean(p, "swap_p50") for p in POLICIES},
+            swap_p95={p: pool_mean(p, "swap_p95") for p in POLICIES},
         ),
+        eps_hyst=EPS_HYST,
+    )
+    # direct C-vs-E comparison: E is the zero-threshold limit of C
+    lateE = summary["pooled"]["cov_late"]["E"]
+    lateF = summary["pooled"]["cov_late"]["F"]
+    churnE = summary["pooled"]["churn_per100"]["E"]
+    churnF = summary["pooled"]["churn_per100"]["F"]
+    summary["C_vs_E"] = dict(
+        late_E=lateE, late_F=lateF,
+        churn_per100_E=churnE, churn_per100_F=churnF,
+        late_delta_E_minus_C=float(lateE - summary["pooled"]["cov_late"]["C"]),
+        churn_ratio_E_over_C=float(churnE / summary["pooled"]["churn_per100"]["C"]),
+        churn_ratio_F_over_C=float(churnF / summary["pooled"]["churn_per100"]["C"]),
     )
 
     lateA, lateB = summary["pooled"]["cov_late"]["A"], summary["pooled"]["cov_late"]["B"]
@@ -614,16 +688,22 @@ def main():
     print(f"traces: {len(labels)} (excluded: {excluded})")
     P = summary["pooled"]
     print(f"\n{'policy':8s} {'cov_mean':>9s} {'cov_p10':>8s} {'cov_late':>9s} "
-          f"{'churn/100':>10s} {'GiB tot':>8s} {'bounce':>7s} {'lag':>12s}")
-    for p in "ABCD":
+          f"{'churn/100':>10s} {'GiB tot':>8s} {'bounce':>7s} "
+          f"{'swap0%':>7s} {'p50':>4s} {'p95':>4s} {'lag':>12s}")
+    for p in POLICIES:
         lm, lu, ln = P["lag"][p]
         print(f"{p:8s} {P['cov_mean'][p]:9.3f} {P['cov_p10'][p]:8.3f} "
               f"{P['cov_late'][p]:9.3f} {P['churn_per100'][p]:10.2f} "
               f"{P['churn_gib_total'][p]:8.2f} {P['bounce_total'][p]:7d} "
+              f"{100*P['swap0_frac'][p]:7.1f} {P['swap_p50'][p]:4.1f} {P['swap_p95'][p]:4.1f} "
               f"{lm:5.1f} ({lu}/{ln} unrec)")
     print(f"\nboundary transitions (pooled over traces with post-warmup boundaries):")
-    for p in "ABCD":
+    for p in POLICIES:
         print(f"  {p}: dip[0,16)={P['bdry_dip'][p]:.3f}  plateau[16,48)={P['bdry_plateau'][p]:.3f}")
+    cve = summary["C_vs_E"]
+    print(f"\nC vs E (E = zero-threshold limit of C): late E={cve['late_E']:.3f} "
+          f"F(E'+hyst)={cve['late_F']:.3f} vs C={P['cov_late']['C']:.3f}; "
+          f"churn E/C={cve['churn_ratio_E_over_C']:.1f}x, F/C={cve['churn_ratio_F_over_C']:.1f}x")
     print(f"\nrecommended CUSUM config: h={best_key[0]} k_drift={best_key[1]} p={best_key[2]} "
           f"(late gain {100*agg[best_key]['late_gain']:.1f} pt, churn ratio vs B "
           f"{agg[best_key]['churn_ratio_vs_B']:.2f}, bounce rate {100*agg[best_key]['bounce_rate']:.1f}%)")
