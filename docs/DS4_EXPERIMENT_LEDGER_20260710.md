@@ -27,7 +27,7 @@ Numbers are copied from artifacts when `source_kind=runner_summary`; older Claud
 | 20260709_requested4_html800_cache128 | local_k23_rotate32_cache128 | 128 | 23 | 1 | 32 | 800 | 3.03 | 2.99 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
 | 20260709_requested4_html800_cache256 | local_k23_rotate32_cache256 | 256 | 23 | 1 | 32 | 800 | 2.61 | 2.89 | 139.61 | 0 | 800 | repeat=0; coherent_until~800; doctype=1; popup |
 | 20260710_w100_direct_k23_cache256_html2000 | w100_direct_k23_cache256 | 256 | 23 | 0 | 32 | 2000 | 2.55 | 3.08 | 6.07 | 1 | 183 | repeat=1; coherent_until~183; doctype=1; popup; fail_quality_loop_early |
-| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; partial_stable_but_incomplete_no_form_script |
+| 20260710_w100_rotate32_k23_cache256_html2000 | w100_rotate32_k23_cache256 | 256 | 23 | 1 | 32 | 2000 | 2.43 | 2.7 | 6.07 | 0 | 2000 | repeat=0; coherent_until~2000; doctype=1; popup; visually_renderable_but_functionally_incomplete_no_form_script |
 | 20260710_pod_cache1024_html800 | local_k23_cache1024 | 1024 | 23 | 0 | 32 | 800 | 14.12 | 24.79 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pod_cache1024_html800 | local_k23_weighted_warmup_cache1024 | 1024 | 23 | 0 | 32 | 800 | 16.37 | 24.71 | 6.07 | 1 |  | repeat=1; doctype=1; popup |
 | 20260710_pace_advanced_ab_html400 | local_stepdown_64_to23_relearn_on_tighten_cache256 | 256 | 64 | 1 | 999999 | 400 | 2.22 | 2.92 | 75.78 | 0 |  | repeat=0; doctype=1; popup |
