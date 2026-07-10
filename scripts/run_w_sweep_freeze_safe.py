@@ -52,7 +52,7 @@ import sys
 
 DEFAULT_W = [30, 50, 70, 90, 110, 130, 150]
 _TPS_RE = re.compile(r"prefill:\s*([0-9.]+)\s*t/s,\s*generation:\s*([0-9.]+)\s*t/s")
-_FENCE_OPEN_RE = re.compile(r"^\s*```[a-zA-Z0-9_-]*[ \t]*\r?\n")
+_FENCE_OPEN_RE = re.compile(r"(?:^|\n)[ \t]*```[a-zA-Z0-9_-]*[ \t]*\r?\n")
 _FENCE_CLOSE_RE = re.compile(r"\n```[ \t]*(?:\r?\n|$)")
 _SCRIPT_BLOCK_RE = re.compile(r"<script\b[^>]*>(.*?)</script>", re.IGNORECASE | re.DOTALL)
 _ALERT_RE = re.compile(r"alert\s*\(|confirm\s*\(|showModal", re.IGNORECASE)
@@ -85,19 +85,22 @@ except Exception:  # pragma: no cover - grading is optional
 # ----------------------------- pure helpers -----------------------------------
 
 def strip_markdown_fence(text):
-    """Strip a leading markdown code fence and cut at its closing fence.
+    """Strip a markdown code fence (leading OR after prose) + its closing fence.
 
     The local live-tree binary (post-0018) wraps the phase-1 HTML in a
     ```` ```html ```` fence even with --nothink; the pod replay output had none.
-    Unstripped, the backticks read as an unterminated JS template literal in
-    ``freeze_boundary._safe_boundaries`` (zero safe boundaries -> raw-cut
-    lottery, the exact J44 confound T4 removes) and the fence would contaminate
-    the phase-2 re-prefill (the historical recipe prefills pure HTML). Pure
-    string function; no-op when there is no leading fence.
+    Pod arm S5 also observed PROSE before the fence, which a leading-only strip
+    missed (freeze=none -> raw cut). Unstripped, the backticks read as an
+    unterminated JS template literal in ``freeze_boundary._safe_boundaries``
+    (zero safe boundaries -> raw-cut lottery, the exact J44 confound T4
+    removes) and prose/fence would contaminate the phase-2 re-prefill (the
+    historical recipe prefills pure HTML). Rule: drop everything up to and
+    including the FIRST fence-open line; cut at the closing fence if one
+    follows. No fence at all -> unchanged. Pure string function.
     """
     if not text:
         return text
-    m = _FENCE_OPEN_RE.match(text)
+    m = _FENCE_OPEN_RE.search(text)
     if not m:
         return text
     text = text[m.end():]

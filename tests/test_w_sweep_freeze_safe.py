@@ -130,3 +130,20 @@ def test_strip_markdown_fence_restores_boundaries() -> None:
     raw = "```html\n<!DOCTYPE html>\n<html>\n<head>\n<style>body { margin: 0; }\n"
     fp = hs.freeze_boundary.find_safe_freeze_point(hs.strip_markdown_fence(raw), 50)
     assert fp.boundary != "none"
+
+
+def test_strip_markdown_fence_prose_before_fence() -> None:
+    # pod arm S5 pathology: phase-1 emits prose BEFORE the ```html fence; a
+    # leading-only strip missed it -> freeze=none -> raw cut. The hardened rule
+    # drops everything up to and including the first fence-open line.
+    raw = ("Sure! Here is the complete page you asked for:\n"
+           "```html\n<!DOCTYPE html>\n<html>\n<head>\n</head>\n")
+    got = hs.strip_markdown_fence(raw)
+    assert got.startswith("<!DOCTYPE html>")
+    assert "Sure!" not in got
+    assert "```" not in got
+
+
+def test_strip_markdown_fence_prose_fence_and_close() -> None:
+    raw = "Intro text.\n```html\n<p>hi</p>\n```\ntrailing chatter"
+    assert hs.strip_markdown_fence(raw) == "<p>hi</p>\n"
