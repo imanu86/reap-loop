@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #faf7f0; color: #2e1f0e; padding: 20px; }
+        nav { background: #6b4f3c; padding: 10px 20px; border-radius: 40px; display: flex; <!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #faf7f0; color: #2e1f0e; padding: 20px; }
+        nav { background: #6b4f3c; padding: 10px 20px; border-radius: 40px; display: flex; gap: 20px; justify-content: center; }
+        nav a { color: #faf7f0; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        .hero { text-align: center; padding: 60px 20px; }
+        .hero h1 { font-size: 3rem; margin-bottom: 10px; }
+        .hero p { font-size: 1.2rem; color: #6b4f3c; }
+        #order { background: #c8a96e; border: none; padding: 12px 24px; font-size: 1.1rem; border-radius: 30px; cursor: pointer; margin-top: 20px; font-weight: bold; }
+        #order:hover { background: #b48e5c; }
+        form { max-width: 400px; margin: 40px auto; background: #fff; padding: 30px; border-radius: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        form input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 10px; }
+        form button { background: #6b4f3c; color: #fff; border: none; padding: 10px; width: 100%; border-radius: 30px; font-size: 1rem; cursor: pointer; }
+        form button:hover { background: #4a3728; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted to every morning</p>
+        <button id="order">Order Now</button>
+    </section>
+
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Submit</button>
+    </form>
+
+    <script>
+        document.querySelector('#order').addEventListener('click', () => {
+            alert('Thank you for your order!');
+        });
+
+        document.querySelector('form').onsclick = () => {
+            event.preventDefault();
+            alert('Confirmation: You have successfully submitted.');
+        };
+    </script>
+</body>
+</html>
