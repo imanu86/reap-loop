@@ -1,0 +1,4 @@
+ctx=512 rc=0 wall=150s peakGPU_MB=11653
+ctx=2048 rc=0 wall=227s peakGPU_MB=11673
+ctx=4096 rc=0 wall=221s peakGPU_MB=9945
+ctx=5500 rc=0 wall=114s peakGPU_MB=11745
