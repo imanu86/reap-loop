@@ -66,4 +66,4 @@ deliverable.html, p1/p2.diag, pace_events.jsonl + tokens.csv in arms 2/3; summar
 summary_median.csv, manifest.json, p2env.json per arm). `harness/` — wrapper + arm
 scripts (provenance). `REPORT.md` — prediction-vs-measurement (end of batch).
 
-Status: arm 1 IN CORSO (avvio ~00:47 UTC), arms 2/3 in coda. REPORT a fine batch.
+Status: COMPLETO (8+1 run). Verdetto in REPORT.md: 0/7 salvataggi, predizione refutata; catena meccanicistica completa.

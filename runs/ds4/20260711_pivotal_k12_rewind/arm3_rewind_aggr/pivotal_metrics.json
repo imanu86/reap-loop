@@ -1,0 +1,119 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 12109,
+    "loop_onset_char": 491,
+    "loop_period": 6,
+    "useful_frac_char": 0.0405483524651086,
+    "p2_gen_tps": 22.51,
+    "good_tps": 0.9127434139895947,
+    "rewind_arm_n": 2,
+    "rewind_n": 1,
+    "rewind_skip_n": 0,
+    "rewind_events": [
+      {
+        "from": 247,
+        "to": 246,
+        "reason": "s1_cusum_fire",
+        "tok": 161,
+        "regen": 2
+      }
+    ],
+    "regen_total": 2,
+    "tokens_final": 3998,
+    "token_jumps": [
+      {
+        "row": 163,
+        "from_pos": 247,
+        "to_pos": 246
+      }
+    ],
+    "retracted_chars": 12120,
+    "retracted_loop_onset_char": 509,
+    "retracted_useful_frac": 0.041996699669967,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "12176",
+    "repeat": "1"
+  },
+  {
+    "run": "r01",
+    "p2_chars": 12109,
+    "loop_onset_char": 491,
+    "loop_period": 6,
+    "useful_frac_char": 0.0405483524651086,
+    "p2_gen_tps": 22.5,
+    "good_tps": 0.9123379304649435,
+    "rewind_arm_n": 2,
+    "rewind_n": 1,
+    "rewind_skip_n": 0,
+    "rewind_events": [
+      {
+        "from": 247,
+        "to": 246,
+        "reason": "s1_cusum_fire",
+        "tok": 161,
+        "regen": 2
+      }
+    ],
+    "regen_total": 2,
+    "tokens_final": 3998,
+    "token_jumps": [
+      {
+        "row": 163,
+        "from_pos": 247,
+        "to_pos": 246
+      }
+    ],
+    "retracted_chars": 12120,
+    "retracted_loop_onset_char": 509,
+    "retracted_useful_frac": 0.041996699669967,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "12176",
+    "repeat": "1"
+  },
+  {
+    "run": "r02",
+    "p2_chars": 12109,
+    "loop_onset_char": 491,
+    "loop_period": 6,
+    "useful_frac_char": 0.0405483524651086,
+    "p2_gen_tps": 22.59,
+    "good_tps": 0.9159872821868033,
+    "rewind_arm_n": 2,
+    "rewind_n": 1,
+    "rewind_skip_n": 0,
+    "rewind_events": [
+      {
+        "from": 247,
+        "to": 246,
+        "reason": "s1_cusum_fire",
+        "tok": 161,
+        "regen": 2
+      }
+    ],
+    "regen_total": 2,
+    "tokens_final": 3998,
+    "token_jumps": [
+      {
+        "row": 163,
+        "from_pos": 247,
+        "to_pos": 246
+      }
+    ],
+    "retracted_chars": 12120,
+    "retracted_loop_onset_char": 509,
+    "retracted_useful_frac": 0.041996699669967,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "12176",
+    "repeat": "1"
+  }
+]

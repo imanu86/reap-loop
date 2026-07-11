@@ -1,0 +1,19 @@
+{
+  "DS4_PACE": "1",
+  "DS4_PACE_S1": "1",
+  "DS4_PACE_WARMUP": "50",
+  "DS4_PACE_KEEP": "12",
+  "DS4_PACE_KEEP_MIN": "12",
+  "DS4_PACE_KEEP_MAX": "12",
+  "DS4_PACE_ROTATE": "0",
+  "DS4_PACE_RELEARN": "0",
+  "DS4_PACE_BREATH_EVERY": "999999",
+  "DS4_PACE_DRIFT": "2.0",
+  "DS4_PACE_WRAP": "1",
+  "DS4_PACE_WRAP_ROTATE_DELTA": "1",
+  "DS4_PACE_DEBUG": "1",
+  "DS4_PACE_WEIGHTED_SELECTED": "1",
+  "DS4_PACE_LOG": "{rundir}/pace_events.jsonl",
+  "DS4_PACE_REWIND": "1",
+  "DS4_SPEX_TRACE_TOKENS": "{rundir}/tokens.csv"
+}
