@@ -36,6 +36,24 @@
 > instead (matching the MTP twin `spec_frontier_snapshot`, which carries no such
 > guard), see `patches/README.md` row 0022 for the fix detail and new md5; pending
 > re-smoke.
+>
+> **v3 (2026-07-11, pivotal post-mortem):** the PIVOTAL K12+rewind experiment
+> (`runs/ds4/20260711_pivotal_k12_rewind/REPORT.md`, commit 2c1d92d) refuted the
+> v2 rewind on the wide/fast-collapse regime (0/7) and localised three causes.
+> **0022 v3** (`git apply --check` clean on the real chain 62ed2e71 -> md5
+> `d4ff85af`, 562 lines / 12 hunks, blob `334b2830`) fixes all three: **(1)** the
+> single rolling checkpoint (frozen at ARM, which lags the erosion) landed inside
+> the lock -> a rolling RING of `DS4_PACE_REWIND_CKPT_DEPTH` snapshots, rewinding
+> to the OLDEST in-window slot (pre-erosion anchor); **(2)** S1 gives no lead in
+> the aggressive regime -> a CHAR-LEVEL garbage detector (`DS4_PACE_REWIND_GARBAGE`,
+> EWMA of the non-structural-char fraction) that sees the word-salad erosion before
+> the periodic lock and freezes the ring early; **(3)** the pinned-K greedy resume
+> was a byte-identical no-op -> `DS4_PACE_REWIND_WARMUP` widens to keep_max for N
+> tok at resume then re-freezes narrow, forcing real divergence off the cleaned
+> context. At defaults (depth 1, garbage 0, warmup 0) v3 == v2. Pending pod smoke.
+>
+> This section-2/3 mechanism text still describes the SLOW-erosion S1 arm; the v3
+> ring + char detector extend it to the FAST-collapse regime the pivotal exercised.
 
 ---
 

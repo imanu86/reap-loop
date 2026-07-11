@@ -1,91 +1,99 @@
-From 2f77146a90b57426d1a8101b9def6cbf4a4f33e5 Mon Sep 17 00:00:00 2001
+From 83ce1a7f873581b5cf4608d8abd6cae8ca19a287 Mon Sep 17 00:00:00 2001
 From: reap-loop <dev@reap-loop.local>
-Date: Sat, 11 Jul 2026 01:29:18 +0200
-Subject: [PATCH] pace: 0022 S1-guided rewind actuator (both decode loops,
- dedicated buffers, E-DET profiles)
+Date: Sat, 11 Jul 2026 07:30:00 +0200
+Subject: [PATCH] pace: 0022 v3 S1-guided rewind -- deep pre-erosion checkpoint
+ ring + char-garbage detector + resume mini-warmup
 
 ANCHORED TO THE CANONICAL v2 CHAIN + 0027 + 0028 (base github.com/antirez/ds4
 @80ebbc3 + patches/ds4/canonical/ 21 patches -> ds4.c md5 1db4f799, + 0027 +
-0028 -> md5 62ed2e71; byte-identical to the live-tree pace0028 target, pod2
-canonical_build_v2). Applies AFTER 0028; rebase after further pace canonization.
+0028 -> md5 62ed2e71). Applies AFTER 0028; single self-contained patch that
+REPLACES the v2 rewind actuator (0022 v1=044b32ce, v2=a88f9dcb). Reconstruction
+verified byte-exact against every documented checkpoint before authoring; the
+v3 target ds4.c is md5 d4ff85af (562 insertions / 12 hunks over 62ed2e71).
 
-The PRODUCTION actuator for the prevention->correction->airbag ladder
-(docs/S1_REWIND_DESIGN.md), replacing the 0027 R1 diagnostic. It fixes the two
-coverage lessons the pod2 R1 smoke exposed:
-  (a) the 0027 hook lived only in ds4_session_eval_internal, muted for the
-      greedy CLI path (generate_metal_graph_raw_swa) -> 0022 drives its actuator
-      from BOTH decode loops (like 0028), so it is live in production greedy
-      A/B, not just the session/server path;
-  (b) the spec_* frontier buffers are MTP-gated (the greedy loop allocs with
-      enable_mtp=false) -> 0022 allocates its OWN spec_rewind_* buffer set,
-      gated on DS4_PACE_REWIND, independent of MTP being built or on, and never
-      clobbered by the speculative verifier between arm and fire.
+v3 fixes the three MECHANISTIC causes the PIVOTAL K12+rewind experiment
+identified for the v2 0/7-on-wide failure
+(runs/ds4/20260711_pivotal_k12_rewind/REPORT.md, commit 2c1d92d):
 
-Mechanism (OFF by default; DS4_PACE_REWIND=0). Two halves:
-  - DETECTOR (host, ds4_pace_rewind_detect, run from ds4_pace_s1_update): the
-    tuned E-DET aggregate EWMA-CUSUM (runs/ds4/20260710_edet_s1_detector_tuning)
-    on the per-token aggregate S1 (pruned/total router mass, same PRE-bias
-    readback S1/0012/0026 share, FEED_AUDIT). One alpha=0.50 EWMA front-end
-    feeds two one-sided CUSUMs, sigma self-calibrated over the first CALWIN tok,
-    lagged-window baseline (BASE_LAG 32, BASE_WIN 128): ARM (k=0.5,h=4, cheap)
-    and FIRE (k=1.0,h=8, expensive).
-  - ACTUATOR (ds4_pace_rewind_after_eval, GPU, both loops, after each eval):
-    while ARM is quiet it takes/refreshes a rolling frontier snapshot every
-    EVERY tok (spec_rewind_* + onset logits + full PACE-accumulator blob incl
-    mass/rmass/bmass/admit + rings/clocks); ARM freezes it at the last healthy
-    onset. On FIRE (or the n-gram airbag as an independent fire source, gated on
-    a confirmed ARM so the flat aggressive regime falls through to the airbag
-    STOP), if the onset is inside the raw-ring slack (raw_cap-raw_window-GUARD)
-    it restores the frontier + PACE accumulators, relearns the mask from the
-    healthy-segment stats and widens to REWIND_KEEP (=keep_max), restores the
-    onset logits and rewinds the loop to onset+1 (no re-prefill). Anti-
-    oscillation: REWIND_MAX (2) + doubling BACKOFF (256). JSONL events
-    rewind_arm / rewind / rewind_skip {from,to,reason} on DS4_PACE_LOG for the
-    client-side stream retraction (S1_REWIND_DESIGN section 4); regenerated-
-    token counter.
+  (1) CHECKPOINT INSIDE THE LOCK. v2 kept ONE rolling snapshot, frozen at ARM;
+      in fast-collapse ARM lags the erosion, so the frozen anchor (pos 246)
+      already sat past the erosion (char 400) and the lock (char 493) -- rewind
+      teleported from-inside-the-lock to inside-the-lock. FIX: a rolling RING of
+      DS4_PACE_REWIND_CKPT_DEPTH snapshots at fixed spacing (every EVERY tok);
+      at FIRE the OLDEST still-in-window slot is the target, so the anchor
+      predates the erosion even when the detector arms late. depth 8 x every 32
+      covers ~256 tok of pre-erosion history; depth 1 == the v2 behaviour.
 
-Scope (binding): SLOW-EROSION regime only (K91-family mild/wide static masks);
-the aggressive W50+K23+rotate32 regime never arms (S1 flat) and correctly falls
-to the airbag STOP. Rewind target is the frozen healthy checkpoint (frontier
-floor = snapshot pos; MARGIN is realised by the rolling-checkpoint freeze at
-ARM, not by rewinding below the snapshot). NOT yet covered: temp>0 RNG snapshot
-(greedy argmax only), MTP-on speculative multi-accept across a rewind, dynamic-
-mask relearn exactness under the window. Pending pod smoke.
+  (2) DETECTOR WITHOUT LEAD. S1 rises only AT the periodic lock, not during the
+      erosion, and CALWIN=128 overlaps the collapse -- no lead in the aggressive
+      regime. FIX: a CHAR-LEVEL garbage detector (DS4_PACE_REWIND_GARBAGE) that
+      sees the erosion BEFORE the lock. It decodes each generated token to bytes
+      and folds a per-char non-structural indicator into an EWMA: valid
+      HTML/CSS/code interleaves a high density of structural punctuation
+      (<>{}[]();:="'/,# digits, whitespace); the pre-lock word-salad
+      ('gposcate','finto sfondo','sfchiesto') is bare letters, so the
+      non-structural fraction spikes ~a lock-period early. Crossing the
+      threshold ARMs the ring early (freezes it pre-erosion) and is an
+      independent FIRE source; hysteresis releases it well below threshold so a
+      benign prose burst re-opens the rolling ring.
 
-Env (all DS4_PACE_REWIND*, off by default): master REWIND; detector ALPHA(0.5)
-ARM_K(0.5) ARM_H(4) FIRE_K(1.0) FIRE_H(8) CALWIN(128) BASE_LAG(32) BASE_WIN(128);
-actuator EVERY(32) MARGIN(16) MAX(2) BACKOFF(256) GUARD(32) KEEP(0=>keep_max).
-Requires DS4_PACE=1 + DS4_PACE_S1=1 (the monitor). Off by default; the airbag
-stopper stays the independent fallback.
+  (3) NO-OP AT RESUME. With K pinned + greedy the v2 rewind was byte-identical
+      by construction (same onset logits + same context + same mask => same
+      argmax). FIX: DS4_PACE_REWIND_WARMUP -- at resume widen to keep_max (or
+      REWIND_KEEP) for a mini-warmup of N tok, THEN re-freeze to the operating K
+      that was in force before the rewind. Re-processing the CLEANED context
+      with more capacity forces the greedy trajectory to actually diverge, then
+      the narrow re-freeze keeps the low-K t/s/VRAM budget. WARMUP=0 keeps the
+      v2 permanent-widen behaviour.
 
-v2 (this revision): fixes a pod D smoke bug (runs/ds4/20260711_podD_smoke_0022,
-gate a FAIL) in ds4_pace_rewind_snapshot_frontier: the original guard
-`if (DS4_N_LAYER > 0 && !g->spec_rewind_attn_state_kv[0]) return false;`
-assumes layer 0 owns a dedicated rewind buffer, but on Flash
-ds4_expected_layer_compress_ratio returns 0 for il<2 (layers 0-1 are dense)
-and the spec_rewind_* buffers are only allocated inside `if (ratio != 0)`
-(ds4.c:11326) -> spec_rewind_attn_state_kv[0] is permanently NULL -> the
-guard always returned false -> the onset snapshot never ran -> onset_valid
-never set -> FIRE always bailed. The actuator was structurally incapable of
-ever firing a rewind. Fix: scan layers 0..DS4_N_LAYER-1 for the first
-*allocated* spec_rewind_attn_state_kv[il] (return false only if none is
-allocated), matching the style of the MTP twin spec_frontier_snapshot, which
-carries no such literal-index guard and simply skips ratio==0 layers inside
-its copy loop. snapshot/restore already iterate and skip dense layers
-correctly; only the precondition probe was wrong. Restore
-(ds4_pace_rewind_restore_frontier) had no analogous guard and was unaffected.
-Pending re-smoke to confirm gate (a) now fires.
+Implementation (v3 reduces to v2 when CKPT_DEPTH=1, GARBAGE=0, WARMUP=0):
+  - the g->spec_rewind_* GPU frontier buffers become a [DEPTH_MAX][LAYER] ring,
+    allocated for rewind_depth slots (DS4_PACE_REWIND_CKPT_DEPTH, clamped
+    1..DS4_PACE_REWIND_DEPTH_MAX=16) when DS4_PACE_REWIND=1; free loops over the
+    full compile-time ring; snapshot/restore_frontier + save/restore_pace take a
+    slot; g_rewind carries a per-slot host checkpoint (logits + full PACE blob +
+    mass/rmass/bmass/admit arrays + frontier counters);
+  - ds4_pace_rewind_feed_token (both decode loops, next to trace_token_sidecar /
+    the actuator) drives the char detector;
+  - ds4_pace_rewind_after_eval: warmup countdown (top, runs every token),
+    ring-push while quiet, ARM = S1-CUSUM OR garbage-latch, deep-target
+    selection at FIRE (oldest in-window slot; rewind_skip{out_of_window} if the
+    whole ring aged past the raw-ring slack), ring consumed after a rewind.
+    rewind_arm reason distinguishes char_garbage vs s1_cusum_arm; rewind reason
+    distinguishes s1_cusum_fire / ngram_airbag / char_garbage.
+
+New env (three headline knobs from the post-mortem; the rest inherited from v2):
+  DS4_PACE_REWIND_CKPT_DEPTH (1)  ring depth / pre-erosion coverage
+  DS4_PACE_REWIND_GARBAGE   (0.0) char-detector threshold (non-structural EWMA;
+                                  <=0 disables); smoke recommendation ~0.80-0.88
+  DS4_PACE_REWIND_WARMUP    (0)   resume mini-warmup length in tokens
+garbage EWMA alpha is fixed internally (0.04, ~25-char smoothing).
+
+Scope unchanged: correction tier, DS4_PACE_REWIND=0 default, requires DS4_PACE=1
++ DS4_PACE_S1=1. Static-mask greedy CLI + session paths. NOT yet covered:
+temp>0 RNG snapshot, MTP-on speculative multi-accept across a rewind, dynamic-
+mask relearn exactness under the window. Authored CPU-only (no local gcc):
+git apply --check clean on the real chain, brace/paren/bracket balance identical
+to base0028 and v2, symbol cross-check clean. Pending pod smoke.
 
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 ---
- ds4.c | 398 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 398 insertions(+)
+ ds4.c | 562 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 562 insertions(+)
 
 diff --git a/ds4.c b/ds4.c
-index 2189997..ee74b39 100644
+index 2189997..57cf66f 100644
 --- a/ds4.c
 +++ b/ds4.c
-@@ -10568,6 +10568,14 @@ typedef struct {
+@@ -122,6 +122,7 @@ enum {
+     DS4_MAX_EXPERT           = 384,
+     DS4_MAX_EXPERT_USED      = 6,
+     DS4_MAX_EXPERT_SHARED    = 1,
++    DS4_PACE_REWIND_DEPTH_MAX = 16,  /* patch 0022 v3: rewind checkpoint ring slots */
+     DS4_MAX_FF_EXP           = 3072,
+     DS4_MAX_HASH_LAYER       = 3,
+     DS4_MAX_SWA              = 128,
+@@ -10568,6 +10569,14 @@ typedef struct {
      ds4_gpu_tensor *spec_prefix1_attn_state_score[DS4_MAX_LAYER];
      ds4_gpu_tensor *spec_prefix1_index_state_kv[DS4_MAX_LAYER];
      ds4_gpu_tensor *spec_prefix1_index_state_score[DS4_MAX_LAYER];
@@ -93,25 +101,27 @@ index 2189997..ee74b39 100644
 +     * on DS4_PACE_REWIND instead of enable_mtp so the correction tier does not
 +     * depend on MTP being built/on and does not clobber the spec_* buffers the
 +     * speculative verifier reuses every token). */
-+    ds4_gpu_tensor *spec_rewind_attn_state_kv[DS4_MAX_LAYER];
-+    ds4_gpu_tensor *spec_rewind_attn_state_score[DS4_MAX_LAYER];
-+    ds4_gpu_tensor *spec_rewind_index_state_kv[DS4_MAX_LAYER];
-+    ds4_gpu_tensor *spec_rewind_index_state_score[DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_attn_state_kv[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_attn_state_score[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_index_state_kv[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
++    ds4_gpu_tensor *spec_rewind_index_state_score[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
      ds4_gpu_tensor *spec_logits;
      uint32_t layer_n_comp[DS4_MAX_LAYER];
      uint32_t layer_n_index_comp[DS4_MAX_LAYER];
-@@ -10880,6 +10888,10 @@ static void metal_graph_free(ds4_gpu_graph *g) {
+@@ -10880,6 +10889,12 @@ static void metal_graph_free(ds4_gpu_graph *g) {
          ds4_gpu_tensor_free(g->spec_prefix1_attn_state_score[il]);
          ds4_gpu_tensor_free(g->spec_prefix1_index_state_kv[il]);
          ds4_gpu_tensor_free(g->spec_prefix1_index_state_score[il]);
-+        ds4_gpu_tensor_free(g->spec_rewind_attn_state_kv[il]);    /* 0022 */
-+        ds4_gpu_tensor_free(g->spec_rewind_attn_state_score[il]);
-+        ds4_gpu_tensor_free(g->spec_rewind_index_state_kv[il]);
-+        ds4_gpu_tensor_free(g->spec_rewind_index_state_score[il]);
++        for (uint32_t rd = 0; rd < DS4_PACE_REWIND_DEPTH_MAX; rd++) {   /* 0022 v3: ring */
++            ds4_gpu_tensor_free(g->spec_rewind_attn_state_kv[rd][il]);
++            ds4_gpu_tensor_free(g->spec_rewind_attn_state_score[rd][il]);
++            ds4_gpu_tensor_free(g->spec_rewind_index_state_kv[rd][il]);
++            ds4_gpu_tensor_free(g->spec_rewind_index_state_score[rd][il]);
++        }
      }
      ds4_gpu_tensor_free(g->kv);
      ds4_gpu_tensor_free(g->kv_raw);
-@@ -11194,6 +11206,12 @@ static bool metal_graph_alloc_raw_cap(
+@@ -11194,6 +11209,22 @@ static bool metal_graph_alloc_raw_cap(
          bool                    enable_mtp) {
      memset(g, 0, sizeof(*g));
      g->mtp_enabled = enable_mtp;
@@ -121,32 +131,46 @@ index 2189997..ee74b39 100644
 +     * the MTP spec_* buffers). */
 +    const char *rewind_env = getenv("DS4_PACE_REWIND");
 +    const bool enable_rewind = rewind_env && atoi(rewind_env) != 0;
++    /* patch 0022 v3: rewind checkpoint ring depth (pre-erosion anchor). Clamp
++     * to [1, DEPTH_MAX]; depth 1 == the v2 single rolling snapshot. */
++    uint32_t rewind_depth = 1;
++    if (enable_rewind) {
++        const char *rd_env = getenv("DS4_PACE_REWIND_CKPT_DEPTH");
++        int rd = rd_env ? atoi(rd_env) : 1;
++        if (rd < 1) rd = 1;
++        if (rd > DS4_PACE_REWIND_DEPTH_MAX) rd = DS4_PACE_REWIND_DEPTH_MAX;
++        rewind_depth = (uint32_t)rd;
++    }
      if (raw_cap == 0) raw_cap = 1;
      if (ctx_size == 0) ctx_size = raw_cap;
      if (prefill_cap == 0) prefill_cap = 1;
-@@ -11305,6 +11323,10 @@ static bool metal_graph_alloc_raw_cap(
+@@ -11305,6 +11336,12 @@ static bool metal_graph_alloc_raw_cap(
                  g->spec_prefix1_attn_state_kv[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
                  g->spec_prefix1_attn_state_score[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
              }
-+            if (enable_rewind) {   /* 0022: own snapshot set */
-+                g->spec_rewind_attn_state_kv[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
-+                g->spec_rewind_attn_state_score[il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
++            if (enable_rewind) {   /* 0022 v3: own snapshot RING (rewind_depth slots) */
++                for (uint32_t rd = 0; rd < rewind_depth; rd++) {
++                    g->spec_rewind_attn_state_kv[rd][il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
++                    g->spec_rewind_attn_state_score[rd][il] = ds4_gpu_tensor_alloc(attn_width * attn_rows * sizeof(float));
++                }
 +            }
              if (g->layer_attn_state_kv[il]) {
                  state_init_ok = state_init_ok &&
                                  metal_tensor_fill_f32(g->layer_attn_state_kv[il], 0.0f, attn_width * attn_rows);
-@@ -11328,6 +11350,10 @@ static bool metal_graph_alloc_raw_cap(
+@@ -11328,6 +11365,12 @@ static bool metal_graph_alloc_raw_cap(
                      g->spec_prefix1_index_state_kv[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
                      g->spec_prefix1_index_state_score[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
                  }
-+                if (enable_rewind) {   /* 0022: own snapshot set (ratio-4 index) */
-+                    g->spec_rewind_index_state_kv[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
-+                    g->spec_rewind_index_state_score[il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
++                if (enable_rewind) {   /* 0022 v3: own snapshot RING (ratio-4 index) */
++                    for (uint32_t rd = 0; rd < rewind_depth; rd++) {
++                        g->spec_rewind_index_state_kv[rd][il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
++                        g->spec_rewind_index_state_score[rd][il] = ds4_gpu_tensor_alloc(index_width * index_rows * sizeof(float));
++                    }
 +                }
                  if (g->layer_index_state_kv[il]) {
                      state_init_ok = state_init_ok &&
                                      metal_tensor_fill_f32(g->layer_index_state_kv[il], 0.0f, index_width * index_rows);
-@@ -13685,6 +13711,151 @@ static void ds4_pace_emit_s1(const char *ev) {
+@@ -13685,6 +13728,190 @@ static void ds4_pace_emit_s1(const char *ev) {
      }
  }
  
@@ -186,15 +210,38 @@ index 2189997..ee74b39 100644
 +    uint32_t hist_len, hist_head;
 +    double   cusum_arm, cusum_fire;
 +    int      armed_latch;      /* ARM cusum has crossed (drift confirmed) */
-+    /* onset checkpoint (frontier counters inline; tensors in g->spec_rewind_*) */
-+    int      onset_valid, onset_pos, slack;
-+    uint32_t rw_n_comp[DS4_MAX_LAYER];
-+    uint32_t rw_n_index_comp[DS4_MAX_LAYER];
-+    uint32_t rw_mtp_n_raw;
-+    float   *onset_logits;                     /* [DS4_N_VOCAB] */
-+    unsigned char pace_blob[sizeof(g_pace)];   /* scalars + inline rings + ptrs */
-+    double  *save_mass, *save_rmass, *save_bmass, *save_admit_cusum;
-+    uint32_t *save_admit_persist_ct, *save_admit_last_tok;
++    int      slack;
++    /* patch 0022 v3: char-level GARBAGE detector (report cause 2). EWMA of the
++     * per-char non-structural fraction of the decoded stream; crossing
++     * garbage_thr flags the erosion BEFORE the periodic lock, giving the lead
++     * S1 lacks in fast-collapse so the checkpoint ring freezes pre-erosion. */
++    double   garbage_thr, garbage_alpha, garbage_ewma;
++    int      garbage_seen, garbage_latch;
++    /* patch 0022 v3: resume mini-WARMUP (report cause 3). After a rewind, widen
++     * to keep_max for warmup_len tok then re-freeze to warmup_keep, forcing the
++     * cleaned context to be re-processed with capacity so greedy diverges. */
++    uint32_t warmup_len;
++    int      warmup_left, warmup_keep;
++    /* patch 0022 v3: checkpoint RING (report cause 1). Each slot mirrors the v2
++     * single onset checkpoint (frontier counters inline; frontier tensors in
++     * g->spec_rewind_*[slot]); at fire the OLDEST in-window slot is the target
++     * so the anchor predates the erosion even when ARM arms late. depth == the
++     * alloc-side ring depth; frozen the moment ARM trips. */
++    uint32_t depth, ring_head, ring_count;
++    int      ring_frozen;
++    int      slot_valid[DS4_PACE_REWIND_DEPTH_MAX];
++    int      slot_pos[DS4_PACE_REWIND_DEPTH_MAX];
++    uint32_t rw_n_comp[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
++    uint32_t rw_n_index_comp[DS4_PACE_REWIND_DEPTH_MAX][DS4_MAX_LAYER];
++    uint32_t rw_mtp_n_raw[DS4_PACE_REWIND_DEPTH_MAX];
++    float   *slot_logits[DS4_PACE_REWIND_DEPTH_MAX];          /* each [DS4_N_VOCAB] */
++    unsigned char *slot_pace_blob[DS4_PACE_REWIND_DEPTH_MAX]; /* each sizeof(g_pace) */
++    double  *slot_mass[DS4_PACE_REWIND_DEPTH_MAX];
++    double  *slot_rmass[DS4_PACE_REWIND_DEPTH_MAX];
++    double  *slot_bmass[DS4_PACE_REWIND_DEPTH_MAX];
++    double  *slot_admit_cusum[DS4_PACE_REWIND_DEPTH_MAX];
++    uint32_t *slot_admit_persist_ct[DS4_PACE_REWIND_DEPTH_MAX];
++    uint32_t *slot_admit_last_tok[DS4_PACE_REWIND_DEPTH_MAX];
 +    /* counters */
 +    uint32_t rewinds_done, last_rewind_tok;
 +    uint64_t regen_tokens, arm_events, fire_events, skip_events;
@@ -231,21 +278,37 @@ index 2189997..ee74b39 100644
 +    g_rewind.guard    = (uint32_t)pace_env_i("DS4_PACE_REWIND_GUARD", 32);
 +    g_rewind.keep     = pace_env_i("DS4_PACE_REWIND_KEEP", 0);
 +    g_rewind.sigma    = 1e-4;
++    /* patch 0022 v3 knobs (pivotal post-mortem fixes) */
++    {
++        int d = pace_env_i("DS4_PACE_REWIND_CKPT_DEPTH", 1);
++        if (d < 1) d = 1;
++        if (d > DS4_PACE_REWIND_DEPTH_MAX) d = DS4_PACE_REWIND_DEPTH_MAX;
++        g_rewind.depth = (uint32_t)d;
++    }
++    g_rewind.garbage_thr   = pace_env_d("DS4_PACE_REWIND_GARBAGE", 0.0);
++    g_rewind.garbage_alpha = 0.04;   /* ~25-char smoothing of the char stream */
++    g_rewind.warmup_len    = (uint32_t)pace_env_i("DS4_PACE_REWIND_WARMUP", 0);
++    g_rewind.warmup_left   = 0;
 +    if (g_rewind.enabled) {
 +        const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
-+        g_rewind.onset_logits = xmalloc((size_t)DS4_N_VOCAB * sizeof(float));
-+        g_rewind.save_mass  = xmalloc_zeroed(n, sizeof(double));
-+        g_rewind.save_rmass = xmalloc_zeroed(n, sizeof(double));
-+        g_rewind.save_bmass = xmalloc_zeroed(n, sizeof(double));
-+        g_rewind.save_admit_cusum = xmalloc_zeroed(n, sizeof(double));
-+        g_rewind.save_admit_persist_ct = xmalloc_zeroed(n, sizeof(uint32_t));
-+        g_rewind.save_admit_last_tok = xmalloc_zeroed(n, sizeof(uint32_t));
++        for (uint32_t d = 0; d < g_rewind.depth; d++) {
++            g_rewind.slot_logits[d]    = xmalloc((size_t)DS4_N_VOCAB * sizeof(float));
++            g_rewind.slot_pace_blob[d] = xmalloc(sizeof(g_pace));
++            g_rewind.slot_mass[d]  = xmalloc_zeroed(n, sizeof(double));
++            g_rewind.slot_rmass[d] = xmalloc_zeroed(n, sizeof(double));
++            g_rewind.slot_bmass[d] = xmalloc_zeroed(n, sizeof(double));
++            g_rewind.slot_admit_cusum[d] = xmalloc_zeroed(n, sizeof(double));
++            g_rewind.slot_admit_persist_ct[d] = xmalloc_zeroed(n, sizeof(uint32_t));
++            g_rewind.slot_admit_last_tok[d] = xmalloc_zeroed(n, sizeof(uint32_t));
++        }
 +        fprintf(stderr,
 +                "ds4: PACE REWIND on alpha=%.2f arm(k=%.2f,h=%.1f) "
-+                "fire(k=%.2f,h=%.1f) every=%u margin=%u max=%u backoff=%u keep=%d\n",
++                "fire(k=%.2f,h=%.1f) every=%u margin=%u max=%u backoff=%u keep=%d "
++                "depth=%u garbage=%.2f warmup=%u\n",
 +                g_rewind.alpha, g_rewind.k_arm, g_rewind.h_arm,
 +                g_rewind.k_fire, g_rewind.h_fire, g_rewind.every,
-+                g_rewind.margin, g_rewind.max, g_rewind.backoff, g_rewind.keep);
++                g_rewind.margin, g_rewind.max, g_rewind.backoff, g_rewind.keep,
++                g_rewind.depth, g_rewind.garbage_thr, g_rewind.warmup_len);
 +    }
 +}
 +
@@ -298,7 +361,7 @@ index 2189997..ee74b39 100644
  /* Fold the last token's S1 sample into the EWMA, update the slope over the
   * s1_slope_win window and the consecutive-over counter. Called once per
   * decode token from ds4_pace_tick (the layer hooks of token N accumulate
-@@ -13695,6 +13866,7 @@ static void ds4_pace_s1_update(void) {
+@@ -13695,6 +13922,7 @@ static void ds4_pace_s1_update(void) {
          const double s1 = g_pace.s1_tok_pruned / g_pace.s1_tok_total;
          g_pace.ema_s1 = (1.0 - g_pace.alpha_s1) * g_pace.ema_s1
                        + g_pace.alpha_s1 * s1;
@@ -306,10 +369,60 @@ index 2189997..ee74b39 100644
          const uint32_t w = g_pace.s1_slope_win;
          if (g_pace.s1_ring_len < w) {
              g_pace.s1_ring[(g_pace.s1_ring_head + g_pace.s1_ring_len) % w] =
-@@ -26347,6 +26519,14 @@ static int generate_metal_graph_raw_swa(
+@@ -26099,6 +26327,48 @@ static void trace_token_sidecar(const ds4_vocab *vocab, int token, int pos) {
+     fputs("\"\n", tfh);
+ }
+ 
++/* patch 0022 v3: char-level GARBAGE detector feed (report cause 2). Decodes
++ * the just-sampled token to bytes (same GPT-2 byte map as trace_token_sidecar)
++ * and folds each char's non-structural indicator into an EWMA. When it crosses
++ * DS4_PACE_REWIND_GARBAGE the latch flags the erosion BEFORE the periodic lock
++ * (the lead S1 lacks in fast-collapse), freezing the checkpoint ring early.
++ * Off when the threshold is <= 0. Called once per decoded token in both GPU
++ * decode loops (co-located with trace_token_sidecar / the rewind actuator). */
++static void ds4_pace_rewind_feed_token(const ds4_vocab *vocab, int token) {
++    ds4_pace_rewind_init();   /* idempotent: ensure garbage_thr/enabled set */
++    if (g_rewind.enabled <= 0 || g_rewind.garbage_thr <= 0.0) return;
++    if (!vocab || token < 0 || token >= vocab->n_vocab) return;
++    ds4_str s = vocab->token[token];
++    unsigned char buf[512];
++    size_t nb = 0;
++    if (vocab_token_is_literal_special(s)) {
++        for (uint64_t i = 0; i < s.len && nb < sizeof(buf); i++)
++            buf[nb++] = (unsigned char)s.ptr[i];
++    } else {
++        uint64_t sp = 0;
++        while (sp < s.len && nb < sizeof(buf)) {
++            uint32_t cp = utf8_decode_one(s.ptr, s.len, &sp);
++            int b = gpt2_codepoint_to_byte(cp);
++            if (b >= 0) buf[nb++] = (unsigned char)b;
++        }
++    }
++    /* structural = whitespace, digits, and HTML/CSS/code punctuation. Valid
++     * markup interleaves these densely; the pre-lock word-salad erosion is bare
++     * letters, so its non-structural fraction spikes before the periodic lock. */
++    static const char structural[] = " \t\n\r<>{}[]();:.,/=%&!?*+@|$#-_\"'0123456789";
++    for (size_t i = 0; i < nb; i++) {
++        unsigned char c = buf[i];
++        const double x = (c && strchr(structural, (int)c)) ? 0.0 : 1.0;
++        g_rewind.garbage_ewma = (1.0 - g_rewind.garbage_alpha) * g_rewind.garbage_ewma
++                              + g_rewind.garbage_alpha * x;
++        if (g_rewind.garbage_seen < 1000000000) g_rewind.garbage_seen++;
++    }
++    if (g_rewind.garbage_seen >= 24 && g_rewind.garbage_ewma >= g_rewind.garbage_thr)
++        g_rewind.garbage_latch = 1;
++    else if (g_rewind.garbage_ewma < g_rewind.garbage_thr * 0.6)
++        g_rewind.garbage_latch = 0;   /* hysteresis: released well below thr */
++}
++
+ /* CPU generation entry point.  It runs layer-major prefill once, then decodes
+  * one token at a time using the persistent KV cache and scratch arena. */
+ static int generate_raw_swa_cpu(
+@@ -26347,6 +26617,15 @@ static int generate_metal_graph_raw_swa(
                                              (uint32_t)pos,
                                              logits);
          if (!ok) break;
++        ds4_pace_rewind_feed_token(vocab, token);   /* 0022 v3: char-garbage detector */
 +        /* patch 0022: S1-guided rewind actuator (greedy CLI GPU loop). On a
 +         * fire it restores the onset KV frontier + PACE state + widened mask
 +         * and rewinds `pos` to the healthy onset; the loop resumes from the
@@ -321,7 +434,7 @@ index 2189997..ee74b39 100644
          if (token_timing) {
              const double t_eval1 = now_sec();
              fprintf(stderr, "ds4: gpu decode eval %d took %.3f ms\n", n_decode_eval + 1, (t_eval1 - t_eval0) * 1000.0);
-@@ -27432,6 +27612,212 @@ static bool spec_frontier_restore(ds4_spec_frontier *f, ds4_session *s) {
+@@ -27432,6 +27711,276 @@ static bool spec_frontier_restore(ds4_spec_frontier *f, ds4_session *s) {
      return ok;
  }
  
@@ -346,32 +459,32 @@ index 2189997..ee74b39 100644
 +/* Whole-g_pace checkpoint (scalars + inline n-gram/s1 rings) plus the heap
 + * gate-mass / CUSUM arrays. Their pointers, saved in the blob, are stable for
 + * the run so restoring them is a no-op; the array bodies are copied. */
-+static void ds4_pace_rewind_save_pace(void) {
++static void ds4_pace_rewind_save_pace(uint32_t slot) {
 +    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
-+    memcpy(g_rewind.pace_blob, &g_pace, sizeof(g_pace));
-+    if (g_pace.mass)  memcpy(g_rewind.save_mass,  g_pace.mass,  n * sizeof(double));
-+    if (g_pace.rmass) memcpy(g_rewind.save_rmass, g_pace.rmass, n * sizeof(double));
-+    if (g_pace.bmass) memcpy(g_rewind.save_bmass, g_pace.bmass, n * sizeof(double));
++    memcpy(g_rewind.slot_pace_blob[slot], &g_pace, sizeof(g_pace));
++    if (g_pace.mass)  memcpy(g_rewind.slot_mass[slot],  g_pace.mass,  n * sizeof(double));
++    if (g_pace.rmass) memcpy(g_rewind.slot_rmass[slot], g_pace.rmass, n * sizeof(double));
++    if (g_pace.bmass) memcpy(g_rewind.slot_bmass[slot], g_pace.bmass, n * sizeof(double));
 +    if (g_pace.admit_cusum)
-+        memcpy(g_rewind.save_admit_cusum, g_pace.admit_cusum, n * sizeof(double));
++        memcpy(g_rewind.slot_admit_cusum[slot], g_pace.admit_cusum, n * sizeof(double));
 +    if (g_pace.admit_persist_ct)
-+        memcpy(g_rewind.save_admit_persist_ct, g_pace.admit_persist_ct, n * sizeof(uint32_t));
++        memcpy(g_rewind.slot_admit_persist_ct[slot], g_pace.admit_persist_ct, n * sizeof(uint32_t));
 +    if (g_pace.admit_last_tok)
-+        memcpy(g_rewind.save_admit_last_tok, g_pace.admit_last_tok, n * sizeof(uint32_t));
++        memcpy(g_rewind.slot_admit_last_tok[slot], g_pace.admit_last_tok, n * sizeof(uint32_t));
 +}
 +
-+static void ds4_pace_rewind_restore_pace(void) {
++static void ds4_pace_rewind_restore_pace(uint32_t slot) {
 +    const size_t n = (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT;
-+    memcpy(&g_pace, g_rewind.pace_blob, sizeof(g_pace));  /* rewinds tok/phase/rings too */
-+    if (g_pace.mass)  memcpy(g_pace.mass,  g_rewind.save_mass,  n * sizeof(double));
-+    if (g_pace.rmass) memcpy(g_pace.rmass, g_rewind.save_rmass, n * sizeof(double));
-+    if (g_pace.bmass) memcpy(g_pace.bmass, g_rewind.save_bmass, n * sizeof(double));
++    memcpy(&g_pace, g_rewind.slot_pace_blob[slot], sizeof(g_pace));  /* rewinds tok/phase/rings too */
++    if (g_pace.mass)  memcpy(g_pace.mass,  g_rewind.slot_mass[slot],  n * sizeof(double));
++    if (g_pace.rmass) memcpy(g_pace.rmass, g_rewind.slot_rmass[slot], n * sizeof(double));
++    if (g_pace.bmass) memcpy(g_pace.bmass, g_rewind.slot_bmass[slot], n * sizeof(double));
 +    if (g_pace.admit_cusum)
-+        memcpy(g_pace.admit_cusum, g_rewind.save_admit_cusum, n * sizeof(double));
++        memcpy(g_pace.admit_cusum, g_rewind.slot_admit_cusum[slot], n * sizeof(double));
 +    if (g_pace.admit_persist_ct)
-+        memcpy(g_pace.admit_persist_ct, g_rewind.save_admit_persist_ct, n * sizeof(uint32_t));
++        memcpy(g_pace.admit_persist_ct, g_rewind.slot_admit_persist_ct[slot], n * sizeof(uint32_t));
 +    if (g_pace.admit_last_tok)
-+        memcpy(g_pace.admit_last_tok, g_rewind.save_admit_last_tok, n * sizeof(uint32_t));
++        memcpy(g_pace.admit_last_tok, g_rewind.slot_admit_last_tok[slot], n * sizeof(uint32_t));
 +}
 +
 +/* ---- patch 0022: S1-rewind frontier snapshot/restore (dedicated buffers) ----
@@ -381,7 +494,7 @@ index 2189997..ee74b39 100644
 + * BOTH the session path and the greedy CLI loop (which owns no ds4_session)
 + * drive them. Counters live inline in g_rewind (no ds4_spec_frontier type in
 + * the host detector block). */
-+static bool ds4_pace_rewind_snapshot_frontier(ds4_gpu_graph *g) {
++static bool ds4_pace_rewind_snapshot_frontier(ds4_gpu_graph *g, uint32_t slot) {
 +    /* Flash: layers 0-1 are dense (ratio==0), so spec_rewind_attn_state_kv[0]
 +     * is never allocated (gated on ratio!=0 at alloc, ds4.c:11326) and a
 +     * literal index-0 probe is permanently NULL. Scan for the first
@@ -389,26 +502,26 @@ index 2189997..ee74b39 100644
 +     * the MTP twin spec_frontier_snapshot) already skips dense layers. */
 +    bool have_buf = false;
 +    for (uint32_t il = 0; il < DS4_N_LAYER; il++) {
-+        if (g->spec_rewind_attn_state_kv[il]) { have_buf = true; break; }
++        if (g->spec_rewind_attn_state_kv[slot][il]) { have_buf = true; break; }
 +    }
 +    if (!have_buf) return false;
 +    bool ok = ds4_gpu_begin_commands() != 0;
-+    g_rewind.rw_mtp_n_raw = g->mtp_n_raw;
++    g_rewind.rw_mtp_n_raw[slot] = g->mtp_n_raw;
 +    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
-+        g_rewind.rw_n_comp[il] = g->layer_n_comp[il];
-+        g_rewind.rw_n_index_comp[il] = g->layer_n_index_comp[il];
++        g_rewind.rw_n_comp[slot][il] = g->layer_n_comp[il];
++        g_rewind.rw_n_index_comp[slot][il] = g->layer_n_index_comp[il];
 +        const uint32_t ratio = ds4_layer_compress_ratio(il);
 +        if (ratio == 0) continue;
 +        const uint64_t ab = ds4_gpu_tensor_bytes(g->layer_attn_state_kv[il]);
-+        ok = ds4_gpu_tensor_copy(g->spec_rewind_attn_state_kv[il], 0,
++        ok = ds4_gpu_tensor_copy(g->spec_rewind_attn_state_kv[slot][il], 0,
 +                                   g->layer_attn_state_kv[il], 0, ab) != 0 &&
-+             ds4_gpu_tensor_copy(g->spec_rewind_attn_state_score[il], 0,
++             ds4_gpu_tensor_copy(g->spec_rewind_attn_state_score[slot][il], 0,
 +                                   g->layer_attn_state_score[il], 0, ab) != 0;
 +        if (ok && ratio == 4) {
 +            const uint64_t ib = ds4_gpu_tensor_bytes(g->layer_index_state_kv[il]);
-+            ok = ds4_gpu_tensor_copy(g->spec_rewind_index_state_kv[il], 0,
++            ok = ds4_gpu_tensor_copy(g->spec_rewind_index_state_kv[slot][il], 0,
 +                                       g->layer_index_state_kv[il], 0, ib) != 0 &&
-+                 ds4_gpu_tensor_copy(g->spec_rewind_index_state_score[il], 0,
++                 ds4_gpu_tensor_copy(g->spec_rewind_index_state_score[slot][il], 0,
 +                                       g->layer_index_state_score[il], 0, ib) != 0;
 +        }
 +    }
@@ -417,30 +530,39 @@ index 2189997..ee74b39 100644
 +    return ok;
 +}
 +
-+static bool ds4_pace_rewind_restore_frontier(ds4_gpu_graph *g) {
++static bool ds4_pace_rewind_restore_frontier(ds4_gpu_graph *g, uint32_t slot) {
 +    bool ok = ds4_gpu_begin_commands() != 0;
-+    g->mtp_n_raw = g_rewind.rw_mtp_n_raw;
++    g->mtp_n_raw = g_rewind.rw_mtp_n_raw[slot];
 +    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
-+        g->layer_n_comp[il] = g_rewind.rw_n_comp[il];
-+        g->layer_n_index_comp[il] = g_rewind.rw_n_index_comp[il];
++        g->layer_n_comp[il] = g_rewind.rw_n_comp[slot][il];
++        g->layer_n_index_comp[il] = g_rewind.rw_n_index_comp[slot][il];
 +        const uint32_t ratio = ds4_layer_compress_ratio(il);
 +        if (ratio == 0) continue;
 +        const uint64_t ab = ds4_gpu_tensor_bytes(g->layer_attn_state_kv[il]);
 +        ok = ds4_gpu_tensor_copy(g->layer_attn_state_kv[il], 0,
-+                                   g->spec_rewind_attn_state_kv[il], 0, ab) != 0 &&
++                                   g->spec_rewind_attn_state_kv[slot][il], 0, ab) != 0 &&
 +             ds4_gpu_tensor_copy(g->layer_attn_state_score[il], 0,
-+                                   g->spec_rewind_attn_state_score[il], 0, ab) != 0;
++                                   g->spec_rewind_attn_state_score[slot][il], 0, ab) != 0;
 +        if (ok && ratio == 4) {
 +            const uint64_t ib = ds4_gpu_tensor_bytes(g->layer_index_state_kv[il]);
 +            ok = ds4_gpu_tensor_copy(g->layer_index_state_kv[il], 0,
-+                                       g->spec_rewind_index_state_kv[il], 0, ib) != 0 &&
++                                       g->spec_rewind_index_state_kv[slot][il], 0, ib) != 0 &&
 +                 ds4_gpu_tensor_copy(g->layer_index_state_score[il], 0,
-+                                       g->spec_rewind_index_state_score[il], 0, ib) != 0;
++                                       g->spec_rewind_index_state_score[slot][il], 0, ib) != 0;
 +        }
 +    }
 +    if (ok) ok = ds4_gpu_end_commands() != 0;
 +    else (void)ds4_gpu_synchronize();
 +    return ok;
++}
++
++/* patch 0022 v3: pos of the OLDEST valid ring slot (deepest pre-erosion
++ * anchor), or -1 if the ring is empty. */
++static int ds4_pace_rewind_oldest_pos(void) {
++    if (g_rewind.ring_count == 0 || g_rewind.depth == 0) return -1;
++    const uint32_t slot =
++        (g_rewind.ring_head + g_rewind.depth - g_rewind.ring_count) % g_rewind.depth;
++    return g_rewind.slot_valid[slot] ? g_rewind.slot_pos[slot] : -1;
 +}
 +
 +/* Once-per-decode-token actuator, called from BOTH decode loops AFTER the eval
@@ -459,85 +581,141 @@ index 2189997..ee74b39 100644
 +    ds4_pace_rewind_init();   /* idempotent: sets enabled + allocs onset buffers */
 +    if (g_rewind.enabled <= 0 || !ds4_pace_active() || g_pace.in_prefill)
 +        return -1;
++
++    /* patch 0022 v3: resume mini-WARMUP countdown (report cause 3). Runs every
++     * token after a rewind regardless of arm state; the mask stays widened (set
++     * at fire) until it hits 0, then re-freezes to the narrow warmup keep so the
++     * cleaned context is re-processed with capacity and the greedy trajectory
++     * actually diverges (v2's pinned-K resume was a byte-identical no-op). */
++    if (g_rewind.warmup_left > 0 && --g_rewind.warmup_left == 0 &&
++        g_rewind.warmup_keep > 0) {
++        g_pace.keep = g_rewind.warmup_keep;
++        ds4_pace_apply_keep(model, weights, g_rewind.warmup_keep, "rewind_warmup_end");
++    }
++
 +    if (g_pace.phase != PACE_HOLD || g_pace.cur_keep <= 0) return -1;
 +    g_rewind.slack = (int)g->raw_cap - (int)g->raw_window;
++    if (g_rewind.depth == 0) g_rewind.depth = 1;
 +
-+    const int arm_hi = g_rewind.calibrated && g_rewind.cusum_arm >= g_rewind.h_arm;
++    /* ARM = S1 CUSUM crossed OR the char-garbage latch (the latter leads in
++     * fast-collapse, where S1 only rises at the lock — report cause 2). */
++    const int arm_hi =
++        (g_rewind.calibrated && g_rewind.cusum_arm >= g_rewind.h_arm) ||
++        g_rewind.garbage_latch;
 +
 +    /* Rolling healthy checkpoint: while ARM is quiet, (re)take the frontier
 +     * snapshot every `every` tokens so a later still-healthy onset supersedes
 +     * an older one; freeze it the moment ARM trips. */
++    /* Rolling healthy checkpoint RING (report cause 1): while ARM is quiet push
++     * a fresh frontier snapshot into the next ring slot every `every` tok, so
++     * the ring spans ~every*depth tok of still-healthy history; freeze it the
++     * moment ARM trips. At fire the OLDEST in-window slot is the target, so the
++     * anchor predates the erosion even when ARM arms late. */
 +    if (!arm_hi) {
 +        g_rewind.armed_latch = 0;
-+        if (!g_rewind.onset_valid ||
-+            pos - g_rewind.onset_pos >= (int)g_rewind.every) {
-+            if (ds4_pace_rewind_snapshot_frontier(g)) {
-+                if (g_rewind.onset_logits)
-+                    memcpy(g_rewind.onset_logits, logits,
++        g_rewind.ring_frozen = 0;
++        const int newest = g_rewind.ring_count
++            ? g_rewind.slot_pos[(g_rewind.ring_head + g_rewind.depth - 1) % g_rewind.depth]
++            : -1;
++        if (newest < 0 || pos - newest >= (int)g_rewind.every) {
++            const uint32_t slot = g_rewind.ring_head;
++            if (ds4_pace_rewind_snapshot_frontier(g, slot)) {
++                if (g_rewind.slot_logits[slot])
++                    memcpy(g_rewind.slot_logits[slot], logits,
 +                           (size_t)DS4_N_VOCAB * sizeof(float));
-+                ds4_pace_rewind_save_pace();
-+                g_rewind.onset_pos = pos;
-+                g_rewind.onset_valid = 1;
++                ds4_pace_rewind_save_pace(slot);
++                g_rewind.slot_pos[slot] = pos;
++                g_rewind.slot_valid[slot] = 1;
++                g_rewind.ring_head = (g_rewind.ring_head + 1) % g_rewind.depth;
++                if (g_rewind.ring_count < g_rewind.depth) g_rewind.ring_count++;
 +            }
 +        }
 +        return -1;
 +    }
 +    if (!g_rewind.armed_latch) {
 +        g_rewind.armed_latch = 1;
++        g_rewind.ring_frozen = 1;
 +        g_rewind.arm_events++;
-+        ds4_rewind_emit("rewind_arm", pos, g_rewind.onset_pos, "s1_cusum_arm");
++        ds4_rewind_emit("rewind_arm", pos, ds4_pace_rewind_oldest_pos(),
++                        g_rewind.garbage_latch ? "char_garbage" : "s1_cusum_arm");
 +    }
 +
-+    /* FIRE: the expensive rewind, gated on a confirmed ARM (so the flat
-+     * aggressive regime, which never arms, falls through to the airbag STOP),
-+     * with the n-gram airbag as an independent fire source. */
++    /* FIRE: expensive rewind. Sources: S1 FIRE CUSUM, the n-gram airbag, or a
++     * sustained char-garbage latch. Gated on a confirmed ARM + a non-empty ring;
++     * the flat aggressive regime that never arms still falls through to STOP. */
 +    const int fire_hi = g_rewind.calibrated && g_rewind.cusum_fire >= g_rewind.h_fire;
 +    const int airbag  = g_pace.sensor_armed && g_pace.ema_ngram >= g_pace.drift;
-+    if (!(fire_hi || airbag) || !g_rewind.onset_valid) return -1;
++    const int garbfire = g_rewind.garbage_latch &&
++                         g_rewind.garbage_ewma >= g_rewind.garbage_thr;
++    if (!(fire_hi || airbag || garbfire) || g_rewind.ring_count == 0) return -1;
 +    if (g_rewind.rewinds_done >= g_rewind.max) return -1;
 +    if (g_rewind.rewinds_done > 0 &&
 +        (uint32_t)(pos - (int)g_rewind.last_rewind_tok) < g_rewind.backoff)
 +        return -1;
 +
-+    const int target = g_rewind.onset_pos + 1;   /* frontier floor: resume just past snapshot */
++    /* Deep pre-erosion target (report cause 1): walk the ring oldest->newest and
++     * take the FIRST slot still inside the raw-ring slack (§1.5) — the deepest
++     * legal rewind. If even the newest slot has aged out, fall through to STOP. */
 +    const int floor_p = pos - (g_rewind.slack - (int)g_rewind.guard);
-+    if (target < floor_p) {   /* onset aged past the ring slack (§1.5) */
++    int sel = -1, target = -1;
++    for (uint32_t k = 0; k < g_rewind.ring_count; k++) {
++        const uint32_t slot =
++            (g_rewind.ring_head + g_rewind.depth - g_rewind.ring_count + k) % g_rewind.depth;
++        if (!g_rewind.slot_valid[slot]) continue;
++        const int t = g_rewind.slot_pos[slot] + 1;   /* frontier floor: snapshot+1 */
++        if (t >= floor_p) { sel = (int)slot; target = t; break; }
++    }
++    if (sel < 0) {   /* whole ring aged past the slack */
++        const uint32_t newest_slot =
++            (g_rewind.ring_head + g_rewind.depth - 1) % g_rewind.depth;
 +        g_rewind.skip_events++;
-+        ds4_rewind_emit("rewind_skip", pos, target, "out_of_window");
++        ds4_rewind_emit("rewind_skip", pos, g_rewind.slot_pos[newest_slot] + 1,
++                        "out_of_window");
 +        return -1;            /* fall through to the airbag STOP */
 +    }
 +
-+    if (!ds4_pace_rewind_restore_frontier(g)) {
++    if (!ds4_pace_rewind_restore_frontier(g, (uint32_t)sel)) {
 +        g_rewind.skip_events++;
 +        ds4_rewind_emit("rewind_skip", pos, target, "frontier_restore_failed");
 +        return -1;
 +    }
-+    ds4_pace_rewind_restore_pace();              /* mass[]/rings/clocks -> onset */
++    ds4_pace_rewind_restore_pace((uint32_t)sel);  /* mass[]/rings/clocks -> onset */
++
++    /* Widen for the mini-warmup (report cause 3), then re-freeze narrow in the
++     * countdown above. warmup_keep = the operating K just before the rewind (the
++     * low static K to return to). WARMUP=0 => permanent widen (v2 behaviour). */
 +    const int keep = g_rewind.keep > 0 ? g_rewind.keep : g_pace.keep_max;
++    g_rewind.warmup_keep = g_pace.cur_keep;
++    g_rewind.warmup_left = (int)g_rewind.warmup_len;
 +    g_pace.keep = keep;                          /* widen: sticky HOLD baseline */
 +    ds4_pace_apply_keep(model, weights, keep, "rewind");  /* relearn healthy + apply */
-+    if (g_rewind.onset_logits)
-+        memcpy(logits, g_rewind.onset_logits, (size_t)DS4_N_VOCAB * sizeof(float));
++    if (g_rewind.slot_logits[sel])
++        memcpy(logits, g_rewind.slot_logits[sel], (size_t)DS4_N_VOCAB * sizeof(float));
 +
 +    g_rewind.rewinds_done++;
 +    g_rewind.last_rewind_tok = (uint32_t)pos;
-+    g_rewind.regen_tokens += (uint64_t)(pos - g_rewind.onset_pos);
++    g_rewind.regen_tokens += (uint64_t)(pos - (target - 1));
 +    g_rewind.backoff = g_rewind.backoff ? g_rewind.backoff * 2 : 1;
-+    g_rewind.onset_valid = 0;
-+    g_rewind.armed_latch = 0;
++    /* consume the ring so a fresh healthy history is rebuilt after the rewind */
++    for (uint32_t d = 0; d < g_rewind.depth; d++) g_rewind.slot_valid[d] = 0;
++    g_rewind.ring_head = g_rewind.ring_count = 0;
++    g_rewind.armed_latch = g_rewind.ring_frozen = 0;
++    g_rewind.garbage_latch = 0;
 +    g_rewind.cusum_arm = g_rewind.cusum_fire = 0.0;
 +    g_rewind.fire_events++;
-+    ds4_rewind_emit("rewind", pos, target, fire_hi ? "s1_cusum_fire" : "ngram_airbag");
++    ds4_rewind_emit("rewind", pos, target,
++                    fire_hi ? "s1_cusum_fire" : (airbag ? "ngram_airbag" : "char_garbage"));
 +    return target;
 +}
 +
  /* Commit the prefix-1 state captured by the N=2 speculative verifier.
   *
   * The verifier has already advanced every layer through both draft tokens.  On
-@@ -30739,6 +31125,18 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
+@@ -30739,6 +31288,19 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
              fprintf(stderr, "ds4: mtp probe draft failed\n");
          }
      }
++    ds4_pace_rewind_feed_token(&e->vocab, token);   /* 0022 v3: char-garbage detector */
 +    /* patch 0022: S1-guided rewind actuator (session/server GPU path). Same
 +     * actuator as the greedy CLI loop, driving s->graph + s->checkpoint. On a
 +     * fire ds4_session_rewind truncates the committed tokens back to the onset;
@@ -553,3 +731,6 @@ index 2189997..ee74b39 100644
      /* patch 0027: rewind-exactness diagnostic probe (DS4_REWIND_TEST). No-op
       * unless the env is set; drives its own MTP-off replay when it fires. */
      ds4_rewind_test_hook(s);
+-- 
+2.54.0.windows.1
+
