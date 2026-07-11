@@ -27,6 +27,15 @@
 > (the same tree patches `0020`/`0021` target — see `patches/README.md`
 > "Stato apply"). Line numbers are from that file; **read-only** study, no
 > build/server was run.
+>
+> **v2 (2026-07-11):** pod D smoke (`runs/ds4/20260711_podD_smoke_0022/VERDICT.md`)
+> found the actuator structurally unable to fire on Flash — `ds4_pace_rewind_snapshot_frontier`'s
+> opening guard probed the literal-index `spec_rewind_attn_state_kv[0]`, which is
+> permanently NULL because Flash layers 0-1 are dense and the buffer is only
+> allocated for `ratio!=0` layers; fixed to scan for the first *allocated* layer
+> instead (matching the MTP twin `spec_frontier_snapshot`, which carries no such
+> guard), see `patches/README.md` row 0022 for the fix detail and new md5; pending
+> re-smoke.
 
 ---
 

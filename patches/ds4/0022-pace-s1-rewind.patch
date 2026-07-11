@@ -1,4 +1,4 @@
-From bddd626c5728439fdd3d3d2f45735c97c5292359 Mon Sep 17 00:00:00 2001
+From 2f77146a90b57426d1a8101b9def6cbf4a4f33e5 Mon Sep 17 00:00:00 2001
 From: reap-loop <dev@reap-loop.local>
 Date: Sat, 11 Jul 2026 01:29:18 +0200
 Subject: [PATCH] pace: 0022 S1-guided rewind actuator (both decode loops,
@@ -58,13 +58,31 @@ actuator EVERY(32) MARGIN(16) MAX(2) BACKOFF(256) GUARD(32) KEEP(0=>keep_max).
 Requires DS4_PACE=1 + DS4_PACE_S1=1 (the monitor). Off by default; the airbag
 stopper stays the independent fallback.
 
+v2 (this revision): fixes a pod D smoke bug (runs/ds4/20260711_podD_smoke_0022,
+gate a FAIL) in ds4_pace_rewind_snapshot_frontier: the original guard
+`if (DS4_N_LAYER > 0 && !g->spec_rewind_attn_state_kv[0]) return false;`
+assumes layer 0 owns a dedicated rewind buffer, but on Flash
+ds4_expected_layer_compress_ratio returns 0 for il<2 (layers 0-1 are dense)
+and the spec_rewind_* buffers are only allocated inside `if (ratio != 0)`
+(ds4.c:11326) -> spec_rewind_attn_state_kv[0] is permanently NULL -> the
+guard always returned false -> the onset snapshot never ran -> onset_valid
+never set -> FIRE always bailed. The actuator was structurally incapable of
+ever firing a rewind. Fix: scan layers 0..DS4_N_LAYER-1 for the first
+*allocated* spec_rewind_attn_state_kv[il] (return false only if none is
+allocated), matching the style of the MTP twin spec_frontier_snapshot, which
+carries no such literal-index guard and simply skips ratio==0 layers inside
+its copy loop. snapshot/restore already iterate and skip dense layers
+correctly; only the precondition probe was wrong. Restore
+(ds4_pace_rewind_restore_frontier) had no analogous guard and was unaffected.
+Pending re-smoke to confirm gate (a) now fires.
+
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
 ---
- ds4.c | 389 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
- 1 file changed, 389 insertions(+)
+ ds4.c | 398 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 398 insertions(+)
 
 diff --git a/ds4.c b/ds4.c
-index 2189997..ab23532 100644
+index 2189997..ee74b39 100644
 --- a/ds4.c
 +++ b/ds4.c
 @@ -10568,6 +10568,14 @@ typedef struct {
@@ -303,7 +321,7 @@ index 2189997..ab23532 100644
          if (token_timing) {
              const double t_eval1 = now_sec();
              fprintf(stderr, "ds4: gpu decode eval %d took %.3f ms\n", n_decode_eval + 1, (t_eval1 - t_eval0) * 1000.0);
-@@ -27432,6 +27612,203 @@ static bool spec_frontier_restore(ds4_spec_frontier *f, ds4_session *s) {
+@@ -27432,6 +27612,212 @@ static bool spec_frontier_restore(ds4_spec_frontier *f, ds4_session *s) {
      return ok;
  }
  
@@ -364,7 +382,16 @@ index 2189997..ab23532 100644
 + * drive them. Counters live inline in g_rewind (no ds4_spec_frontier type in
 + * the host detector block). */
 +static bool ds4_pace_rewind_snapshot_frontier(ds4_gpu_graph *g) {
-+    if (DS4_N_LAYER > 0 && !g->spec_rewind_attn_state_kv[0]) return false;
++    /* Flash: layers 0-1 are dense (ratio==0), so spec_rewind_attn_state_kv[0]
++     * is never allocated (gated on ratio!=0 at alloc, ds4.c:11326) and a
++     * literal index-0 probe is permanently NULL. Scan for the first
++     * *allocated* rewind buffer instead, mirroring how the loop below (and
++     * the MTP twin spec_frontier_snapshot) already skips dense layers. */
++    bool have_buf = false;
++    for (uint32_t il = 0; il < DS4_N_LAYER; il++) {
++        if (g->spec_rewind_attn_state_kv[il]) { have_buf = true; break; }
++    }
++    if (!have_buf) return false;
 +    bool ok = ds4_gpu_begin_commands() != 0;
 +    g_rewind.rw_mtp_n_raw = g->mtp_n_raw;
 +    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
@@ -507,7 +534,7 @@ index 2189997..ab23532 100644
  /* Commit the prefix-1 state captured by the N=2 speculative verifier.
   *
   * The verifier has already advanced every layer through both draft tokens.  On
-@@ -30739,6 +31116,18 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
+@@ -30739,6 +31125,18 @@ static int ds4_session_eval_internal(ds4_session *s, int token, bool probe_mtp,
              fprintf(stderr, "ds4: mtp probe draft failed\n");
          }
      }
@@ -526,6 +553,3 @@ index 2189997..ab23532 100644
      /* patch 0027: rewind-exactness diagnostic probe (DS4_REWIND_TEST). No-op
       * unless the env is set; drives its own MTP-off replay when it fires. */
      ds4_rewind_test_hook(s);
--- 
-2.54.0.windows.1
-
