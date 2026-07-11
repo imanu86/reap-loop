@@ -1,0 +1,27 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 15360,
+    "loop_onset_char": null,
+    "loop_period": null,
+    "useful_frac_char": 1.0,
+    "p2_gen_tps": 11.96,
+    "good_tps": 11.96,
+    "rewind_arm_n": 1,
+    "rewind_n": 0,
+    "rewind_skip_n": 0,
+    "rewind_events": [],
+    "regen_total": 0,
+    "tokens_final": 4000,
+    "token_jumps": [],
+    "retracted_chars": 16161,
+    "retracted_loop_onset_char": null,
+    "retracted_useful_frac": 1.0,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "15427",
+    "repeat": "0"
+  }
+]

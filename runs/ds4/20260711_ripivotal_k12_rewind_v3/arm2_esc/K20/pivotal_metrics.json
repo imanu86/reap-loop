@@ -1,0 +1,27 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 10543,
+    "loop_onset_char": 1219,
+    "loop_period": 80,
+    "useful_frac_char": 0.11562173954282462,
+    "p2_gen_tps": 20.96,
+    "good_tps": 2.423431660817604,
+    "rewind_arm_n": 1,
+    "rewind_n": 0,
+    "rewind_skip_n": 0,
+    "rewind_events": [],
+    "regen_total": 0,
+    "tokens_final": 4000,
+    "token_jumps": [],
+    "retracted_chars": 10557,
+    "retracted_loop_onset_char": 1234,
+    "retracted_useful_frac": 0.11688926778440845,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "10610",
+    "repeat": "1"
+  }
+]

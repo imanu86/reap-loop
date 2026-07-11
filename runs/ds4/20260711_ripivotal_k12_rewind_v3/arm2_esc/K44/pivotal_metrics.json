@@ -1,0 +1,53 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 16736,
+    "loop_onset_char": null,
+    "loop_period": null,
+    "useful_frac_char": 1.0,
+    "p2_gen_tps": 5.12,
+    "good_tps": 5.12,
+    "rewind_arm_n": 6,
+    "rewind_n": 2,
+    "rewind_skip_n": 0,
+    "rewind_events": [
+      {
+        "from": 259,
+        "to": 182,
+        "reason": "s1_cusum_fire",
+        "tok": 97,
+        "regen": 78
+      },
+      {
+        "from": 194,
+        "to": 183,
+        "reason": "s1_cusum_fire",
+        "tok": 98,
+        "regen": 90
+      }
+    ],
+    "regen_total": 90,
+    "tokens_final": 3910,
+    "token_jumps": [
+      {
+        "row": 175,
+        "from_pos": 259,
+        "to_pos": 182
+      },
+      {
+        "row": 188,
+        "from_pos": 194,
+        "to_pos": 183
+      }
+    ],
+    "retracted_chars": 17483,
+    "retracted_loop_onset_char": null,
+    "retracted_useful_frac": 1.0,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "16803",
+    "repeat": "1"
+  }
+]

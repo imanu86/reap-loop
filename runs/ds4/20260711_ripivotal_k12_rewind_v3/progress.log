@@ -1,0 +1,21 @@
+=== ARM 1: K12 + rewind-v3, n=3 (DONE) ===
+  arm1 r00: close=NO rewinds=2 (L0)
+  arm1 r01: close=NO rewinds=2 (L0)
+  arm1 r02: close=NO rewinds=2 (L0)
+[arm2] waiting for arm1 to complete ...
+[arm2] arm1 done; arm1 summary:
+w,n,p2_gen_tps_median,p1_gen_tps_median,l0l3_median,repeat_majority,restart_majority
+50,3,21.48,2.79,0,1,0
+=== ARM 2: K-escalation ladder (n=1, early-stop on </html>) ===
+  arm2 K=12: close=NO rewinds=2
+  arm2 K=20: close=NO rewinds=0
+0
+  arm2 K=28: close=NO rewinds=0
+0
+  arm2 K=36: close=NO rewinds=1
+  arm2 K=44: close=NO rewinds=2
+  arm2 K=48: close=NO rewinds=0
+0
+ARM2_LADDER_FINAL_K=none
+=== ARM 2: no rung closed </html> up to K=48; skipping n=3 confirm ===
+ALL_DONE

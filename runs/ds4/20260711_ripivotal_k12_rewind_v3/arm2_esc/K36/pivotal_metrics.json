@@ -1,0 +1,41 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 4611,
+    "loop_onset_char": 869,
+    "loop_period": 4,
+    "useful_frac_char": 0.18846237258729126,
+    "p2_gen_tps": 17.44,
+    "good_tps": 3.2867837779223597,
+    "rewind_arm_n": 3,
+    "rewind_n": 1,
+    "rewind_skip_n": 0,
+    "rewind_events": [
+      {
+        "from": 164,
+        "to": 86,
+        "reason": "char_garbage",
+        "tok": 1,
+        "regen": 79
+      }
+    ],
+    "regen_total": 79,
+    "tokens_final": 3921,
+    "token_jumps": [
+      {
+        "row": 80,
+        "from_pos": 164,
+        "to_pos": 86
+      }
+    ],
+    "retracted_chars": 4343,
+    "retracted_loop_onset_char": 602,
+    "retracted_useful_frac": 0.13861386138613863,
+    "retracted_l0l3": 0,
+    "retracted_html_close": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "4678",
+    "repeat": "1"
+  }
+]
