@@ -1,0 +1,9 @@
+[sweep] START cache=400 ntok=512 2026-07-11T19:33:40+02:00
+[sweep] K=9 cache=400 trace=1 server-start 2026-07-11T19:33:43+02:00
+[sweep] K=9 request-fired 2026-07-11T19:33:48+02:00
+[RESULT] K=9 ws=360 cache=400 fit=FITS wall=450s  | promptdone=prompt done 207.060s |  | mask='REAP mask applied: 40 layer' | enf=[maxdistinct/layer=9 violations_outside_keep=0] | chars=1927 close_html=0 | chunks=gen=50 decoding chunk=0.54 t/s avg=0.54 t/s|gen=100 decoding chunk=2.13 t/s avg=0.87 t/s|gen=150 decoding chunk=2.96 t/s avg=1.13 t/s|gen=200 decoding chunk=3.06 t/s avg=1.35 t/s|gen=250 decoding chunk=3.32 t/s avg=1.53 t/s|gen=300 decoding chunk=3.25 t/s avg=1.68 t/s|gen=350 decoding chunk=3.27 t/s avg=1.80 t/s|gen=400 decoding chunk=3.24 t/s avg=1.91 t/s|gen=450 decoding chunk=3.32 t/s avg=2.00 t/s|gen=500 decoding chunk=3.37 t/s avg=2.09 t/s|gen=512 decoding chunk=3.39 t/s avg=2.11 t/s|
+[sweep] K=12 cache=400 trace=0 server-start 2026-07-11T19:41:23+02:00
+[sweep] K=12 request-fired 2026-07-11T19:41:27+02:00
+[RESULT] K=12 ws=480 cache=400 fit=OVER wall=837s  | promptdone=prompt done 562.246s |  | mask='REAP mask applied: 40 layer' | enf=[trace-off] | chars=1851 close_html=0 | chunks=gen=50 decoding chunk=0.44 t/s avg=0.44 t/s|gen=100 decoding chunk=1.92 t/s avg=0.72 t/s|gen=150 decoding chunk=2.87 t/s avg=0.96 t/s|gen=200 decoding chunk=3.00 t/s avg=1.16 t/s|gen=250 decoding chunk=3.12 t/s avg=1.32 t/s|gen=300 decoding chunk=3.12 t/s avg=1.46 t/s|gen=350 decoding chunk=3.09 t/s avg=1.58 t/s|gen=400 decoding chunk=3.02 t/s avg=1.68 t/s|gen=450 decoding chunk=3.00 t/s avg=1.77 t/s|gen=500 decoding chunk=3.04 t/s avg=1.85 t/s|gen=512 decoding chunk=3.21 t/s avg=1.86 t/s|
+[sweep] K=16 cache=400 trace=0 server-start 2026-07-11T19:55:30+02:00
+[sweep] K=16 request-fired 2026-07-11T19:55:34+02:00

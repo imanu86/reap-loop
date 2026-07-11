@@ -32,5 +32,22 @@
     "chars": 1927,
     "l0l3": 0,
     "k": 9
+  },
+  {
+    "doctype": true,
+    "head_title": true,
+    "style": true,
+    "body": false,
+    "nav": false,
+    "h1_bean": true,
+    "button": false,
+    "form": false,
+    "script": false,
+    "alert": false,
+    "close_html": false,
+    "looped": false,
+    "chars": 1851,
+    "l0l3": 0,
+    "k": 12
   }
 ]
