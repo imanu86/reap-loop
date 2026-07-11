@@ -1,0 +1,60 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>⚋ AI SHOP • CYBERPUNK</title>
+    <style>
+        /* reset & cyber base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', 'Fira Code', monospace;
+        }
+
+        body {
+            background: radial-gradient circle at 50%, #000 0%, #00d9 0%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d9 80%, #000 80%;
+            background: #000;
+            background: radial-gradient circle at 50%, #000 80%, #00d

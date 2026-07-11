@@ -1,0 +1,31 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✦ AI SHOP • CYBERPUNK </title>
+    <!-- Font (for future) -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsw@0..1..100&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: url('data:image/png;base64,ey=75'); /* cyber bg */
+            background: #rgb(12,12,12) #0005;
+            background: #000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #0000;
+            background: #0000  #000

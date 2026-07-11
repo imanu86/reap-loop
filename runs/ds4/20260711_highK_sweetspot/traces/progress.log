@@ -1,0 +1,6 @@
+[gen] START trace_K48 K=48 ntok=300 ctx=4096 trace=1 2026-07-11T11:39:05+02:00
+[gen] DONE trace_K48 rc=0 wall=100s perf=[prefill: 8.27 t/s, generation: 3.60 t/s] peakMemMB=2252 peakSwapMB=2 gen_chars=1044 close_html=0 route_rows=11961 2026-07-11T11:40:45+02:00
+[gen] START trace_K64 K=64 ntok=300 ctx=4096 trace=1 2026-07-11T11:40:45+02:00
+[gen] DONE trace_K64 rc=0 wall=99s perf=[prefill: 8.87 t/s, generation: 3.63 t/s] peakMemMB=2247 peakSwapMB=2 gen_chars=1074 close_html=0 route_rows=11961 2026-07-11T11:42:24+02:00
+[gen] START trace_K91 K=91 ntok=300 ctx=4096 trace=1 2026-07-11T11:42:24+02:00
+[gen] DONE trace_K91 rc=0 wall=97s perf=[prefill: 8.98 t/s, generation: 3.64 t/s] peakMemMB=2248 peakSwapMB=2 gen_chars=1161 close_html=0 route_rows=11961 2026-07-11T11:44:01+02:00

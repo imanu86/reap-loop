@@ -1,0 +1,4 @@
+[gen] START coffee_K64 K=64 ntok=1500 ctx=4096 trace=0 2026-07-11T11:44:01+02:00
+[gen] DONE coffee_K64 rc=0 wall=436s perf=[prefill: 1.36 t/s, generation: 2.84 t/s] peakMemMB=2190 peakSwapMB=2 gen_chars=2362 close_html=1 route_rows=0 2026-07-11T11:51:17+02:00
+[gen] START coffee_K0 K=0 ntok=1500 ctx=4096 trace=0 2026-07-11T11:51:17+02:00
+[gen] DONE coffee_K0 rc=0 wall=896s perf=[prefill: 1.13 t/s, generation: 1.24 t/s] peakMemMB=2196 peakSwapMB=95 gen_chars=2483 close_html=1 route_rows=0 2026-07-11T12:06:13+02:00

@@ -12,8 +12,14 @@ Verifica: 0.000% dei pick su esperti potati (mask enforcement reale).
 - `route_masked_K16_cyberpunk.csv`  (K16, wide)
 - `route_masked_K23_cyberpunk.csv`  (K23, wide)
 - `route_masked_K38_cyberpunk.csv`  (K38, wide)
+- `route_masked_K48_cyberpunk.csv`  (K48, wide)   — aggiunta 2026-07-11 (high-K sweep)
+- `route_masked_K64_cyberpunk.csv`  (K64, wide)   — aggiunta 2026-07-11 (high-K sweep)
+- `route_masked_K91_cyberpunk.csv`  (K91 eff 74.6, wide) — aggiunta 2026-07-11 (high-K sweep)
 - `route_masked_K12_coffee.csv`     (K12, narrow)
 - `route_masked_K23_coffee.csv`     (K23, narrow)
+
+Sweep cyberpunk completo per K = 12/16/23/38/48/64/91 (0.000% pick su esperti potati su tutte;
+distinti-usati/layer ≈ keep). Sorgente + verdetto in `../20260711_highK_sweetspot/REPORT.md`.
 
 **PRONTE per re-run phase-segmentation SENZA caveat-proxy.** Colmano il gap-G2 di
 `runs/ds4/20260711_phase_segmented_usage/phase_segmented_usage.py` e `pin_analysis.py`

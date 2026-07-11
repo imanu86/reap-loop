@@ -1,0 +1,2 @@
+[gen] START k0_cyberpunk K=0 ntok=1500 ctx=6144 trace=0 2026-07-11T12:06:13+02:00
+[gen] DONE k0_cyberpunk rc=143 wall=470s perf=[] peakMemMB=2262 peakSwapMB=26 gen_chars=1126 close_html=0 route_rows=0 2026-07-11T12:14:03+02:00

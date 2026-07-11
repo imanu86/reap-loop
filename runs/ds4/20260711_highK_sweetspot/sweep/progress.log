@@ -1,0 +1,17 @@
+[sweep] ==== PHASE 1a: warm t/s probe (-n 300) ====
+[sweep] START warmup_K48 K=48 ntok=300 ctx=4096 2026-07-11T11:05:54+02:00
+[sweep] DONE warmup_K48 rc=0 wall=583s perf=[prefill: 0.30 t/s, generation: 1.13 t/s] peakMemMB=2286 peakSwapMB=1 gen_chars=1044 close_html=0 2026-07-11T11:15:37+02:00
+[sweep] START probe_K48 K=48 ntok=300 ctx=4096 2026-07-11T11:15:37+02:00
+[sweep] DONE probe_K48 rc=0 wall=250s perf=[prefill: 0.58 t/s, generation: 3.60 t/s] peakMemMB=2260 peakSwapMB=1 gen_chars=1044 close_html=0 2026-07-11T11:19:47+02:00
+[sweep] START probe_K64 K=64 ntok=300 ctx=4096 2026-07-11T11:19:47+02:00
+[sweep] DONE probe_K64 rc=0 wall=121s perf=[prefill: 5.63 t/s, generation: 3.06 t/s] peakMemMB=2242 peakSwapMB=1 gen_chars=1074 close_html=0 2026-07-11T11:21:48+02:00
+[sweep] START probe_K91 K=91 ntok=300 ctx=4096 2026-07-11T11:21:48+02:00
+[sweep] DONE probe_K91 rc=0 wall=115s perf=[prefill: 8.67 t/s, generation: 3.16 t/s] peakMemMB=2238 peakSwapMB=3 gen_chars=1161 close_html=0 2026-07-11T11:23:43+02:00
+[sweep] ==== PHASE 1b: quality full-budget (-n 5500) ====
+[sweep] START qual_K48 K=48 ntok=5500 ctx=8192 2026-07-11T11:23:43+02:00
+[sweep] DONE qual_K48 rc=143 wall=461s perf=[] peakMemMB=2251 peakSwapMB=3 gen_chars=5448 close_html=0 2026-07-11T11:31:24+02:00
+[sweep] START qual_K64 K=64 ntok=5500 ctx=8192 2026-07-11T11:31:24+02:00
+[sweep] DONE qual_K64 rc=143 wall=250s perf=[] peakMemMB=2249 peakSwapMB=3 gen_chars=2928 close_html=0 2026-07-11T11:35:34+02:00
+[sweep] START qual_K91 K=91 ntok=5500 ctx=8192 2026-07-11T11:35:34+02:00
+[sweep] DONE qual_K91 rc=143 wall=184s perf=[] peakMemMB=2237 peakSwapMB=3 gen_chars=2684 close_html=0 2026-07-11T11:38:38+02:00
+[sweep] SWEEP_COMPLETE 2026-07-11T11:38:38+02:00

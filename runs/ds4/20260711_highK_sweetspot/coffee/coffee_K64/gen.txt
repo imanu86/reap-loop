@@ -1,0 +1,57 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        body { background: #c8b4e; color: #dark; line-height: 1.5; padding: 20; }
+        nav { background: #c8b4e; padding: 10; border-bottom: 1px solid #dark; margin-bottom: 20; }
+        nav a { margin-right: 16; font-weight: bold; color: #dark; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        section { background: #c8b4e; padding: 20; border-radius: 8; margin-bottom: 20; }
+        h1 { font-size: 2.5rem; margin-bottom: 4; }
+        p { font-size: 1.2rem; margin-bottom: 8; }
+        button { padding: 8 16; background: #c8b4e; border: 1px solid #dark; border-radius: 4; cursor: pointer; font-size: 1rem; }
+        button:hover { background: #dark; color: #light; }
+        form { background: #c8b4e; padding: 20; border-radius: 8; }
+        label { display: block; margin-bottom: 4; }
+        input { width: 100%; padding: 8; margin-bottom: 8; border: 1px solid #dark; border-radius: 4; }
+        input[type="submit"] { background: #c8b4e; border: 1px solid #dark; border-radius: 4; padding: 8 16; cursor: pointer; }
+        input[type="submit"]:hover { background: #dark; color: #light; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, slow-b brew — sip by sip.</p>
+        <button id="order">Order Now</button>
+    </section>
+
+    <form action="/submit" id="contactForm">
+        <label for="name">Name</label>
+        <input type="text" id="name" name="name" required>
+        <label for="email">Email</label>
+        <input type="email" id="email" name="email" required>
+        <input type="submit" value="Submit">
+    </form>
+
+    <script>
+        document.getElementById('order').addEventListener('click', () => alert('Thank you for your order!');
+
+        document.getElementById('contactForm').addEventListener('submit', (e) {
+            e.preventDefault();
+            alert('Thank you for your order!');
+        });
+    </script>
+</body>
+</html>
+```
