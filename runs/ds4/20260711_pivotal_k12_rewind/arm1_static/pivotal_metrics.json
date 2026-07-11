@@ -1,0 +1,38 @@
+[
+  {
+    "run": "r00",
+    "p2_chars": 12109,
+    "loop_onset_char": 491,
+    "loop_period": 6,
+    "useful_frac_char": 0.0405483524651086,
+    "p2_gen_tps": 21.95,
+    "good_tps": 0.8900363366091337,
+    "rewind_arm_n": 0,
+    "rewind_n": 0,
+    "rewind_skip_n": 0,
+    "rewind_events": [],
+    "regen_total": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "12176",
+    "repeat": "1"
+  },
+  {
+    "run": "r01",
+    "p2_chars": 12109,
+    "loop_onset_char": 491,
+    "loop_period": 6,
+    "useful_frac_char": 0.0405483524651086,
+    "p2_gen_tps": 23.13,
+    "good_tps": 0.9378833925179619,
+    "rewind_arm_n": 0,
+    "rewind_n": 0,
+    "rewind_skip_n": 0,
+    "rewind_events": [],
+    "regen_total": 0,
+    "l0l3": "0",
+    "html_close": "0",
+    "chars": "12176",
+    "repeat": "1"
+  }
+]
