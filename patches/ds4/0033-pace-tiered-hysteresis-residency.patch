@@ -1,0 +1,433 @@
+From 201e08766dd23e31a03bc8413439ae1c33251020 Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sat, 11 Jul 2026 16:00:00 +0200
+Subject: [PATCH] cuda: tiered-hysteresis dynamic residency (VRAM/RAM/SSD,
+ X/X+Y knock promotion, dynamic seed) (0033)
+
+Extends 0031 pin-keep from a single warmup "freeze" into the user's objective:
+a DYNAMIC, self-seeding, continuously rebalanced residency controller with a
+three-tier scoring state machine and hysteresis, so the VRAM-resident set is
+kept small, stable and genuinely hot instead of thrashing like a naive LRU
+(measured: a bigger LRU cache is WORSE, because it promotes on every miss and
+pays the management cost).
+
+Three tiers per cache slot (a new `tier` field beside 0031's `pinned`):
+  tier 2 = VRAM  (hot, pinned, eviction-immune)   -- reuses 0031's `pinned`
+  tier 1 = RAM   (warm, resident, LRU-evictable)
+  tier 0 = SSD   (cold, BLOCKED, preferred LRU victim -> direct-load)
+
+Dynamic seed, not a static mask.  A per-slot decayed `knock` (request) counter
+accumulates during warmup; after DS4_PACE_TIER_WARMUP decode expert-load calls
+(~the first 10-20 tokens over the layer stack) the observed routing SEEDS the
+initial hot set (cuda_tier_seed).  Thereafter a continuous loop promotes and
+evicts by score.
+
+Hysteresis-gated promotion (the anti-thrash core).  Promotion requires
+SUSTAINED demand, never a single fluke request:
+  SSD -> RAM   only after knock >= X            (DS4_PACE_TIER_X, def 3)
+  RAM -> VRAM  only after knock >= X + Y         (+ DS4_PACE_TIER_Y, def 5)
+Demotion (in the per-call clock) drops one tier at a time below a hysteresis
+margin (DS4_PACE_TIER_HYST) so a boundary slot does not oscillate.  The VRAM
+tier is capped at DS4_PACE_TIER_VRAM_SLOTS (~394, the real 12 GB fit) and holds
+the top-by-knock experts within budget; once full, a hotter RAM slot displaces
+the coldest VRAM slot (HYST margin + DS4_PACE_TIER_COOLDOWN) -- both already
+resident, so the pin swap is a flag toggle, no copy.
+
+Re-entry.  knock DECAYS (DS4_PACE_TIER_DECAY) rather than resetting on demotion,
+so a blocked (tier-0) slot that resumes knocking climbs back up the ladder.
+
+Where the loop lives: cuda_tier_begin_call (once per decode expert-load call:
+decay + demote + seed-at-warmup) and cuda_tier_note_resident (per resident
+request/seed: credit knock + promote), hooked beside 0031's cuda_pin_* at the
+same four call sites; cuda_stream_expert_cache_lru_slot is made tier-aware
+(evict SSD before RAM, skip VRAM), which reduces to 0031's pure min-age
+selection when tiering is off.
+
+Invariants (same load-bearing distinction as 0031):
+ - RESIDENCY, not SELECTION: touches only per-slot tier/pinned/knock, never
+   g_reap_mask_pruned nor the router bias -> top-k selection unchanged ->
+   output BIT-IDENTICAL (residency only decides HIT vs H2D re-copy of the SAME
+   bytes, never WHICH expert is selected).
+ - REPRESENTATION-neutral: serves the exact bytes load_slot produced (native
+   2-bit via cold-lossless), never q8/f16; run DS4_CUDA_NO_Q8_F16_CACHE=1 for
+   the bit-exact path (one-shot stderr reminder if unset).
+ - OFF by default: no-op unless DS4_PACE_TIER=1 -> engine byte-identical to
+   post-0031.  DS4_PACE_TIER supersedes 0031's static freeze (both drive
+   `pinned`); a one-shot stderr note fires if both are set.
+
+Known approximation (shared with 0031): knock/tier live on the SLOT, not the
+expert, so a physically evicted+reloaded expert loses its history; the seed +
+decay self-correct and selection is untouched, so this is a residency
+efficiency wart, never a correctness one.
+
+Env: DS4_PACE_TIER(0), DS4_PACE_TIER_WARMUP(512 calls), DS4_PACE_TIER_X(3),
+DS4_PACE_TIER_Y(5), DS4_PACE_TIER_HYST(1.0), DS4_PACE_TIER_VRAM_SLOTS(394),
+DS4_PACE_TIER_DECAY(0.98), DS4_PACE_TIER_KNOCK(1.0), DS4_PACE_TIER_COOLDOWN(64),
+DS4_PACE_TIER_LOG.  Applies after 0031 (concern ds4_cuda.cu).  See
+docs/TIERED_RESIDENCY.md.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4_cuda.cu | 294 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 291 insertions(+), 3 deletions(-)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 4e58944..c3757c6 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1033,6 +1033,8 @@ struct cuda_stream_expert_cache_slot {
+     int pinned;      /* 0031: eviction-immune residency flag (LRU skips it) */
+     double demand;   /* 0031: EWMA request frequency (cache-local rmass) */
+     double cusum;    /* 0031: CUSUM accumulator for demand-driven rotation */
++    int tier;        /* 0033: residency tier 0=SSD-blocked 1=RAM 2=VRAM-pinned */
++    double knock;    /* 0033: decayed knock (request) count, sustained-demand proxy */
+ };
+ 
+ struct cuda_stream_expert_cache {
+@@ -1058,6 +1060,13 @@ struct cuda_stream_expert_cache {
+     int pin_min_valid;
+     uint32_t pin_min_slot;
+     double pin_min_demand;
++    /* 0033 tiered-hysteresis dynamic residency runtime state (reset on realloc). */
++    int tier_seeded;
++    uint32_t tier_vram_count;
++    uint64_t tier_calls;
++    uint64_t tier_last_swap;
++    uint64_t tier_promotions;
++    uint64_t tier_evictions;
+     std::vector<cuda_stream_expert_cache_slot> slots;
+ };
+ 
+@@ -4031,19 +4040,294 @@ static void cuda_pin_note_resident(cuda_stream_expert_cache *cache, uint32_t slo
+     }
+ }
+ 
++/* ---- 0033 tiered-hysteresis dynamic residency (K12 dynamic) ---------------
++ * Extends 0031's single warmup "freeze" into a DYNAMIC seed + a CONTINUOUS
++ * promote/evict loop with HYSTERESIS over three residency tiers:
++ *   tier 2 = VRAM  (hot, pinned, eviction-immune)  -- reuses 0031's `pinned`
++ *   tier 1 = RAM   (warm, resident, LRU-evictable)
++ *   tier 0 = SSD   (cold, BLOCKED, preferred LRU victim -> direct-load)
++ * The hot set is NOT a static mask: after the first DS4_PACE_TIER_WARMUP decode
++ * expert-load calls (~the first 10-20 tokens over the layer stack) the observed
++ * routing SEEDS the initial hot set; thereafter each slot climbs/descends the
++ * ladder by its decayed knock count.  Promotion is GATED by SUSTAINED demand:
++ *   SSD -> RAM   only after knock >= X            (DS4_PACE_TIER_X)
++ *   RAM -> VRAM  only after knock >= X + Y         (+ DS4_PACE_TIER_Y)
++ * so a single fluke request never promotes a cold expert -- the pathology of a
++ * naive LRU/frequency cache, which promotes on every miss and thrashes (a big
++ * cache measured WORSE for exactly this reason).  Only sustained knocking wins
++ * VRAM residency, so the VRAM set stays small, stable and genuinely hot.
++ * Demotion (VRAM->RAM->SSD) uses a hysteresis margin (DS4_PACE_TIER_HYST) so a
++ * slot at the boundary does not oscillate.  The VRAM tier is capped at
++ * DS4_PACE_TIER_VRAM_SLOTS (~394, the real 12 GB fit) and holds the top-by-knock
++ * experts within budget: once budget is full a hotter RAM slot may DISPLACE the
++ * coldest VRAM slot (only when HYST hotter and past a cooldown) -- both are
++ * already resident, so the swap is a flag toggle, no copy.  Re-entry: knock
++ * DECAYS (DS4_PACE_TIER_DECAY) rather than resetting on demotion, so a blocked
++ * (tier-0) slot that resumes knocking climbs back up the ladder.
++ *
++ * Correctness invariants (same load-bearing distinction as 0031):
++ *  - RESIDENCY, not SELECTION: touches only the per-slot `tier`/`pinned`/`knock`
++ *    management state, never g_reap_mask_pruned nor the router bias -> top-k
++ *    selection is unchanged -> output is BIT-IDENTICAL whether tiering is on,
++ *    off or actively promoting.  Which slot is resident/evicted only decides
++ *    HIT vs H2D re-copy of the SAME bytes, never WHICH expert is selected.
++ *  - REPRESENTATION-neutral: every tier serves the exact bytes load_slot
++ *    produced (native 2-bit via cold-lossless); 0033 never promotes to q8/f16.
++ *    For the bit-exact 2-bit-native path run DS4_CUDA_NO_Q8_F16_CACHE=1 (0033
++ *    inherits, never overrides; one-shot stderr reminder if unset).
++ *  - OFF by default: every hook is a no-op unless DS4_PACE_TIER=1, so the
++ *    default engine is byte-identical to post-0031.
++ * DS4_PACE_TIER supersedes 0031's static freeze -- both drive the same `pinned`
++ * flag, so enable one (a one-shot stderr note fires if both are set).  Known
++ * approximation (shared with 0031): knock/tier live on the SLOT, not the
++ * expert, so a physically evicted+reloaded expert loses its history; the seed +
++ * decay self-correct and the mask/selection is untouched, so this is a residency
++ * efficiency wart, never a correctness one. */
++struct cuda_tier_config {
++    int ready;
++    int enabled;        /* DS4_PACE_TIER            master gate (default off) */
++    uint64_t warmup;    /* DS4_PACE_TIER_WARMUP     calls before the dynamic seed */
++    double x;           /* DS4_PACE_TIER_X          knocks for SSD->RAM */
++    double y;           /* DS4_PACE_TIER_Y          extra knocks for RAM->VRAM */
++    double hyst;        /* DS4_PACE_TIER_HYST       demotion hysteresis margin */
++    uint32_t vram_slots;/* DS4_PACE_TIER_VRAM_SLOTS VRAM tier budget (slots) */
++    double decay;       /* DS4_PACE_TIER_DECAY      per-call knock decay */
++    double knock_inc;   /* DS4_PACE_TIER_KNOCK      knock increment per request */
++    uint64_t cooldown;  /* DS4_PACE_TIER_COOLDOWN   anti-thrash calls between swaps */
++    FILE *log;          /* DS4_PACE_TIER_LOG        JSONL events */
++};
++static cuda_tier_config g_tier_cfg;
++
++static const cuda_tier_config *cuda_tier_get_config(void) {
++    if (g_tier_cfg.ready) return &g_tier_cfg;
++    g_tier_cfg.enabled = cuda_pin_env_flag("DS4_PACE_TIER");
++    g_tier_cfg.warmup = cuda_pin_env_u64("DS4_PACE_TIER_WARMUP", 512ull);
++    g_tier_cfg.x = cuda_pin_env_double("DS4_PACE_TIER_X", 3.0);
++    if (g_tier_cfg.x < 0.0) g_tier_cfg.x = 0.0;
++    g_tier_cfg.y = cuda_pin_env_double("DS4_PACE_TIER_Y", 5.0);
++    if (g_tier_cfg.y < 0.0) g_tier_cfg.y = 0.0;
++    g_tier_cfg.hyst = cuda_pin_env_double("DS4_PACE_TIER_HYST", 1.0);
++    if (g_tier_cfg.hyst < 0.0) g_tier_cfg.hyst = 0.0;
++    {
++        const uint64_t vs = cuda_pin_env_u64("DS4_PACE_TIER_VRAM_SLOTS", 394ull);
++        g_tier_cfg.vram_slots = vs > 0xffffffffull ? 0xffffffffu : (uint32_t)vs;
++    }
++    g_tier_cfg.decay = cuda_pin_env_double("DS4_PACE_TIER_DECAY", 0.98);
++    if (g_tier_cfg.decay <= 0.0 || g_tier_cfg.decay > 1.0) g_tier_cfg.decay = 0.98;
++    g_tier_cfg.knock_inc = cuda_pin_env_double("DS4_PACE_TIER_KNOCK", 1.0);
++    if (g_tier_cfg.knock_inc <= 0.0) g_tier_cfg.knock_inc = 1.0;
++    g_tier_cfg.cooldown = cuda_pin_env_u64("DS4_PACE_TIER_COOLDOWN", 64ull);
++    g_tier_cfg.log = NULL;
++    const char *lp = getenv("DS4_PACE_TIER_LOG");
++    if (lp && lp[0]) g_tier_cfg.log = fopen(lp, "a");
++    if (g_tier_cfg.enabled && cuda_pin_env_flag("DS4_PACE_PIN")) {
++        fprintf(stderr,
++                "ds4: DS4_PACE_TIER and DS4_PACE_PIN are both set; the tiered "
++                "controller (0033) supersedes the 0031 static freeze and both "
++                "drive the same `pinned` residency flag -- enable one.\n");
++    }
++    if (g_tier_cfg.enabled && getenv("DS4_CUDA_NO_Q8_F16_CACHE") == NULL) {
++        fprintf(stderr,
++                "ds4: DS4_PACE_TIER active but DS4_CUDA_NO_Q8_F16_CACHE is unset; "
++                "0033 manages RESIDENCY tiers only and serves each expert in its "
++                "existing representation. For bit-exact 2-bit-native serving set "
++                "DS4_CUDA_NO_Q8_F16_CACHE=1.\n");
++    }
++    g_tier_cfg.ready = 1;
++    return &g_tier_cfg;
++}
++
++/* Effective VRAM budget: the configured slot cap, clamped to leave >= a rotation
++ * reserve of non-VRAM slots so the LRU always has a victim (a load never
++ * deadlocks) -- mirrors 0031's reserve_free. */
++static uint32_t cuda_tier_vram_budget(const cuda_stream_expert_cache *cache,
++                                      const cuda_tier_config *cfg) {
++    uint32_t budget = cfg->vram_slots;
++    if (budget > cache->capacity) budget = cache->capacity;
++    const uint32_t reserve = cache->capacity / 8u + 1u;
++    if (budget + reserve > cache->capacity) {
++        budget = cache->capacity > reserve ? cache->capacity - reserve : 0u;
++    }
++    return budget;
++}
++
++/* Dynamic seed (replaces 0031's one-shot freeze): after warmup, classify every
++ * resident slot from the observed knock -- knock>=X -> RAM, else SSD -- then
++ * promote the hottest RAM slots (knock>=X+Y) to VRAM up to budget.  The
++ * continuous loop takes over afterwards. */
++static void cuda_tier_seed(cuda_stream_expert_cache *cache) {
++    const cuda_tier_config *cfg = cuda_tier_get_config();
++    if (!cache || !cache->valid) return;
++    const uint32_t budget = cuda_tier_vram_budget(cache, cfg);
++    const double vram_gate = cfg->x + cfg->y;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        s.pinned = 0;
++        if (!s.valid) { s.tier = 0; continue; }
++        s.tier = (s.knock >= cfg->x) ? 1 : 0;
++    }
++    uint32_t vram = 0;
++    for (uint32_t k = 0; k < budget; k++) {
++        int best = -1;
++        double best_knock = 0.0;
++        for (uint32_t i = 0; i < cache->capacity; i++) {
++            cuda_stream_expert_cache_slot &s = cache->slots[i];
++            if (!s.valid || s.tier == 2 || s.knock < vram_gate) continue;
++            if (best < 0 || s.knock > best_knock) {
++                best_knock = s.knock;
++                best = (int)i;
++            }
++        }
++        if (best < 0) break;
++        cache->slots[(uint32_t)best].tier = 2;
++        cache->slots[(uint32_t)best].pinned = 1;
++        vram++;
++    }
++    cache->tier_vram_count = vram;
++    cache->tier_seeded = 1;
++    if (cfg->log) {
++        fprintf(cfg->log,
++                "{\"event\":\"tier_seed\",\"vram\":%u,\"budget\":%u,"
++                "\"capacity\":%u,\"call\":%llu}\n",
++                vram, budget, cache->capacity,
++                (unsigned long long)cache->tier_calls);
++        fflush(cfg->log);
++    }
++}
++
++/* Once per decode expert-load call: decay this layer's knock, run the DEMOTION
++ * half of the loop (cooled slots descend one tier per call, with hysteresis),
++ * and fire the dynamic seed when warmup elapses. */
++static void cuda_tier_begin_call(cuda_stream_expert_cache *cache, uint32_t layer) {
++    const cuda_tier_config *cfg = cuda_tier_get_config();
++    if (!cfg->enabled || !cache || !cache->valid) return;
++    cache->tier_calls++;
++    if (!cache->tier_seeded) {
++        for (uint32_t i = 0; i < cache->capacity; i++) {
++            cuda_stream_expert_cache_slot &s = cache->slots[i];
++            if (s.valid && s.layer == layer) s.knock *= cfg->decay;
++        }
++        if (cache->tier_calls >= cfg->warmup) cuda_tier_seed(cache);
++        return;
++    }
++    const double vram_keep = (cfg->x + cfg->y) - cfg->hyst;
++    const double ram_keep = cfg->x - cfg->hyst;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        if (!s.valid || s.layer != layer) continue;
++        s.knock *= cfg->decay;
++        if (s.tier == 2) {
++            if (s.knock < vram_keep) {
++                s.tier = 1;
++                s.pinned = 0;
++                if (cache->tier_vram_count) cache->tier_vram_count--;
++                cache->tier_evictions++;
++                if (cfg->log) {
++                    fprintf(cfg->log,
++                            "{\"event\":\"tier_demote\",\"from\":2,\"to\":1,"
++                            "\"expert\":%u,\"layer\":%u,\"knock\":%.4f,"
++                            "\"call\":%llu}\n",
++                            s.expert, s.layer, s.knock,
++                            (unsigned long long)cache->tier_calls);
++                    fflush(cfg->log);
++                }
++            }
++        } else if (s.tier == 1) {
++            if (s.knock < ram_keep) s.tier = 0; /* blocked back to SSD */
++        }
++    }
++}
++
++/* Credit a knock for a resident expert (decode HIT/LOAD or SPEX seed) and run
++ * the PROMOTION half of the loop: sustained knocking climbs the ladder one step
++ * per call (SSD->RAM at X, RAM->VRAM at X+Y).  When the VRAM budget is full a
++ * hotter RAM slot displaces the coldest VRAM slot (top-by-knock, HYST margin,
++ * cooldown-gated) -- both are already resident so the pin swap is a flag toggle,
++ * no copy, and the mask/selection is untouched -> output stays bit-identical. */
++static void cuda_tier_note_resident(cuda_stream_expert_cache *cache, uint32_t slot) {
++    const cuda_tier_config *cfg = cuda_tier_get_config();
++    if (!cfg->enabled || !cache || !cache->valid || slot >= cache->capacity) {
++        return;
++    }
++    cuda_stream_expert_cache_slot &s = cache->slots[slot];
++    s.knock += cfg->knock_inc;
++    if (!cache->tier_seeded) return;          /* accumulate only until the seed */
++    if (s.tier == 0) {
++        if (s.knock >= cfg->x) s.tier = 1;    /* SSD -> RAM after X knocks */
++        return;
++    }
++    if (s.tier != 1) return;                  /* already VRAM -> nothing to do */
++    if (s.knock < cfg->x + cfg->y) return;    /* RAM -> VRAM needs X+Y knocks */
++    const uint32_t budget = cuda_tier_vram_budget(cache, cfg);
++    if (cache->tier_vram_count < budget) {
++        s.tier = 2;
++        s.pinned = 1;
++        cache->tier_vram_count++;
++        cache->tier_promotions++;
++        if (cfg->log) {
++            fprintf(cfg->log,
++                    "{\"event\":\"tier_promote\",\"from\":1,\"to\":2,"
++                    "\"expert\":%u,\"layer\":%u,\"knock\":%.4f,\"vram\":%u,"
++                    "\"call\":%llu}\n",
++                    s.expert, s.layer, s.knock, cache->tier_vram_count,
++                    (unsigned long long)cache->tier_calls);
++            fflush(cfg->log);
++        }
++        return;
++    }
++    /* Budget full: displace the coldest VRAM slot iff this one is HYST hotter. */
++    if (cache->tier_calls - cache->tier_last_swap < cfg->cooldown) return;
++    int victim = -1;
++    double victim_knock = 0.0;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &v = cache->slots[i];
++        if (!v.valid || v.tier != 2) continue;
++        if (victim < 0 || v.knock < victim_knock) {
++            victim_knock = v.knock;
++            victim = (int)i;
++        }
++    }
++    if (victim < 0 || s.knock <= victim_knock + cfg->hyst) return;
++    const uint32_t out_expert = cache->slots[(uint32_t)victim].expert;
++    const uint32_t out_layer = cache->slots[(uint32_t)victim].layer;
++    cache->slots[(uint32_t)victim].tier = 1;
++    cache->slots[(uint32_t)victim].pinned = 0;
++    s.tier = 2;
++    s.pinned = 1;
++    cache->tier_last_swap = cache->tier_calls;
++    cache->tier_promotions++;
++    if (cfg->log) {
++        fprintf(cfg->log,
++                "{\"event\":\"tier_swap\",\"pinned_in\":%u,\"in_layer\":%u,"
++                "\"evicted_out\":%u,\"out_layer\":%u,\"in_knock\":%.4f,"
++                "\"out_knock\":%.4f,\"call\":%llu}\n",
++                s.expert, s.layer, out_expert, out_layer, s.knock, victim_knock,
++                (unsigned long long)cache->tier_calls);
++        fflush(cfg->log);
++    }
++}
++
+ static uint32_t cuda_stream_expert_cache_lru_slot(
+         cuda_stream_expert_cache *cache) {
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+         if (!cache->slots[i].valid) return i; /* empty slots are never pinned */
+     }
+-    /* 0031: skip pinned (eviction-immune) slots when choosing an LRU victim. */
++    /* 0031: skip pinned (eviction-immune) slots when choosing an LRU victim.
++     * 0033: among the non-pinned candidates, prefer the LOWER tier first
++     * (SSD-blocked tier 0 before RAM tier 1), then the lower age.  With tiering
++     * off every slot has tier 0, so this reduces to the pure min-age selection
++     * of 0031 -> byte-identical when DS4_PACE_TIER is unset. */
+     int have = 0;
+     uint32_t slot = 0;
++    int best_tier = 0;
+     uint64_t best_age = 0;
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+         if (cache->slots[i].pinned) continue;
+-        if (!have || cache->slots[i].age < best_age) {
+-            best_age = cache->slots[i].age;
++        const int t = cache->slots[i].tier;
++        const uint64_t a = cache->slots[i].age;
++        if (!have || t < best_tier || (t == best_tier && a < best_age)) {
++            best_tier = t;
++            best_age = a;
+             slot = i;
+             have = 1;
+         }
+@@ -4196,6 +4480,7 @@ static int cuda_stream_expert_cache_seed_one(
+     if (cache_slot >= 0) {
+         cache->slots[(uint32_t)cache_slot].age = ++cache->tick;
+         cuda_pin_note_resident(cache, (uint32_t)cache_slot); /* 0031: SPEX seed */
++        cuda_tier_note_resident(cache, (uint32_t)cache_slot); /* 0033: SPEX seed */
+         return 1;
+     }
+ 
+@@ -4219,6 +4504,7 @@ static int cuda_stream_expert_cache_seed_one(
+     }
+     if (append && cache->count < cache->capacity) cache->count++;
+     cuda_pin_note_resident(cache, load_slot); /* 0031: SPEX seed -> pin candidate */
++    cuda_tier_note_resident(cache, load_slot); /* 0033: SPEX seed -> tier candidate */
+     return 1;
+ }
+ 
+@@ -5276,6 +5562,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     }
+ 
+     cuda_pin_begin_call(expert_cache, layer); /* 0031: demand clock + freeze */
++    cuda_tier_begin_call(expert_cache, layer); /* 0033: knock clock + seed/demote */
+ 
+     for (uint32_t i = 0; i < compact_count; i++) {
+         if (compact_ids[i] < 0 || (uint32_t)compact_ids[i] >= n_total_expert) {
+@@ -5349,6 +5636,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+ 
+             if (cache_slot >= 0) {
+                 cuda_pin_note_resident(expert_cache, (uint32_t)cache_slot); /* 0031 */
++                cuda_tier_note_resident(expert_cache, (uint32_t)cache_slot); /* 0033 */
+                 copied_from_global_cache =
+                     cuda_stream_expert_cache_copy_to_compact(
+                             expert_cache,
+-- 
+2.54.0.windows.1
+
