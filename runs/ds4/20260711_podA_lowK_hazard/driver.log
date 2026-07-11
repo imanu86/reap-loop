@@ -15,3 +15,14 @@
 [driver] k16_coffee done rc=0 2026-07-11T00:32:01+00:00
 [driver] k12_cyberpunk (K=12, n=2) start 2026-07-11T00:32:01+00:00
 [run] W=50 run=0 ...
+[run] W=50 run=1 ...
+[done] rows=2  verdict={'pairs': [(50, 0.0)], 'monotone_non_decreasing': None, 'level_spread': 0.0}
+[done] summaries in /root/out/20260711_podA_lowK_hazard/k12_cyberpunk
+[driver] k12_cyberpunk done rc=0 2026-07-11T00:56:14+00:00
+[driver] k16_cyberpunk (K=16, n=2) start 2026-07-11T00:56:14+00:00
+[run] W=50 run=0 ...
+[run] W=50 run=1 ...
+[done] rows=2  verdict={'pairs': [(50, 0.0)], 'monotone_non_decreasing': None, 'level_spread': 0.0}
+[done] summaries in /root/out/20260711_podA_lowK_hazard/k16_cyberpunk
+[driver] k16_cyberpunk done rc=0 2026-07-11T01:20:02+00:00
+[driver] ALL DONE 2026-07-11T01:20:02+00:00
