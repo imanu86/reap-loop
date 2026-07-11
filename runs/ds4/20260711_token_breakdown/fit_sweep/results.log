@@ -1,0 +1,12 @@
+== WARMUP mask=sessK23 cache=32 n=60 rc=0 wall=198s peakGPU=11653MB
+   generation: 0.50 t/s | hit_rate=0.0000 | selected_experts=19960 cache_hits=0 cache_misses=15222 | sync_ms_per_batch=3.911 | oomflags=1
+== K23_c32 mask=sessK23 cache=32 n=90 rc=0 wall=176s peakGPU=11653MB
+   generation: 3.05 t/s | hit_rate=0.0000 | selected_experts=27700 cache_hits=0 cache_misses=22962 | sync_ms_per_batch=2.637 | oomflags=1
+== K12_c900 mask=sessK12 cache=900 n=90 rc=0 wall=78s peakGPU=12080MB
+   generation: 1.81 t/s | hit_rate=0.9501 | selected_experts=27700 cache_hits=21816 cache_misses=1146 | sync_ms_per_batch=0.556 | oomflags=1
+== K16_c900 mask=sessK16 cache=900 n=90 rc=0 wall=62s peakGPU=12032MB
+   generation: 1.80 t/s | hit_rate=0.9312 | selected_experts=27700 cache_hits=21382 cache_misses=1580 | sync_ms_per_batch=0.595 | oomflags=1
+== K23_c900 mask=sessK23 cache=900 n=90 rc=0 wall=72s peakGPU=12056MB
+   generation: 1.77 t/s | hit_rate=0.8581 | selected_experts=27700 cache_hits=19703 cache_misses=3259 | sync_ms_per_batch=0.740 | oomflags=1
+== K12_c516 mask=sessK12 cache=516 n=90 rc=0 wall=49s peakGPU=12040MB
+   generation: 3.06 t/s | hit_rate=0.8775 | selected_experts=27700 cache_hits=20149 cache_misses=2813 | sync_ms_per_batch=0.686 | oomflags=1

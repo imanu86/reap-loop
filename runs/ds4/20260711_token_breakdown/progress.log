@@ -1,0 +1,21 @@
+[17:14:35] === WARMUP (discard) ===
+[17:14:35] START clean WARMUP n=60 buffcache=1278MB
+[17:17:52] DONE  clean WARMUP rc=0 wall=196.789655971s md5=4e62fadf2745 [prefill: 1.19 t/s, generation: 0.49 t/s]
+   SPEX: hit_rate=0.0000 miss_per_expert=0.7626 direct_loads=4738 copy_calls=59880 copied=134730.00 MiB copy_ms=125014.768 copy_ms_per_batch=48.455 sync_calls=59880 sync_ms=9645.220 sync_ms_per_batch=3.738
+[17:17:52] === CLEAN wall/SPEX reps ===
+[17:17:52] START clean CLEAN_A n=120 buffcache=57393MB
+[17:20:49] DONE  clean CLEAN_A rc=0 wall=176.240650603s md5=c8b9d64afdba [prefill: 0.63 t/s, generation: 3.12 t/s]
+   SPEX: hit_rate=0.0000 miss_per_expert=0.8663 direct_loads=4738 copy_calls=106320 copied=239220.00 MiB copy_ms=147641.521 copy_ms_per_batch=28.613 sync_calls=106320 sync_ms=12605.805 sync_ms_per_batch=2.443
+[17:20:49] START clean CLEAN_B n=120 buffcache=57478MB
+[17:21:46] DONE  clean CLEAN_B rc=0 wall=57.243133713s md5=c8b9d64afdba [prefill: 3.90 t/s, generation: 3.48 t/s]
+   SPEX: hit_rate=0.0000 miss_per_expert=0.8663 direct_loads=4738 copy_calls=106320 copied=239220.00 MiB copy_ms=39681.852 copy_ms_per_batch=7.690 sync_calls=106320 sync_ms=11835.293 sync_ms_per_batch=2.294
+[17:21:46] === NSYS differential ===
+[17:21:46] START nsys NSYS_n40 n=40
+[17:22:13] DONE  nsys NSYS_n40 rc=0 wall=27.374013830s [prefill: 8.41 t/s, generation: 3.25 t/s] (nsys wall is inflated; use for GPU-busy only)
+[17:22:13] EXPORT sqlite NSYS_n40 ...
+[17:22:15] EXPORT done NSYS_n40 (14233600 bytes)
+[17:22:15] START nsys NSYS_n120 n=120
+[17:23:10] DONE  nsys NSYS_n120 rc=0 wall=55.144444885s [prefill: 7.53 t/s, generation: 3.39 t/s] (nsys wall is inflated; use for GPU-busy only)
+[17:23:10] EXPORT sqlite NSYS_n120 ...
+[17:23:15] EXPORT done NSYS_n120 (35098624 bytes)
+[17:23:15] === ALL DONE ===

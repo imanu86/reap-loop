@@ -1,0 +1,87 @@
+{
+  "clean_gen_tps": 3.48,
+  "clean_wall_ms_per_tok": 287.4,
+  "nsys_wall_ms_per_tok": 304.5,
+  "PER_TOKEN_nsys": {
+    "wall": 304.5,
+    "union_any_cuda_call": 176.3,
+    "gap_no_cuda_call_pureCPU": 128.2,
+    "union_sync_wait_blocked_on_gpu": 148.6,
+    "gap_pct": 42.1,
+    "union_sync_pct_of_wall": 48.8
+  },
+  "per_api_class_ms_per_tok": {
+    "sync": 133.8,
+    "blkcpy": 17.6,
+    "issue": 27.8,
+    "setup": 1.2,
+    "other": 0.0
+  },
+  "per_api_class_calls_per_tok": {
+    "sync": 935.2,
+    "blkcpy": 859.0,
+    "issue": 3110.0,
+    "setup": 0.0,
+    "other": 0.0
+  },
+  "per_api_name_ms_per_tok": {
+    "cudaStreamSynchronize_v3020": {
+      "ms_tok": 81.04,
+      "calls_tok": 774.2
+    },
+    "cudaDeviceSynchronize_v3020": {
+      "ms_tok": 52.74,
+      "calls_tok": 161.0
+    },
+    "cudaMemcpy_v3020": {
+      "ms_tok": 17.64,
+      "calls_tok": 859.0
+    },
+    "cudaLaunchKernel_v7000": {
+      "ms_tok": 14.12,
+      "calls_tok": 1561.5
+    },
+    "cudaMemcpyAsync_v3020": {
+      "ms_tok": 9.21,
+      "calls_tok": 774.2
+    },
+    "cudaEventRecord_v3020": {
+      "ms_tok": 4.44,
+      "calls_tok": 774.2
+    },
+    "cudaMallocHost_v3020": {
+      "ms_tok": 1.04,
+      "calls_tok": 0.0
+    },
+    "cudaFree_v3020": {
+      "ms_tok": 0.21,
+      "calls_tok": 0.0
+    }
+  },
+  "per_thread_n120": {
+    "281549584994655": {
+      "n": 284717,
+      "span": 47567.8,
+      "union": 16878.9,
+      "union_sync": 12677.5,
+      "clsum": {
+        "other": 0.5,
+        "setup": 1953.7,
+        "issue": 2247.3,
+        "sync": 12546.5,
+        "blkcpy": 131.0
+      }
+    },
+    "281549584995083": {
+      "n": 357000,
+      "span": 35043.4,
+      "union": 12688.7,
+      "union_sync": 11193.3,
+      "clsum": {
+        "sync": 9238.8,
+        "blkcpy": 1954.5,
+        "issue": 1495.5
+      }
+    }
+  }
+}

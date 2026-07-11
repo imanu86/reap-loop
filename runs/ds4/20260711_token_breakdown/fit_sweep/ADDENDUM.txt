@@ -1,0 +1,67 @@
+
+---
+
+# ADDENDUM — FIT = SPEED? and the real fit-boundary (local 3060, warm, cyberpunk)
+
+Follow-up to the token breakdown: reproduce CLAIM-008 (*"3060 cache400 keep-8 = 25 t/s;
+keep-32 = 3.4"*) locally and find the real VRAM slot boundary. Same warm session, same
+config (own lock, `RESERVE_GB=1`, cache32/2-bit path), cyberpunk-wide, ctx2048, greedy, -n90.
+Masks available: K12 (~480 ws), K16 (~640), K23 (~920 experts = keep_n × ~40 MoE layers).
+**No keep-8/keep-9 mask exists locally**, and the smallest (K12, 480) already exceeds the
+boot-probe boundary (394), so a working-set ≤ boundary (the config that gives the 25 t/s jump)
+cannot be built from the masks on disk.
+
+## Measured sweep
+| run | cache | hit_rate | copied MiB/run | **gen t/s** | sync_ms/batch | peakGPU |
+|---|---|---|---|---|---|---|
+| K23 c32 (baseline, refetch) | 32 | **0.000** | 186 975 | **3.05** | 2.637 | 11 653 |
+| K12 c516 (right-sized) | 516 | **0.878** | 50 969 | **3.06** | 0.686 | 12 040 |
+| K12 c900 (over-sized) | 900 | **0.950** | 39 717 | **1.81** | 0.556 | 12 080 |
+| K16 c900 | 900 | 0.931 | 42 646 | **1.80** | 0.595 | 12 032 |
+| K23 c900 | 900 | 0.858 | 53 979 | **1.77** | 0.740 | 12 056 |
+
+(All rc=0, no OOM / no CUDA error / no clamp message. `selected_experts=27700`/run = ~308/token.)
+
+## Verdict on FIT = SPEED: **REFUTED locally**
+- **c32 → c516** raises hit 0.00 → 0.88, cuts H2D copy-work **−73 %** (187 → 51 GB) and
+  blocking-sync **−74 %** (2.64 → 0.69 ms/batch) — yet **t/s is FLAT (3.05 → 3.06)**. Eliminating
+  three-quarters of the expert copy AND its barrier buys **zero** decode speedup. (Exactly S0's
+  A/B, reconfirmed on a fresh warm session; reproduces S0's K12 c516 = 3.09.)
+- **c516 → c900** (even higher hit 0.95) **HALVES t/s (3.06 → 1.81)**. All three c900 runs land at
+  ~1.8 t/s **regardless of mask/hit** → the per-token cost tracks **cache SIZE (LRU/management),
+  not residency**. An over-sized cache is strictly worse.
+- So on the 3060 the throughput lever is **not** residency; it is the residency-independent
+  CPU-orchestration ceiling measured in the token breakdown (42 % gap). Residency only shuffles
+  copy-work into cache-management CPU cost — **net zero at best, net negative when over-sized**.
+
+## K12 case (Q3): does it enter, at what t/s?
+K12 (ws ~480) **does not fully fit**: hit caps at 0.88 (c516) / 0.95 (c900), never 1.0, and the
+best t/s is **3.06 (c516)** — identical to the refetch baseline, and it **collapses to 1.81 at
+c900**. K12 "entering" the cache brings **no speed benefit**. (K23, ws ~920, is even further from
+fitting: hit 0.86 at c900, 1.77 t/s.)
+
+## Real fit-boundary (Q2)
+Peak VRAM **saturates at ~12.04–12.08 GB** (card cap 12.29 GB) for every c516/c900 run — the
+expert cache is **VRAM-bound**, and requesting 900 slots neither OOMs nor adds usable residency
+(peak barely moves vs c32's 11.65 GB; the extra slots thrash). The operational slot count is the
+**boot-probe ~394 (E1-empirical max 407)** under `RESERVE_GB=1` — that is the number the
+controller should use. **Over-sizing beyond it is harmful** (−40 % t/s), so the controller rule is
+**cache ≈ working-set, capped at ~394 slots**, never larger.
+
+## Reconciliation with the "25 t/s" claim
+The **25 t/s** is a **pod (24 GB) number**, not a 3060 number: the cross-GPU survey found it on the
+RTX 3090 `pod_cache1024_html800` (14–16 avg, 24.8 last-chunk) where the working-set fits VRAM
+**stably** (hit→1, zero eviction churn) *and* the host CPU is far faster. The token breakdown's
+~121 ms/token residency-independent CPU gap alone caps the local 3060 at **≲ 8 t/s even with
+perfect residency** — the 12 GB card can never reach stable full residency for K12+ (ws > boundary),
+so it thrashes and stays at **~3.0–3.5 t/s**. **CLAIM-008's attribution of 25 t/s to the local 3060
+is not reproducible here and should be re-sourced** (almost certainly a pod/24 GB measurement).
+
+### Addendum verdict (fit-sweep)
+1. **fit = speed → REFUTED on the 3060.** hit 0.00 → 0.95 gives **no** t/s gain; over-sized cache
+   **halves** it. Throughput is CPU-orchestration/capacity-locked at ~3.0–3.5 t/s.
+2. **Real boundary ≈ 394 slots** (VRAM-saturated ~12 GB, no OOM at c900); controller rule
+   **cache ≈ working-set ≤ ~394**, never larger.
+3. **K12 does not usefully fit**: hit ≤ 0.95, best 3.06 t/s (= baseline), 1.81 t/s when over-cached.
+4. The **25 t/s is a 24 GB-pod result**, unreproducible on the 12 GB 3060 — consistent with the
+   token-breakdown ceiling and the cross-GPU residency story.

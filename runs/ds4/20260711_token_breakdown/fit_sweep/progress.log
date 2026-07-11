@@ -1,0 +1,17 @@
+[17:44:50] === WARMUP (discard) ===
+[17:44:50] START WARMUP mask=sessK23 cache=32 n=60
+[17:48:09] DONE WARMUP rc=0 wall=198s peakGPU=11653MB generation: 0.50 t/s hit_rate=0.0000 sync=sync_ms_per_batch=3.911 oomflags=1
+[17:48:09] === baseline hit0 ===
+[17:48:09] START K23_c32 mask=sessK23 cache=32 n=90
+[17:51:05] DONE K23_c32 rc=0 wall=176s peakGPU=11653MB generation: 3.05 t/s hit_rate=0.0000 sync=sync_ms_per_batch=2.637 oomflags=1
+[17:51:05] === over-request c900 (triangulate boundary) ===
+[17:51:05] START K12_c900 mask=sessK12 cache=900 n=90
+[17:52:23] DONE K12_c900 rc=0 wall=78s peakGPU=12080MB generation: 1.81 t/s hit_rate=0.9501 sync=sync_ms_per_batch=0.556 oomflags=1
+[17:52:23] START K16_c900 mask=sessK16 cache=900 n=90
+[17:53:25] DONE K16_c900 rc=0 wall=62s peakGPU=12032MB generation: 1.80 t/s hit_rate=0.9312 sync=sync_ms_per_batch=0.595 oomflags=1
+[17:53:25] START K23_c900 mask=sessK23 cache=900 n=90
+[17:54:37] DONE K23_c900 rc=0 wall=72s peakGPU=12056MB generation: 1.77 t/s hit_rate=0.8581 sync=sync_ms_per_batch=0.740 oomflags=1
+[17:54:37] === K12 exact-fit attempt c516 ===
+[17:54:37] START K12_c516 mask=sessK12 cache=516 n=90
+[17:55:26] DONE K12_c516 rc=0 wall=49s peakGPU=12040MB generation: 3.06 t/s hit_rate=0.8775 sync=sync_ms_per_batch=0.686 oomflags=1
+[17:55:26] === SWEEP DONE ===

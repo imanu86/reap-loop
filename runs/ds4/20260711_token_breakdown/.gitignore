@@ -1,0 +1,3 @@
+# Large regenerable nsys binaries (analysis is committed as breakdown_result.json + REPORT.md)
+*.nsys-rep
+*.sqlite
