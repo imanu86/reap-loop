@@ -1,0 +1,38 @@
+[
+{
+"name": "John Smith",
+"age": 34,
+"city": "Denver",
+"email": "john.smith@example.com"
+},
+{
+"name": "Maria Garcia",
+"age": 28,
+"city": "Austin",
+"email": "maria.g@example.com"
+},
+{
+"name": "Wei Chen",
+"age": 45,
+"city": "Seattle",
+"email": "wchen@example.com"
+},
+{
+"name": "Amara Okafor",
+"age": 31,
+"city": "Boston",
+"email": "a.okafor@example.com"
+},
+{
+"name": "Luca Rossi",
+"age": 52,
+"city": "Miami",
+"email": "luca.rossi@example.com"
+},
+{
+"name": "Nina Petrov",
+"age": 27,
+"city": "Chicago",
+"email": "nina.p@example.com"
+}
+]

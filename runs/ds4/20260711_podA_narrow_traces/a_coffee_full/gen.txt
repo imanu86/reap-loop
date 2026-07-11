@@ -1,0 +1,17 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #faf6f0; color: #2e241f; }
+        nav { background: #3e2c25; padding: 0.8rem 1.5rem; display: flex; gap: 1.5rem; }
+        nav a { color: #f5efe6; text-decoration: none; font-weight: 500; }
+        nav a:hover { color: #dbbd9c; }
+        .hero { background: #dbbd9c; padding: 3rem 1.5rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; letter-spacing: 1px; }
+        .hero p { font-size: 1.1rem; margin-top: 0.3rem; opacity: 0.9; }
+        #order { margin-top: 1.2rem; padding: 0.6rem 1.8rem; font-size: 1rem; background

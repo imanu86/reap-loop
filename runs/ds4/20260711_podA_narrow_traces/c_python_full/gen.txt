@@ -1,0 +1,17 @@
+```python
+def is_palindrome(s: str) -> bool:
+    """
+    Returns True if the string is a palindrome (ignoring case and spaces), False otherwise.
+    
+    The function normalizes the string by converting to lowercase and removing all spaces,
+    then checks if the resulting string reads the same forwards and backwards.
+    
+    Args:
+        s: Input string to check.
+        
+    Returns:
+        True if the normalized string is a palindrome, False otherwise.
+    """
+    normalized = s.lower().replace(" ", "")
+    return normalized == normalized[::-1]
+```

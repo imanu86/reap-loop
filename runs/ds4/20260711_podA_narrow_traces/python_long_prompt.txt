@@ -1,0 +1,1 @@
+Write three Python functions, each with a docstring: (1) `is_palindrome(s: str) -> bool` returning True if the string is a palindrome ignoring case and spaces; (2) `word_count(text: str) -> dict` returning a dict mapping each lowercase word to its count; (3) `fizzbuzz(n: int) -> list` returning the list of FizzBuzz strings from 1 to n. Output ONLY the code, nothing else.
