@@ -1,0 +1,39 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.367s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 432.00 MiB (ctx=4096, backend=cuda, prefill_chunk=4096, raw_kv_rows=4096, compressed_kv_rows=1026)
+ds4: using GPU graph generation with graph prefill
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=stderr-summary)
+ds4: gpu prefill layer 1/43ds4: gpu prefill layer 2/43ds4: gpu prefill layer 3/43ds4: gpu prefill layer 4/43ds4: gpu prefill layer 5/43ds4: gpu prefill layer 6/43ds4: gpu prefill layer 7/43ds4: gpu prefill layer 8/43ds4: gpu prefill layer 9/43ds4: gpu prefill layer 10/43ds4: gpu prefill layer 11/43ds4: gpu prefill layer 12/43ds4: gpu prefill layer 13/43ds4: gpu prefill layer 14/43ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: gpu prefill layer 15/43ds4: gpu prefill layer 16/43ds4: gpu prefill layer 17/43ds4: gpu prefill layer 18/43ds4: gpu prefill layer 19/43ds4: gpu prefill layer 20/43ds4: gpu prefill layer 21/43ds4: gpu prefill layer 22/43ds4: gpu prefill layer 23/43ds4: gpu prefill layer 24/43ds4: gpu prefill layer 25/43ds4: gpu prefill layer 26/43ds4: gpu prefill layer 27/43ds4: gpu prefill layer 28/43ds4: gpu prefill layer 29/43ds4: gpu prefill layer 30/43ds4: gpu prefill layer 31/43ds4: gpu prefill layer 32/43ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: gpu prefill layer 33/43ds4: gpu prefill layer 34/43ds4: gpu prefill layer 35/43ds4: gpu prefill layer 36/43ds4: gpu prefill layer 37/43ds4: gpu prefill layer 38/43ds4: gpu prefill layer 39/43ds4: gpu prefill layer 40/43ds4: gpu prefill layer 41/43ds4: gpu prefill layer 42/43ds4: gpu prefill layer 43/43
+<!ds4: CUDA loading model tensors 7.60 GiB cached
+DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   ds4: CUDA loading model tensors 7.86 GiB cached
+ <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f5f0e8; color: #3e2c1a; }
+        nav { background: #3e2c1a; padding: 10px; text-align: center; }
+        nav a { color: #f5f0e8; margin: 0 15px; text-decoration: none; font-weight: bold; }
+        nav a:hover { color: #d4a373; }
+        .hero { text-align: center; padding: 60px 20px; background: #d4a373; color: #fff; }
+        .hero h1 { font-size: 3em; margin-bottom: 10px; }
+        .hero p { font-size: 1.2em; }
+        #order { margin-top: 20px; padding: 12px 30px; font-size: 1.1em; background: #3e2c1a; color: #f5f0e8; border: none; cursor: pointer
+ds4: prefill: 7.94 t/s, generation: 0.99 t/s
+ds4: SPEX stats: selected_batches=12900 selected_experts=83592 cache_hits=1629 cache_misses=75513 hit_rate=0.0211 miss_per_expert=0.9034 direct_loads=6450 copy_calls=245889 copied=553250.25 MiB copy_ms=312374.401 copy_ms_per_batch=24.215 sync_calls=245889 sync_ms=70306.917 sync_ms_per_batch=5.450
+ds4: expert tiering observe summary batches=12900 slots=133386 compact=83592 hit_rate=0.0211 hits=1629 misses=75513 direct=6450 evictions=75257 direct=43537.50 MiB compact=564246.00 MiB
+ds4: expert tiering observe layer=2 batches=300 slots=3102 compact=2040 hit_rate=0.0000 misses=1794 direct=246 evictions=1788 cap=256 top=84:70,146:52,160:45,63:43,227:41,225:38
+ds4: expert tiering observe layer=0 batches=300 slots=3102 compact=2041 hit_rate=0.0045 misses=1786 direct=247 evictions=1780 cap=256 top=69:49,85:44,126:43,19:42,4:40,1:39
+ds4: expert tiering observe layer=1 batches=300 slots=3102 compact=2037 hit_rate=0.0050 misses=1785 direct=243 evictions=1779 cap=256 top=210:49,59:44,137:42,51:41,178:41,65:39
+ds4: expert tiering observe layer=37 batches=300 slots=3102 compact=1976 hit_rate=0.0167 misses=1764 direct=182 evictions=1758 cap=256 top=5:109,66:70,76:70,222:69,63:55,176:55
+ds4: expert tiering observe layer=21 batches=300 slots=3102 compact=1948 hit_rate=0.0095 misses=1777 direct=154 evictions=1771 cap=256 top=246:320,68:200,81:144,229:143,241:121,64:113
