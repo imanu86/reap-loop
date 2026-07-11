@@ -1,0 +1,11 @@
+Here is a complete, compact single‑HTML file for a coffee shop page. It includes all the required elements: a nav with three links, a hero section, an order button with an alert, a form with validation, and minimal styling. Everything is inside a single valid HTML document.
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body, nav, section, form {
+font: 14em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 0 / 1em/ 

@@ -1,0 +1,23 @@
+{
+  "arm": "validate",
+  "static": false,
+  "keep_k": 23,
+  "total": 260,
+  "breath_every": 120,
+  "breath_len": 40,
+  "n": 1,
+  "l0l3_per_run": [
+    0
+  ],
+  "l0l3_median": 0,
+  "collapse_token_per_run": [
+    null
+  ],
+  "html_close_per_run": [
+    0
+  ],
+  "tight_tps_median": 10.129999999999999,
+  "breath_tps_median": 3.25,
+  "speed_tax_frac_median": 0.6791707798617966,
+  "relearn_churn_median": 544.0
+}

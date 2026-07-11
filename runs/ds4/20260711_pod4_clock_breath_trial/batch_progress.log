@@ -1,0 +1,23 @@
+[23:30:23] === ARM A1_coffee_breath (runs=3) ===
+[23:32:13] A1_coffee_breath r0 rc=0 110s generation: 13.52 t/s breaths=2
+[23:32:53] A1_coffee_breath r1 rc=0 40s generation: 14.94 t/s breaths=0
+[23:34:46] A1_coffee_breath r2 rc=0 113s generation: 12.98 t/s breaths=2
+[23:34:46] === ARM A1_coffee_static (runs=3) ===
+[23:35:28] A1_coffee_static r0 rc=0 42s generation: 16.38 t/s breaths=0
+[23:36:38] A1_coffee_static r1 rc=0 70s generation: 24.51 t/s breaths=0
+[23:37:14] A1_coffee_static r2 rc=0 36s generation: 13.37 t/s breaths=0
+[23:37:14] === ARM A2_cyber_breath (runs=3) ===
+[23:42:54] A2_cyber_breath r0 rc=0 340s generation: 12.50 t/s breaths=7
+[23:48:36] A2_cyber_breath r1 rc=0 342s generation: 12.42 t/s breaths=7
+[23:54:16] A2_cyber_breath r2 rc=0 340s generation: 12.52 t/s breaths=7
+[23:54:16] === ARM A2_cyber_static (runs=3) ===
+[23:57:20] A2_cyber_static r0 rc=0 184s generation: 24.12 t/s breaths=0
+[00:00:23] A2_cyber_static r1 rc=0 183s generation: 24.26 t/s breaths=0
+[00:03:26] A2_cyber_static r2 rc=0 183s generation: 24.32 t/s breaths=0
+[00:03:26] === ARM A2b_cyber_breath_early (runs=2) ===
+[00:13:52] A2b_cyber_breath_early r0 rc=0 626s generation: 6.64 t/s breaths=20
+[00:23:59] A2b_cyber_breath_early r1 rc=0 607s generation: 6.85 t/s breaths=20
+[00:23:59] === ARM A3_cyber_k38_breath (runs=2) ===
+[00:39:48] A3_cyber_k38_breath r0 rc=0 949s generation: 4.35 t/s breaths=7
+[00:55:39] A3_cyber_k38_breath r1 rc=0 951s generation: 4.34 t/s breaths=7
+BATCH_DONE 00:55:39

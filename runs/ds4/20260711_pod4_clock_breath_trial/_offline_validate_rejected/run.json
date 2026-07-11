@@ -1,0 +1,68 @@
+{
+  "row": {
+    "run": 0,
+    "seed": 0,
+    "l0l3": 0,
+    "total_tokens_est": 284,
+    "n_breaths": 2,
+    "collapse_token": null,
+    "tight_gen_tps_median": 10.129999999999999,
+    "breath_gen_tps_median": 3.25,
+    "speed_tax_frac": 0.6791707798617966,
+    "relearn_churn_experts_median": 544.0,
+    "restart": 0,
+    "button_wired": 0,
+    "form_wired": 0,
+    "chars": 1137,
+    "doctype": 5,
+    "html_close": 0,
+    "form": 0,
+    "script": 0,
+    "alert_in_script": 0,
+    "repeat": 0
+  },
+  "phases": [
+    {
+      "kind": "warmup",
+      "tokens_added": 44,
+      "gen_tps": 3.63,
+      "boundary": ">"
+    },
+    {
+      "kind": "tight",
+      "cycle": 0,
+      "keep": 23,
+      "tokens_added": 98,
+      "gen_tps": 11.16,
+      "boundary": ";"
+    },
+    {
+      "kind": "breath",
+      "cycle": 0,
+      "keep": 0,
+      "tokens_added": 35,
+      "gen_tps": 3.28,
+      "boundary": "none",
+      "relearn_experts_changed": 654,
+      "relearn_churn_frac": 0.35543478260869565
+    },
+    {
+      "kind": "tight",
+      "cycle": 1,
+      "keep": 23,
+      "tokens_added": 72,
+      "gen_tps": 9.1,
+      "boundary": "none"
+    },
+    {
+      "kind": "breath",
+      "cycle": 1,
+      "keep": 0,
+      "tokens_added": 35,
+      "gen_tps": 3.22,
+      "boundary": "none",
+      "relearn_experts_changed": 434,
+      "relearn_churn_frac": 0.2358695652173913
+    }
+  ]
+}

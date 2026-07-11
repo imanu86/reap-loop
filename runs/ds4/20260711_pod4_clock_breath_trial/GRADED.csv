@@ -1,0 +1,17 @@
+arm,run,l0l3,chars,collapse_char,collapse_tok_est,html_close,doctype,form,script,alert,repeat,restart,button_wired,form_wired,gen_tps,breaths,status
+A1_coffee_breath,r00,0,1825,407,123,0,1,0,0,0,1,0,0,0,13.52,2,rc=0 elapsed=110s generation: 13.52 t/s breaths=2 chars=1827
+A1_coffee_breath,r01,1,1056,,,1,1,1,1,2,0,0,1,1,14.94,0,rc=0 elapsed=40s generation: 14.94 t/s breaths=0 chars=1056
+A1_coffee_breath,r02,0,1934,143,43,0,1,0,0,0,1,0,0,0,12.98,2,rc=0 elapsed=113s generation: 12.98 t/s breaths=2 chars=1934
+A1_coffee_static,r00,1,1249,,,1,1,1,1,2,0,0,1,1,16.38,0,rc=0 elapsed=42s generation: 16.38 t/s breaths=0 chars=1249
+A1_coffee_static,r01,0,1506,105,32,0,1,0,0,0,1,0,0,0,24.51,0,rc=0 elapsed=70s generation: 24.51 t/s breaths=0 chars=1506
+A1_coffee_static,r02,1,835,,,1,1,1,1,2,0,0,1,1,13.37,0,rc=0 elapsed=36s generation: 13.37 t/s breaths=0 chars=835
+A2_cyber_breath,r00,0,15503,415,126,0,1,0,0,0,1,0,0,0,12.5,7,rc=0 elapsed=340s generation: 12.50 t/s breaths=7 chars=15503
+A2_cyber_breath,r01,0,15503,415,126,0,1,0,0,0,1,0,0,0,12.42,7,rc=0 elapsed=342s generation: 12.42 t/s breaths=7 chars=15503
+A2_cyber_breath,r02,0,15503,415,126,0,1,0,0,0,1,0,0,0,12.52,7,rc=0 elapsed=340s generation: 12.52 t/s breaths=7 chars=15503
+A2_cyber_static,r00,0,15503,415,126,0,1,0,0,0,1,0,0,0,24.12,0,rc=0 elapsed=184s generation: 24.12 t/s breaths=0 chars=15503
+A2_cyber_static,r01,0,15503,415,126,0,1,0,0,0,1,0,0,0,24.26,0,rc=0 elapsed=183s generation: 24.26 t/s breaths=0 chars=15503
+A2_cyber_static,r02,0,15503,415,126,0,1,0,0,0,1,0,0,0,24.32,0,rc=0 elapsed=183s generation: 24.32 t/s breaths=0 chars=15503
+A2b_cyber_breath_early,r00,0,15503,415,126,0,1,0,0,0,1,0,0,0,6.64,20,rc=0 elapsed=626s generation: 6.64 t/s breaths=20 chars=15503
+A2b_cyber_breath_early,r01,0,15503,415,126,0,1,0,0,0,1,0,0,0,6.85,20,rc=0 elapsed=607s generation: 6.85 t/s breaths=20 chars=15503
+A3_cyber_k38_breath,r00,0,8990,399,121,0,2,0,0,0,1,0,0,0,4.35,7,rc=0 elapsed=949s generation: 4.35 t/s breaths=7 chars=8990
+A3_cyber_k38_breath,r01,0,8990,399,121,0,2,0,0,0,1,0,0,0,4.34,7,rc=0 elapsed=951s generation: 4.34 t/s breaths=7 chars=8990

@@ -1,0 +1,1 @@
+rc=0 elapsed=36s generation: 13.37 t/s breaths=0 chars=835

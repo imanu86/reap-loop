@@ -1,0 +1,19 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 Ti (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.337s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 432.00 MiB (ctx=4096, backend=cuda, prefill_chunk=4096, raw_kv_rows=4096, compressed_kv_rows=1026)
+ds4: using GPU graph generation with graph prefill
+ds4: PACE on - warmup=50 keep=23[23..23] step=8 ngram(n=3,win=120) drift=99.00 rel=0.15 hyst=200 breath(every=9999999,len=70,keep=0,relearn=1) prebreath(on=0,drift=69.30,target=69.30,every=64,max=23,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=0 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=0,every=32,decay=0.980,preserve_stable=1)
+ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+ds4: gpu prefill layer 1/43ds4: gpu prefill layer 2/43ds4: gpu prefill layer 3/43ds4: gpu prefill layer 4/43ds4: gpu prefill layer 5/43ds4: gpu prefill layer 6/43ds4: gpu prefill layer 7/43ds4: gpu prefill layer 8/43ds4: gpu prefill layer 9/43ds4: gpu prefill layer 10/43ds4: gpu prefill layer 11/43ds4: gpu prefill layer 12/43ds4: gpu prefill layer 13/43ds4: gpu prefill layer 14/43ds4: gpu prefill layer 15/43ds4: gpu prefill layer 16/43ds4: gpu prefill layer 17/43ds4: gpu prefill layer 18/43ds4: gpu prefill layer 19/43ds4: gpu prefill layer 20/43ds4: gpu prefill layer 21/43ds4: gpu prefill layer 22/43ds4: gpu prefill layer 23/43ds4: gpu prefill layer 24/43ds4: gpu prefill layer 25/43ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 26/43ds4: gpu prefill layer 27/43ds4: gpu prefill layer 28/43ds4: gpu prefill layer 29/43ds4: gpu prefill layer 30/43ds4: gpu prefill layer 31/43ds4: gpu prefill layer 32/43ds4: gpu prefill layer 33/43ds4: gpu prefill layer 34/43ds4: gpu prefill layer 35/43ds4: gpu prefill layer 36/43ds4: gpu prefill layer 37/43ds4: gpu prefill layer 38/43ds4: gpu prefill layer 39/43ds4: gpu prefill layer 40/43ds4: gpu prefill layer 41/43ds4: gpu prefill layer 42/43ds4: gpu prefill layer 43/43
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE prefill_apply tok=0 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2496 range, 6.07 GiB touched in 1034 ms (8 thread)
+ds4: REAP prefetch wait prefill_apply 1038 ms
+ds4: CUDA loading model tensors 3.60 GiB cached
+ds4: prefill: 11.97 t/s, generation: 16.38 t/s

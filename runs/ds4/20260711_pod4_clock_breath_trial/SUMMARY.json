@@ -1,0 +1,206 @@
+[
+  {
+    "arm": "A1_coffee_breath",
+    "n": 3,
+    "l0l3_per_run": [
+      0,
+      1,
+      0
+    ],
+    "l0l3_median": 0,
+    "collapse_tok_per_run": [
+      123,
+      null,
+      43
+    ],
+    "html_close_per_run": [
+      0,
+      1,
+      0
+    ],
+    "repeat_per_run": [
+      1,
+      0,
+      1
+    ],
+    "gen_tps_median": 13.52,
+    "breaths_per_run": [
+      2,
+      0,
+      2
+    ],
+    "chars_per_run": [
+      1825,
+      1056,
+      1934
+    ]
+  },
+  {
+    "arm": "A1_coffee_static",
+    "n": 3,
+    "l0l3_per_run": [
+      1,
+      0,
+      1
+    ],
+    "l0l3_median": 1,
+    "collapse_tok_per_run": [
+      null,
+      32,
+      null
+    ],
+    "html_close_per_run": [
+      1,
+      0,
+      1
+    ],
+    "repeat_per_run": [
+      0,
+      1,
+      0
+    ],
+    "gen_tps_median": 16.38,
+    "breaths_per_run": [
+      0,
+      0,
+      0
+    ],
+    "chars_per_run": [
+      1249,
+      1506,
+      835
+    ]
+  },
+  {
+    "arm": "A2_cyber_breath",
+    "n": 3,
+    "l0l3_per_run": [
+      0,
+      0,
+      0
+    ],
+    "l0l3_median": 0,
+    "collapse_tok_per_run": [
+      126,
+      126,
+      126
+    ],
+    "html_close_per_run": [
+      0,
+      0,
+      0
+    ],
+    "repeat_per_run": [
+      1,
+      1,
+      1
+    ],
+    "gen_tps_median": 12.5,
+    "breaths_per_run": [
+      7,
+      7,
+      7
+    ],
+    "chars_per_run": [
+      15503,
+      15503,
+      15503
+    ]
+  },
+  {
+    "arm": "A2_cyber_static",
+    "n": 3,
+    "l0l3_per_run": [
+      0,
+      0,
+      0
+    ],
+    "l0l3_median": 0,
+    "collapse_tok_per_run": [
+      126,
+      126,
+      126
+    ],
+    "html_close_per_run": [
+      0,
+      0,
+      0
+    ],
+    "repeat_per_run": [
+      1,
+      1,
+      1
+    ],
+    "gen_tps_median": 24.26,
+    "breaths_per_run": [
+      0,
+      0,
+      0
+    ],
+    "chars_per_run": [
+      15503,
+      15503,
+      15503
+    ]
+  },
+  {
+    "arm": "A2b_cyber_breath_early",
+    "n": 2,
+    "l0l3_per_run": [
+      0,
+      0
+    ],
+    "l0l3_median": 0.0,
+    "collapse_tok_per_run": [
+      126,
+      126
+    ],
+    "html_close_per_run": [
+      0,
+      0
+    ],
+    "repeat_per_run": [
+      1,
+      1
+    ],
+    "gen_tps_median": 6.744999999999999,
+    "breaths_per_run": [
+      20,
+      20
+    ],
+    "chars_per_run": [
+      15503,
+      15503
+    ]
+  },
+  {
+    "arm": "A3_cyber_k38_breath",
+    "n": 2,
+    "l0l3_per_run": [
+      0,
+      0
+    ],
+    "l0l3_median": 0.0,
+    "collapse_tok_per_run": [
+      121,
+      121
+    ],
+    "html_close_per_run": [
+      0,
+      0
+    ],
+    "repeat_per_run": [
+      1,
+      1
+    ],
+    "gen_tps_median": 4.345,
+    "breaths_per_run": [
+      7,
+      7
+    ],
+    "chars_per_run": [
+      8990,
+      8990
+    ]
+  }
+]
