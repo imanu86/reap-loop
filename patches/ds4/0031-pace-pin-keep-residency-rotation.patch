@@ -1,0 +1,351 @@
+From 2a09643ebb98d77033be98870992339b37b40587 Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sat, 11 Jul 2026 14:00:00 +0200
+Subject: [PATCH] cuda: pin-keep streaming expert cache residency + demand
+ rotation (0031)
+
+Bind the post-mask demand stream to VRAM residency without touching the
+router mask or selection.  A per-slot pinned flag makes the streaming
+expert cache LRU victim selector skip a hot subset of keep experts so
+they stay resident across tokens instead of being re-copied H2D every
+decode step (the missing velocity lever from the pinning-divergence
+audit: today router-mask and streaming-cache are decoupled, so low K
+never sped up because residency is keep-blind).
+
+The pinned set is chosen at a warmup freeze from a cache-local demand
+EWMA (an rmass-0020 analog computed from the compact_ids the router
+requests; under a frozen static mask that stream IS the keep set) up to
+DS4_PACE_PIN_BUDGET_MB of the already-allocated cache, and is optionally
+rotated on demand with a 0026-style CUSUM (DS4_PACE_PIN_ROTATE): pin a
+persistently hotter non-pinned keep, unpin the coldest pinned one.  Both
+are already resident so the swap is a flag toggle, no copy.
+
+Invariants: pinning is RESIDENCY not SELECTION (never writes
+g_reap_mask_pruned nor the router bias) so output is bit-identical -- the
+distinction from rotate32/0015 which re-ranked the mask and collapsed;
+and REPRESENTATION-neutral (serves the exact bytes load_slot produced,
+native 2-bit via cold-lossless -- run DS4_CUDA_NO_Q8_F16_CACHE=1 to avoid
+the q8/f16 serving crack).  Composes with SPEX: SPEX predicts which
+experts to seed, 0031 makes that residency eviction-immune and its seeds
+credit the same demand EWMA, so the SPEX skip-all-resident filter stops
+re-seeding pinned experts.  All hooks no-op unless DS4_PACE_PIN=1 ->
+default engine byte-identical to post-0024.
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4_cuda.cu | 252 +++++++++++++++++++++++++++++++++++++++++++++++++++-
+ 1 file changed, 250 insertions(+), 2 deletions(-)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 75bab89..4e58944 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1030,6 +1030,9 @@ struct cuda_stream_expert_cache_slot {
+     uint64_t gate_expert_bytes;
+     uint64_t down_expert_bytes;
+     uint64_t age;
++    int pinned;      /* 0031: eviction-immune residency flag (LRU skips it) */
++    double demand;   /* 0031: EWMA request frequency (cache-local rmass) */
++    double cusum;    /* 0031: CUSUM accumulator for demand-driven rotation */
+ };
+ 
+ struct cuda_stream_expert_cache {
+@@ -1045,6 +1048,16 @@ struct cuda_stream_expert_cache {
+     uint64_t gate_capacity;
+     uint64_t up_capacity;
+     uint64_t down_capacity;
++    /* 0031 pin-keep / residency-rotation runtime state (reset on realloc). */
++    int pin_frozen;
++    uint32_t pin_budget_slots;
++    uint32_t pinned_count;
++    uint64_t pin_calls;
++    uint64_t pin_last_rotate;
++    uint64_t pin_rotations;
++    int pin_min_valid;
++    uint32_t pin_min_slot;
++    double pin_min_demand;
+     std::vector<cuda_stream_expert_cache_slot> slots;
+ };
+ 
+@@ -3804,13 +3817,243 @@ static int cuda_stream_expert_cache_find(
+     return -1;
+ }
+ 
++/* ---- 0031 pin-keep / residency-rotation ---------------------------------
++ * Binds the (post-mask) demand stream to VRAM residency WITHOUT touching the
++ * router mask or selection.  A per-slot `pinned` flag makes the LRU victim
++ * selector skip a hot subset of the streaming expert cache, so those experts
++ * stay resident across tokens instead of being re-copied H2D every step.  The
++ * pinned set is chosen at a warmup "freeze" from a cache-local demand EWMA
++ * (an rmass-0020 analog computed from the compact_ids the router actually
++ * requests -- under a frozen static mask that stream IS the keep set) and,
++ * optionally, rotated on demand via a 0026-style CUSUM.
++ *
++ * Correctness invariants (declared, load-bearing):
++ *  - Pinning is RESIDENCY, not SELECTION: it never writes g_reap_mask_pruned
++ *    nor the router bias, so top-k selection is unchanged -> output is
++ *    bit-identical to the non-pinned streaming path.  This is what separates
++ *    0031 from rotate32/0015 (which re-ranked the mask and collapsed).
++ *  - Pinning is REPRESENTATION-neutral: a pinned slot serves the exact bytes
++ *    load_slot produced for that expert (native 2-bit via the cold-lossless
++ *    path when active).  0031 never promotes an expert to a q8/f16 form.  To
++ *    avoid the q8/f16 serving crack (BITEXACT.md: ~2.6x diff vs native) run
++ *    with DS4_CUDA_NO_Q8_F16_CACHE=1; 0031 inherits, never overrides, that.
++ *  - Composition with SPEX: SPEX predicts WHICH experts to promote (topK ->
++ *    ds4_gpu_stream_expert_cache_seed_experts_async); 0031 makes that
++ *    residency eviction-immune.  Seeds credit the same demand EWMA, so a
++ *    predicted-hot expert gets pinned and the SPEX "skip all resident" filter
++ *    then stops re-seeding it (kills the per-token seed H2D, the J30 cost).
++ * All hooks are no-ops unless DS4_PACE_PIN=1, so the default engine is
++ * byte-identical to post-0024. */
++struct cuda_pin_config {
++    int ready;
++    int enabled;      /* DS4_PACE_PIN            master gate (default off) */
++    int rotate;       /* DS4_PACE_PIN_ROTATE     demand rotation (default off) */
++    double budget_mb; /* DS4_PACE_PIN_BUDGET_MB  pinned sub-budget of the cache */
++    uint64_t warmup;  /* DS4_PACE_PIN_WARMUP     decode calls before freeze */
++    double alpha;     /* DS4_PACE_PIN_EWMA       demand EWMA rate */
++    double cusum_k;   /* DS4_PACE_PIN_CUSUM_K    rotation slack */
++    double cusum_h;   /* DS4_PACE_PIN_CUSUM_H    rotation threshold */
++    uint64_t cooldown;/* DS4_PACE_PIN_COOLDOWN   anti-thrash calls */
++    FILE *log;        /* DS4_PACE_PIN_LOG        JSONL events */
++};
++static cuda_pin_config g_pin_cfg;
++
++static int cuda_pin_env_flag(const char *name) {
++    const char *v = getenv(name);
++    return v && v[0] && strcmp(v, "0") != 0;
++}
++static double cuda_pin_env_double(const char *name, double dflt) {
++    const char *v = getenv(name);
++    if (!v || !v[0]) return dflt;
++    char *end = NULL;
++    errno = 0;
++    const double x = strtod(v, &end);
++    while (end && (*end == ' ' || *end == '\t')) end++;
++    if (end != v && errno == 0 && end && *end == '\0') return x;
++    return dflt;
++}
++static uint64_t cuda_pin_env_u64(const char *name, uint64_t dflt) {
++    const char *v = getenv(name);
++    if (!v || !v[0]) return dflt;
++    char *end = NULL;
++    errno = 0;
++    const unsigned long long x = strtoull(v, &end, 10);
++    while (end && (*end == ' ' || *end == '\t')) end++;
++    if (end != v && errno == 0 && end && *end == '\0') return (uint64_t)x;
++    return dflt;
++}
++static const cuda_pin_config *cuda_pin_get_config(void) {
++    if (g_pin_cfg.ready) return &g_pin_cfg;
++    g_pin_cfg.enabled = cuda_pin_env_flag("DS4_PACE_PIN");
++    g_pin_cfg.rotate = cuda_pin_env_flag("DS4_PACE_PIN_ROTATE");
++    g_pin_cfg.budget_mb = cuda_pin_env_double("DS4_PACE_PIN_BUDGET_MB", 3500.0);
++    if (g_pin_cfg.budget_mb < 0.0) g_pin_cfg.budget_mb = 0.0;
++    g_pin_cfg.warmup = cuda_pin_env_u64("DS4_PACE_PIN_WARMUP", 512ull);
++    g_pin_cfg.alpha = cuda_pin_env_double("DS4_PACE_PIN_EWMA", 0.05);
++    if (g_pin_cfg.alpha <= 0.0 || g_pin_cfg.alpha > 1.0) g_pin_cfg.alpha = 0.05;
++    g_pin_cfg.cusum_k = cuda_pin_env_double("DS4_PACE_PIN_CUSUM_K", 0.05);
++    g_pin_cfg.cusum_h = cuda_pin_env_double("DS4_PACE_PIN_CUSUM_H", 1.0);
++    if (g_pin_cfg.cusum_h <= 0.0) g_pin_cfg.cusum_h = 1.0;
++    g_pin_cfg.cooldown = cuda_pin_env_u64("DS4_PACE_PIN_COOLDOWN", 128ull);
++    g_pin_cfg.log = NULL;
++    const char *lp = getenv("DS4_PACE_PIN_LOG");
++    if (lp && lp[0]) g_pin_cfg.log = fopen(lp, "a");
++    if (g_pin_cfg.enabled && getenv("DS4_CUDA_NO_Q8_F16_CACHE") == NULL) {
++        fprintf(stderr,
++                "ds4: DS4_PACE_PIN active but DS4_CUDA_NO_Q8_F16_CACHE is unset; "
++                "0031 pins RESIDENCY only and serves each expert in its existing "
++                "representation. For bit-exact 2-bit-native serving (no q8/f16 "
++                "precision crack) set DS4_CUDA_NO_Q8_F16_CACHE=1.\n");
++    }
++    g_pin_cfg.ready = 1;
++    return &g_pin_cfg;
++}
++
++/* Freeze: pin the `budget` highest-demand resident slots (the hot keeps).  The
++ * budget is a sub-budget of the ALREADY-allocated cache (pinning a slot adds no
++ * VRAM -- it only forbids its eviction), and we always keep >= capacity/8 + 1
++ * non-pinned slots so the LRU always has a victim to rotate through. */
++static void cuda_pin_freeze(cuda_stream_expert_cache *cache) {
++    const cuda_pin_config *cfg = cuda_pin_get_config();
++    if (!cache || !cache->valid) return;
++    const uint64_t per_expert =
++        cache->gate_expert_bytes * 2ull + cache->down_expert_bytes;
++    uint32_t budget = 0;
++    if (per_expert != 0 && cfg->budget_mb > 0.0) {
++        const double b = (cfg->budget_mb * 1048576.0) / (double)per_expert;
++        if (b >= (double)cache->capacity) budget = cache->capacity;
++        else if (b > 0.0) budget = (uint32_t)b;
++    }
++    const uint32_t reserve_free = cache->capacity / 8u + 1u;
++    if (budget + reserve_free > cache->capacity) {
++        budget = cache->capacity > reserve_free ?
++            cache->capacity - reserve_free : 0u;
++    }
++    cache->pin_budget_slots = budget;
++    cache->pinned_count = 0;
++    cache->pin_frozen = 1;
++    for (uint32_t k = 0; k < budget; k++) {
++        int best = -1;
++        double best_demand = 0.0;
++        for (uint32_t i = 0; i < cache->capacity; i++) {
++            cuda_stream_expert_cache_slot &s = cache->slots[i];
++            if (!s.valid || s.pinned) continue;
++            if (best < 0 || s.demand > best_demand) {
++                best_demand = s.demand;
++                best = (int)i;
++            }
++        }
++        if (best < 0 || best_demand <= 0.0) break; /* no more warm keeps */
++        cache->slots[(uint32_t)best].pinned = 1;
++        cache->slots[(uint32_t)best].cusum = 0.0;
++        cache->pinned_count++;
++    }
++    if (cfg->log) {
++        fprintf(cfg->log,
++                "{\"event\":\"pin_freeze\",\"pinned\":%u,\"budget_slots\":%u,"
++                "\"capacity\":%u,\"per_expert_mib\":%.2f}\n",
++                cache->pinned_count, cache->pin_budget_slots, cache->capacity,
++                (double)per_expert / 1048576.0);
++        fflush(cfg->log);
++    }
++}
++
++/* Once per decode expert-load call: advance the demand clock (decay this
++ * layer's EWMA), refresh the cached coldest-pinned slot (rotation floor +
++ * victim), and freeze the pinned set when warmup elapses. */
++static void cuda_pin_begin_call(cuda_stream_expert_cache *cache, uint32_t layer) {
++    const cuda_pin_config *cfg = cuda_pin_get_config();
++    if (!cfg->enabled || !cache || !cache->valid) return;
++    const double keep = 1.0 - cfg->alpha;
++    cache->pin_min_valid = 0;
++    cache->pin_min_demand = 0.0;
++    cache->pin_min_slot = 0;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        if (!s.valid) continue;
++        if (s.layer == layer) s.demand *= keep;
++        if (s.pinned) {
++            if (!cache->pin_min_valid || s.demand < cache->pin_min_demand) {
++                cache->pin_min_demand = s.demand;
++                cache->pin_min_slot = i;
++                cache->pin_min_valid = 1;
++            }
++        }
++    }
++    cache->pin_calls++;
++    if (!cache->pin_frozen && cache->pin_calls >= cfg->warmup) {
++        cuda_pin_freeze(cache);
++    }
++}
++
++/* Credit demand for a resident expert (decode HIT/LOAD or SPEX seed) and, when
++ * rotation is enabled and the mask is frozen, run the CUSUM that swaps the
++ * residency pin from the coldest pinned expert to a persistently hotter
++ * non-pinned one.  Both are already resident -> the swap is a flag toggle, no
++ * copy; the mask/selection is untouched -> output stays bit-identical. */
++static void cuda_pin_note_resident(cuda_stream_expert_cache *cache, uint32_t slot) {
++    const cuda_pin_config *cfg = cuda_pin_get_config();
++    if (!cfg->enabled || !cache || !cache->valid || slot >= cache->capacity) {
++        return;
++    }
++    cuda_stream_expert_cache_slot &s = cache->slots[slot];
++    s.demand += cfg->alpha;
++    if (s.demand > 1.0) s.demand = 1.0;
++    if (!cfg->rotate || !cache->pin_frozen || s.pinned) return;
++    if (!cache->pin_min_valid) return;
++    s.cusum += (s.demand - cache->pin_min_demand) - cfg->cusum_k;
++    if (s.cusum < 0.0) s.cusum = 0.0;
++    if (s.cusum < cfg->cusum_h) return;
++    if (cache->pin_calls - cache->pin_last_rotate < cfg->cooldown) return;
++    const uint32_t victim = cache->pin_min_slot;
++    if (victim >= cache->capacity || !cache->slots[victim].pinned) return;
++    if (s.demand <= cache->slots[victim].demand) { s.cusum = 0.0; return; }
++    const uint32_t in_expert = s.expert;
++    const uint32_t in_layer = s.layer;
++    const uint32_t out_expert = cache->slots[victim].expert;
++    const uint32_t out_layer = cache->slots[victim].layer;
++    cache->slots[victim].pinned = 0;
++    cache->slots[victim].cusum = 0.0;
++    s.pinned = 1;
++    s.cusum = 0.0;
++    cache->pin_last_rotate = cache->pin_calls;
++    cache->pin_rotations++;
++    cache->pin_min_valid = 0; /* recompute the floor on the next call */
++    if (cfg->log) {
++        fprintf(cfg->log,
++                "{\"event\":\"pin_rotate\",\"pinned_in\":%u,\"in_layer\":%u,"
++                "\"evicted_out\":%u,\"out_layer\":%u,\"call\":%llu,"
++                "\"rotations\":%llu}\n",
++                in_expert, in_layer, out_expert, out_layer,
++                (unsigned long long)cache->pin_calls,
++                (unsigned long long)cache->pin_rotations);
++        fflush(cfg->log);
++    }
++}
++
+ static uint32_t cuda_stream_expert_cache_lru_slot(
+         cuda_stream_expert_cache *cache) {
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+-        if (!cache->slots[i].valid) return i;
++        if (!cache->slots[i].valid) return i; /* empty slots are never pinned */
+     }
++    /* 0031: skip pinned (eviction-immune) slots when choosing an LRU victim. */
++    int have = 0;
+     uint32_t slot = 0;
+-    uint64_t best_age = cache->slots[0].age;
++    uint64_t best_age = 0;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        if (cache->slots[i].pinned) continue;
++        if (!have || cache->slots[i].age < best_age) {
++            best_age = cache->slots[i].age;
++            slot = i;
++            have = 1;
++        }
++    }
++    if (have) return slot;
++    /* Safety net: if every valid slot is pinned (budget is capped below
++     * capacity so this should not happen), fall back to global min-age so a
++     * load never deadlocks. */
++    slot = 0;
++    best_age = cache->slots[0].age;
+     for (uint32_t i = 1; i < cache->capacity; i++) {
+         if (cache->slots[i].age < best_age) {
+             best_age = cache->slots[i].age;
+@@ -3952,6 +4195,7 @@ static int cuda_stream_expert_cache_seed_one(
+                                                    down_expert_bytes);
+     if (cache_slot >= 0) {
+         cache->slots[(uint32_t)cache_slot].age = ++cache->tick;
++        cuda_pin_note_resident(cache, (uint32_t)cache_slot); /* 0031: SPEX seed */
+         return 1;
+     }
+ 
+@@ -3974,6 +4218,7 @@ static int cuda_stream_expert_cache_seed_one(
+         return 0;
+     }
+     if (append && cache->count < cache->capacity) cache->count++;
++    cuda_pin_note_resident(cache, load_slot); /* 0031: SPEX seed -> pin candidate */
+     return 1;
+ }
+ 
+@@ -5030,6 +5275,8 @@ static int cuda_stream_selected_cache_begin_compact_load(
+         return strict_failure ? 0 : 1;
+     }
+ 
++    cuda_pin_begin_call(expert_cache, layer); /* 0031: demand clock + freeze */
++
+     for (uint32_t i = 0; i < compact_count; i++) {
+         if (compact_ids[i] < 0 || (uint32_t)compact_ids[i] >= n_total_expert) {
+             fprintf(stderr,
+@@ -5101,6 +5348,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+             }
+ 
+             if (cache_slot >= 0) {
++                cuda_pin_note_resident(expert_cache, (uint32_t)cache_slot); /* 0031 */
+                 copied_from_global_cache =
+                     cuda_stream_expert_cache_copy_to_compact(
+                             expert_cache,
+-- 
+2.54.0.windows.1
+

@@ -1,0 +1,4 @@
+w,run_index,seed,freeze_boundary,freeze_tokens_est,freeze_within_target,p1_prefill_tps,p1_gen_tps,p2_prefill_tps,p2_gen_tps,l0l3,restart,button_wired,form_wired,tag_mismatch,chars,doctype,html_close,form,script,alert_in_script,repeat
+50,0,0,>,17,1,3.77,2.74,4.74,12.02,0,0,0,0,0,4268,2,0,0,0,0,1
+50,1,1,>,17,1,3.73,2.73,4.77,11.95,0,0,0,0,0,4268,2,0,0,0,0,1
+50,2,2,>,17,1,3.49,2.59,4.36,11.98,0,0,0,0,0,4268,2,0,0,0,0,1

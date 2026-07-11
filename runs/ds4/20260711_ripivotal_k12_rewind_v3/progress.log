@@ -19,3 +19,4 @@ w,n,p2_gen_tps_median,p1_gen_tps_median,l0l3_median,repeat_majority,restart_majo
 ARM2_LADDER_FINAL_K=none
 === ARM 2: no rung closed </html> up to K=48; skipping n=3 confirm ===
 ALL_DONE
+ARM2_CONFIRM_K48_RC=0

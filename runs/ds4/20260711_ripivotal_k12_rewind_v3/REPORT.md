@@ -96,3 +96,27 @@ It is unstructured varied text, not a valid page.)
   not close -- the closing threshold (if any) is above 48 in this cyberpunk/ctx8192/4000 regime.
 
 ### Bottom line: 0/(3+6) new closes. v3 mechanism works (fires deep, diverges, ~3x more useful tokens, hits the good-tps rate) but does NOT close a page at K12..48. Historic 0/23 -> still 0 closes.
+
+---
+
+## ARM 2 n=3 confirm at escalation ceiling K=48 (arm2_confirm_K48/)
+
+| seed | L0-L3 | </html> | rewind arm/fire | lock onset | useful_frac | p2 t/s | good-tok/s |
+|---|---|---|---|---|---|---|---|
+| 0 | 0 | 0 | 1/0 | 280 / 4201 | 0.07 | 12.02 | 0.80 |
+| 1 | 0 | 0 | 1/0 | 280 / 4201 | 0.07 | 11.95 | 0.80 |
+| 2 | 0 | 0 | 1/0 | 280 / 4201 | 0.07 | 11.98 | 0.80 |
+
+All 3 seeds **byte-identical** (4268 chars) and identical to the ladder K48 rung
+(onset 280, close 0) -> greedy determinism confirmed at the ceiling. **Arm 2 (escalation)
+n=3 verdict: 0/3 close, L 0/0/0.** The escalation ceiling K=48 robustly does not close.
+
+### FINAL CAMPAIGN TALLY
+- Arm 1 (K12+rewind-v3, n=3): L 0/0/0, </html> 0/3, cycles to REWIND_MAX=2, good-tps ~3.7.
+- Arm 2 escalation ladder (K12..48, n=1/rung greedy-deterministic): 0/6 close, all L0.
+- Arm 2 n=3 confirm @ K48: L 0/0/0, </html> 0/3.
+- **Grand total: 0 </html> closes in 12 masked runs. Historic 0/23 -> stays 0. No rescue.**
+- Yield: v3's mechanism is mechanically sound (a/b/c smoke PASS: deep pre-lock char_garbage fire,
+  divergent regen) and delivers the decision model's good-tok/s *rate* at K12 (~3.7 vs 3.99), a ~3x
+  improvement over v2 (1.18) with ~3x more useful tokens before collapse -- but it does not convert
+  any K in [12,48] into a closing/L2 page in this cyberpunk/ctx8192/4000 regime.
