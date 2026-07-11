@@ -1,0 +1,18 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-sseck: no-1">
+    <title>AI程式 ·  Cyber  ne  shop </title>
+    <style>
+        /* reset */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI, Inter, system-ui, sans-serif';
+        }
+
+        body {
+            background: url("data:image/url('no-1')) no-1 center/

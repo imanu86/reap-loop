@@ -1,0 +1,24 @@
+== WS_warmup_K23_c32 cache=32 mask=sessK23.txt ntok=90 rc=0 wall=216s peakGPU=11672MB genmd5=96eec25a7569
+   [prefill: 1.15 t/s, generation: 0.65 t/s]
+   SPEX hit/copy/sync: hit_rate=0.0000 miss_per_expert=0.8290 direct_loads=4738 copy_calls=83100 copied=186975.00 MiB copy_ms=141542.941 copy_ms_per_batch=36.574 sync_calls=83100 sync_ms=12945.729 sync_ms_per_batch=3.345
+   HID(prefetch): <empty=>overlap machinery inactive>
+== WS_K23_c32 cache=32 mask=sessK23.txt ntok=140 rc=0 wall=224s peakGPU=11672MB genmd5=bb411da095d0
+   [prefill: 0.48 t/s, generation: 3.38 t/s]
+   SPEX hit/copy/sync: hit_rate=0.0000 miss_per_expert=0.8833 direct_loads=4738 copy_calls=121800 copied=274050.00 MiB copy_ms=188007.716 copy_ms_per_batch=31.231 sync_calls=121800 sync_ms=14942.331 sync_ms_per_batch=2.482
+   HID(prefetch): <empty=>overlap machinery inactive>
+== WS_K23_c256 cache=256 mask=sessK23.txt ntok=140 rc=0 wall=55s peakGPU=11998MB genmd5=bb411da095d0
+   [prefill: 7.75 t/s, generation: 3.23 t/s]
+   SPEX hit/copy/sync: hit_rate=0.0184 miss_per_expert=0.8671 direct_loads=4738 copy_calls=119823 copied=269601.75 MiB copy_ms=32511.474 copy_ms_per_batch=5.401 sync_calls=119823 sync_ms=13309.845 sync_ms_per_batch=2.211
+   HID(prefetch): <empty=>overlap machinery inactive>
+== WS_K23_c516 cache=516 mask=sessK23.txt ntok=140 rc=0 wall=59s peakGPU=12005MB genmd5=bb411da095d0
+   [prefill: 8.51 t/s, generation: 2.94 t/s]
+   SPEX hit/copy/sync: hit_rate=0.7282 miss_per_expert=0.2401 direct_loads=4738 copy_calls=43461 copied=97787.25 MiB copy_ms=12495.787 copy_ms_per_batch=2.076 sync_calls=43461 sync_ms=4901.358 sync_ms_per_batch=0.814
+   HID(prefetch): <empty=>overlap machinery inactive>
+== WS_K12_c256 cache=256 mask=sessK12.txt ntok=140 rc=0 wall=59s peakGPU=12014MB genmd5=deeaeb883f3a
+   [prefill: 7.47 t/s, generation: 3.00 t/s]
+   SPEX hit/copy/sync: hit_rate=0.0144 miss_per_expert=0.8705 direct_loads=4738 copy_calls=120246 copied=270553.50 MiB copy_ms=37435.385 copy_ms_per_batch=6.219 sync_calls=120246 sync_ms=13488.696 sync_ms_per_batch=2.241
+   HID(prefetch): <empty=>overlap machinery inactive>
+== WS_K12_c516 cache=516 mask=sessK12.txt ntok=140 rc=0 wall=61s peakGPU=12014MB genmd5=deeaeb883f3a
+   [prefill: 6.03 t/s, generation: 3.09 t/s]
+   SPEX hit/copy/sync: hit_rate=0.8895 miss_per_expert=0.0976 direct_loads=4738 copy_calls=26097 copied=58718.25 MiB copy_ms=12732.519 copy_ms_per_batch=2.115 sync_calls=26097 sync_ms=2995.632 sync_ms_per_batch=0.498
+   HID(prefetch): <empty=>overlap machinery inactive>

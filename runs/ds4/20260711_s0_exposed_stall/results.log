@@ -1,0 +1,10 @@
+== WARMUP_K23_c32 rc=0 wall=214s peakGPU_MB=11664 gen_chars=433 genmd5=c8b9d64afdba
+   mask=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_local_clean_lowK/masks/sessK23.txt cache=32 ntok=120 ctx=2048
+   perf=[prefill: 1.19 t/s, generation: 0.86 t/s]
+   SPEX=[ds4: SPEX stats: selected_batches=5160 selected_experts=35440 cache_hits=0 cache_misses=30702 hit_rate=0.0000 miss_per_expert=0.8663 direct_loads=4738 copy_calls=106320 copied=239220.00 MiB copy_ms=139650.281 copy_ms_per_batch=27.064 sync_calls=106320 sync_ms=14340.068 sync_ms_per_batch=2.779]
+   HID =[]
+== A_K23_c32 rc=0 wall=277s peakGPU_MB=11679 gen_chars=593 genmd5=01bbbe53938a
+   mask=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_local_clean_lowK/masks/sessK23.txt cache=32 ntok=200 ctx=2048
+   perf=[prefill: 0.81 t/s, generation: 1.19 t/s]
+   SPEX=[ds4: SPEX stats: selected_batches=8600 selected_experts=56080 cache_hits=0 cache_misses=51342 hit_rate=0.0000 miss_per_expert=0.9155 direct_loads=4738 copy_calls=168240 copied=378540.00 MiB copy_ms=191912.364 copy_ms_per_batch=22.315 sync_calls=168240 sync_ms=22806.641 sync_ms_per_batch=2.652]
+   HID =[]
