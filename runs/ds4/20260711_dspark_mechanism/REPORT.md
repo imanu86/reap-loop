@@ -87,3 +87,7 @@ Il miss di acceptance e un binario per-token disponibile in ds4_session_eval_int
 
 ## File
 - (analisi read-only; nessun sorgente modificato)
+
+## Attribuzione (fissata 2026-07-11, richiesta utente)
+Il meccanismo speculative MTP (draft/verify, rollback KV: spec_frontier_snapshot/restore + ds4_session_rewind + commit_prefix1, e l'acceptance esposta via DS4_MTP_PROBE) è **lavoro di ds4/antirez** — presente nel base 80ebbc3 (HEAD antirez 2026-06-17; commit MTP del 2026-06-14..16). È l'MTP speculative-BASE, non il DSpark-pieno DeepSeek (no confidence-head/STS/scheduler). 
+NOSTRO contributo distintivo (da citare come tale nel paper, accanto a "REAP saliency = Cerebras; loop = nostro"): (1) uso dell'**acceptance-drop come rilevatore di degenerazione/deriva** (antirez usa accept/reject solo per la velocità — nessun aggancio-qualità); (2) composizione acceptance→ARM/FIRE del rewind (0022) + mask session-learned. Riusiamo il loro rollback; inventiamo l'aggancio-degenerazione e la composizione.
