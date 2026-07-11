@@ -1,0 +1,152 @@
+{
+  "auc_vs_random_max": 0.6726899278907981,
+  "sources": {
+    "html_W50": {
+      "n_tok": 49,
+      "warmup_n": 24,
+      "rest_n_tok": 25,
+      "usable": true
+    },
+    "html_W130": {
+      "n_tok": 129,
+      "warmup_n": 50,
+      "rest_n_tok": 79,
+      "usable": true
+    },
+    "narrow_a_coffee_full": {
+      "n_tok": 299,
+      "warmup_n": 50,
+      "rest_n_tok": 249,
+      "usable": true
+    },
+    "narrow_b_json_full": {
+      "n_tok": 37,
+      "warmup_n": 18,
+      "rest_n_tok": 19,
+      "usable": false
+    },
+    "narrow_c_python_full": {
+      "n_tok": 117,
+      "warmup_n": 50,
+      "rest_n_tok": 67,
+      "usable": true
+    },
+    "narrow_b2_json_long_full": {
+      "n_tok": 206,
+      "warmup_n": 50,
+      "rest_n_tok": 156,
+      "usable": true
+    },
+    "narrow_c2_python_long_full": {
+      "n_tok": 235,
+      "warmup_n": 50,
+      "rest_n_tok": 185,
+      "usable": true
+    },
+    "code_p00_c00_python-csv": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p01_c01_js-debounce": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p02_c02_sql-window": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p03_c03_c-pointers": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p04_c04_py-asyncio": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p05_c05_regex-email": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p06_c06_git-rebase": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p07_c07_docker-multi": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p08_c08_rust-owner": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p09_c09_api-paging": {
+      "n_tok": 255,
+      "warmup_n": 50,
+      "rest_n_tok": 205,
+      "usable": true
+    },
+    "code_p10_c10_test-mock": {
+      "n_tok": 52,
+      "warmup_n": 26,
+      "rest_n_tok": 26,
+      "usable": true
+    }
+  },
+  "n_sources": 18,
+  "want": {
+    "n": 7964,
+    "mean": 0.1901767639985558,
+    "median": 0.1686769183986102,
+    "p25": 0.12014791515330056,
+    "p75": 0.23647845403632128,
+    "p90": 0.31853976924258864,
+    "frac_zero": 0.00012556504269211453
+  },
+  "kept_kept": {
+    "n": 10120,
+    "mean": 0.08456036749404323,
+    "median": 0.049584761023781856,
+    "p25": 0.014230261806153796,
+    "p75": 0.11642793979040056,
+    "p90": 0.21020238677040512,
+    "frac_zero": 0.08814229249011858
+  },
+  "random": {
+    "n": 8000,
+    "mean": 0.015069027874762825,
+    "median": 0.0,
+    "p25": 0.0,
+    "p75": 0.017541160386140585,
+    "p90": 0.04562038584001541,
+    "frac_zero": 0.64625
+  },
+  "random_max": {
+    "n": 8895,
+    "mean": 0.14068245934232243,
+    "median": 0.11762897895367466,
+    "p25": 0.07814281461331316,
+    "p75": 0.1782975809198599,
+    "p90": 0.25814183637350613,
+    "frac_zero": 0.004834176503653738
+  },
+  "substitution_justified": true,
+  "verdict": "SUBSTITUTION-RUNTIME GIUSTIFICATO (segnale debole-moderato): AUC = 0.673 (P(want_sim > random_max_sim), null order-matched best-of-23) -- separazione reale ma non forte dal caso scorrelato (AUC 0.5 = nessuna separazione). Mediana want->best-kept 0.169 vs random-max 0.118 (76% dei want superano la mediana random-max). 3.4x la mediana kept-kept pairwise (riferimento non order-matched). Solo 0.0% dei want hanno similarita' ESATTAMENTE zero."
+}

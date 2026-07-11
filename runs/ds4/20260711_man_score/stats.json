@@ -1,0 +1,342 @@
+{
+  "formula": {
+    "source": "arXiv 2606.15716 (fetched via WebFetch 2026-07-11, HTML rendering; abstract-only PDF view did not expose the equations)",
+    "unified": "S_j(b,alpha,beta) = (1/N_j^b) * sum_t 1[j in E_t] * g_{j,t}^alpha * ||f_{j,t}||_2^beta",
+    "cases": {
+      "Frequency": "b=0,alpha=0,beta=0 -> sum 1[j in E_t]  (raw selection count)",
+      "SEER": "b=0,alpha=1,beta=0 -> sum 1[j in E_t]*g_{j,t}  (cumulative gate mass)",
+      "EAN": "b=0,alpha=0,beta=1 -> sum 1[j in E_t]*||f_{j,t}||  (cumulative activation norm)",
+      "REAP": "b=1,alpha=1,beta=1 -> mean_t g_{j,t}*||f_{j,t}||  (gate x act-norm, averaged)",
+      "MAN": "b=1,alpha=0,beta=1 -> mean_t ||f_{j,t}||  (activation norm only, averaged, GATE-FREE)",
+      "MSAN": "b=1,alpha=0,beta=2 -> mean_t ||f_{j,t}||^2  (activation energy, averaged, GATE-FREE)"
+    },
+    "repo_current_score": "build_session_mask_canonical.py --mode weighted ranks by cumulative gate mass sum(w) per layer -- this is exactly SEER (b=0,alpha=1,beta=0), NOT the arXiv 2510.13999 'REAP' the repo colloquially references elsewhere (docs/SCALE_FRONTIER_VERDICT.md already flags REAP's real criterion as gate x activation-norm, i.e. needs beta=1 too -- so the repo's own docs were already correct that the name is borrowed, not the exact criterion).",
+    "missing_for_true_man_msan": "||f_{j,t}||_2, the L2 norm of expert j's raw FFN output activation for token t. DS4_SPEX_TRACE_ROUTING_WEIGHTS=1 (the only tracer flag that adds columns beyond selection) captures gate weights w0..w5 ONLY -- verified by reading docs/REAP_DS4_design.md / docs/DS4_ROUTING_RESIDENCY_TRACE.md and by grepping the header row of every trace file used across this repo's E1/E-CAL/ substitution-similarity offline analyses: all are 'pos,layer,n,e0..e5,w0..w5', zero exceptions."
+  },
+  "schema_check": {
+    "all_missing_norm_column": true,
+    "n_sources_checked": 18
+  },
+  "n_sources": 18,
+  "per_source_seer_vs_frequency_jaccard": {
+    "html_W50": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7881705366791574,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5333333333333333
+    },
+    "html_W130": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7819342729428935,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5333333333333333
+    },
+    "narrow_a_coffee_full": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7947605820105821,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.6428571428571429
+    },
+    "narrow_b_json_full": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8321934269434269,
+      "median_jaccard": 0.84,
+      "min_jaccard": 0.6428571428571429
+    },
+    "narrow_c_python_full": {
+      "n_layers": 40,
+      "mean_jaccard": 0.757556783574025,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5862068965517241
+    },
+    "narrow_b2_json_long_full": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8847913105413105,
+      "median_jaccard": 0.9166666666666666,
+      "min_jaccard": 0.7037037037037037
+    },
+    "narrow_c2_python_long_full": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8115613588199796,
+      "median_jaccard": 0.84,
+      "min_jaccard": 0.5862068965517241
+    },
+    "code_p00_c00_python-csv": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8062559015059015,
+      "median_jaccard": 0.8046153846153846,
+      "min_jaccard": 0.5333333333333333
+    },
+    "code_p01_c01_js-debounce": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7573443293615707,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5333333333333333
+    },
+    "code_p02_c02_sql-window": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7712247694833902,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5862068965517241
+    },
+    "code_p03_c03_c-pointers": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8072439967439967,
+      "median_jaccard": 0.8046153846153846,
+      "min_jaccard": 0.6428571428571429
+    },
+    "code_p04_c04_py-asyncio": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7985895506154128,
+      "median_jaccard": 0.84,
+      "min_jaccard": 0.5862068965517241
+    },
+    "code_p05_c05_regex-email": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7972038054538054,
+      "median_jaccard": 0.8046153846153846,
+      "min_jaccard": 0.6428571428571429
+    },
+    "code_p06_c06_git-rebase": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8193253968253968,
+      "median_jaccard": 0.84,
+      "min_jaccard": 0.6428571428571429
+    },
+    "code_p07_c07_docker-multi": {
+      "n_layers": 40,
+      "mean_jaccard": 0.803318481327102,
+      "median_jaccard": 0.84,
+      "min_jaccard": 0.5862068965517241
+    },
+    "code_p08_c08_rust-owner": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7846710524469145,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.5862068965517241
+    },
+    "code_p09_c09_api-paging": {
+      "n_layers": 40,
+      "mean_jaccard": 0.8131910866910866,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.6428571428571429
+    },
+    "code_p10_c10_test-mock": {
+      "n_layers": 40,
+      "mean_jaccard": 0.7794623524623525,
+      "median_jaccard": 0.7692307692307693,
+      "min_jaccard": 0.6428571428571429
+    }
+  },
+  "pooled_seer_vs_frequency_jaccard": {
+    "n_layers": 40,
+    "mean": 0.7994874882461088,
+    "median": 0.84
+  },
+  "per_layer_jaccard_across_sources": {
+    "3": {
+      "n": 18,
+      "mean": 0.7760487043820378,
+      "median": 0.7692307692307693
+    },
+    "4": {
+      "n": 18,
+      "mean": 0.7348385643021659,
+      "median": 0.7692307692307693
+    },
+    "5": {
+      "n": 18,
+      "mean": 0.721976680903884,
+      "median": 0.7037037037037037
+    },
+    "6": {
+      "n": 18,
+      "mean": 0.8061807534029757,
+      "median": 0.7692307692307693
+    },
+    "7": {
+      "n": 18,
+      "mean": 0.8304257676479898,
+      "median": 0.84
+    },
+    "8": {
+      "n": 18,
+      "mean": 0.8114292497625831,
+      "median": 0.7692307692307693
+    },
+    "9": {
+      "n": 18,
+      "mean": 0.7921028354361688,
+      "median": 0.84
+    },
+    "10": {
+      "n": 18,
+      "mean": 0.8031707592818704,
+      "median": 0.7692307692307693
+    },
+    "11": {
+      "n": 18,
+      "mean": 0.8342897842897843,
+      "median": 0.84
+    },
+    "12": {
+      "n": 18,
+      "mean": 0.8839886039886039,
+      "median": 0.9166666666666666
+    },
+    "13": {
+      "n": 18,
+      "mean": 0.8633048433048434,
+      "median": 0.8783333333333333
+    },
+    "14": {
+      "n": 18,
+      "mean": 0.9099572649572649,
+      "median": 0.9166666666666666
+    },
+    "15": {
+      "n": 18,
+      "mean": 0.8669088319088318,
+      "median": 0.84
+    },
+    "16": {
+      "n": 18,
+      "mean": 0.9359259259259259,
+      "median": 0.9166666666666666
+    },
+    "17": {
+      "n": 18,
+      "mean": 0.8393937955049068,
+      "median": 0.84
+    },
+    "18": {
+      "n": 18,
+      "mean": 0.8475055397277619,
+      "median": 0.84
+    },
+    "19": {
+      "n": 18,
+      "mean": 0.7404872699317144,
+      "median": 0.7692307692307693
+    },
+    "20": {
+      "n": 18,
+      "mean": 0.8307169990503324,
+      "median": 0.84
+    },
+    "21": {
+      "n": 18,
+      "mean": 0.7679254284809841,
+      "median": 0.7692307692307693
+    },
+    "22": {
+      "n": 18,
+      "mean": 0.8150332383665716,
+      "median": 0.84
+    },
+    "23": {
+      "n": 18,
+      "mean": 0.7940218423551757,
+      "median": 0.7692307692307693
+    },
+    "24": {
+      "n": 18,
+      "mean": 0.8103724053724055,
+      "median": 0.8046153846153846
+    },
+    "25": {
+      "n": 18,
+      "mean": 0.7933093655315877,
+      "median": 0.8046153846153846
+    },
+    "26": {
+      "n": 18,
+      "mean": 0.822786143897255,
+      "median": 0.84
+    },
+    "27": {
+      "n": 18,
+      "mean": 0.7452928219786458,
+      "median": 0.7364672364672364
+    },
+    "28": {
+      "n": 18,
+      "mean": 0.806551123773346,
+      "median": 0.7692307692307693
+    },
+    "29": {
+      "n": 18,
+      "mean": 0.7640105367883145,
+      "median": 0.7037037037037037
+    },
+    "30": {
+      "n": 18,
+      "mean": 0.8000388911500023,
+      "median": 0.7692307692307693
+    },
+    "31": {
+      "n": 18,
+      "mean": 0.7287374098868352,
+      "median": 0.7037037037037037
+    },
+    "32": {
+      "n": 18,
+      "mean": 0.7648362953918509,
+      "median": 0.7692307692307693
+    },
+    "33": {
+      "n": 18,
+      "mean": 0.7664995781854018,
+      "median": 0.7692307692307693
+    },
+    "34": {
+      "n": 18,
+      "mean": 0.8067632162076607,
+      "median": 0.84
+    },
+    "35": {
+      "n": 18,
+      "mean": 0.7336320342067468,
+      "median": 0.7692307692307693
+    },
+    "36": {
+      "n": 18,
+      "mean": 0.7816436111072125,
+      "median": 0.8046153846153846
+    },
+    "37": {
+      "n": 18,
+      "mean": 0.8140440012662236,
+      "median": 0.84
+    },
+    "38": {
+      "n": 18,
+      "mean": 0.8136437919962823,
+      "median": 0.84
+    },
+    "39": {
+      "n": 18,
+      "mean": 0.7310109515856643,
+      "median": 0.7692307692307693
+    },
+    "40": {
+      "n": 18,
+      "mean": 0.8149228960340071,
+      "median": 0.84
+    },
+    "41": {
+      "n": 18,
+      "mean": 0.7837195314973093,
+      "median": 0.7692307692307693
+    },
+    "42": {
+      "n": 18,
+      "mean": 0.6876615877382162,
+      "median": 0.6732804232804233
+    }
+  },
+  "axis_shift_mean_per_source": 0.7993777219126836,
+  "implementable_now": false,
+  "implementation_spec": "NON implementabile oggi come --mode man/msan in build_session_mask_canonical.py senza prima estendere la cattura a runtime. Prerequisito (C-side, ds4.c, patch 0012/DS4_SPEX_TRACE_ROUTING_WEIGHTS): per ciascuno dei 6 expert selezionati, il forward calcola GIA' il tensore di output FFN f_{j,t} prima della combine pesata dal gate -- aggiungere una L2-norm su quel tensore gia' materializzato e' un costo marginale (6 riduzioni norm/token/layer, NESSUN matmul aggiuntivo, NESSun expert extra da valutare). Estendere il CSV con 6 colonne n0..n5 (norma per lo stesso slot di e0..e5). Poi il python-side e' banale: in read_route_trace() aggiungere actnorm_sum[layer][e] e actnorm_count[layer][e] accumulati dalla nuova colonna; score_man[layer][e] = actnorm_sum/actnorm_count (beta=1), score_msan[layer][e] = sum(norm^2)/count (beta=2); poi rank_keep() e' riusato SENZA MODIFICHE (gia' agnostico al segnale di scoring). Effort: BASSO-MEDIO sul lato C (nuova metrica, non nuovo compute), BASSO sul lato python.",
+  "verdict": "MAN/MSAN NON CALCOLABILE OFFLINE dai trace esistenti: la formula (arXiv 2606.15716) richiede ||f_{j,t}||_2, la norma dell'attivazione di output dell'expert -- colonna assente in TUTTI i trace su disco (schema verificato: pos,layer,n,e0..e5,w0..w5, nessuna eccezione su 18 sorgenti). Anche la vera formula REAP (arXiv 2510.13999, gate x act-norm) e EAN condividono la stessa dipendenza mancante. Il punteggio attualmente in uso (--mode weighted) e' esattamente SEER (b=0,alpha=1,beta=0: massa-gate cumulata), non REAP in senso stretto. Segnale parziale disponibile: rimuovere SOLO l'asse gate-weight (SEER->Frequency, alpha:1->0, a beta invariato/assente) sposta gia' la keep-23 mask di Jaccard medio 0.799 per-source (0.799 pooled) sui 40 layer -- un limite inferiore onesto: aggiungere anche l'asse activation-norm (beta:0->1, quello che MAN attiva davvero) sposterebbe la mask AT LEAST altrettanto, probabilmente di piu', ma questo NON e' misurato qui."
+}
