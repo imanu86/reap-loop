@@ -1,0 +1,71 @@
+== K48_cyber_LONG(2854tok)  T=2854 L=40 ==
+  inst_distinct/tok = 240.0 (min 126 max 240)  footprint 1620 MiB (2x 3239)  fits2GB 1x=True 2x=False
+  union_pairs = 1920  (12960 MiB)
+  mean_stay/6 = 2.666  mean_new/layer = 3.334  new_experts/token = 133.3
+  overlap hist P(k of 6 persist): 0:0.07 1:0.15 2:0.23 3:0.26 4:0.20 5:0.08 6:0.01
+  window intrinsic miss (unbounded): W1:0.556 W4:0.300 W16:0.106 W64:0.015
+  HIT@240 (b=6/layer):  static=0.336  prev=0.444  lru=0.444  hot=0.433
+  HIT@480 (b=12/layer): static=0.515  lru=0.632  hot=0.625
+  best cheap @240 = 0.444 vs static 0.336  -> misses/token = 133 experts = 900 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.444 b9(360exp,2.4GB):0.542 b12(480exp,3.2GB):0.632 b18(720exp,4.7GB):0.761 b24(960exp,6.3GB):0.844 b32(1280exp,8.4GB):0.922
+
+== K48_cyber  T=299 L=40 ==
+  inst_distinct/tok = 240.0 (min 240 max 240)  footprint 1620 MiB (2x 3240)  fits2GB 1x=True 2x=False
+  union_pairs = 1889  (12751 MiB)
+  mean_stay/6 = 2.525  mean_new/layer = 3.475  new_experts/token = 139.0
+  overlap hist P(k of 6 persist): 0:0.08 1:0.17 2:0.24 3:0.27 4:0.18 5:0.06 6:0.01
+  window intrinsic miss (unbounded): W1:0.579 W4:0.314 W16:0.098 W64:0.016
+  HIT@240 (b=6/layer):  static=0.411  prev=0.421  lru=0.421  hot=0.441
+  HIT@480 (b=12/layer): static=0.611  lru=0.612  hot=0.639
+  best cheap @240 = 0.441 vs static 0.411  -> misses/token = 134 experts = 906 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.421 b9(360exp,2.4GB):0.520 b12(480exp,3.2GB):0.612 b18(720exp,4.7GB):0.742 b24(960exp,6.3GB):0.839 b32(1280exp,8.4GB):0.920
+
+== K23_cyber  T=299 L=40 ==
+  inst_distinct/tok = 240.0 (min 240 max 240)  footprint 1620 MiB (2x 3240)  fits2GB 1x=True 2x=False
+  union_pairs = 915  (6176 MiB)
+  mean_stay/6 = 3.194  mean_new/layer = 2.806  new_experts/token = 112.2
+  overlap hist P(k of 6 persist): 0:0.03 1:0.11 2:0.19 3:0.23 4:0.23 5:0.17 6:0.04
+  window intrinsic miss (unbounded): W1:0.468 W4:0.130 W16:0.029 W64:0.003
+  HIT@240 (b=6/layer):  static=0.571  prev=0.532  lru=0.532  hot=0.613
+  HIT@480 (b=12/layer): static=0.840  lru=0.847  hot=0.857
+  best cheap @240 = 0.613 vs static 0.571  -> misses/token = 93 experts = 627 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.532 b9(360exp,2.4GB):0.727 b12(480exp,3.2GB):0.847 b18(720exp,4.7GB):0.959 b24(960exp,6.3GB):0.991 b32(1280exp,8.4GB):0.991
+
+== K12_cyber  T=299 L=40 ==
+  inst_distinct/tok = 240.0 (min 240 max 240)  footprint 1620 MiB (2x 3240)  fits2GB 1x=True 2x=False
+  union_pairs = 480  (3240 MiB)
+  mean_stay/6 = 4.237  mean_new/layer = 1.763  new_experts/token = 70.5
+  overlap hist P(k of 6 persist): 0:0.00 1:0.00 2:0.04 3:0.17 4:0.37 5:0.33 6:0.09
+  window intrinsic miss (unbounded): W1:0.294 W4:0.059 W16:0.008 W64:0.000
+  HIT@240 (b=6/layer):  static=0.722  prev=0.706  lru=0.706  hot=0.737
+  HIT@480 (b=12/layer): static=1.000  lru=0.997  hot=0.995
+  best cheap @240 = 0.737 vs static 0.722  -> misses/token = 63 experts = 425 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.706 b9(360exp,2.4GB):0.915 b12(480exp,3.2GB):0.997 b18(720exp,4.7GB):0.997 b24(960exp,6.3GB):0.997 b32(1280exp,8.4GB):0.997
+
+== K23_coffee(narrow)  T=299 L=40 ==
+  inst_distinct/tok = 240.0 (min 240 max 240)  footprint 1620 MiB (2x 3240)  fits2GB 1x=True 2x=False
+  union_pairs = 919  (6203 MiB)
+  mean_stay/6 = 3.403  mean_new/layer = 2.597  new_experts/token = 103.9
+  overlap hist P(k of 6 persist): 0:0.01 1:0.06 2:0.16 3:0.27 4:0.30 5:0.17 6:0.03
+  window intrinsic miss (unbounded): W1:0.433 W4:0.180 W16:0.042 W64:0.004
+  HIT@240 (b=6/layer):  static=0.543  prev=0.567  lru=0.567  hot=0.566
+  HIT@480 (b=12/layer): static=0.805  lru=0.820  hot=0.817
+  best cheap @240 = 0.567 vs static 0.543  -> misses/token = 104 experts = 701 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.567 b9(360exp,2.4GB):0.706 b12(480exp,3.2GB):0.820 b18(720exp,4.7GB):0.946 b24(960exp,6.3GB):0.991 b32(1280exp,8.4GB):0.991
+
+== K12_coffee(narrow)  T=299 L=40 ==
+  inst_distinct/tok = 240.0 (min 240 max 240)  footprint 1620 MiB (2x 3240)  fits2GB 1x=True 2x=False
+  union_pairs = 480  (3240 MiB)
+  mean_stay/6 = 4.362  mean_new/layer = 1.638  new_experts/token = 65.5
+  overlap hist P(k of 6 persist): 0:0.00 1:0.00 2:0.03 3:0.14 4:0.35 5:0.39 6:0.09
+  window intrinsic miss (unbounded): W1:0.273 W4:0.073 W16:0.008 W64:0.000
+  HIT@240 (b=6/layer):  static=0.695  prev=0.727  lru=0.727  hot=0.724
+  HIT@480 (b=12/layer): static=1.000  lru=0.997  hot=0.995
+  best cheap @240 = 0.727 vs static 0.695  -> misses/token = 66 experts = 442 MiB
+  LRU hit vs cache: b6(240exp,1.6GB):0.727 b9(360exp,2.4GB):0.913 b12(480exp,3.2GB):0.997 b18(720exp,4.7GB):0.997 b24(960exp,6.3GB):0.997 b32(1280exp,8.4GB):0.997
+
+== SPEEDUP MODEL (rough, stated assumptions) ==
+  hit=0.13: miss=209 exp = 1409 MiB/tok, transfer=114.7 ms/tok
+  hit=0.50: miss=120 exp = 810 MiB/tok, transfer=65.9 ms/tok
+  hit=0.80: miss=48 exp = 324 MiB/tok, transfer=26.4 ms/tok
+  hit=0.90: miss=24 exp = 162 MiB/tok, transfer=13.2 ms/tok
