@@ -1,0 +1,141 @@
+diff --git a/ds4.c b/ds4.c
+index 2189997..26b86c8 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -10065,6 +10065,41 @@ static void output_logits_one_decode_scratch(
+         const float            * inp_hc,
+         ds4_cpu_decode_scratch * scratch);
+ 
++/* patch 0030: DS4_DIAG_CONF_LOG=/path.csv - per-token sampling confidence +
++ * post-block hidden L2 norm, one row per token generated. Unblocks two
++ * stalled threads: the pre-garbage-sensor hunt (needs entropy/margin of the
++ * sampling distribution BEFORE the model goes off the rails) and the
++ * MAN/MSAN score (needs ||f_{j,t}||2, confirmed absent from every trace on
++ * disk, runs/ds4/20260711_man_score/REPORT.md). Same lazy-open pattern as
++ * DS4_REAP_SENSOR_LOG (0012) / DS4_SPEX_TRACE_TOKENS (0028).
++ *
++ * expert_out_l2 is NOT a per-expert norm (that needs ||f_{j,t}|| read out of
++ * the MoE combine step itself, ds4_cuda.cu, out of scope for this patch): it
++ * is the L2 norm of the final post-block hidden state (scratch->cur /
++ * g->cur_hc, DS4_N_HC*DS4_N_EMBD floats) that feeds the LM head for this
++ * token - the aggregate effect of every attention+MoE layer combined, not an
++ * isolated per-expert signal. It is one step behind the trace call: it holds
++ * whatever the PREVIOUS forward pass left here, because that is the pass
++ * that produced the logits being sampled at the trace call site. Populated
++ * for CPU decode (forward_token_raw_swa_cpu_decode_scratch, below) and GPU
++ * non-streaming decode (metal_graph_encode_token_raw_swa). Left at the "not
++ * captured" sentinel (logged as "nan"): the very first sampled token (its
++ * logits come from prefill, not instrumented here) and every token under GPU
++ * SSD-streaming decode (metal_graph_eval_token_raw_swa_streaming, both its
++ * batch_static_decode and per-layer branches) - deliberately left alone
++ * rather than touch their per-layer command-buffer choreography without a
++ * CUDA toolchain to build+verify against (CPU-only authoring). */
++static double g_diag_hidden_l2 = -1.0;
++
++static bool ds4_diag_conf_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_DIAG_CONF_LOG");
++        cached = (v && v[0]) ? 1 : 0;
++    }
++    return cached == 1;
++}
++
+ /* CPU decode for one token through all 43 layers.  The caller owns scratch and
+  * cache lifetimes so no per-token allocations are needed. */
+ static void forward_token_raw_swa_cpu_decode_scratch(
+@@ -10096,6 +10131,13 @@ static void forward_token_raw_swa_cpu_decode_scratch(
+         next = tmp;
+     }
+ 
++    if (ds4_diag_conf_enabled()) {
++        const uint64_t hc_dim = (uint64_t)DS4_N_HC * DS4_N_EMBD;
++        double ss = 0.0;
++        for (uint64_t i = 0; i < hc_dim; i++) { const double v = cur[i]; ss += v * v; }
++        g_diag_hidden_l2 = sqrt(ss);
++    }
++
+     if (logits) {
+         output_logits_one_decode_scratch(logits, model, weights, cur, scratch);
+     }
+@@ -20231,6 +20273,17 @@ static bool metal_graph_encode_token_raw_swa(
+         }
+     }
+ 
++    if (ok && ds4_diag_conf_enabled()) {
++        const uint64_t hc_dim = (uint64_t)DS4_N_HC * DS4_N_EMBD;
++        float *hc_read = xmalloc((size_t)hc_dim * sizeof(float));
++        if (ds4_gpu_tensor_read(g->cur_hc, 0, hc_read, hc_dim * sizeof(float)) != 0) {
++            double ss = 0.0;
++            for (uint64_t i = 0; i < hc_dim; i++) { const double v = hc_read[i]; ss += v * v; }
++            g_diag_hidden_l2 = sqrt(ss);
++        }
++        free(hc_read);
++    }
++
+     if (ok && need_logits) {
+         ok = metal_graph_encode_output_head(g, model, weights, weights->output->dim[1]);
+     }
+@@ -26099,6 +26152,46 @@ static void trace_token_sidecar(const ds4_vocab *vocab, int token, int pos) {
+     fputs("\"\n", tfh);
+ }
+ 
++/* patch 0030: DS4_DIAG_CONF_LOG sidecar writer - see the declaration next to
++ * forward_token_raw_swa_cpu_decode_scratch for what expert_out_l2 actually
++ * is and is not. entropy/top1/top2/margin come straight from the logits
++ * array already in memory at the call site (one linear scan for top1/top2,
++ * one more accumulating a numerically-stable log-sum-exp for the Shannon
++ * entropy of softmax(logits) - no extra forward pass, no extra allocation
++ * beyond the lazy-open FILE static shared with the other 0012/0028
++ * sidecars). */
++static void trace_diag_conf(const float *logits, uint32_t n_vocab, int token, int pos) {
++    static FILE *dfh; static bool dchecked;
++    if (!dchecked) {
++        dchecked = true;
++        const char *p = getenv("DS4_DIAG_CONF_LOG");
++        if (p && *p) {
++            dfh = fopen(p, "w");
++            if (dfh) fprintf(dfh, "pos,token_id,entropy,top1_logit,top2_logit,margin,expert_out_l2\n");
++        }
++    }
++    if (!dfh || n_vocab == 0) return;
++    float top1 = logits[0];
++    float top2 = -1e30f;
++    for (uint32_t i = 1; i < n_vocab; i++) {
++        const float v = logits[i];
++        if (v > top1) { top2 = top1; top1 = v; }
++        else if (v > top2) { top2 = v; }
++    }
++    double sum = 0.0, weighted = 0.0;
++    for (uint32_t i = 0; i < n_vocab; i++) {
++        const double d = (double)logits[i] - (double)top1;
++        const double e = exp(d);
++        sum += e;
++        weighted += e * d;
++    }
++    const double entropy = sum > 0.0 ? (log(sum) - weighted / sum) : 0.0;
++    fprintf(dfh, "%d,%d,%.6f,%.9g,%.9g,%.9g,", pos, token, entropy,
++            (double)top1, (double)top2, (double)(top1 - top2));
++    if (g_diag_hidden_l2 >= 0.0) fprintf(dfh, "%.6f\n", g_diag_hidden_l2);
++    else fprintf(dfh, "nan\n");
++}
++
+ /* CPU generation entry point.  It runs layer-major prefill once, then decodes
+  * one token at a time using the persistent KV cache and scratch arena. */
+ static int generate_raw_swa_cpu(
+@@ -26170,6 +26263,7 @@ static int generate_raw_swa_cpu(
+         int token = sample_argmax(logits, DS4_N_VOCAB);
+         if (token == vocab->eos_id) break;
+         trace_token_sidecar(vocab, token, pos);
++        trace_diag_conf(logits, DS4_N_VOCAB, token, pos);
+ 
+         if (emit) emit(emit_ud, token);
+         n_generated++;
+@@ -26330,6 +26424,7 @@ static int generate_metal_graph_raw_swa(
+         int token = sample_argmax(logits, DS4_N_VOCAB);
+         if (token == vocab->eos_id) break;
+         trace_token_sidecar(vocab, token, pos);
++        trace_diag_conf(logits, DS4_N_VOCAB, token, pos);
+ 
+         if (emit) emit(emit_ud, token);
+         n_generated++;
