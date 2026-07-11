@@ -1,0 +1,256 @@
+{
+  "common": {
+    "pre_alpha": 0.5,
+    "base_lag": 32,
+    "base_win": 128,
+    "min_base": 32,
+    "calib_win": 128,
+    "refractory": 64
+  },
+  "ARM": {
+    "k_sigma": 0.5,
+    "h_sigma": 4
+  },
+  "FIRE": {
+    "k_sigma": 1.0,
+    "h_sigma": 8
+  },
+  "runs": [
+    {
+      "run": "podC_run1_K23_cyber",
+      "regime": "runs/ds4/20260711_podC_edet_shadow/run1_r00",
+      "pos_first": 78,
+      "pos_last": 4077,
+      "n_tokens": 4000,
+      "n_layers": 40,
+      "calib_completes_pos": 206,
+      "agg_mean": 0.9003,
+      "agg_std": 0.0343,
+      "first_garbage_char": 134,
+      "first_garbage_pos_est": 120,
+      "first_garbage_desc": "'<html' tag missing '>' (then doubled <html>)",
+      "calib_floor_minus_garbage": 86,
+      "AGG_ARM_at": 220,
+      "AGG_ARM_lead_vs_garbage": -100,
+      "AGG_FIRE_at": 230,
+      "AGG_FIRE_lead_vs_garbage": -110,
+      "earliest_layer_id": 13,
+      "earliest_layer_ARM_at": 208,
+      "earliest_layer_lead_vs_garbage": -88,
+      "n_layers_ARM_before_garbage": 0,
+      "n_layers_ARM_before_agg_arm": 14,
+      "per_layer_first5_fired": [
+        {
+          "pos": 208,
+          "layer": 13
+        },
+        {
+          "pos": 209,
+          "layer": 5
+        },
+        {
+          "pos": 212,
+          "layer": 8
+        },
+        {
+          "pos": 213,
+          "layer": 4
+        },
+        {
+          "pos": 213,
+          "layer": 6
+        }
+      ],
+      "vote_kofN_earliest_pos": {
+        "1": 208,
+        "2": 209,
+        "4": 213,
+        "8": 216,
+        "12": 218
+      },
+      "vote_1of40_lead_vs_garbage": -88,
+      "vote_4of40_lead_vs_garbage": -93,
+      "pre_garbage_stats": {
+        "pre_garbage_tokens": 42,
+        "agg_mean_pre": 0.8291,
+        "agg_std_pre": 0.0188,
+        "agg_slope_pre_per_tok": 0.001049,
+        "agg_first_val": 0.7884
+      }
+    },
+    {
+      "run": "podC_run2_K38_cyber",
+      "regime": "runs/ds4/20260711_podC_edet_shadow/run2_r00",
+      "pos_first": 78,
+      "pos_last": 4077,
+      "n_tokens": 4000,
+      "n_layers": 40,
+      "calib_completes_pos": 206,
+      "agg_mean": 0.8329,
+      "agg_std": 0.0344,
+      "first_garbage_char": 246,
+      "first_garbage_pos_est": 161,
+      "first_garbage_desc": "'<style:' colon instead of '>' -> comment-list",
+      "calib_floor_minus_garbage": 45,
+      "AGG_ARM_at": 414,
+      "AGG_ARM_lead_vs_garbage": -253,
+      "AGG_FIRE_at": 790,
+      "AGG_FIRE_lead_vs_garbage": -629,
+      "earliest_layer_id": 8,
+      "earliest_layer_ARM_at": 208,
+      "earliest_layer_lead_vs_garbage": -47,
+      "n_layers_ARM_before_garbage": 0,
+      "n_layers_ARM_before_agg_arm": 28,
+      "per_layer_first5_fired": [
+        {
+          "pos": 208,
+          "layer": 8
+        },
+        {
+          "pos": 209,
+          "layer": 16
+        },
+        {
+          "pos": 210,
+          "layer": 13
+        },
+        {
+          "pos": 211,
+          "layer": 20
+        },
+        {
+          "pos": 212,
+          "layer": 6
+        }
+      ],
+      "vote_kofN_earliest_pos": {
+        "1": 208,
+        "2": 209,
+        "4": 211,
+        "8": 223,
+        "12": 247
+      },
+      "vote_1of40_lead_vs_garbage": -47,
+      "vote_4of40_lead_vs_garbage": -50,
+      "pre_garbage_stats": {
+        "pre_garbage_tokens": 83,
+        "agg_mean_pre": 0.7747,
+        "agg_std_pre": 0.031,
+        "agg_slope_pre_per_tok": 0.000924,
+        "agg_first_val": 0.701
+      }
+    },
+    {
+      "run": "podC_run3_K23_coffee",
+      "regime": "runs/ds4/20260711_podC_edet_shadow/run3_r00",
+      "pos_first": 231,
+      "pos_last": 540,
+      "n_tokens": 310,
+      "n_layers": 40,
+      "calib_completes_pos": 359,
+      "agg_mean": 0.8599,
+      "agg_std": 0.0166,
+      "first_garbage_char": null,
+      "first_garbage_pos_est": null,
+      "first_garbage_desc": "completes (L1, </html>); no garbage onset -> FA control",
+      "calib_floor_minus_garbage": null,
+      "AGG_ARM_at": 377,
+      "AGG_ARM_lead_vs_garbage": null,
+      "AGG_FIRE_at": 503,
+      "AGG_FIRE_lead_vs_garbage": null,
+      "earliest_layer_id": 31,
+      "earliest_layer_ARM_at": 361,
+      "earliest_layer_lead_vs_garbage": null,
+      "n_layers_ARM_before_garbage": null,
+      "n_layers_ARM_before_agg_arm": 13,
+      "per_layer_first5_fired": [
+        {
+          "pos": 361,
+          "layer": 31
+        },
+        {
+          "pos": 362,
+          "layer": 5
+        },
+        {
+          "pos": 362,
+          "layer": 6
+        },
+        {
+          "pos": 362,
+          "layer": 7
+        },
+        {
+          "pos": 364,
+          "layer": 16
+        }
+      ],
+      "vote_kofN_earliest_pos": {
+        "1": 361,
+        "2": 362,
+        "4": 362,
+        "8": 372,
+        "12": 375
+      },
+      "vote_1of40_lead_vs_garbage": null,
+      "vote_4of40_lead_vs_garbage": null,
+      "pre_garbage_stats": null
+    },
+    {
+      "run": "scope_r1_K23_rotate32_aggr",
+      "regime": "runs/ds4/20260710_scope_divergence_pod/r1",
+      "pos_first": 128,
+      "pos_last": 2577,
+      "n_tokens": 2450,
+      "n_layers": 40,
+      "calib_completes_pos": 256,
+      "agg_mean": 0.8149,
+      "agg_std": 0.0166,
+      "first_garbage_char": null,
+      "first_garbage_pos_est": null,
+      "first_garbage_desc": "no content.txt (pace-only run); garbage pos not localizable here",
+      "calib_floor_minus_garbage": null,
+      "AGG_ARM_at": 474,
+      "AGG_ARM_lead_vs_garbage": null,
+      "AGG_FIRE_at": null,
+      "AGG_FIRE_lead_vs_garbage": null,
+      "earliest_layer_id": 40,
+      "earliest_layer_ARM_at": 275,
+      "earliest_layer_lead_vs_garbage": null,
+      "n_layers_ARM_before_garbage": null,
+      "n_layers_ARM_before_agg_arm": 27,
+      "per_layer_first5_fired": [
+        {
+          "pos": 275,
+          "layer": 40
+        },
+        {
+          "pos": 313,
+          "layer": 34
+        },
+        {
+          "pos": 315,
+          "layer": 27
+        },
+        {
+          "pos": 317,
+          "layer": 30
+        },
+        {
+          "pos": 317,
+          "layer": 39
+        }
+      ],
+      "vote_kofN_earliest_pos": {
+        "1": 275,
+        "2": 313,
+        "4": 317,
+        "8": 328,
+        "12": 338
+      },
+      "vote_1of40_lead_vs_garbage": null,
+      "vote_4of40_lead_vs_garbage": null,
+      "pre_garbage_stats": null
+    }
+  ]
+}
