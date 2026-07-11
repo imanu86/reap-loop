@@ -1,0 +1,7 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body{font:14px/16,white-space:1em,background:url('data:image/sp;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;utf,base64,data:image/s;

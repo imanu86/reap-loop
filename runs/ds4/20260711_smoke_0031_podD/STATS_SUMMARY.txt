@@ -1,0 +1,50 @@
+### a
+RC=0 elapsed=204s pin=0 rot=0 cache=512 ntok=600
+ds4: SPEX stats: selected_batches=25800 selected_experts=160998 cache_hits=107698 cache_misses=47356 hit_rate=0.6946 miss_per_expert=0.2941 direct_loads=6456 copy_calls=161436 copied=363231.00 MiB copy_ms=164329.663 copy_ms_per_batch=6.369 sync_calls=161436 sync_ms=5505.294 sync_ms_per_batch=0.213
+
+### a2
+RC=0 elapsed=162s pin=0 rot=0 cache=512 ntok=600
+ds4: SPEX stats: selected_batches=25800 selected_experts=160978 cache_hits=126557 cache_misses=28497 hit_rate=0.8162 miss_per_expert=0.1770 direct_loads=6436 copy_calls=104799 copied=235797.75 MiB copy_ms=121980.449 copy_ms_per_batch=4.728 sync_calls=104799 sync_ms=2877.816 sync_ms_per_batch=0.112
+
+### b
+RC=0 elapsed=299s pin=1 rot=0 cache=512 ntok=600
+ds4: SPEX stats: selected_batches=25800 selected_experts=160997 cache_hits=90419 cache_misses=64635 hit_rate=0.5831 miss_per_expert=0.4015 direct_loads=6455 copy_calls=213270 copied=479857.50 MiB copy_ms=257515.638 copy_ms_per_batch=9.981 sync_calls=213270 sync_ms=5999.475 sync_ms_per_batch=0.233
+{"event":"pin_freeze","pinned":447,"budget_slots":447,"capacity":512,"per_expert_mib":6.75}
+
+### c
+RC=0 elapsed=154s pin=1 rot=1 cache=512 ntok=600
+ds4: SPEX stats: selected_batches=14147 selected_experts=91055 cache_hits=57699 cache_misses=27437 hit_rate=0.6777 miss_per_expert=0.3013 direct_loads=6431 copy_calls=101604 copied=228609.00 MiB copy_ms=125904.270 copy_ms_per_batch=8.900 sync_calls=101604 sync_ms=3673.648 sync_ms_per_batch=0.260
+{"event":"pin_freeze","pinned":447,"budget_slots":447,"capacity":512,"per_expert_mib":6.75}
+
+### cy1
+RC=0 elapsed=89s pin=0 rot=0 cache=512 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=61019 cache_misses=16635 hit_rate=0.7858 miss_per_expert=0.2051 direct_loads=3956 copy_calls=61773 copied=138989.25 MiB copy_ms=63725.039 copy_ms_per_batch=4.940 sync_calls=61773 sync_ms=2030.073 sync_ms_per_batch=0.157
+
+### cy2
+RC=0 elapsed=96s pin=0 rot=0 cache=512 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=61019 cache_misses=16635 hit_rate=0.7858 miss_per_expert=0.2051 direct_loads=3956 copy_calls=61773 copied=138989.25 MiB copy_ms=71996.497 copy_ms_per_batch=5.581 sync_calls=61773 sync_ms=1511.833 sync_ms_per_batch=0.117
+
+### cyb
+RC=0 elapsed=219s pin=1 rot=0 cache=512 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=34794 cache_misses=42860 hit_rate=0.4481 miss_per_expert=0.5285 direct_loads=3956 copy_calls=140448 copied=316008.00 MiB copy_ms=193876.293 copy_ms_per_batch=15.029 sync_calls=140448 sync_ms=3301.945 sync_ms_per_batch=0.256
+{"event":"pin_freeze","pinned":447,"budget_slots":447,"capacity":512,"per_expert_mib":6.75}
+
+### cyc
+RC=0 elapsed=214s pin=1 rot=1 cache=512 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=38402 cache_misses=39252 hit_rate=0.4945 miss_per_expert=0.4840 direct_loads=3956 copy_calls=129624 copied=291654.00 MiB copy_ms=186685.372 copy_ms_per_batch=14.472 sync_calls=129624 sync_ms=3289.603 sync_ms_per_batch=0.255
+{"event":"pin_freeze","pinned":447,"budget_slots":447,"capacity":512,"per_expert_mib":6.75}
+
+### cybt
+RC=0 elapsed=115s pin=1 rot=0 cache=512 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=55517 cache_misses=22137 hit_rate=0.7149 miss_per_expert=0.2730 direct_loads=3956 copy_calls=78279 copied=176127.75 MiB copy_ms=88960.186 copy_ms_per_batch=6.896 sync_calls=78279 sync_ms=1932.212 sync_ms_per_batch=0.150
+{"event":"pin_freeze","pinned":148,"budget_slots":148,"capacity":512,"per_expert_mib":6.75}
+
+### a256
+RC=0 elapsed=337s pin=0 rot=0 cache=256 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=1558 cache_misses=75840 hit_rate=0.0201 miss_per_expert=0.9352 direct_loads=3956 copy_calls=239388 copied=538623.00 MiB copy_ms=310616.417 copy_ms_per_batch=24.079 sync_calls=239388 sync_ms=3725.178 sync_ms_per_batch=0.289
+
+### b256
+RC=0 elapsed=321s pin=1 rot=0 cache=256 ntok=300
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=10382 cache_misses=67016 hit_rate=0.1341 miss_per_expert=0.8264 direct_loads=3956 copy_calls=212916 copied=479061.00 MiB copy_ms=293333.476 copy_ms_per_batch=22.739 sync_calls=212916 sync_ms=3750.102 sync_ms_per_batch=0.291
+{"event":"pin_freeze","pinned":118,"budget_slots":118,"capacity":256,"per_expert_mib":6.75}
+

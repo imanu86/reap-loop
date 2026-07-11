@@ -1,0 +1,7 @@
+Ecco una landing page in stile cyberpunk per un neccato di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE>
+<html lang="italiano"> 
+<head>
+<meta charset="UTF-8" />
+<meta viewport name="width: viewport" content="width=device-width, initial-scale=1.optimus / 1.1.0 / 0.1.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0.0

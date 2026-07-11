@@ -1,0 +1,1 @@
+RC=0 elapsed=321s pin=1 rot=0 cache=256 ntok=300

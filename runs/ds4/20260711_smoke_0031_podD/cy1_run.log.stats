@@ -1,0 +1,1 @@
+ds4: SPEX stats: selected_batches=12900 selected_experts=81098 cache_hits=61019 cache_misses=16635 hit_rate=0.7858 miss_per_expert=0.2051 direct_loads=3956 copy_calls=61773 copied=138989.25 MiB copy_ms=63725.039 copy_ms_per_batch=4.940 sync_calls=61773 sync_ms=2030.073 sync_ms_per_batch=0.157

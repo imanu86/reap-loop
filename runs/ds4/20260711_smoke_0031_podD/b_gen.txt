@@ -1,0 +1,45 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+font-family: sans-serif, margin 0, padding 0;
+nav {
+background: #fff; padding: 10px; text-align: center;
+a {
+margin: 2 inline 2px; color: #brown;
+section {
+background: brown; padding: 50 0; text-align: center;
+h1 {
+color: #brown; margin: 0;
+p {
+color: #brown; margin: 0;
+button {
+background: #brown; padding: 10 20; border-radius: 2;
+form {
+background: #fff; padding: 20; text-align: left;
+input {
+margin: 2 0; padding: 2;
+button[type=submit] {
+background: #brown; padding: 10 20;
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a> <a href="#">Menu</a> <a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Fresh coffee, breed, and brew.</p>
+<button id="order">Order Now</button>
+<form action="/submit" id="form">
+<input type="text" name="name" placeholder="Name" required>
+<input type="email" name="email" placeholder="Email" required>
+<button type="submit">Submit</button>
+</form>
+<script>
+document.getElementById('order').addEventListener('click', alert('Thank for your order!');
+document.getElementById('form').addEventListener('submit', function(event => e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e. e.
