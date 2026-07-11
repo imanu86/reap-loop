@@ -1,0 +1,26 @@
+{
+  "cmd": [
+    "/root/bin/ds4-server",
+    "-m",
+    "/root/models/ds4-2bit.gguf",
+    "--cuda",
+    "--ssd-streaming",
+    "--ssd-streaming-cache-experts",
+    "256",
+    "--prefill-chunk",
+    "512",
+    "-c",
+    "4096",
+    "-n",
+    "3200",
+    "--host",
+    "127.0.0.1",
+    "--port",
+    "8014",
+    "--cors"
+  ],
+  "keep": 23,
+  "ctx": 4096,
+  "max_tokens": 3000,
+  "prompt": "html_coffee"
+}

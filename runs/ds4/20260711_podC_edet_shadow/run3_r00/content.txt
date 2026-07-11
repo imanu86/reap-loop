@@ -1,0 +1,56 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body, margin, padding {
+body {
+font: 1em left;
+background: white;
+color: black;
+margin: 0, padding: 0;
+nav {
+background: light: dark;
+padding: 8;
+nav a {
+padding: 8;
+hover: none
+section {
+background: white, center, h1, p
+button {
+background: dark, white, padding, border, hover
+form {
+background, padding, border, margin
+</style>
+</head>
+
+<body>
+<nav>
+<a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+
+<section>
+<h1>Bean & Brew</h1>
+<p>Your best coffee in your best place</p>
+<button id="order">Order Now</button>
+</section>
+
+<form action="/submit" id="myForm">
+<input type="text" name="name" placeholder="Name" required>
+<input type="email" name="email" placeholder="Email" required>
+<button type="submit">Submit</button>
+</form>
+
+<script>
+document.getElementById('order').addEventListener('click', function () alert('Thank you for your order!');
+document.getElementById('myForm').addEventListener('submit', function function (e) e.preventDefault; alert('Thank you for your order!');
+</script>
+
+</body>
+
+</html>
+```

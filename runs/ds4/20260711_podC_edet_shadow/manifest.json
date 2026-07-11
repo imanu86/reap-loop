@@ -1,0 +1,50 @@
+{
+  "run_group": "20260711_podC_edet_shadow",
+  "purpose": "LIVE shadow (log-only) validation of the E-DET recommended S1 onset-detector profiles (runs/ds4/20260710_edet_s1_detector_tuning). Capture the per-layer S1 sensor (patch 0012) on live static-mask REAP runs never before instrumented for S1, then offline-replay the recommended EWMA-CUSUM ARM/FIRE detector on those logs and compare its arm/fire positions with the real text collapse onset. No CLAIMS touched.",
+  "pod": {
+    "id": "76ed2hmcocijco",
+    "machine": "6p17plgwgpsn",
+    "cloud": "COMMUNITY",
+    "gpu": "NVIDIA GeForce RTX 3090 24GB",
+    "driver": "580.159.03",
+    "cost_per_hr_usd": 0.22,
+    "image": "runpod/pytorch:1.0.7-cu1290-torch280-ubuntu2404 (CUDA 12.9)",
+    "cuda_gate": "PASS (torch cuda_avail True, real 2048x2048 matmul ok, device_count 1). First community machine d5r94zi8wuwh FAILED the gate (/dev/nvidia-uvm open -> EIO, the T1 broken-UVM class) and was terminated before any download.",
+    "host_ram_gb": 125,
+    "note": "RAM-hot after first load (81 GB model page-cached in 125 GB). All t/s here are POD, DIAGNOSTIC ONLY (sensor trace on), not comparable to the local 3060."
+  },
+  "build": {
+    "binary": "ds4-server_sm86_livetree-771a39a8 (from r2:ds4-models)",
+    "ds4c_md5": "771a39a861e9512fed2fc4528780e080",
+    "ds4_server_sha256": "378cd3648008b4fa204dcc146e90065895a23105489a7e4e002f6407a4d2941f",
+    "inline_patches": "0011 reap-mask, 0012 S1 sensor (DS4_REAP_SENSOR_LOG), 0013 reap-wrap, 0014 PACE, 0015-0018 rotation",
+    "note": "Same live-tree build (md5 771a39a8) that produced the E-DET reference S1 series A (K91) and C (aggressive pod r1); maximises comparability with the offline tuning."
+  },
+  "model": {
+    "file": "/root/models/ds4-2bit.gguf",
+    "bytes": 86720111488,
+    "sha256": "efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668 (VERIFIED on pod, matches R2 .meta)"
+  },
+  "S1_sensor": "patch 0012: per (token,layer) row pos,layer,pruned_mass,total_mass; S1 = pruned/total = pre-bias router mass landing on masked experts. Emitted while g_reap_mask_on. Under this build the env-PACE mask engages from the first decoded token, so rows start at pos = prompt_len (78 cyberpunk / 231 coffee).",
+  "protocol": {
+    "decoding": "greedy temperature 0, think disabled, non-stream",
+    "server": "/root/bin/ds4-server -m ds4-2bit.gguf --cuda --ssd-streaming --ssd-streaming-cache-experts 256 --prefill-chunk 512 -c <ctx> -n <smax> --host 127.0.0.1 --port 8014 --cors (one server process per run; sensor CSV per run)",
+    "mask_env_static_K": "DS4_PACE=1 WARMUP=50 KEEP=K KEEP_MIN=K KEEP_MAX=96 KEEP_STEP=0 BREATH_EVERY=999999 RELEARN=0 ROTATE=0 WRAP=1 (= m1a/series-C env with rotation OFF => STATIC). + DS4_REAP_SENSOR_LOG. Trace routing OFF (sensor is independent).",
+    "prompts": "html = exact cyberpunk PROMPTS['html'] (78 tok); html_coffee = exact PROMPTS['html_coffee'] (231 tok), both from scripts/run_ds4_exchange_matrix.py"
+  },
+  "runs": [
+    {"id": "run1_r00", "regime": "W50 static K23", "prompt": "cyberpunk", "ctx": 8192, "max_tokens": 4000},
+    {"id": "run1_r01", "regime": "W50 static K23", "prompt": "cyberpunk", "ctx": 8192, "max_tokens": 4000, "note": "BYTE-IDENTICAL to run1_r00 (content + s1.csv sha256); not re-stored"},
+    {"id": "run1_r02", "regime": "W50 static K23", "note": "SKIPPED: provably redundant (r00==r01 byte-identical => determinism established, cf. armA 3/3)"},
+    {"id": "run2_r00", "regime": "W50 static K38", "prompt": "cyberpunk", "ctx": 8192, "max_tokens": 4000},
+    {"id": "run2_r01", "regime": "W50 static K38", "prompt": "cyberpunk", "note": "first 12000 sensor rows byte-identical to run2_r00 (greedy determinism => full identity); remainder skipped"},
+    {"id": "run3_r00", "regime": "W50 static K23", "prompt": "coffee", "ctx": 4096, "max_tokens": 3000, "note": "finished at 310 tok finish=stop (complete page); no collapse"}
+  ],
+  "shadow_detector": {
+    "source": "scripts/tune_s1_detector.py det_cusum + load_sensor_csv (reused verbatim)",
+    "common": "pre_alpha(EWMA)=0.50, base_lag=32, base_win=128, min_base=32, calib_win=128, refractory=64",
+    "ARM": "k_sigma=0.5 h_sigma=4 (arm-relearn/admit)",
+    "FIRE": "k_sigma=1.0 h_sigma=8 (arm-rewind)",
+    "onset_estimate": "char-proportional (same convention as the offline REPORT): text_onset_pos = prompt_len + round(loop_char_offset/total_chars * completion_tokens)"
+  }
+}

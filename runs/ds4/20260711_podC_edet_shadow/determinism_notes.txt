@@ -1,0 +1,6 @@
+run1 (W50 static K23, cyberpunk 4000): r00 == r01 BYTE-IDENTICAL
+  content.txt sha256 83fa880472474f1089918e932783e4896cfc7e3ac09027ecd18651f621fff128
+  s1.csv     sha256 b2786bd55faf1af18f65dd1c80b62d72937968c6a19af629e3a4bb7dca0e1eca
+  r02 skipped (provably redundant; determinism established, matches armA 3/3 byte-identical).
+run2 (W50 static K38, cyberpunk 4000): r01 first 12000 sensor rows == r00 (greedy-deterministic => full identity)
+  r01 killed after prefix-identity confirmed (skipped remainder).
