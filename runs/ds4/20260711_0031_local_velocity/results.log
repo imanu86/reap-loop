@@ -1,0 +1,13 @@
+A0_cache32_pin0 rc=143 wall=594s peakGPU_MB=12003 perf=[] hit=[] gen_chars=100 pin_freeze=0
+0 pin_rotate=0
+0 genmd5=1155d0b4d398
+probe_c256_pin0 rc=0 wall=139s peakGPU_MB=11921 perf=[prefill: 1.11 t/s, generation: 0.51 t/s] hit=[hit_rate=0.0214] gen_chars=101 pin_freeze=0
+0 pin_rotate=0
+0 genmd5=a1765a95f396
+A_cache32_pin0 rc=0 wall=211s peakGPU_MB=11593 perf=[prefill: 1.24 t/s, generation: 0.86 t/s] hit=[hit_rate=0.0000] gen_chars=458 pin_freeze=0
+0 pin_rotate=0
+0 genmd5=af5571f4f6e4
+B_cache220_pin1 rc=0 wall=239s peakGPU_MB=11903 perf=[prefill: 1.05 t/s, generation: 0.78 t/s] hit=[hit_rate=0.1307] gen_chars=458 pin_freeze=1 pin_rotate=22 genmd5=af5571f4f6e4
+C_cache220_pin0 rc=0 wall=354s peakGPU_MB=11915 perf=[prefill: 0.46 t/s, generation: 0.74 t/s] hit=[hit_rate=0.0000] gen_chars=458 pin_freeze=0
+0 pin_rotate=0
+0 genmd5=af5571f4f6e4
