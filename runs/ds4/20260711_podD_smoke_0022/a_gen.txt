@@ -1,0 +1,46 @@
+Here a complete, compact HTML page for a coffee shop with all required features.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+margin 0; padding 0; background #f15 #f15; font-size 1em;
+nav a {
+padding 0 5px; color #f15 #f15; text-decoration none;
+section {
+background #f15 #f15; text-align center; padding 0 5px;
+h1 {
+color #f15 #f15; margin 0 5px;
+button {
+padding 0 5px; background #f15 #f15; color #f15 #f15; border 0 5px;
+form {
+padding 0 5px; background #f15 #f15; margin 0 5px;
+input {
+padding 0 5px; margin 0 5px;
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your coffee, now bre</p>
+<button id="order">Order Now</button>
+</section>
+<form action="/submit" id="form">
+<input type="text" name="name" placeholder="Name" required>
+<input type="email" name="email" placeholder="Email" required>
+<button type="submit">Submit</button>
+</form>
+<script>
+document.getElementById('order').addEventListener('click', alert('Thank for your order!');
+document.getElementById('form').addEventListener('submit', function(event => event.preventDefault, alert('Conf');
+</script>
+</body>
+</html>
