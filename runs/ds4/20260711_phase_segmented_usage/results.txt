@@ -1,0 +1,81 @@
+VRAM budget = 394 slots ; traced MoE layers = 40 (3..42)
+whole-trace union working-set = keep_n*43 canonical (K23=989, K12=516)
+
+### WIDE-HEALTHY (coffee HTML, the pin_analysis traces) — window sweep
+[coffee/K23]  keep_n=23  window=30tok  n_seg=10
+  CONCENTRATION  per-seg k90/layer median = 8.8 of 23   (whole-trace k90/layer = 14.0)   per-seg Gini median = 0.70
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.61  min = 0.38   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 356  p90 = 595  max = 656   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 568   distinct-used = 920
+  VERDICT        instant-median fits 394? YES   every-seg fits? NO
+
+[coffee/K23]  keep_n=23  window=50tok  n_seg=6
+  CONCENTRATION  per-seg k90/layer median = 9.0 of 23   (whole-trace k90/layer = 14.0)   per-seg Gini median = 0.69
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.66  min = 0.30   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 373  p90 = 464  max = 652   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 568   distinct-used = 920
+  VERDICT        instant-median fits 394? YES   every-seg fits? NO
+
+[coffee/K23]  keep_n=23  window=75tok  n_seg=4
+  CONCENTRATION  per-seg k90/layer median = 9.5 of 23   (whole-trace k90/layer = 14.0)   per-seg Gini median = 0.68
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.70  min = 0.41   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 380  p90 = 383  max = 691   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 568   distinct-used = 920
+  VERDICT        instant-median fits 394? YES   every-seg fits? NO
+
+[coffee/K12]  keep_n=12  window=30tok  n_seg=10
+  CONCENTRATION  per-seg k90/layer median = 5.5 of 12   (whole-trace k90/layer = 8.0)   per-seg Gini median = 0.63
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.72  min = 0.53   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 220  p90 = 354  max = 368   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 320   distinct-used = 480
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+[coffee/K12]  keep_n=12  window=50tok  n_seg=6
+  CONCENTRATION  per-seg k90/layer median = 6.0 of 12   (whole-trace k90/layer = 8.0)   per-seg Gini median = 0.62
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.78  min = 0.41   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 228  p90 = 282  max = 370   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 320   distinct-used = 480
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+### WIDE-COLLAPSE (cyberpunk K12, pre-lock span) — keep-filtered
+[cyber/K12]  keep_n=12  window=30tok  n_seg=6
+  CONCENTRATION  per-seg k90/layer median = 5.0 of 12   (whole-trace k90/layer = 5.0)   per-seg Gini median = 0.63
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.89  min = 0.80   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 213  p90 = 220  max = 222   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 218   distinct-used = 265
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+[cyber/K12]  keep_n=12  window=50tok  n_seg=4
+  CONCENTRATION  per-seg k90/layer median = 5.0 of 12   (whole-trace k90/layer = 5.0)   per-seg Gini median = 0.62
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.91  min = 0.81   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 201  p90 = 217  max = 223   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 218   distinct-used = 265
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+### NARROW single-phase baseline (python / json) — keep-filtered (caveat: coffee-mask coverage ~0.18)
+[python/K23]  keep_n=23  window=50tok  n_seg=5
+  CONCENTRATION  per-seg k90/layer median = 8.0 of 23   (whole-trace k90/layer = 11.0)   per-seg Gini median = 0.70
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.55  min = 0.47   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 338  p90 = 352  max = 355   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 422   distinct-used = 710
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+[json/K23]  keep_n=23  window=50tok  n_seg=5
+  CONCENTRATION  per-seg k90/layer median = 8.0 of 23   (whole-trace k90/layer = 9.0)   per-seg Gini median = 0.74
+  HOT-CORE SHIFT consecutive-seg Jaccard(top6) median = 0.61  min = 0.37   (1.0=frozen core, 0.0=full rotation)
+  INSTANT WS     sum per-layer k90: median = 314  p90 = 325  max = 353   vs budget 394
+  UNION (wall)   whole-trace sum per-layer k90 = 372   distinct-used = 655
+  VERDICT        instant-median fits 394? YES   every-seg fits? YES
+
+### ENTROPY-GATE alignment (cyberpunk, full route, window=20)
+per-boundary (start..end : hot-core-shift[1-Jac] : mean-entropy):
+   105..124   shift=0.36  ent=0.01
+   125..144   shift=0.33  ent=0.89
+   145..164   shift=0.39  ent=0.27
+   165..184   shift=0.25  ent=0.19
+   185..204   shift=0.39  ent=2.20
+   205..224   shift=0.31  ent=1.80
+   225..244   shift=0.27  ent=0.19
+   245..260   shift=0.16  ent=0.12
+
+Pearson(hot-core-shift, entropy) = 0.41  (positive => entropy rises where the hot-core rotates)
