@@ -1,0 +1,23 @@
+{
+  "cmd": [
+    "/root/canon/ds4",
+    "-m",
+    "/root/models/ds4-2bit.gguf",
+    "--cuda",
+    "--ssd-streaming",
+    "--ssd-streaming-cold",
+    "--ssd-streaming-cache-experts",
+    "1024",
+    "-c",
+    "8192",
+    "--nothink",
+    "--temp",
+    "0",
+    "-n",
+    "4050",
+    "--prompt-file",
+    "/root/prompts/cyberpunk_prompt.txt"
+  ],
+  "arm": "in_engine",
+  "round": 1
+}

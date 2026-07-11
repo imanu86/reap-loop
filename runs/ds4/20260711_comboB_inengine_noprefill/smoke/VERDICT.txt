@@ -1,0 +1,7 @@
+COMBO B — two-phase re-prefill vs in-engine continuous
+prompt=coffee total=200 rounds=1
+
+TWO-PHASE : L=[0] median=0 doctype=[2] docrestart=1/1 </html>=[0] gen_tps_med=1.99
+IN-ENGINE : L=[0] median=0 doctype=[1] docrestart=0/1 </html>=[0] gen_tps_med=1.97
+
+RESTART ELIMINATED (in-engine 0 vs two-phase >0): True

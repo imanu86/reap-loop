@@ -1,0 +1,13 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    * { margin, padding: 0, border: 0 }
+    body, nav, section, form, button, input, a, h1, p, {
+    body font: sans-serif, background: background-color: #lightgray, padding: padding: 20px 20px, text-align: center
+    nav { background: background-color: #dark, padding: padding: 10px 10px, text-align: center, a: a: margin: margin: 0 0 0 0, color: color: #dark, text: text-decoration: text-decoration: none, padding: padding: 0 0 0 0
+    nav a {

@@ -1,0 +1,28 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    *{margin:0,p:0;border-box:box-sizing:border-box;font-family:Georgia,serif}
+    nav{padding:10;background:background-color:#bdbg;color:#bdbg;text-align:center;font-size:1em}
+    nav a{display:inline;margin:0 5;text-decoration:underline;color:#bdbg;font-weight:bold}
+    section{padding:20;text-align:center;background:background-color:#bdbg;color:#bdbg}
+    h1{font-size:2em;margin:0 0 0}
+    p{font-size:1em;margin:0 0 0}
+    button{padding:10 20;background:background-color:#bdbg;color:#bdbg;font-size:1em;margin:0 0}
+    form{padding:20;background:background-color:#bdbg;color:#bdbg;text-align:center}
+    input{display:inline;width:100;margin:0 0 0;padding:10;border:1}
+    input[type=submit{background:background-color:#bdbg;color:#bdbg;border:0}
+    footer{text-align:center;padding:10;background:background-color:#bdbg;color:#bdbg}
+    </style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a> <a href="#">Menu</a> <a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y, your co‑y

@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; ```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #foralax; }
+        nav { background: #d brown; padding: 1.5rem; text-align: center; }
+        nav a { margin: 0 1.5rem; color: #d; font-weight: bold; text-decoration: none; }
+        nav a:hover { text-decoration: underline; }
+        .hero { background: #d; color: #d; padding: 2.5rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; margin-bottom: 0.1rem; }
+        .hero p { font-size: 1.5rem; }
+        #order { margin: 2.5rem auto; display: block; padding: 1.5rem 2.5rem; background: #d; border: none; border-radius: 2.5rem; font-size: 1.5rem; cursor: pointer; }
+        #order:hover { background: #d; }
+        form { max-width: 2.5rem; margin: 2.5rem auto; padding: 1.5rem; background: #d; border-radius: 2.5rem; }
+        form input, form button { width: 100%; padding: 1.5rem; margin: 0.1rem 0; border: none; border-radius: 2.5rem; }
+        form button { background: #d; color: #d; font-size: 1.5rem; cursor: pointer; }
+        form button:hover { background: #d; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted · daily · breated</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Send</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function() {
+            alert("Thank you for your order!");
+        });
+        document.getElementById("contactForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            alert("Confirmation");
+        });
+    </script>
+</body>
+</html>

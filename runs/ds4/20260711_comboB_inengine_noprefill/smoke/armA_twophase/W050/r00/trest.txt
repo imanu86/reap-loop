@@ -1,0 +1,12 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; padding: 20 20; background: #f6f9f8; }
+        nav { background: #d0d0d0; padding: 10; display: flex; gap: 20; }
+        nav a { text-decoration: none; color: #black; font-weight: bold; }
+       

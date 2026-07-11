@@ -1,0 +1,52 @@
+{
+  "prompt": "cyber",
+  "total": 4050,
+  "rounds": 3,
+  "two_phase": {
+    "n": 3,
+    "L_median": 0,
+    "L_all": [
+      0,
+      0,
+      0
+    ],
+    "doctype_all": [
+      2,
+      2,
+      2
+    ],
+    "docrestart_count": 3,
+    "htmlclose_all": [
+      0,
+      0,
+      0
+    ],
+    "gen_tps_median": 24.44,
+    "chars_median": 8344,
+    "repeat_count": 3
+  },
+  "in_engine": {
+    "n": 3,
+    "L_median": 0,
+    "L_all": [
+      0,
+      0,
+      0
+    ],
+    "doctype_all": [
+      1,
+      1,
+      1
+    ],
+    "docrestart_count": 0,
+    "htmlclose_all": [
+      0,
+      0,
+      0
+    ],
+    "gen_tps_median": 17.81,
+    "chars_median": 14570,
+    "repeat_count": 0
+  },
+  "restart_eliminated": true
+}

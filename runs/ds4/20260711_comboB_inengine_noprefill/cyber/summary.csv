@@ -1,0 +1,7 @@
+arm,round,w,l0l3,restart,doctype,doctype_raw,html_close,button_wired,form_wired,gen_tps,prefill_tps,chars,repeat,wall_s
+two_phase,0,50,0,0,2,2,0,0,0,24.32,6.54,8344,1,
+in_engine,0,50,0,0,1,1,0,0,0,17.72,5.82,14570,0,240.9
+two_phase,1,50,0,0,2,2,0,0,0,24.44,6.71,8344,1,
+in_engine,1,50,0,0,1,1,0,0,0,17.81,5.84,14570,0,240.0
+two_phase,2,50,0,0,2,2,0,0,0,24.44,6.49,8344,1,
+in_engine,2,50,0,0,1,1,0,0,0,17.86,5.81,14570,0,239.0

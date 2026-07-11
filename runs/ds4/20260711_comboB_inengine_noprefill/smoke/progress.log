@@ -1,0 +1,6 @@
+[04:52:02] START comboB prompt=coffee total=200 ctx=4096 cache=256 rounds=1 smoke=True
+[04:52:02] round 0: ARM A (two-phase) ...
+[04:54:29]   A r0: L=0 doctype=2 </html>=0 restart=0 gen_tps=1.99 chars=677
+[04:54:29] round 0: ARM B (in-engine) ...
+[04:56:27]   B r0: L=0 doctype=1 doctype_raw=1 </html>=0 restart=0 gen_tps=1.97 chars=621 wall=118.6s
+[04:56:27] DONE

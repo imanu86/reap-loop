@@ -1,0 +1,32 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    *{margin:0, padding:0} body{background:bg-gray-900, font-size:14px, line-height:10, padding:0, margin:0} nav{display:flex, justify-content:center, bg-off-4, padding:10px, margin:0} nav a{text-decoration:underline, padding:0, color:gray-900, hover:color=gray-900} section{text-align:center, padding:0, margin:0} h1{font-size:bold, padding:0, margin:0} button{bg-off-4, padding:0, margin:0} form{display:grid, padding:0, margin:0} input{type=text, padding:0, margin:0} input[type=email]{padding:0, margin:0} input[type=submit]{padding:0, margin:0}
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a>  -   <a href="#">Menu</a>  -   <a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Fresh roasted coffee, bre & brew.</p>
+<button id="order">Order Now</button>
+</section>
+<form action="/submit" id="contactForm">
+<input type="text" name="name" placeholder="Your name" required>
+<input type="email" name="email" placeholder="Email address" required>
+<input type="submit" value="Send">
+</form>
+<script>
+document.getElementById('order').addEventListener('click', function () { alert('Thank for your order!') })
+document.getElementById('contactForm').addEventListener('submit', function (event => e. preventDefault, alert('Conf of your order'))
+</script>
+</body>
+</html>
+```

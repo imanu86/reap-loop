@@ -1,0 +1,40 @@
+{
+  "prompt": "coffee",
+  "total": 200,
+  "rounds": 1,
+  "two_phase": {
+    "n": 1,
+    "L_median": 0,
+    "L_all": [
+      0
+    ],
+    "doctype_all": [
+      2
+    ],
+    "docrestart_count": 1,
+    "htmlclose_all": [
+      0
+    ],
+    "gen_tps_median": 1.99,
+    "chars_median": 677,
+    "repeat_count": 0
+  },
+  "in_engine": {
+    "n": 1,
+    "L_median": 0,
+    "L_all": [
+      0
+    ],
+    "doctype_all": [
+      1
+    ],
+    "docrestart_count": 0,
+    "htmlclose_all": [
+      0
+    ],
+    "gen_tps_median": 1.97,
+    "chars_median": 621,
+    "repeat_count": 0
+  },
+  "restart_eliminated": true
+}
