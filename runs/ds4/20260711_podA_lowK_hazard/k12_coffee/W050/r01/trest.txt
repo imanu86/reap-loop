@@ -1,0 +1,126 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: A, sans-serif; background: #w; }
+        nav { background: #3; padding: 1.5rem; text-align: center; }
+        nav a { color: #w; margin: 0 1.5rem; text-decoration: none; }
+        .hero { background: #3; color: #w; padding: 2.5rem; text-align: center; }
+        .hero h1 { font-size: 2.5rem; }
+        .hero p { font-size: 1.2rem; }
+        #order { background: #w; border: 1x solid #3; padding: 1.2rem; margin: 2.5rem; cursor: pointer; }
+        form { background: #w; padding: 2.5rem; margin: 2.5rem; border: 1x solid #3; }
+        form input { display: block; margin: 1.2rem 0; width: 100%; padding: 1.2rem; }
+        form button { background: #3; color: #w; padding: 1.2rem; border: none; cursor: pointer; }
+        footer { background: #3; color: #w; text-align: center; padding: 1.5rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Fresh coffee every morning</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit" onsubmit="return()">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Submit</button>
+    </form>
+    <footer>
+        <p>© Bean & Brew</p>
+    </footer>
+    <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM', 'order', true);
+        <script>
+        document.addEventListener('DOM

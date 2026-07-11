@@ -1,0 +1,44 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui; background: #cray; }
+        nav { background: #brown; padding: 1.2em; text-align: center; }
+        nav a { margin: 0 1.2em; color: white; text-decoration: none; }
+        section { padding: 2em; text-align: center; }
+        button, form { margin: 1.2em 0; }
+        input, button { display: block; margin: 1.2em auto; padding: 1.2em; width: 80%; max-width: 300; }
+        button { background: #green; color: white; border: none; cursor: pointer; }
+        form { background: #light; padding: 2em; border-radius: 1.2em; width: fit-content; margin: auto; }
+        .hero { background: #light; padding: 2em; }
+        .hero h1 { font-size: 2.2em; }
+        .hero p { font-size: 1.2em; color: #gray; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted · daily bref</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Send</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function(){alert("Thank you for your order!");});
+        document.getElementById("contactForm").addEventListener("submit", function(event){event.preventDefault();alert("We have been confirmed");});
+    </script>
+</body>
+</html>

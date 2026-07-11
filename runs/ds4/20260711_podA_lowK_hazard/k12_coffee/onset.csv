@@ -1,0 +1,4 @@
+w,run_index,seed,l0l3,restart,repeat,chars,onset_kind,onset_char,onset_tok_est
+50,0,0,1,0,1,5396,doc_restart,178,44
+50,1,1,1,0,1,4908,doc_restart,169,42
+50,2,2,1,0,1,4287,doc_restart,198,50

@@ -1,0 +1,1 @@
+Extract the following fields from this text into a JSON object with keys "name", "age", "city", "email": "John Smith, 34 years old, lives in Denver, contact: john.smith@example.com". Output ONLY the JSON object, nothing else.

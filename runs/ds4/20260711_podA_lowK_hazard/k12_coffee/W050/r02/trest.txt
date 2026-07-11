@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; padding: 1rem; }
+        nav { margin-bottom: 1.5rem; }
+        nav a { margin-right: 1.1rem; }
+        section { margin-bottom: 1.5rem; }
+        form { margin-top: 1.5rem; }
+        input, button { display: block; margin-top: 0.1rem; }
+        button { margin-top: 0.1rem; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Fresh, bold, cold, hot, strong, dark, black, medium, ultra, big, fine, tall, high, light, white, small, tiny, big, full, center, left, right, inline, block, inline-block, inline-table, table-cell, table-row, table-row, table-cell, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row, table-row

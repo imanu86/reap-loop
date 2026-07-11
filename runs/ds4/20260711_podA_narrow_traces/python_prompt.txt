@@ -1,0 +1,1 @@
+Write a Python function `is_palindrome(s: str) -> bool` with a docstring. It should return True if the string is a palindrome (ignoring case and spaces), False otherwise. Output ONLY the function code, nothing else.
