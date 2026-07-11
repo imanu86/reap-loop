@@ -1,0 +1,3 @@
+[run] W=50 run=0 ...
+[done] rows=1  verdict={'pairs': [(50, 0)], 'monotone_non_decreasing': None, 'level_spread': 0}
+[done] summaries in /root/pivotal/v3_smoke
