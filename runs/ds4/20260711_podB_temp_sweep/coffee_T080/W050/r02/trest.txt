@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #fff; color: #000; }
+        nav { background: #coffee; padding: 1em; text-align: center; }
+        nav a { margin: 0 1em; text-decoration: none; color: #000; }
+        section { padding: 2em; text-align: center; }
+        button { margin: 1em; padding: 1em 2em; background: #coffee; border: none; cursor: pointer; }
+        form { margin: 2em auto; max-width: 300; text-align: center; }
+        input { display: block; margin: 1em auto; padding: 1em; width: 200; }
+        input[type="submit"] { background: #coffee; border: none; padding: 1em 2em; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, thoughtfully breed, nouraged.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <input type="submit" value="Send">
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", "click", alert("Thank us for your order!");
+        document.addEventListener("DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM", "DOM

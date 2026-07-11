@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #f8f8; padding: 20px; }
+        nav { background: #brown; padding: 10; text-align: center; }
+        nav a { margin: 0 10px; color: #brown; }
+        .hero { text-align: center; padding: 30; background: #eee; }
+        button { margin: 10; padding: 6 12; }
+        form { margin-top: 20; }
+        input { display: block; margin: 2 0; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, thoughtfully breed</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Name" required>
+        <input type="email" name="email" placeholder="Email" required>
+        <button type="submit">Send</button>
+    </form>
+    <script>
+        document.getElementById("order").addEventListener("click", function(){ alert("Thank you for your order!"}); });
+        document.querySelector("form").addEventListener("submit", function(e){ e.preventDefault(); alert("Confirmation"); });
+    </script>
+</body>
+</html>

@@ -1,0 +1,89 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.429s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 539.25 MiB (ctx=8192, backend=cuda, prefill_chunk=4096, raw_kv_rows=4352, compressed_kv_rows=2050)
+ds4: REAP mask reload da /root/reap-loop/runs/ds4/20260711_podB_temp_sweep/cyberpunk_T070/W050/r00/sess.txt: 9320 entry potate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 2.06 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: prefill: 8.99 t/s, generation: 2.34 t/s

@@ -1,0 +1,55 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f8; }
+        nav { background: #brown; padding: 1.2rem; text-align: center; }
+        nav a { color: #brown; margin: 0 1.2rem; text-decoration: none; font-weight: bold; }
+        nav a:hover { color: #brown; }
+        .hero { background: #brown; color: #brown; padding: 2rem; text-align: center; }
+        .hero h1 { font-size: 2.2rem; margin-bottom: 0.1rem; }
+        .hero p { font-size: 1.1rem; }
+        #order { margin: 2rem auto; display: block; padding: 1.2rem 2.2rem; background: #brown; border: none; color: #brown; font-size: 1.1rem; cursor: pointer; border-radius: 2rem; }
+        #order:hover { background: #brown; }
+        form { max-width: 2.2rem; margin: 2rem auto; padding: 1.2rem; background: #brown; border-radius: 1.2rem; }
+        form input { width: 100%; padding: 1.2rem; margin: 0.1rem 0; border: 1px solid #brown; border-radius: 1.2rem; }
+        form input[type="submit"] { background: #brown; border: none; color: #brown; font-size: 1.1rem; cursor: pointer; }
+        form input[type="submit"]:hover { background: #brown; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted · daily · breated</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <input type="submit" value="Send">
+    </form>
+    <script>
+        document.addEventListener('DOM', 'DOM', function() {
+            const order = document.getElementById('order');
+            order.addEventListener('click', 'click', function() {
+                alert('Thank for your order!');
+            });
+            const form = document.getElementById('contactForm');
+            form.addEventListener('submit', 'submit', function() {
+                event.preventDefault();
+                alert('Thank for your order!');
+            });
+        });
+    </script>
+</body>
+</html>

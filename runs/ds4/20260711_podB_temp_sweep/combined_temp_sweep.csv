@@ -1,0 +1,9 @@
+group,temp,top_p,seed,w,run_index,l0l3,repeat,restart,html_close,chars,onset_tok_est,onset_sample,p2_gen_tps
+coffee_T050,0.5,0.95,50,50,0,2,0,1,1,2650,,,2.33
+coffee_T050,0.5,0.95,51,50,1,1,1,0,0,5144,215,");\n        document.addEventListener('DOM', 'order', addEventListener click func",2.32
+coffee_T050,0.5,0.95,52,50,2,2,0,1,1,2510,,,2.74
+coffee_T080,0.8,0.95,80,50,0,1,0,0,1,1645,,,2.75
+coffee_T080,0.8,0.95,81,50,1,1,0,0,1,1895,,,2.76
+coffee_T080,0.8,0.95,82,50,2,1,1,0,0,3364,169,"""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DOM"", ""DO",2.77
+cyberpunk_T070,0.7,0.95,70,50,0,0,1,0,0,5656,54,", ""s-helper, ""s-helper, ""s-helper, ""s-helper, ""s-helper, ""s-helper, ""s-helper, """,2.34
+cyberpunk_T070,0.7,0.95,71,50,1,0,1,0,0,5223,56, 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180 180,2.78

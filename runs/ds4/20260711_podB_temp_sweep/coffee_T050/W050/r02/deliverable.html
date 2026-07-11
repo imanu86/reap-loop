@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; ```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #f8 0; padding: 1.5rem; max-width: 800; margin: auto; }
+        nav { background: #brown; padding: 0.2rem 0; }
+        nav a { margin-right: 1.2rem; color: #dark; text-decoration: none; font-weight: bold; }
+        nav a:hover { text-decoration: underline; }
+        section { background: #eee; padding: 2rem; border-radius: 8; margin: 1.2rem 0; }
+        h1 { font-size: 2.2rem; margin-bottom: 0.1rem; }
+        .subheading { font-size: 1.1rem; color: #gray; margin-bottom: 1.2rem; }
+        #order { background: #gold; border: none; padding: 0.2rem 1.2rem; cursor: pointer; border-radius: 4; font-size: 1.2rem; }
+        form { background: #white; padding: 1.2rem; border-radius: 8; }
+        input { display: block; margin: 0.2rem 0; width: 100%; padding: 0.4rem; }
+        button { margin-top: 1.2rem; padding: 0.2rem 1.2rem; background: #green; border: none; cursor: pointer; }
+        footer { margin-top: 1.2rem; font-size: 0.1rem; color: #gray; text-align: center; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+
+    <section>
+        <h1>Bean & Brew</h1>
+        <p class="subheading">Freshly roasted, locally breed, served with community</p>
+        <button id="order">Order Now</button>
+    </section>
+
+    <form action="/submit" id="contactForm">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <button type="submit">Send message</button>
+    </form>
+
+    <footer>
+        <p>️ Bean & Brew — 2020</p>
+    </footer>
+
+    <script>
+        document.getElementById("order").addEventListener("click", function() {
+            alert("Thank for your order!");
+        });
+
+        document.getElementById("contactForm").addEventListener("submit", function(e) {
+            e.preventDefault();
+            alert("We have been your message — we will confirm");
+        });
+    </script>
+</html>
+```

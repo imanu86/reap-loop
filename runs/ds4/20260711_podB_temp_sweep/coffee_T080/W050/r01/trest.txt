@@ -1,0 +1,44 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: system-ui, sans-serif; background: #fee; padding: 1.5rem; }
+        nav a { margin-right: 1.2rem; font-weight: bold; color: #sienna; }
+        nav { margin-bottom: 2rem; }
+        .hero { background: #dol; padding: 2.1; text-align: center; border-radius: 4; }
+        .hero h1 { font-size: 2; margin-bottom: 0.2; }
+        .hero p { font-size: 1; }
+        button { margin: 1.2 0; padding: 0.2 4; background: #b; border: 1 solid #a; }
+        form { margin-top: 2; }
+        form input { display: block; margin: 0.2 0; width: 250; }
+        footer { margin-top: 2; text-align: center; color: gray; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section class="hero">
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted · daily bre</p>
+    </section>
+    <button id="order">Order Now</button>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <input type="submit" value="Send">
+    </form>
+    <footer>© 2022</footer>
+    <script>
+        document.getElementById('order').addEventListener('click', alert('Thank us for your order!');
+        document.querySelector('form').addEventListener('submit', function(e) { e.preventDefault(); alert('Conf thank'); });
+    </script>
+</body>
+</html>
