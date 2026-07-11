@@ -1,0 +1,41 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>�︻ AI SHOP – CYERPUNK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', 'Segoe UI', monospace;
+        }
+
+        body {
+            background: #0c0c0c;
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: #151515;
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 30px #00f0ff66, inset 0 0 20px #00f0ff33;
+            border-radius: 20px;
+            padding: 30px 25px;
+            transition: 0.2s;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            text-align: center;
+            letter-spacing: 4px;
+            text-shadow: 0

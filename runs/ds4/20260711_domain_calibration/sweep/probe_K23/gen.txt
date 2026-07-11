@@ -1,0 +1,40 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Store - Cyber Nexus</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        body {
+            background: #0a0a0f;
+            color: #00ffcc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+            background-image: radial-gradient, circle at 1px 1px, #00ffcc33 1px, transparent 1px;
+            background-size: 20px 20px;
+        }
+
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: #10101a;
+            border: 2px solid #00ffcc;
+            border-radius: 20px;
+            padding: 30px 25px;
+            box-shadow: 0 0 30px #00ffcc44, 0 0 60px #00ffcc22;
+            backdrop-filter: blur(4px);
+            transition: 0.3s;
+        }
+
+        h

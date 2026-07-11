@@ -1,0 +1,10 @@
+[run] START qual_K48_cyber mask=sessCyber_K48.txt ntok=5500 ctx=8192 trace=1 2026-07-11T12:45:00+02:00
+[run] DONE qual_K48_cyber rc=143 wall=864s perf=[] peakMemMB=2247 peakSwapMB=3 gen_chars=10319 body=1 close_html=0 route_rows=114141 2026-07-11T12:59:24+02:00
+[run] START qual_K64_cyber mask=sessCyber_K64.txt ntok=5500 ctx=8192 trace=1 2026-07-11T13:00:01+02:00
+[run] DONE qual_K64_cyber rc=143 wall=218s perf=[] peakMemMB=2398 peakSwapMB=3 gen_chars=1469 body=0 close_html=0 route_rows=28164 2026-07-11T13:03:39+02:00
+[run] START qual_K48_cyber_run2 mask=sessCyber_K48.txt ntok=5500 ctx=8192 trace=0 2026-07-11T13:03:55+02:00
+[run] DONE qual_K48_cyber_run2 rc=143 wall=841s perf=[] peakMemMB=2596 peakSwapMB=3 gen_chars=10182 body=1 close_html=0 route_rows=0 2026-07-11T13:17:56+02:00
+[run] START spec_K48cyber_coffee mask=sessCyber_K48.txt ntok=1500 ctx=3072 trace=0 2026-07-11T13:18:16+02:00
+[run] DONE spec_K48cyber_coffee rc=0 wall=684s perf=[prefill: 0.72 t/s, generation: 2.95 t/s] peakMemMB=2214 peakSwapMB=3 gen_chars=3552 body=1 close_html=1 route_rows=0 2026-07-11T13:29:40+02:00
+[run] START ctrl_K64coffee_cyber mask=sessK64.txt ntok=1200 ctx=8192 trace=0 2026-07-11T13:31:24+02:00
+[run] DONE ctrl_K64coffee_cyber rc=143 wall=589s perf=[] peakMemMB=3326 peakSwapMB=1 gen_chars=67 body=0 close_html=0 route_rows=0 2026-07-11T13:41:13+02:00

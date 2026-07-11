@@ -1,0 +1,9 @@
+[run] START warmup mask=sessCyber_K48.txt ntok=300 ctx=4096 trace=0 2026-07-11T12:30:06+02:00
+[run] DONE warmup rc=0 wall=347s perf=[prefill: 1.11 t/s, generation: 1.14 t/s] peakMemMB=2301 peakSwapMB=1 gen_chars=1079 body=0 close_html=0 route_rows=0 2026-07-11T12:35:53+02:00
+[run] START probe_K23 mask=sessCyber_K23.txt ntok=300 ctx=4096 trace=0 2026-07-11T12:35:53+02:00
+[run] DONE probe_K23 rc=0 wall=261s perf=[prefill: 0.50 t/s, generation: 3.44 t/s] peakMemMB=2239 peakSwapMB=4 gen_chars=1109 body=0 close_html=0 route_rows=0 2026-07-11T12:40:14+02:00
+[run] START probe_K48 mask=sessCyber_K48.txt ntok=300 ctx=4096 trace=0 2026-07-11T12:40:14+02:00
+[run] DONE probe_K48 rc=0 wall=97s perf=[prefill: 8.18 t/s, generation: 3.49 t/s] peakMemMB=2236 peakSwapMB=3 gen_chars=1079 body=0 close_html=0 route_rows=0 2026-07-11T12:41:51+02:00
+[run] START probe_K64 mask=sessCyber_K64.txt ntok=300 ctx=4096 trace=0 2026-07-11T12:41:51+02:00
+[run] DONE probe_K64 rc=0 wall=116s perf=[prefill: 8.53 t/s, generation: 2.87 t/s] peakMemMB=2237 peakSwapMB=3 gen_chars=660 body=0 close_html=0 route_rows=0 2026-07-11T12:43:47+02:00
+PHASE_A_COMPLETE 2026-07-11T12:43:47+02:00

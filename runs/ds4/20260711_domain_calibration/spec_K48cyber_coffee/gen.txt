@@ -1,0 +1,156 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bean & Brew – Coffee Shop</title>
+  <style>
+    /* RESYLICX – minimal coffee theme */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+    }
+    body {
+      background: #faf3e3;
+      color: #3e2c1b;
+      line-height: 1.5;
+      padding: 1rem;
+    }
+    nav {
+      background: #8b5e3c;
+      padding: 0.75rem 1.5rem;
+      border-radius: 40px;
+      display: flex;
+      gap: 2rem;
+      justify-content: center;
+      margin-bottom: 2rem;
+    }
+    nav a {
+      color: #f9eed9;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 1.1rem;
+    }
+    nav a:hover {
+      color: #ffddb0;
+    }
+    section.hero {
+      text-align: center;
+      padding: 3rem 1rem;
+      background: #f5e1c6;
+      border-radius: 24px;
+      margin-bottom: 2rem;
+    }
+    h1 {
+      font-size: 3.5rem;
+      letter-spacing: -1px;
+      color: #4f2b13;
+    }
+    .subhead {
+      font-size: 1.25rem;
+      color: #6b4a2e;
+      margin-top: 0.25rem;
+    }
+    #order {
+      background: #c67b4b;
+      border: none;
+      padding: 0.9rem 2.5rem;
+      font-size: 1.3rem;
+      font-weight: bold;
+      color: #1f150b;
+      border-radius: 60px;
+      cursor: pointer;
+      margin-top: 1.5rem;
+      transition: background 0.2s;
+    }
+    #order:hover {
+      background: #a35f30;
+    }
+    form {
+      background: #fcf3e7;
+      padding: 2rem;
+      border-radius: 28px;
+      max-width: 480px;
+      margin: 2rem auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.2rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    }
+    form input {
+      padding: 0.8rem 1rem;
+      border: 1px solid #d3b99a;
+      border-radius: 40px;
+      font-size: 1rem;
+      background: #fffbf5;
+    }
+    form input:focus {
+      outline: 2px solid #b17e52;
+    }
+    form button {
+      background: #2e4a2c;
+      color: #f3efe0;
+      border: none;
+      padding: 0.9rem;
+      font-size: 1.2rem;
+      font-weight: 600;
+      border-radius: 60px;
+      cursor: pointer;
+    }
+    form button:hover {
+      background: #1f351f;
+    }
+    footer {
+      text-align: center;
+      font-size: 0.9rem;
+      color: #7a5f44;
+      margin-top: 2rem;
+    }
+    /* compact & responsive */
+    @media (max-width: 500px) {
+      nav { gap: 1rem; }
+      h1 { font-size: 2.5rem; }
+    }
+  </style>
+</head>
+<body>
+  <!-- NAV -->
+  <nav>
+    <a href="#">Home</a>
+    <a href="#">Menu</a>
+    <a href="#">Contact</a>
+  </nav>
+
+  <!-- H E R O -->
+  <section class="hero">
+    <h1>Bean & Brew</h1>
+    <p class="subhead">Your coffee · warm · hand‑picked</p>
+    <button id="order">Order Now</button>
+  </section>
+
+  <!-- FORM -->
+  <form id="contactForm" action="/submit">
+    <input type="text" name="name" placeholder="Your name" required>
+    <input type="email" name="email" placeholder="hi@example.com" required>
+    <button type="submit">Send message</button>
+  </form>
+
+  <footer>�︵ cozy · bean · brew · 2024</footer>
+
+  <script>
+    // order button alert
+    document.getElementById('order').addEventListener('click', function() {
+      alert('Thank us for your order!');
+    });
+
+    // form handler
+    document.getElementById('contactForm')..addEventListener('submit', function(e) {
+      e.preventDefault();
+      alert('Thank us for your order!');
+    });
+  </script>
+</body>
+</html>```
