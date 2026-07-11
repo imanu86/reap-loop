@@ -1,0 +1,96 @@
+From 1a90d4b388ec2e4b6333e11bd63fc882567bbca3 Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sat, 11 Jul 2026 12:00:00 +0200
+Subject: [PATCH] cuda: fix streaming expert cache resident-hit collapse (0024)
+
+Two compounding bugs zeroed the per-token streaming expert cache on
+small (12 GiB) cards, so every selected expert fell to a direct H2D
+copy (resident hit ~= 1/6923, measured J31):
+
+1. cuda_stream_expert_cache_reserve_bytes() defaulted to 16 GiB and
+   parsed the override with strtoull (integer only).  16 GiB is clamped
+   to VRAM/2 = 6 GiB by live_budget, which exceeds free VRAM after the
+   resident model tensors -> the cache is never allocated.  A fractional
+   override like 0.25 was silently swallowed by strtoull -> the reserve
+   stayed 16.  Parse as a float; default to a 0.5 GiB floor.
+
+2. A single load_slot / copy_to_compact failure called
+   cuda_stream_expert_cache_invalidate() + set expert_cache_disabled=1,
+   collapsing the whole cache to direct loads for the rest of the
+   session, and left the slot pool orphaned so it could never
+   re-allocate.  Degrade only the failing expert to a direct load and
+   keep the cache resident.
+---
+ ds4_cuda.cu | 38 ++++++++++++++++++++++++++++----------
+ 1 file changed, 28 insertions(+), 10 deletions(-)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 253cb15..75bab89 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -3267,19 +3267,30 @@ static int cuda_stream_expert_cache_budget_visible_to_shared(void) {
+ }
+ 
+ static uint64_t cuda_stream_expert_cache_reserve_bytes(void) {
+-    uint64_t gb = 16;
++    /* 0024 resident-hit fix: the old default was 16 GiB parsed with strtoull
++     * (integer only).  On a 12 GiB card 16 GiB is clamped to VRAM/2 = 6 GiB by
++     * the caller, which exceeds free VRAM after the resident model tensors ->
++     * the streaming expert cache is never allocated and every selected expert
++     * falls to a direct H2D copy (resident hit ~= 0).  Worse, a fractional
++     * override such as "0.25" was silently ignored by strtoull (it stops at the
++     * '.', the *end=='\0' guard fails, gb stays 16), so operators who lowered
++     * the reserve still hit the 6 GiB clamp.  Parse the override as a float and
++     * default to a small floor so the cache actually fits on small cards. */
++    double gb = 0.5;
+     const char *env = getenv("DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB");
+     if (env && env[0]) {
+         char *end = NULL;
+         errno = 0;
+-        unsigned long long v = strtoull(env, &end, 10);
++        double v = strtod(env, &end);
+         while (end && (*end == ' ' || *end == '\t')) end++;
+-        if (end != env && errno == 0 && end && *end == '\0') {
+-            gb = (uint64_t)v;
++        if (end != env && errno == 0 && end && *end == '\0' && v >= 0.0) {
++            gb = v;
+         }
+     }
+-    if (gb > UINT64_MAX / 1073741824ull) return UINT64_MAX;
+-    return gb * 1073741824ull;
++    if (gb < 0.0) gb = 0.0;
++    const double bytes = gb * 1073741824.0;
++    if (bytes >= (double)UINT64_MAX) return UINT64_MAX;
++    return (uint64_t)bytes;
+ }
+ 
+ static uint32_t cuda_stream_expert_cache_live_budget(
+@@ -5077,8 +5088,14 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                     if (evicting) evictions++;
+                     cache_slot = (int)load_slot;
+                 } else {
+-                    cuda_stream_expert_cache_invalidate();
+-                    expert_cache_disabled = 1;
++                    /* 0024 resident-hit fix: a single failed slot load must not
++                     * invalidate the whole cache and disable it for the rest of
++                     * the session (the old behaviour collapsed all 258
++                     * experts/token to direct loads after one transient copy
++                     * failure, and cuda_stream_expert_cache_invalidate() left
++                     * the ~GiB slot pool orphaned so the cache could never
++                     * re-allocate).  Degrade only THIS expert to a direct load
++                     * and keep the resident cache alive. */
+                     cache_slot = -1;
+                 }
+             }
+@@ -5093,8 +5110,9 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                             g_stream_selected_cache.up_ptr,
+                             g_stream_selected_cache.down_ptr);
+                 if (!copied_from_global_cache) {
+-                    cuda_stream_expert_cache_invalidate();
+-                    expert_cache_disabled = 1;
++                    /* 0024 resident-hit fix: keep the cache resident on a
++                     * transient device-to-device copy failure; this expert
++                     * falls through to a direct load below. */
+                 }
+             }
+         }
