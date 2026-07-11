@@ -130,6 +130,28 @@ token IDENTICI flag ON vs OFF (una differenza ⇒ race ⇒ bug, si blocca).
 
 Ogni env a 0 = no-op → il motore torna byte-identico al post-`0024`.
 
+**Implementazione S1 — `patches/ds4/0032-async-pipeline-s1.patch`** (authored
+2026-07-11, apply-check REALE vs snapshot live-tree `ds4.c` md5 `771a39a8` /
+`ds4_cuda.cu` `7d57f58d` / `ds4_gpu.h` `55070d97` → endpoint `54aaccc4` /
+`84431419` / `b97e47fb`, 5 hunk, zero fuzz, LF-clean; DRAFT, smoke gated su S0).
+Un solo env nuovo **`DS4_ASYNC_PIPELINE`** (default 0 = engine byte-identico)
+accende tutte e tre le leve di S1: **(1)** alias in
+`cuda_stream_selected_upload_event_enabled` → il `cudaEventRecord` +
+`cudaStreamWaitEvent(stream0)` della 0002 (evento invece di sync per-copia);
+**(2)** alias in `metal_graph_spex_prefetch_next_layer_enabled` → il predittore
+banale della 0003 (L+1 = expert appena instradati di L, zero file `.spex`)
+seedato in **overlap** nella LRU `g_stream_expert_cache` via
+`seed_experts_async` (`defer_upload_sync=1`), non nel compact single-buffer;
+**(3)** nuovo primitivo GPU `ds4_gpu_end_commands_pipeline` che **rilassa la
+SOLA barriera per-layer** del path streaming (`metal_graph_eval_token_raw_swa_streaming`):
+drena solo lo stream compute (`cudaStreamSynchronize(stream0)`) invece del
+device intero, lasciando in volo l'upload di L+1 così si sovrappone ad
+attention/norm/router del layer successivo. Il sync di correttezza NON si
+muove: `ds4_gpu_wait_selected_upload()` (wait cross-stream) precede ogni
+consumo dell'expert nel kernel MoE, il ramo miss-on-demand resta sincrono →
+**bit-exact**. Rischio residuo (piano §4): se `overlap%` resta 0 lo stream
+upload condiviso può richiedere `cudaStreamNonBlocking` (follow-up S2/S3).
+
 ---
 
 ## 4. RISCHI

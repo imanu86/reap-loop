@@ -1,0 +1,144 @@
+From 7a9affba3942c5fa5949660decd3a580b5bd776a Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sat, 11 Jul 2026 16:00:00 +0200
+Subject: [PATCH] cuda: async prefetch pipeline S1 -- break blocking-sync,
+ reactive L+1 overlap (0032)
+
+STADIO S1 of docs/ASYNC_PIPELINE_PLAN.md: the smallest engine change that
+breaks the per-copy blocking-sync and lets an expert upload for layer L+1
+overlap L+1's compute, instead of overlap==0 by construction.  The machine
+already exists (0002 upload event + cross-stream wait; 0003 cross-layer
+seed_experts_async into the LRU cache); overlap stayed 0 because the event
+path was gated off, the reactive seed was gated off, and the per-layer
+barrier ds4_gpu_end_commands (cudaDeviceSynchronize) drained the upload
+stream at the L->L+1 boundary before L+1 compute.  0032 wires those three
+under ONE new env, DS4_ASYNC_PIPELINE, off by default.
+
+Three levers, all behind DS4_ASYNC_PIPELINE:
+1. Event path (ds4_cuda.cu, cuda_stream_selected_upload_event_enabled): add
+   DS4_ASYNC_PIPELINE as a third alias next to DS4_SELECTED_UPLOAD_EVENT /
+   DS4_CUDA_SELECTED_UPLOAD_EVENT, so 0002's cudaEventRecord (instead of
+   cudaStreamSynchronize per copy) and the cudaStreamWaitEvent(stream0) before
+   the MoE kernel both fire without depending on the old flag.
+2. Reactive prefetch (ds4.c, metal_graph_spex_prefetch_next_layer_enabled):
+   add DS4_ASYNC_PIPELINE to the enable OR-group, so 0003's trivial predictor
+   (L+1 experts = the just-routed experts of L, zero .spex file) seeds L+1
+   into the LRU g_stream_expert_cache via seed_experts_async (defer_upload_sync
+   =1), NOT the single compact buffer -> no overwrite of the buffer L is
+   reading.
+3. Relax ONLY the per-layer streaming barrier (ds4.c, per-layer path of
+   metal_graph_eval_token_raw_swa_streaming): the one end-of-layer call swaps
+   ds4_gpu_end_commands() -> ds4_gpu_end_commands_pipeline(), a new GPU
+   primitive that, when the event path is active, drains only the compute
+   (default) stream (cudaStreamSynchronize(stream0)) and leaves the seeded
+   L+1 upload in flight to overlap the next layer's attention/norm/router.
+   The token-boundary barriers and the batch_static_decode path are untouched.
+
+Invariants (declared):
+- RESIDENCY != SELECTION -> bit-exact.  The prefetch only changes what is
+  resident in the LRU cache; the real router still decides gating, the mask
+  (g_reap_mask_pruned) and bias are never written.  A wrong seed costs a
+  wasted copy, never a different token.
+- MISS-FALLBACK INTACT.  The correctness sync stays exactly where the expert
+  is consumed: ds4_gpu_wait_selected_upload() (cudaStreamWaitEvent on stream
+  0) precedes every ds4_gpu_routed_moe_one_tensor and every selected-load
+  override; an on-demand miss still loads synchronously.  A miss is latency,
+  never an error.
+- OFF-DEFAULT.  ds4_gpu_end_commands_pipeline() with the event path off is
+  byte-identical to ds4_gpu_end_commands() (cuda_model_load_progress_finish +
+  full cudaDeviceSynchronize); the two enable-gates are pure OR additions.
+  DS4_ASYNC_PIPELINE unset (or =0) -> engine byte-identical to base.
+
+Anchored to the live-tree snapshot (ds4.c md5 771a39a8, ds4_cuda.cu md5
+7d57f58d, ds4_gpu.h md5 55070d97), independent of the pace/rewind/diag
+branches (no hunk overlap: touches only the upload-event gate, the SPEX
+prefetch gate, the streaming per-layer barrier, and one new GPU primitive).
+Rebase after canonization.  DRAFT: smoke (bit-exact vs OFF + overlap% + t/s)
+gated on S0 confirming the stall; if overlap% stays 0 the shared upload
+stream may need cudaStreamNonBlocking (S2/S3 follow-up, plan section 4).
+
+Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+---
+ ds4.c       |  8 +++++++-
+ ds4_cuda.cu | 19 +++++++++++++++++++
+ ds4_gpu.h   |  1 +
+ 3 files changed, 27 insertions(+), 1 deletion(-)
+
+diff --git a/ds4.c b/ds4.c
+index 0d0aaeb..6d3b78e 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -15954,6 +15954,7 @@ static bool metal_graph_spex_prefetch_next_layer_enabled(
+     return g &&
+            g->ssd_streaming &&
+            (getenv("DS4_SPEX_PREFETCH_NEXT_LAYER") != NULL ||
++            getenv("DS4_ASYNC_PIPELINE") != NULL ||
+             metal_graph_spex_file_path() != NULL) &&
+            getenv("DS4_SPEX_DISABLE_PREFETCH_NEXT_LAYER") == NULL;
+ #else
+@@ -22109,7 +22110,12 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+             ok = metal_graph_spex_prefetch_next_layer(g, model, weights, il);
+         }
+         const double tl_encoded = profile ? now_sec() : 0.0;
+-        if (ok) ok = ds4_gpu_end_commands() != 0;
++        /* 0032 async-pipeline: relax ONLY this per-layer streaming barrier.
++         * The pipeline variant drains the compute stream but leaves the L+1
++         * expert upload seeded above (metal_graph_spex_prefetch_next_layer)
++         * in flight so it overlaps the next layer's attention/norm/router.
++         * No-op vs ds4_gpu_end_commands() unless DS4_ASYNC_PIPELINE is set. */
++        if (ok) ok = ds4_gpu_end_commands_pipeline() != 0;
+         const double tl_done = profile ? now_sec() : 0.0;
+         if (profile) {
+             encode_s += tl_encoded - tl0;
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 253cb15..382a0ce 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -3544,6 +3544,7 @@ static int cuda_stream_selected_upload_event_enabled(void) {
+     if (g_stream_selected_upload_event_enabled < 0) {
+         const char *v = getenv("DS4_SELECTED_UPLOAD_EVENT");
+         if (!v) v = getenv("DS4_CUDA_SELECTED_UPLOAD_EVENT");
++        if (!v) v = getenv("DS4_ASYNC_PIPELINE");
+         g_stream_selected_upload_event_enabled =
+             (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
+     }
+@@ -4464,6 +4465,24 @@ extern "C" int ds4_gpu_end_commands(void) {
+     cuda_model_load_progress_finish();
+     return cuda_ok(cudaDeviceSynchronize(), "end commands");
+ }
++/* Async-pipeline (0032) variant of ds4_gpu_end_commands: when the selected
++ * upload event path is active (DS4_ASYNC_PIPELINE / DS4_SELECTED_UPLOAD_EVENT),
++ * close the per-layer command frame by draining ONLY the compute (default)
++ * stream, so an in-flight expert upload seeded for L+1 keeps running and
++ * overlaps the next layer's attention/norm/router. Correctness is unchanged:
++ * every MoE kernel that consumes a freshly uploaded expert is still preceded by
++ * ds4_gpu_wait_selected_upload() (cudaStreamWaitEvent on stream 0), and the
++ * on-demand miss path still loads synchronously. When the event path is off,
++ * this is byte-identical to ds4_gpu_end_commands (full cudaDeviceSynchronize),
++ * so DS4_ASYNC_PIPELINE=0 leaves the engine unchanged. */
++extern "C" int ds4_gpu_end_commands_pipeline(void) {
++    cuda_model_load_progress_finish();
++    if (cuda_stream_selected_upload_event_enabled()) {
++        return cuda_ok(cudaStreamSynchronize((cudaStream_t)0),
++                       "end commands (pipeline)");
++    }
++    return cuda_ok(cudaDeviceSynchronize(), "end commands");
++}
+ extern "C" int ds4_gpu_synchronize(void) {
+     cuda_model_load_progress_finish();
+     return cuda_ok(cudaDeviceSynchronize(), "synchronize");
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 9bbd2d0..33c657b 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -62,6 +62,7 @@ int ds4_gpu_tensor_read_after_selected_event(const ds4_gpu_tensor *tensor,
+                                              const char *label);
+ #endif
+ int ds4_gpu_end_commands(void);
++int ds4_gpu_end_commands_pipeline(void);
+ int ds4_gpu_synchronize(void);
+ 
+ int ds4_gpu_set_model_map(const void *model_map, uint64_t model_size);
+-- 
+2.54.0.windows.1
+
