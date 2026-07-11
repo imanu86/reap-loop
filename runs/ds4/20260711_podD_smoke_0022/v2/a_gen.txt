@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body{font-family:Georgia,serif;margin:0;padding:0;background:#light-coel;color:#dark-coel}
+nav{background:#brown;padding:10;display:flex;gap:20;text-center}
+nav a{color:#dark;padding:10;hover:underline}
+section{padding:20;text-center}
+h1{color:#dark;size:2}
+button{padding:10;bg:#dark;color:#light;border:1;text-center}
+h1{font-size:2em;margin:0}
+button{madding:8;background:#brown;color:#dark;border:0;cursor:pointer}
+form{padding:20;max-width:300;margin:auto}
+input{width:100%;padding:6;margin:5}
+</style>
+</head>
+<body>
+<nav>
+<a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Fresh coffee, cozy vibes.</p>
+<button id="order">Order Now</button>
+</section>
+<form action="/submit" id="form">
+<input type="text" name="name" placeholder="Your name" required>
+<input type="email" name="email" placeholder="Your email" required>
+<input type="submit" value="Submit">
+</form>
+<script>
+document.getElementById('order').addEventListener('click', function(){alert('Thank you for your order!')});
+document.getElementById('form').addEventListener('submit', function(e){e.preventDefault();alert('Confirmation sent!')});
+</script>
+</body>
+</html>

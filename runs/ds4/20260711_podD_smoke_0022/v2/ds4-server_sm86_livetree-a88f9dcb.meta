@@ -1,0 +1,11 @@
+object: ds4-server_sm86_livetree-a88f9dcb (companion: ds4_sm86_livetree-a88f9dcb)
+ds4.c_md5: a88f9dcbb8ce8d1be2aa4ff18d1ad175
+chain: live-tree 771a39a8 (=canonical v2) + 0020 + 0021 + 0026 + 0027 + 0028(blob b94be032) + 0022v2(blob 24a1f306, snapshot-guard fix, reap-loop commit 2586a25)
+gpu_arch: sm_86
+image: runpod/pytorch:1.0.7-rc.138-cu1290-torch280-ubuntu2404 (CUDA 12.9, driver 580.159.03)
+build: make cuda CUDA_ARCH=sm_86, 0 warnings, 2026-07-11, pod 7qgalm9sasqnr7 (RTX 3090 community)
+sha256_ds4-server: 5e09ae48fa911809a7a81d58a1812e1d3f9db71e1e64fd5eccf29b36fbc1253b
+sha256_ds4: 02da2f8467fd2a6c8891d6dec3ae82fa5450878479cae7ca89fa15a064a04085
+md5_ds4-server: ddf6da2df4c12434e99e6693a2aaccc6
+md5_ds4: 9048e70756a8f490d45add4591f59a15
+smoke: runs/ds4/20260711_podD_smoke_0022 v2 — gates a/b/c ALL PASS (rewind fires from=346 to=315 regen=32; off-switch clean; defaults silent on healthy coffee)

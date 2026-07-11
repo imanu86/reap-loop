@@ -1,0 +1,52 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body {
+font-family: sans-serif;
+margin:0 padding:0>
+nav {
+background: #dark;
+padding:10>
+nav a {
+margin:1>
+section {
+background: #coffee;
+padding:20>
+h1 {
+font-size:2>
+button {
+background: #order>
+form {
+background: #contact>
+input {
+border:1>
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function());
+document.getElementById("order").addEventListener("click", function());
+alert("Thank you for your order!");
+document.getElementById("contact").addEventListener("submit", function());
+event.preventDefault();
+alert("Thank us for your order!");
+</script>
+<nav>
+<a href="#home">Home</a>
+<a href="#menu">Menu</a>
+<a href="#contact">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Fresh coffee every sip</p>
+<button id="order">Order Now</button>
+<form action="/submit" id="contact">
+<input type="text" name="name" placeholder="Name">
+<input type="email" name="email" placeholder="Email">
+<button type="submit">Submit</button>
+</form>
+</html>
+```
+</html>

@@ -1,5 +1,9 @@
 # Smoke 0022 — S1-guided rewind actuator (pod D) — VERDICT
 
+> **PARTIALLY SUPERSEDED — v2 re-smoke below.** The v1 section (gate a FAIL) documents the
+> snapshot-guard bug, since fixed upstream (`2586a25`). The **v2 re-smoke** with the fixed
+> 0022 is **ALL PASS** — see "§ v2 re-smoke" at the bottom. v2 artifacts in `v2/`.
+
 **Date:** 2026-07-11 (UTC ~02:00). **Pod:** RunPod `7qgalm9sasqnr7` (COMMUNITY RTX 3090
 24GB, machine `6p17plgwgpsn`), image `runpod/pytorch:1.0.7-rc.138-cu1290-torch280-ubuntu2404`
 (CUDA 12.9 — the cu1290 variant, driver 580.159.03; the cu12.8 breakage the mandate warns
@@ -127,3 +131,90 @@ missing capability, not an instability.
 `{a,b,c}_events.jsonl` (JSONL event streams), `{a,b,c}_gen.txt` (generated HTML),
 `{a,b,c}_run.log` (raw stderr), `{a,b,c}_status.txt`, `run_{a,b,c}.sh` + `common_env.sh`
 (exact invocations), `build_baseline.log` / `build_0022.log` (0-warning builds).
+
+---
+
+# § v2 re-smoke — fixed 0022 (snapshot-guard fix `2586a25`) — **ALL PASS**
+
+**Date:** 2026-07-11 ~00:30 UTC, same pod (`7qgalm9sasqnr7`, still RUNNING). Fix commit
+`2586a25` "patches: fix 0022 snapshot guard (Flash layer-0 is dense; scan first allocated
+rewind buffer)" — new 0022 blob `24a1f306`. The guard now scans layers for the first
+*allocated* `spec_rewind_attn_state_kv[il]` instead of probing literal index 0 (exactly the
+diagnosed root cause; layer 0 is dense on Flash).
+
+## Build v2
+
+Pod tree `git reset --hard` to the post-0028 baseline (md5 **62ed2e71** re-verified), fixed
+0022 v2 applied clean (first try) → `ds4.c` md5 **a88f9dcb** (`have_buf` scan present at
+ds4.c:27677-27681). `make cuda CUDA_ARCH=sm_86`: **0 warnings** (`v2/build_0022v2.log`).
+**Binaries: `ds4` md5 `9048e70756a8f490d45add4591f59a15`, `ds4-server` md5
+`ddf6da2df4c12434e99e6693a2aaccc6`.**
+
+Same smoke config as v1 (coffee 819B, W50 static K23, greedy temp0, `-n 600 -c 8192`,
+`--ssd-streaming --ssd-streaming-cache-experts 1024`).
+
+## Gate (a) v2 — forced FIRE: **PASS**
+
+Forced thresholds (`ARM_K=-20 ARM_H=0.1 FIRE_K=-20 FIRE_H=0.1`), `DS4_TOKEN_TIMING=1`,
+stderr timestamped (`v2/ts.py`). Events (`v2/a_events.jsonl`):
+
+```
+{"ev":"rewind_arm","from":346,"to":314,"reason":"s1_cusum_arm",...}    <- onset NOW VALID (314, was 0 in v1)
+{"ev":"rewind","from":346,"to":315,"reason":"s1_cusum_fire","tok":97,"keep":96,...,"n":1,"regen":32}
+{"ev":"rewind_arm","from":315,"to":314,...}                            <- re-arm after fire; backoff blocks 2nd fire
+```
+
+- `rewind` event with **from=346 / to=315 / reason=s1_cusum_fire** ✓
+- post-rewind regeneration visible: 379 timed evals for ~348 final positions (the 31-token
+  span 315..346 re-decoded), PACE clock rewound 129→97, keep widened 23→96 ✓
+- run continues and terminates normally, rc=0, complete `</html>`, zero crash markers ✓
+- anti-oscillation observed: second ARM latched but no second fire (BACKOFF=256) ✓
+
+## Gate (b) v2 — off-switch (`DS4_PACE_REWIND=0`): **PASS**
+
+0 rewind-family events, no `PACE REWIND on` banner, rc=0 (`v2/b_events.jsonl`).
+
+## Gate (c) v2 — default E-DET profiles: **PASS**
+
+0 `rewind` fires on healthy coffee; `cusum_fire` peak **1.22 ≪ h_fire=8**. Two benign
+`rewind_arm` (tok 195/334) now with **real frozen onsets** (`to:410`/`to:538` — the rolling
+snapshot works under defaults too). rc=0 (`v2/c_events.jsonl`).
+
+## REWIND COST — measured (decision-model input, replaces the assumed 56 tok)
+
+From `v2/a_run.log` (monotonic-timestamped stderr + per-eval ms) parsed with
+`rewind_cost.py` (median inter-eval gap over 378 gaps = **0.180 s/tok**, pod RAM-hot):
+
+| quantity | measured | note |
+|---|---|---|
+| regen tokens | **31 re-decoded** (engine counter `regen:32` = from−onset) | forced-fire depth ≈ snapshot cadence EVERY=32 (floor). Production depth ≈ EVERY + ARM→FIRE detection delay (E-DET median ~40 tok) ⇒ the 56-tok decision-model assumption is the right order; measured floor = 32. **Token count transfers; times below are pod-only.** |
+| restore+rewind cycle wall | **≈ 0.31 s** | raw gap between the evals surrounding the fire = 0.494 s minus median gap 0.180 s. Includes frontier restore, PACE-blob restore, mask relearn+apply (keep 23→96), delta-prefetch, logits restore. |
+| regen re-decode wall | ≈ 5.6 s (31 × 0.180 s) | pod-only t/s; scales with local rate on the 3060. |
+
+I.e. the **fixed overhead of a rewind cycle is sub-second (~1.7 eval-slots)**; the dominant
+cost is re-decoding the reverted span, which is bounded by EVERY + detection delay.
+
+## R2 upload (all-PASS condition met)
+
+Uploaded to `r2:ds4-models` (2026-07-11 00:27–00:32 UTC, listing verified):
+- `ds4-server_sm86_livetree-a88f9dcb` (11 829 088 B) + **`.meta`** (chain, sha256s, smoke ref)
+- `ds4_sm86_livetree-a88f9dcb` (10 908 856 B)
+
+Chain in .meta: live-tree 771a39a8 (=canonical v2) + 0020+0021+0026+0027+0028(b94be032) +
+0022v2(24a1f306, fix 2586a25), sm_86, cu1290 image, 0-warning build.
+
+## Cost / pod (final, whole mandate incl. v1)
+
+Balance **$17.9459633467 → $15.7854758447** ⇒ **total spend ≈ $2.16** (cap $3). Pod
+`7qgalm9sasqnr7` left **RUNNING** per mandate.
+
+## v2 verdict table
+
+| gate | config | rewind_arm | rewind | verdict |
+|---|---|---:|---:|---|
+| a | forced (K=-20,H=0.1) | 2 | **1** (from=346,to=315,regen=32) | **PASS** |
+| b | off (REWIND=0) | 0 | 0 | **PASS** |
+| c | E-DET defaults | 2 (benign, real onsets) | 0 | **PASS** |
+
+**0022 v2 è GO: actuator live su Flash, off-switch pulito, profili default silenti in regime
+sano. Cost-model: ciclo fisso ~0.31 s + regen ≈ EVERY+delay token.**

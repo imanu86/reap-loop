@@ -1,0 +1,408 @@
+     0.058 ds4: Linux cuda backend set oom_score_adj=1000
+     0.355 ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+     0.370 ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+     0.370 ds4: CUDA preparing model tensor mappings
+     0.575 ds4: CUDA loading model tensors into device cache
+     0.758 ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.388s
+     0.758 ds4: cuda backend initialized for graph diagnostics
+     0.758 ds4: context buffers 539.25 MiB (ctx=8192, backend=cuda, prefill_chunk=4096, raw_kv_rows=4352, compressed_kv_rows=2050)
+     0.758 ds4: using GPU graph generation with graph prefill
+     0.790 ds4: PACE on - warmup=50 keep=23[23..96] step=4 ngram(n=3,win=120) drift=0.35 rel=0.15 hyst=200 breath(every=999999,len=80,keep=64,relearn=0) prebreath(on=0,drift=0.24,target=0.24,every=64,max=64,adapt=0,gain=8.00,pow=1.00,step_max=0,relearn=0,rdecay=0.30) anneal_warm=300 wrap=1 wrap_rotate=0 cache_flush=0 prefill_apply=1 prefill_wait_wrap=1 s1=1 exchange=0 relearn_on_tighten=0 weighted(warmup=0,relearn=0) rotate(on=0,every=32,decay=0.980,preserve_stable=1)
+     0.790 ds4: PACE S1 monitor alpha=0.10 trigger=0 slope(win=64,thr=0.000300,stable=16) action=rotate
+     0.790 ds4: PACE prefill_reset tok=0 phase=1 keep=0 ngram=0.000 hit=1.000 breaths=0
+    10.783 ds4: gpu prefill layer 1/43ds4: gpu prefill layer 2/43ds4: gpu prefill layer 3/43ds4: gpu prefill layer 4/43ds4: gpu prefill layer 5/43ds4: gpu prefill layer 6/43ds4: gpu prefill layer 7/43ds4: gpu prefill layer 8/43ds4: gpu prefill layer 9/43ds4: gpu prefill layer 10/43ds4: gpu prefill layer 11/43ds4: gpu prefill layer 12/43ds4: gpu prefill layer 13/43ds4: gpu prefill layer 14/43ds4: gpu prefill layer 15/43ds4: gpu prefill layer 16/43ds4: gpu prefill layer 17/43ds4: gpu prefill layer 18/43ds4: gpu prefill layer 19/43ds4: gpu prefill layer 20/43ds4: gpu prefill layer 21/43ds4: CUDA loading model tensors 0.13 GiB cached
+    19.743 ds4: gpu prefill layer 22/43ds4: gpu prefill layer 23/43ds4: gpu prefill layer 24/43ds4: gpu prefill layer 25/43ds4: gpu prefill layer 26/43ds4: gpu prefill layer 27/43ds4: gpu prefill layer 28/43ds4: gpu prefill layer 29/43ds4: gpu prefill layer 30/43ds4: gpu prefill layer 31/43ds4: gpu prefill layer 32/43ds4: gpu prefill layer 33/43ds4: gpu prefill layer 34/43ds4: gpu prefill layer 35/43ds4: gpu prefill layer 36/43ds4: gpu prefill layer 37/43ds4: gpu prefill layer 38/43ds4: gpu prefill layer 39/43ds4: gpu prefill layer 40/43ds4: gpu prefill layer 41/43ds4: gpu prefill layer 42/43ds4: gpu prefill layer 43/43
+    22.175 ds4: CUDA loading model tensors 0.00 GiB cached
+    22.297 ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+    22.297 ds4: PACE prefill_apply tok=0 phase=3 keep=23 ngram=0.000 hit=1.000 breaths=0
+    23.689 ds4: REAP prefetch (fattorino): 40 layer, 920 expert, 2508 range, 6.07 GiB touched in 1393 ms (8 thread)
+    23.698 ds4: REAP prefetch wait prefill_apply 1401 ms
+    26.170 ds4: PACE REWIND on alpha=0.50 arm(k=-20.00,h=0.1) fire(k=-20.00,h=0.1) every=32 margin=16 max=2 backoff=256 keep=0
+    26.171 ds4: gpu decode eval 1 took 2472.094 ms
+    26.413 ds4: gpu decode eval 2 took 242.587 ms
+    26.587 ds4: gpu decode eval 3 took 173.544 ms
+    26.737 ds4: gpu decode eval 4 took 149.795 ms
+    26.878 ds4: gpu decode eval 5 took 140.798 ms
+    26.984 ds4: gpu decode eval 6 took 105.892 ms
+    27.108 ds4: gpu decode eval 7 took 124.484 ms
+    27.236 ds4: gpu decode eval 8 took 127.205 ms
+    27.350 ds4: gpu decode eval 9 took 114.235 ms
+    27.481 ds4: gpu decode eval 10 took 130.348 ms
+    27.665 ds4: gpu decode eval 11 took 184.419 ms
+    27.759 ds4: gpu decode eval 12 took 93.990 ms
+    27.853 ds4: gpu decode eval 13 took 93.324 ms
+    27.948 ds4: gpu decode eval 14 took 95.121 ms
+    28.022 ds4: gpu decode eval 15 took 74.225 ms
+    28.130 ds4: gpu decode eval 16 took 107.516 ms
+    28.225 ds4: gpu decode eval 17 took 94.874 ms
+    28.343 ds4: gpu decode eval 18 took 117.663 ms
+    28.448 ds4: gpu decode eval 19 took 105.122 ms
+    28.554 ds4: gpu decode eval 20 took 106.424 ms
+    28.627 ds4: gpu decode eval 21 took 72.128 ms
+    28.696 ds4: gpu decode eval 22 took 69.390 ms
+    28.739 ds4: gpu decode eval 23 took 43.053 ms
+    28.805 ds4: gpu decode eval 24 took 66.044 ms
+    28.854 ds4: gpu decode eval 25 took 48.596 ms
+    28.933 ds4: gpu decode eval 26 took 78.266 ms
+    28.999 ds4: gpu decode eval 27 took 65.903 ms
+    29.067 ds4: gpu decode eval 28 took 68.325 ms
+    29.134 ds4: gpu decode eval 29 took 67.318 ms
+    29.209 ds4: gpu decode eval 30 took 74.250 ms
+    29.269 ds4: gpu decode eval 31 took 59.675 ms
+    29.356 ds4: gpu decode eval 32 took 87.373 ms
+    29.420 ds4: gpu decode eval 33 took 64.096 ms
+    29.487 ds4: gpu decode eval 34 took 66.939 ms
+    29.557 ds4: gpu decode eval 35 took 69.669 ms
+    29.622 ds4: gpu decode eval 36 took 64.920 ms
+    29.674 ds4: gpu decode eval 37 took 51.687 ms
+    29.758 ds4: gpu decode eval 38 took 83.899 ms
+    29.802 ds4: gpu decode eval 39 took 43.469 ms
+    29.875 ds4: gpu decode eval 40 took 73.796 ms
+    29.929 ds4: gpu decode eval 41 took 53.013 ms
+    29.975 ds4: gpu decode eval 42 took 46.318 ms
+    30.022 ds4: gpu decode eval 43 took 47.082 ms
+    30.088 ds4: gpu decode eval 44 took 65.493 ms
+    30.158 ds4: gpu decode eval 45 took 69.743 ms
+    30.232 ds4: gpu decode eval 46 took 74.465 ms
+    30.317 ds4: gpu decode eval 47 took 84.576 ms
+    30.396 ds4: gpu decode eval 48 took 78.483 ms
+    30.436 ds4: gpu decode eval 49 took 40.546 ms
+    30.509 ds4: gpu decode eval 50 took 72.575 ms
+    30.557 ds4: gpu decode eval 51 took 48.244 ms
+    30.633 ds4: gpu decode eval 52 took 75.293 ms
+    30.680 ds4: gpu decode eval 53 took 47.654 ms
+    30.726 ds4: gpu decode eval 54 took 45.493 ms
+    30.794 ds4: gpu decode eval 55 took 68.075 ms
+    30.869 ds4: gpu decode eval 56 took 74.919 ms
+    30.912 ds4: gpu decode eval 57 took 42.675 ms
+    30.965 ds4: gpu decode eval 58 took 53.246 ms
+    31.006 ds4: gpu decode eval 59 took 40.907 ms
+    31.077 ds4: gpu decode eval 60 took 70.669 ms
+    31.153 ds4: gpu decode eval 61 took 75.466 ms
+    31.192 ds4: gpu decode eval 62 took 39.131 ms
+    31.236 ds4: gpu decode eval 63 took 43.498 ms
+    31.283 ds4: gpu decode eval 64 took 46.873 ms
+    31.351 ds4: gpu decode eval 65 took 67.949 ms
+    31.395 ds4: gpu decode eval 66 took 44.694 ms
+    31.459 ds4: gpu decode eval 67 took 63.616 ms
+    31.520 ds4: gpu decode eval 68 took 60.801 ms
+    31.594 ds4: gpu decode eval 69 took 73.818 ms
+    31.635 ds4: gpu decode eval 70 took 40.904 ms
+    31.710 ds4: gpu decode eval 71 took 75.180 ms
+    31.770 ds4: gpu decode eval 72 took 59.065 ms
+    31.836 ds4: gpu decode eval 73 took 66.701 ms
+    31.876 ds4: gpu decode eval 74 took 39.516 ms
+    31.944 ds4: gpu decode eval 75 took 67.772 ms
+    32.010 ds4: gpu decode eval 76 took 66.033 ms
+    32.056 ds4: gpu decode eval 77 took 46.183 ms
+    32.101 ds4: gpu decode eval 78 took 44.552 ms
+    32.163 ds4: gpu decode eval 79 took 62.178 ms
+    32.205 ds4: gpu decode eval 80 took 41.309 ms
+    32.252 ds4: gpu decode eval 81 took 47.592 ms
+    32.294 ds4: gpu decode eval 82 took 41.410 ms
+    32.335 ds4: gpu decode eval 83 took 41.042 ms
+    32.379 ds4: gpu decode eval 84 took 43.332 ms
+    32.424 ds4: gpu decode eval 85 took 45.213 ms
+    32.463 ds4: gpu decode eval 86 took 39.114 ms
+    32.502 ds4: gpu decode eval 87 took 38.689 ms
+    32.548 ds4: gpu decode eval 88 took 45.583 ms
+    32.626 ds4: gpu decode eval 89 took 78.083 ms
+    32.668 ds4: gpu decode eval 90 took 42.400 ms
+    32.743 ds4: gpu decode eval 91 took 74.193 ms
+    32.786 ds4: gpu decode eval 92 took 43.205 ms
+    32.865 ds4: gpu decode eval 93 took 79.164 ms
+    32.905 ds4: gpu decode eval 94 took 39.299 ms
+    32.944 ds4: gpu decode eval 95 took 38.731 ms
+    32.997 ds4: gpu decode eval 96 took 52.963 ms
+    33.045 ds4: gpu decode eval 97 took 48.593 ms
+    33.084 ds4: gpu decode eval 98 took 38.687 ms
+    33.139 ds4: gpu decode eval 99 took 54.303 ms
+    33.182 ds4: gpu decode eval 100 took 42.872 ms
+    33.228 ds4: gpu decode eval 101 took 46.706 ms
+    33.301 ds4: gpu decode eval 102 took 72.205 ms
+    33.361 ds4: gpu decode eval 103 took 60.396 ms
+    33.402 ds4: gpu decode eval 104 took 40.861 ms
+    33.441 ds4: gpu decode eval 105 took 39.170 ms
+    33.492 ds4: gpu decode eval 106 took 50.844 ms
+    33.536 ds4: gpu decode eval 107 took 43.047 ms
+    33.586 ds4: gpu decode eval 108 took 50.479 ms
+    33.654 ds4: gpu decode eval 109 took 67.597 ms
+    33.703 ds4: gpu decode eval 110 took 48.463 ms
+    33.770 ds4: gpu decode eval 111 took 67.773 ms
+    33.811 ds4: gpu decode eval 112 took 40.671 ms
+    33.884 ds4: gpu decode eval 113 took 72.579 ms
+    33.928 ds4: gpu decode eval 114 took 43.567 ms
+    33.966 ds4: gpu decode eval 115 took 38.547 ms
+    34.011 ds4: gpu decode eval 116 took 44.189 ms
+    34.054 ds4: gpu decode eval 117 took 43.418 ms
+    34.094 ds4: gpu decode eval 118 took 39.694 ms
+    34.165 ds4: gpu decode eval 119 took 71.253 ms
+    34.209 ds4: gpu decode eval 120 took 43.431 ms
+    34.250 ds4: gpu decode eval 121 took 41.195 ms
+    34.290 ds4: gpu decode eval 122 took 39.325 ms
+    34.331 ds4: gpu decode eval 123 took 41.024 ms
+    34.372 ds4: gpu decode eval 124 took 40.904 ms
+    34.440 ds4: gpu decode eval 125 took 68.370 ms
+    34.482 ds4: gpu decode eval 126 took 41.175 ms
+    34.550 ds4: gpu decode eval 127 took 68.152 ms
+    34.591 ds4: gpu decode eval 128 took 40.752 ms
+    34.642 ds4: PACE rewind_arm   from=346 to=314 reason=s1_cusum_arm cusum_fire=20.00
+    34.644 ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+    34.644 ds4: PACE rewind       from=346 to=315 reason=s1_cusum_fire cusum_fire=0.00
+    35.085 ds4: PACE rewind_arm   from=315 to=314 reason=s1_cusum_arm cusum_fire=20.00
+    35.085 ds4: gpu decode eval 129 took 440.938 ms
+    35.434 ds4: gpu decode eval 130 took 348.147 ms
+    35.734 ds4: gpu decode eval 131 took 300.157 ms
+    36.045 ds4: gpu decode eval 132 took 310.896 ms
+    36.352 ds4: gpu decode eval 133 took 306.566 ms
+    36.542 ds4: gpu decode eval 134 took 190.517 ms
+    36.720 ds4: gpu decode eval 135 took 178.005 ms
+    36.973 ds4: gpu decode eval 136 took 252.434 ms
+    37.224 ds4: gpu decode eval 137 took 251.039 ms
+    37.472 ds4: gpu decode eval 138 took 247.713 ms
+    37.817 ds4: gpu decode eval 139 took 344.623 ms
+    38.003 ds4: gpu decode eval 140 took 186.248 ms
+    38.191 ds4: gpu decode eval 141 took 187.561 ms
+    38.450 ds4: gpu decode eval 142 took 258.942 ms
+    38.611 ds4: gpu decode eval 143 took 161.508 ms
+    38.835 ds4: gpu decode eval 144 took 223.997 ms
+    39.189 ds4: gpu decode eval 145 took 353.463 ms
+    39.516 ds4: gpu decode eval 146 took 326.686 ms
+    39.772 ds4: gpu decode eval 147 took 256.076 ms
+    40.061 ds4: gpu decode eval 148 took 288.509 ms
+    40.253 ds4: gpu decode eval 149 took 192.251 ms
+    40.536 ds4: gpu decode eval 150 took 282.645 ms
+    40.582 ds4: REAP prefetch (fattorino): 40 layer, 3840 expert, 7194 range, 25.34 GiB touched in 5937 ms (8 thread)
+    40.704 ds4: gpu decode eval 151 took 167.676 ms
+    40.915 ds4: gpu decode eval 152 took 210.848 ms
+    41.108 ds4: gpu decode eval 153 took 193.394 ms
+    41.438 ds4: gpu decode eval 154 took 329.792 ms
+    41.632 ds4: gpu decode eval 155 took 193.811 ms
+    41.746 ds4: gpu decode eval 156 took 113.801 ms
+    41.918 ds4: gpu decode eval 157 took 172.229 ms
+    42.072 ds4: gpu decode eval 158 took 153.582 ms
+    42.250 ds4: gpu decode eval 159 took 177.690 ms
+    42.354 ds4: gpu decode eval 160 took 103.826 ms
+    42.539 ds4: gpu decode eval 161 took 185.546 ms
+    42.765 ds4: gpu decode eval 162 took 225.765 ms
+    42.935 ds4: gpu decode eval 163 took 169.827 ms
+    43.042 ds4: gpu decode eval 164 took 107.193 ms
+    43.220 ds4: gpu decode eval 165 took 177.786 ms
+    43.445 ds4: gpu decode eval 166 took 224.427 ms
+    43.622 ds4: gpu decode eval 167 took 176.258 ms
+    43.849 ds4: gpu decode eval 168 took 227.229 ms
+    44.034 ds4: gpu decode eval 169 took 184.966 ms
+    44.198 ds4: gpu decode eval 170 took 163.657 ms
+    44.411 ds4: gpu decode eval 171 took 213.324 ms
+    44.547 ds4: gpu decode eval 172 took 135.730 ms
+    44.723 ds4: gpu decode eval 173 took 175.746 ms
+    44.862 ds4: gpu decode eval 174 took 138.797 ms
+    45.116 ds4: gpu decode eval 175 took 254.681 ms
+    45.292 ds4: gpu decode eval 176 took 175.935 ms
+    45.485 ds4: gpu decode eval 177 took 192.155 ms
+    45.669 ds4: gpu decode eval 178 took 183.666 ms
+    45.758 ds4: gpu decode eval 179 took 88.826 ms
+    45.946 ds4: gpu decode eval 180 took 188.340 ms
+    46.098 ds4: gpu decode eval 181 took 152.130 ms
+    46.234 ds4: gpu decode eval 182 took 135.364 ms
+    46.442 ds4: gpu decode eval 183 took 208.158 ms
+    46.647 ds4: gpu decode eval 184 took 205.246 ms
+    46.816 ds4: gpu decode eval 185 took 168.617 ms
+    47.017 ds4: gpu decode eval 186 took 200.892 ms
+    47.151 ds4: gpu decode eval 187 took 134.037 ms
+    47.337 ds4: gpu decode eval 188 took 185.759 ms
+    47.483 ds4: gpu decode eval 189 took 145.795 ms
+    47.692 ds4: gpu decode eval 190 took 209.056 ms
+    47.968 ds4: gpu decode eval 191 took 275.478 ms
+    48.178 ds4: gpu decode eval 192 took 210.037 ms
+    48.305 ds4: gpu decode eval 193 took 126.652 ms
+    48.492 ds4: gpu decode eval 194 took 187.199 ms
+    48.703 ds4: gpu decode eval 195 took 210.739 ms
+    48.899 ds4: gpu decode eval 196 took 195.604 ms
+    49.128 ds4: gpu decode eval 197 took 229.150 ms
+    49.429 ds4: gpu decode eval 198 took 300.968 ms
+    49.648 ds4: gpu decode eval 199 took 218.671 ms
+    49.952 ds4: gpu decode eval 200 took 303.902 ms
+    50.134 ds4: gpu decode eval 201 took 181.732 ms
+    50.324 ds4: gpu decode eval 202 took 189.751 ms
+    50.523 ds4: gpu decode eval 203 took 199.219 ms
+    50.708 ds4: gpu decode eval 204 took 184.950 ms
+    50.819 ds4: gpu decode eval 205 took 111.228 ms
+    51.015 ds4: gpu decode eval 206 took 195.667 ms
+    51.207 ds4: gpu decode eval 207 took 191.652 ms
+    51.311 ds4: gpu decode eval 208 took 104.159 ms
+    51.526 ds4: gpu decode eval 209 took 214.791 ms
+    51.765 ds4: gpu decode eval 210 took 238.602 ms
+    51.993 ds4: gpu decode eval 211 took 227.652 ms
+    52.247 ds4: gpu decode eval 212 took 254.488 ms
+    52.502 ds4: gpu decode eval 213 took 254.850 ms
+    52.671 ds4: gpu decode eval 214 took 168.790 ms
+    52.856 ds4: gpu decode eval 215 took 184.585 ms
+    52.984 ds4: gpu decode eval 216 took 127.743 ms
+    53.084 ds4: gpu decode eval 217 took 99.927 ms
+    53.209 ds4: gpu decode eval 218 took 124.764 ms
+    53.518 ds4: gpu decode eval 219 took 309.102 ms
+    53.688 ds4: gpu decode eval 220 took 170.088 ms
+    53.822 ds4: gpu decode eval 221 took 133.667 ms
+    54.172 ds4: gpu decode eval 222 took 350.386 ms
+    54.421 ds4: gpu decode eval 223 took 248.509 ms
+    54.601 ds4: gpu decode eval 224 took 180.033 ms
+    54.888 ds4: gpu decode eval 225 took 287.115 ms
+    55.142 ds4: gpu decode eval 226 took 254.085 ms
+    55.405 ds4: gpu decode eval 227 took 262.209 ms
+    55.646 ds4: gpu decode eval 228 took 241.499 ms
+    55.864 ds4: gpu decode eval 229 took 216.989 ms
+    56.034 ds4: gpu decode eval 230 took 170.263 ms
+    56.216 ds4: gpu decode eval 231 took 181.677 ms
+    56.337 ds4: gpu decode eval 232 took 121.353 ms
+    56.571 ds4: gpu decode eval 233 took 234.093 ms
+    56.728 ds4: gpu decode eval 234 took 156.885 ms
+    56.960 ds4: gpu decode eval 235 took 231.479 ms
+    57.197 ds4: gpu decode eval 236 took 236.939 ms
+    57.485 ds4: gpu decode eval 237 took 288.167 ms
+    57.875 ds4: gpu decode eval 238 took 389.834 ms
+    58.114 ds4: gpu decode eval 239 took 238.564 ms
+    58.340 ds4: gpu decode eval 240 took 225.734 ms
+    58.517 ds4: gpu decode eval 241 took 176.572 ms
+    58.683 ds4: gpu decode eval 242 took 166.463 ms
+    58.910 ds4: gpu decode eval 243 took 226.732 ms
+    59.094 ds4: gpu decode eval 244 took 183.847 ms
+    59.248 ds4: gpu decode eval 245 took 153.535 ms
+    59.393 ds4: gpu decode eval 246 took 145.177 ms
+    59.625 ds4: gpu decode eval 247 took 231.693 ms
+    59.880 ds4: gpu decode eval 248 took 255.500 ms
+    60.127 ds4: gpu decode eval 249 took 246.651 ms
+    60.330 ds4: gpu decode eval 250 took 202.227 ms
+    60.572 ds4: gpu decode eval 251 took 242.308 ms
+    60.712 ds4: gpu decode eval 252 took 140.152 ms
+    61.081 ds4: gpu decode eval 253 took 369.058 ms
+    61.418 ds4: gpu decode eval 254 took 336.526 ms
+    61.674 ds4: gpu decode eval 255 took 256.134 ms
+    61.930 ds4: gpu decode eval 256 took 255.422 ms
+    62.206 ds4: gpu decode eval 257 took 276.008 ms
+    62.506 ds4: gpu decode eval 258 took 299.437 ms
+    62.735 ds4: gpu decode eval 259 took 228.818 ms
+    62.972 ds4: gpu decode eval 260 took 237.784 ms
+    63.186 ds4: gpu decode eval 261 took 212.826 ms
+    63.501 ds4: gpu decode eval 262 took 315.081 ms
+    63.708 ds4: gpu decode eval 263 took 207.369 ms
+    64.018 ds4: gpu decode eval 264 took 309.601 ms
+    64.251 ds4: gpu decode eval 265 took 232.680 ms
+    64.514 ds4: gpu decode eval 266 took 263.221 ms
+    64.718 ds4: gpu decode eval 267 took 204.495 ms
+    64.886 ds4: gpu decode eval 268 took 167.597 ms
+    65.045 ds4: gpu decode eval 269 took 158.830 ms
+    65.276 ds4: gpu decode eval 270 took 231.142 ms
+    65.587 ds4: gpu decode eval 271 took 310.443 ms
+    65.837 ds4: gpu decode eval 272 took 250.461 ms
+    66.033 ds4: gpu decode eval 273 took 195.151 ms
+    66.217 ds4: gpu decode eval 274 took 183.678 ms
+    66.440 ds4: gpu decode eval 275 took 223.170 ms
+    66.656 ds4: gpu decode eval 276 took 216.339 ms
+    66.855 ds4: gpu decode eval 277 took 199.038 ms
+    67.103 ds4: gpu decode eval 278 took 247.356 ms
+    67.298 ds4: gpu decode eval 279 took 194.668 ms
+    67.513 ds4: gpu decode eval 280 took 215.398 ms
+    67.795 ds4: gpu decode eval 281 took 281.978 ms
+    68.010 ds4: gpu decode eval 282 took 215.035 ms
+    68.178 ds4: gpu decode eval 283 took 167.094 ms
+    68.416 ds4: gpu decode eval 284 took 237.898 ms
+    68.610 ds4: gpu decode eval 285 took 194.353 ms
+    68.789 ds4: gpu decode eval 286 took 178.432 ms
+    68.895 ds4: gpu decode eval 287 took 106.075 ms
+    69.090 ds4: gpu decode eval 288 took 194.925 ms
+    69.212 ds4: gpu decode eval 289 took 121.605 ms
+    69.462 ds4: gpu decode eval 290 took 250.670 ms
+    69.605 ds4: gpu decode eval 291 took 142.134 ms
+    69.710 ds4: gpu decode eval 292 took 104.978 ms
+    69.906 ds4: gpu decode eval 293 took 195.906 ms
+    70.149 ds4: gpu decode eval 294 took 243.506 ms
+    70.394 ds4: gpu decode eval 295 took 244.430 ms
+    70.643 ds4: gpu decode eval 296 took 248.489 ms
+    71.019 ds4: gpu decode eval 297 took 376.338 ms
+    71.215 ds4: gpu decode eval 298 took 196.204 ms
+    71.408 ds4: gpu decode eval 299 took 192.205 ms
+    71.648 ds4: gpu decode eval 300 took 239.960 ms
+    71.953 ds4: gpu decode eval 301 took 304.726 ms
+    72.109 ds4: gpu decode eval 302 took 156.151 ms
+    72.286 ds4: gpu decode eval 303 took 177.463 ms
+    72.505 ds4: gpu decode eval 304 took 218.361 ms
+    72.709 ds4: gpu decode eval 305 took 204.085 ms
+    72.949 ds4: gpu decode eval 306 took 240.223 ms
+    73.158 ds4: gpu decode eval 307 took 208.698 ms
+    73.332 ds4: gpu decode eval 308 took 173.765 ms
+    73.564 ds4: gpu decode eval 309 took 231.670 ms
+    73.812 ds4: gpu decode eval 310 took 248.303 ms
+    74.034 ds4: gpu decode eval 311 took 221.022 ms
+    74.251 ds4: gpu decode eval 312 took 216.924 ms
+    74.541 ds4: gpu decode eval 313 took 290.255 ms
+    74.718 ds4: gpu decode eval 314 took 176.673 ms
+    74.839 ds4: gpu decode eval 315 took 120.978 ms
+    75.126 ds4: gpu decode eval 316 took 287.060 ms
+    75.299 ds4: gpu decode eval 317 took 173.288 ms
+    75.560 ds4: gpu decode eval 318 took 260.481 ms
+    75.810 ds4: gpu decode eval 319 took 249.500 ms
+    76.086 ds4: gpu decode eval 320 took 276.692 ms
+    76.295 ds4: gpu decode eval 321 took 208.207 ms
+    76.520 ds4: gpu decode eval 322 took 224.982 ms
+    76.778 ds4: gpu decode eval 323 took 258.376 ms
+    76.960 ds4: gpu decode eval 324 took 181.721 ms
+    77.226 ds4: gpu decode eval 325 took 265.276 ms
+    77.478 ds4: gpu decode eval 326 took 251.795 ms
+    77.695 ds4: gpu decode eval 327 took 216.902 ms
+    77.973 ds4: gpu decode eval 328 took 278.568 ms
+    78.151 ds4: gpu decode eval 329 took 177.317 ms
+    78.348 ds4: gpu decode eval 330 took 197.437 ms
+    78.514 ds4: gpu decode eval 331 took 165.880 ms
+    78.659 ds4: gpu decode eval 332 took 144.440 ms
+    78.834 ds4: gpu decode eval 333 took 174.771 ms
+    79.025 ds4: gpu decode eval 334 took 190.742 ms
+    79.179 ds4: gpu decode eval 335 took 154.522 ms
+    79.407 ds4: gpu decode eval 336 took 227.326 ms
+    79.622 ds4: gpu decode eval 337 took 215.581 ms
+    79.835 ds4: gpu decode eval 338 took 212.747 ms
+    80.149 ds4: gpu decode eval 339 took 313.754 ms
+    80.446 ds4: gpu decode eval 340 took 297.284 ms
+    80.725 ds4: gpu decode eval 341 took 278.163 ms
+    80.726 ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+    80.726 ds4: PACE tighten      tok=311 phase=3 keep=92 ngram=0.098 hit=1.000 breaths=0
+    80.756 ds4: REAP prefetch (fattorino): 40 layer, 3680 expert, 7056 range, 24.28 GiB touched in 29 ms (8 thread)
+    80.971 ds4: gpu decode eval 342 took 246.416 ms
+    81.178 ds4: gpu decode eval 343 took 206.643 ms
+    81.408 ds4: gpu decode eval 344 took 230.380 ms
+    81.667 ds4: gpu decode eval 345 took 258.137 ms
+    81.945 ds4: gpu decode eval 346 took 278.134 ms
+    82.223 ds4: gpu decode eval 347 took 277.676 ms
+    82.490 ds4: gpu decode eval 348 took 267.516 ms
+    82.794 ds4: gpu decode eval 349 took 303.772 ms
+    83.009 ds4: gpu decode eval 350 took 214.244 ms
+    83.194 ds4: gpu decode eval 351 took 185.222 ms
+    83.490 ds4: gpu decode eval 352 took 296.377 ms
+    83.690 ds4: gpu decode eval 353 took 198.931 ms
+    83.911 ds4: gpu decode eval 354 took 221.026 ms
+    84.102 ds4: gpu decode eval 355 took 191.347 ms
+    84.336 ds4: gpu decode eval 356 took 233.227 ms
+    84.480 ds4: gpu decode eval 357 took 144.395 ms
+    84.684 ds4: gpu decode eval 358 took 203.773 ms
+    84.856 ds4: gpu decode eval 359 took 172.050 ms
+    85.081 ds4: gpu decode eval 360 took 224.604 ms
+    85.262 ds4: gpu decode eval 361 took 181.032 ms
+    85.446 ds4: gpu decode eval 362 took 184.245 ms
+    85.748 ds4: gpu decode eval 363 took 301.633 ms
+    86.007 ds4: gpu decode eval 364 took 258.408 ms
+    86.319 ds4: gpu decode eval 365 took 312.451 ms
+    86.520 ds4: gpu decode eval 366 took 200.822 ms
+    86.745 ds4: gpu decode eval 367 took 224.793 ms
+    86.965 ds4: gpu decode eval 368 took 220.153 ms
+    87.245 ds4: gpu decode eval 369 took 279.833 ms
+    87.555 ds4: gpu decode eval 370 took 309.250 ms
+    87.879 ds4: gpu decode eval 371 took 324.792 ms
+    88.116 ds4: gpu decode eval 372 took 236.923 ms
+    88.332 ds4: gpu decode eval 373 took 215.627 ms
+    88.553 ds4: gpu decode eval 374 took 220.579 ms
+    88.765 ds4: gpu decode eval 375 took 211.452 ms
+    88.947 ds4: gpu decode eval 376 took 182.739 ms
+    89.104 ds4: gpu decode eval 377 took 156.650 ms
+    89.284 ds4: gpu decode eval 378 took 179.659 ms
+    89.459 ds4: gpu decode eval 379 took 175.044 ms
+    89.459 ds4: prefill: 10.14 t/s, generation: 5.78 t/s

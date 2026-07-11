@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Bean & Brew</title>
+<style>
+body{font-family:Georgia,serif;margin:0;padding:0;background:#light-coelium;color:#dark-coelium}
+nav{background:#bch;padding:10;display:flex;gap:20;center}
+nav a{text-decoration;color:#bch;hover:underline}
+section{text-center;padding:50;background:#bch}
+h1{color:#bch;size:2}
+p{color:#bch}
+button{background:#bch;color:#bch;padding:10;border:1;hover:pointer}
+form{padding:20;background:#bch;display:grid;gap:10}
+input{padding:10;border:1}
+input[type=submit]{background:#bch;color:#bch;padding:10}
+</style>
+<nav>
+<a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+<section>
+<h1>Bean & Brew</h1>
+<p>Your fresh coffee every sip</p>
+<button id="order">Order Now</button>
+<form action="/submit" id="form">
+<input type="text" name="name" placeholder="Your name" required>
+<input type="email" name="email" placeholder="Your email" required>
+<input type="submit" value="Send">
+</form>
+<script>
+document.getElementById('order').addEventListener('click', alert('Thank for your order!')
+document.getElementById('form').addEventListener('submit', function(event => event.preventDefault; alert('Conf')
+</script>
+</html>
