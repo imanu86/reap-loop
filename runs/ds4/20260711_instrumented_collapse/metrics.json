@@ -1,0 +1,130 @@
+{
+  "run": "K12-wide (keep-k=12) two-phase W50 static, cyberpunk ctx8192 greedy, n=2 byte-identical",
+  "binary": "ds4 canonical chain md5 16a21de6 = canonical(21)+0027+0028(tokens)+0030(diag conf); built sm_86 on pod2; DS4_DIAG_CONF_LOG active",
+  "determinism": "deliverable.html md5 identical across best-effort(771a39a8), conf(16a21de6) and prior baseline de18faa (7526 chars) -> 0030 is log-only, collapse reproduced exactly",
+  "pos_semantics": "absolute; phase-2 decode starts at pos_first=85 (after ~85-tok re-prefill of [prompt+frozen]); decode-relative = pos-85",
+  "pos_first": 85,
+  "n_tokens": 2449,
+  "calib_completes_pos": 213,
+  "expert_out_l2": "NaN under SSD-streaming (REAP-LOOP path) -> MAN/norm NOT reported, per patch 0030 caveat",
+  "detector_profiles": {
+    "cusum_ARM": {
+      "k_sigma": 0.5,
+      "h_sigma": 4
+    },
+    "cusum_FIRE": {
+      "k_sigma": 1.0,
+      "h_sigma": 8
+    },
+    "common": {
+      "pre_alpha": 0.5,
+      "base_lag": 32,
+      "base_win": 128,
+      "min_base": 32,
+      "calib_win": 128,
+      "refractory": 64
+    },
+    "zscore_onset": {
+      "base_n": 32,
+      "z": 3.0,
+      "sustain": 2,
+      "baseline": "first 32 decode tokens (healthy DOCTYPE/head region)"
+    }
+  },
+  "healthy_baseline_first32tok": {
+    "entropy_mean": 0.0232,
+    "entropy_std": 0.0806,
+    "margin_mean": 10.217,
+    "margin_std": 3.231
+  },
+  "signal_onsets_fixed": {
+    "entropy_zonset_pos": 125,
+    "margin_zonset_pos": 190,
+    "entropy_cusum_ARM_pos": 214,
+    "margin_cusum_ARM_pos": 216,
+    "aggS1_zonset_pos": 1200
+  },
+  "leads_by_firstgarbage_definition": [
+    {
+      "marker": ", viewport",
+      "desc": "first spurious token (initial-scale=1, viewport)",
+      "char": 145,
+      "pos": 122,
+      "decode_rel": 37,
+      "entropy_zonset_lead": -3,
+      "entropy_cusum_lead": -92,
+      "margin_zonset_lead": -68,
+      "margin_cusum_lead": -94,
+      "S1_vote1of40_lead": -32,
+      "S1_earliest_layer_lead": -93
+    },
+    {
+      "marker": "stata-ini",
+      "desc": "garbled comment <!-- stata-ini -->",
+      "char": 200,
+      "pos": 139,
+      "decode_rel": 54,
+      "entropy_zonset_lead": 14,
+      "entropy_cusum_lead": -75,
+      "margin_zonset_lead": -51,
+      "margin_cusum_lead": -77,
+      "S1_vote1of40_lead": -15,
+      "S1_earliest_layer_lead": -76
+    },
+    {
+      "marker": "data-gposcate",
+      "desc": "first blatant nonsense (background: data-gposcate-cane)",
+      "char": 396,
+      "pos": 182,
+      "decode_rel": 97,
+      "entropy_zonset_lead": 57,
+      "entropy_cusum_lead": -32,
+      "margin_zonset_lead": -8,
+      "margin_cusum_lead": -34,
+      "S1_vote1of40_lead": 28,
+      "S1_earliest_layer_lead": -33
+    },
+    {
+      "marker": "#finto",
+      "desc": "malformed CSS value (#finto sfondo cyberpunk:)",
+      "char": 440,
+      "pos": 193,
+      "decode_rel": 108,
+      "entropy_zonset_lead": 68,
+      "entropy_cusum_lead": -21,
+      "margin_zonset_lead": 3,
+      "margin_cusum_lead": -23,
+      "S1_vote1of40_lead": 39,
+      "S1_earliest_layer_lead": -22
+    },
+    {
+      "marker": "sfoko",
+      "desc": "repetition-lock onset (sfoko sfoko ...)",
+      "char": 493,
+      "pos": 207,
+      "decode_rel": 122,
+      "entropy_zonset_lead": 82,
+      "entropy_cusum_lead": -7,
+      "margin_zonset_lead": 17,
+      "margin_cusum_lead": -9,
+      "S1_vote1of40_lead": 53,
+      "S1_earliest_layer_lead": -8
+    }
+  ],
+  "mtp_acceptance_signal": {
+    "status": "NOT MEASURED \u2014 hardware/tooling block (declared, per coordinator contingency)",
+    "why": [
+      "MTP acceptance needs --mtp <draft-gguf> + drafting; the binary hard-guards '--ssd-streaming is not compatible with --mtp yet'.",
+      "The 0008-dspark-mtp-streaming-probe-unsafe bypass (getenv DS4_MTP_STREAMING_UNSAFE) is NOT compiled into the on-pod 16a21de6 build: empirically DS4_MTP_STREAMING_UNSAFE=1 still prints the guard and never the 'MTP+streaming sperimentale' line.",
+      "The non-streaming --mtp path requires full device residency of the 86GB 2-bit model -> OOM on a 24GB RTX 3090 (confirmed by prior run runs/dspark/20260705_mtp_acceptance_pod3090/RISULTATI.md).",
+      "The separate MTP draft gguf (DeepSeek-V4-Flash-MTP, ~3.8GB, 'ds4-mtp.gguf') is absent on podA /root/models and absent from the R2 ds4-models bucket."
+    ],
+    "unblock_recipe": [
+      "Rebuild 16a21de6 + apply 0008 bypass hunk (getenv DS4_MTP_STREAMING_UNSAFE) so --mtp works under --ssd-streaming; keep 0011 mask + 0012 sensor + 0030 conf.",
+      "Fetch ds4-mtp.gguf (HF antirez/deepseek-v4-gguf DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf, ~3.8GB) to /root/models.",
+      "Run K12 phase-2 with: DS4_MTP_STREAMING_UNSAFE=1 DS4_MTP_SPEC_DISABLE=1 DS4_MTP_PROBE=1 DS4_MTP_CONF_LOG=1 --mtp /root/models/ds4-mtp.gguf --mtp-draft 2 --ssd-streaming-cache-experts <=8GB; parse per-cycle (margin,drafted,committed) -> acceptance per pos; align to first-garbage."
+    ],
+    "reference_baseline_healthy": "prior DSpark MTP-1 top-1 acceptance (UNMASKED, healthy domains, 2026-07-05, RTX3090): code 0.872, math 0.846 \u2014 not collapse-aligned, does not answer the pre-garbage lead question by itself.",
+    "expectation": "acceptance_drop has NO 128-tok calibration window (can drop at token 1) and is cross-model (unmasked draft vs masked main), so it is the most promising early-warning; measuring it on the K12 collapse remains the recommended next step once the two dependencies above are met."
+  }
+}

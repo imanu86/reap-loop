@@ -272,6 +272,16 @@ def run_one(args, w, run, prompt_text):
     # --- phase 2: re-prefill [prompt + frozen] under the mask ---
     p2prompt.write_text(prompt_text + fp.frozen_text, encoding="utf-8", newline="\n")
     env2, cmd2 = phase2_cmd(args, w, p2prompt, mask_txt, seed)
+    if os.environ.get("DS4_COLLAPSE_INSTRUMENT"):
+        # Phase-2 collapse instrumentation (opt-in, per-run, log-only, greedy
+        # determinism-safe): S1 per-layer sensor + routing weights + token
+        # sidecar + per-token confidence. tokens/conf are no-ops unless the
+        # binary carries patch 0028 / the DS4_DIAG_CONF_LOG diagnostic patch.
+        env2["DS4_REAP_SENSOR_LOG"] = str(d / "s1_perlayer.csv")
+        env2["DS4_SPEX_TRACE_ROUTING"] = str(d / "route_p2.csv")
+        env2["DS4_SPEX_TRACE_ROUTING_WEIGHTS"] = "1"
+        env2["DS4_SPEX_TRACE_TOKENS"] = str(d / "tokens.csv")
+        env2["DS4_DIAG_CONF_LOG"] = str(d / "conf.csv")
     _run(env2, cmd2, trest, p2diag, args.timeout)
 
     # --- assemble deliverable and grade ---
