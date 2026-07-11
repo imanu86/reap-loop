@@ -1,0 +1,60 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 1.588s
+ds4: cuda backend initialized for graph diagnostics
+ds4: context buffers 432.00 MiB (ctx=4096, backend=cuda, prefill_chunk=4096, raw_kv_rows=4096, compressed_kv_rows=1026)
+ds4: using GPU graph generation with graph prefill
+ds4: CUDA streaming selected layer=0 slots=1830 compact=254 global_budget=0 before=0 after=0 hits=0 misses=0 direct=254 evictions=0 gate/up 523.88 MiB down 666.75 MiB
+ds4: gpu prefill layer 1/43ds4: CUDA streaming selected layer=1 slots=1830 compact=247 global_budget=0 before=0 after=0 hits=0 misses=0 direct=247 evictions=0 gate/up 509.44 MiB down 648.38 MiB
+ds4: gpu prefill layer 2/43ds4: CUDA streaming selected layer=2 slots=1830 compact=252 global_budget=0 before=0 after=0 hits=0 misses=0 direct=252 evictions=0 gate/up 519.75 MiB down 661.50 MiB
+ds4: gpu prefill layer 3/43ds4: CUDA streaming selected layer=3 slots=1830 compact=191 global_budget=0 before=0 after=0 hits=0 misses=0 direct=191 evictions=0 gate/up 393.94 MiB down 501.38 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 4/43ds4: CUDA streaming selected layer=4 slots=1830 compact=163 global_budget=0 before=0 after=0 hits=0 misses=0 direct=163 evictions=0 gate/up 336.19 MiB down 427.88 MiB
+ds4: gpu prefill layer 5/43ds4: CUDA streaming selected layer=5 slots=1830 compact=161 global_budget=0 before=0 after=0 hits=0 misses=0 direct=161 evictions=0 gate/up 332.06 MiB down 422.62 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 6/43ds4: CUDA streaming selected layer=6 slots=1830 compact=161 global_budget=0 before=0 after=0 hits=0 misses=0 direct=161 evictions=0 gate/up 332.06 MiB down 422.62 MiB
+ds4: gpu prefill layer 7/43ds4: CUDA streaming selected layer=7 slots=1830 compact=163 global_budget=0 before=0 after=0 hits=0 misses=0 direct=163 evictions=0 gate/up 336.19 MiB down 427.88 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 8/43ds4: CUDA streaming selected layer=8 slots=1830 compact=153 global_budget=0 before=0 after=0 hits=0 misses=0 direct=153 evictions=0 gate/up 315.56 MiB down 401.62 MiB
+ds4: gpu prefill layer 9/43ds4: CUDA streaming selected layer=9 slots=1830 compact=189 global_budget=0 before=0 after=0 hits=0 misses=0 direct=189 evictions=0 gate/up 389.81 MiB down 496.12 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 10/43ds4: CUDA streaming selected layer=10 slots=1830 compact=179 global_budget=0 before=0 after=0 hits=0 misses=0 direct=179 evictions=0 gate/up 369.19 MiB down 469.88 MiB
+ds4: gpu prefill layer 11/43ds4: CUDA streaming selected layer=11 slots=1830 compact=173 global_budget=0 before=0 after=0 hits=0 misses=0 direct=173 evictions=0 gate/up 356.81 MiB down 454.12 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 12/43ds4: CUDA streaming selected layer=12 slots=1830 compact=160 global_budget=0 before=0 after=0 hits=0 misses=0 direct=160 evictions=0 gate/up 330.00 MiB down 420.00 MiB
+ds4: gpu prefill layer 13/43ds4: CUDA streaming selected layer=13 slots=1830 compact=139 global_budget=0 before=0 after=0 hits=0 misses=0 direct=139 evictions=0 gate/up 286.69 MiB down 364.88 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 14/43ds4: CUDA streaming selected layer=14 slots=1830 compact=153 global_budget=0 before=0 after=0 hits=0 misses=0 direct=153 evictions=0 gate/up 315.56 MiB down 401.62 MiB
+ds4: gpu prefill layer 15/43ds4: CUDA streaming selected layer=15 slots=1830 compact=142 global_budget=0 before=0 after=0 hits=0 misses=0 direct=142 evictions=0 gate/up 292.88 MiB down 372.75 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 16/43ds4: CUDA streaming selected layer=16 slots=1830 compact=142 global_budget=0 before=0 after=0 hits=0 misses=0 direct=142 evictions=0 gate/up 292.88 MiB down 372.75 MiB
+ds4: gpu prefill layer 17/43ds4: CUDA streaming selected layer=17 slots=1830 compact=162 global_budget=0 before=0 after=0 hits=0 misses=0 direct=162 evictions=0 gate/up 334.12 MiB down 425.25 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 18/43ds4: CUDA streaming selected layer=18 slots=1830 compact=154 global_budget=0 before=0 after=0 hits=0 misses=0 direct=154 evictions=0 gate/up 317.62 MiB down 404.25 MiB
+ds4: gpu prefill layer 19/43ds4: CUDA streaming selected layer=19 slots=1830 compact=199 global_budget=0 before=0 after=0 hits=0 misses=0 direct=199 evictions=0 gate/up 410.44 MiB down 522.38 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 20/43ds4: CUDA streaming selected layer=20 slots=1830 compact=175 global_budget=0 before=0 after=0 hits=0 misses=0 direct=175 evictions=0 gate/up 360.94 MiB down 459.38 MiB
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: gpu prefill layer 21/43ds4: CUDA streaming selected layer=21 slots=1830 compact=179 global_budget=0 before=0 after=0 hits=0 misses=0 direct=179 evictions=0 gate/up 369.19 MiB down 469.88 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 22/43ds4: CUDA streaming selected layer=22 slots=1830 compact=166 global_budget=0 before=0 after=0 hits=0 misses=0 direct=166 evictions=0 gate/up 342.38 MiB down 435.75 MiB
+ds4: gpu prefill layer 23/43ds4: CUDA streaming selected layer=23 slots=1830 compact=175 global_budget=0 before=0 after=0 hits=0 misses=0 direct=175 evictions=0 gate/up 360.94 MiB down 459.38 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 24/43ds4: CUDA streaming selected layer=24 slots=1830 compact=134 global_budget=0 before=0 after=0 hits=0 misses=0 direct=134 evictions=0 gate/up 276.38 MiB down 351.75 MiB
+ds4: gpu prefill layer 25/43ds4: CUDA streaming selected layer=25 slots=1830 compact=161 global_budget=0 before=0 after=0 hits=0 misses=0 direct=161 evictions=0 gate/up 332.06 MiB down 422.62 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 26/43ds4: CUDA streaming selected layer=26 slots=1830 compact=134 global_budget=0 before=0 after=0 hits=0 misses=0 direct=134 evictions=0 gate/up 276.38 MiB down 351.75 MiB
+ds4: gpu prefill layer 27/43ds4: CUDA streaming selected layer=27 slots=1830 compact=175 global_budget=0 before=0 after=0 hits=0 misses=0 direct=175 evictions=0 gate/up 360.94 MiB down 459.38 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 28/43ds4: CUDA streaming selected layer=28 slots=1830 compact=151 global_budget=0 before=0 after=0 hits=0 misses=0 direct=151 evictions=0 gate/up 311.44 MiB down 396.38 MiB
+ds4: gpu prefill layer 29/43ds4: CUDA streaming selected layer=29 slots=1830 compact=166 global_budget=0 before=0 after=0 hits=0 misses=0 direct=166 evictions=0 gate/up 342.38 MiB down 435.75 MiB
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: gpu prefill layer 30/43ds4: CUDA streaming selected layer=30 slots=1830 compact=167 global_budget=0 before=0 after=0 hits=0 misses=0 direct=167 evictions=0 gate/up 344.44 MiB down 438.38 MiB
+ds4: gpu prefill layer 31/43ds4: CUDA streaming selected layer=31 slots=1830 compact=193 global_budget=0 before=0 after=0 hits=0 misses=0 direct=193 evictions=0 gate/up 398.06 MiB down 506.62 MiB
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: gpu prefill layer 32/43ds4: CUDA streaming selected layer=32 slots=1830 compact=163 global_budget=0 before=0 after=0 hits=0 misses=0 direct=163 evictions=0 gate/up 336.19 MiB down 427.88 MiB
+ds4: gpu prefill layer 33/43ds4: CUDA streaming selected layer=33 slots=1830 compact=165 global_budget=0 before=0 after=0 hits=0 misses=0 direct=165 evictions=0 gate/up 340.31 MiB down 433.12 MiB
+ds4: gpu prefill layer 34/43

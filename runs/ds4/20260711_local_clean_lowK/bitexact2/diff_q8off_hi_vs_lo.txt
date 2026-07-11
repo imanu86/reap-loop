@@ -1,0 +1,24 @@
+9,16c9,15
+<         * { margin: 0; padding: 0; box-sizing: border-box; }
+<         body { font-family: sans-serif; text-align: center; }
+<         nav { background: #c100; padding: 1.0; }
+<         nav a { margin: 0 1.0; }
+<         section { padding: 2.0; }
+<         button { margin: 1.0; }
+<         form { margin: 2.0; }
+<         input, button { display: block; margin: 1.0 auto; }
+---
+>         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
+>         nav { background: #coffee; padding: 1.0px; text-align: center; }
+>         nav a { margin: 0 10px; color: #coffee; }
+>         section { background: #coffee; color: #coffee; padding: 20 0; text-align: center; }
+>         button { margin: 20 0; padding: 8 20; background: #coffee; color: #coffee; border: none; cursor: pointer; }
+>         form { padding: 20; }
+>         input, button { display: block; margin: 10 0; }
+24,27c23
+<     </nav>
+<     <section>
+<         <h1>Bean & Brew</h1>
+<         <p>Fresh, bold, cold, art, hot, brew, bean, roast
+---
+>     </nav>

@@ -1,0 +1,26 @@
+```
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
+        nav { background: #coffee; padding: 1.2; text-align: center; }
+        nav a { margin: 0 2; }
+        section { padding: 2; text-align: center; }
+        button { margin: 2; padding: 2; }
+        form { margin: 2; }
+        input, button { display: block; margin: 2 auto; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Fresh, bold, strong, coffee, rich, aroma, delightful, style, flavor, bean, roast

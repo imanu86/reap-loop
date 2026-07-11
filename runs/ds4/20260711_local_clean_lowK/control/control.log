@@ -1,0 +1,7 @@
+[ctrl] START ctrl_32_a cache=32 prefetch_off=0 2026-07-11T08:49:49+02:00
+[ctrl] DONE ctrl_32_a rc=0 wall=471s perf=[prefill: 1.21 t/s, generation: 1.59 t/s] 2026-07-11T08:57:40+02:00
+[ctrl] START ctrl_32_b cache=32 prefetch_off=0 2026-07-11T08:57:40+02:00
+[ctrl] DONE ctrl_32_b rc=0 wall=652s perf=[prefill: 0.67 t/s, generation: 1.87 t/s] 2026-07-11T09:08:32+02:00
+[ctrl] === DIFFS ===
+CONTROL identical-config cache32 A vs B: 21 diff lines. first=[9,16c9,15]
+CONTROL_COMPLETE

@@ -1,0 +1,7 @@
+[vram] START v_cache32 cache=32 2026-07-11T09:11:40+02:00
+[vram] DONE v_cache32 rc=0 wall=345s peak_vram_mib=12019 cap=[] perf=[prefill: 1.38 t/s, generation: 0.63 t/s] 2026-07-11T09:17:25+02:00
+[vram] START v_cache516 cache=516 2026-07-11T09:17:25+02:00
+[vram] DONE v_cache516 rc=0 wall=583s peak_vram_mib=11966 cap=[] perf=[prefill: 0.71 t/s, generation: 0.54 t/s] 2026-07-11T09:27:08+02:00
+[vram] START v_cache1024 cache=1024 2026-07-11T09:27:08+02:00
+[vram] DONE v_cache1024 rc=0 wall=689s peak_vram_mib=11972 cap=[ds4: CUDA streaming expert cache capped from 1024 to 916 experts (available 7.04 GiB, reserve 1.00 GiB, 6.75 MiB/expert)] perf=[prefill: 0.67 t/s, generation: 0.35 t/s] 2026-07-11T09:38:37+02:00
+VRAM_COMPLETE

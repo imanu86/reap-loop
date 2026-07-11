@@ -1,0 +1,24 @@
+8,15c8,15
+<         * { margin: 0; padding: 0; box-sizing: border-box; }
+<         body { font-family: sans-serif; text-align: center; }
+<         nav { background: #c100; padding: 1.0; }
+<         nav a { margin: 0 10px; }
+<         section { padding: 20; }
+<         form { margin: 20; display: inline-block; }
+<         input, button { display: block; margin: 2 auto; }
+<         #order { margin: 20; }
+---
+>         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
+>         nav { background: #coffee; padding: 10.1em; text-align: center; }
+>         nav a { margin: 0 10.1em; color: #coffee; }
+>         section { padding: 20.1em; text-align: center; }
+>         button { margin: 10.1em; padding: 0.1em 6.1em; background: #coffee; color: #coffee; border: none; cursor: pointer; }
+>         form { margin: 20.1em auto; max-width: 300; }
+>         input, button { display: block; width: 100%; margin: 5.1em 0; padding: 0.1em; }
+>         #order { background: #coffee; color: #coffee; border: none; padding: 0.1em 6.1em; }
+22,26d21
+<         <a href="#">Contact</a>
+<     </nav>
+<     <section>
+<         <h1>Bean & Brew</h1>
+<         <p>Fresh, bold, cold, art, hot, brew, fresh, bold, cold, art, hot, brew, fresh, bold, cold, art, hot, brew, fresh, bold, cold, art, hot, brew, fresh, bold, cold, art, hot, brew, fresh, bold, cold, art, hot, brew

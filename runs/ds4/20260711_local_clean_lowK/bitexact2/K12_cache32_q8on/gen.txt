@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: sans-serif; text-align: center; }
+        nav { background: #cff; padding: 10; }
+        nav a { margin: 0 10; }
+        section { padding: 20; }
+        button { margin: 10; padding: 8 12; background: #fff; border: 1px solid gray; }
+        form { margin: 20 auto; max-width: 300; }
+        input, button { display: block; margin: 2 auto; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Fresh, bold, rich, aromatic, cold, dark, iced, organic, fair, robust, perfect, unique, minimal, classic, good, vintage, elegant, decent, subtle, smooth, light, neutral, modern, contrast, transparent, original,

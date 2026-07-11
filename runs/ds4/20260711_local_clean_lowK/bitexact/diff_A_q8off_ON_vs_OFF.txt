@@ -1,0 +1,27 @@
+1,26d0
+< <!DOCTYPE html>
+< <html>
+< <head>
+<     <meta charset="UTF-8">
+<     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<     <title>Bean & Brew</title>
+<     <style>
+<         * { margin: 0; padding: 0; box-sizing: border-box; }
+<         body { font-family: sans-serif; text-align: center; }
+<         nav { background: #c100; padding: 1.0; }
+<         nav a { margin: 0 10px; }
+<         section { padding: 20; }
+<         form { margin: 20; }
+<         input, button { display: block; margin: 10 auto; }
+<         #order { margin: 20; }
+<     </style>
+< </head>
+< <body>
+<     <nav>
+<         <a href="#">Home</a>
+<         <a href="#">Menu</a>
+<         <a href="#">Contact</a>
+<     </nav>
+<     <section>
+<         <h1>Bean & Brew</h1>
+<         <p>Fresh, bold, cold, art, hot, roast, brew, fro, bean, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean, brew, bean,

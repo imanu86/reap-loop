@@ -1,0 +1,12 @@
+[bitexact] START A_q8off_cacheON q8_uniform=1 reserve=1 2026-07-11T07:10:58+02:00
+[bitexact] DONE A_q8off_cacheON rc=0 cap=[] spex=[ds4: SPEX stats: selected_batches=12900 selected_experts=84604 cache_hits=1030 cache_misses=76112 hit_rate=0.0134 miss_per_expert=0.8996 direct_loads=7462 copy_calls=250722 copied=564124.50 MiB copy_ms=274814.956 copy_ms_per_batch=21.303 sync_calls=250722 sync_ms=29583.575 sync_ms_per_batch=2.293] perf=[prefill: 1.54 t/s, generation: 1.65 t/s] 2026-07-11T07:17:44+02:00
+[bitexact] START A_q8off_cacheOFF q8_uniform=1 reserve=16 2026-07-11T07:17:44+02:00
+[bitexact] DONE A_q8off_cacheOFF rc=0 cap=[] spex=[] perf=[] 2026-07-11T07:26:10+02:00
+[bitexact] START B_q8on_cacheON q8_uniform=0 reserve=1 2026-07-11T07:26:10+02:00
+[bitexact] DONE B_q8on_cacheON rc=0 cap=[] spex=[ds4: SPEX stats: selected_batches=12900 selected_experts=84603 cache_hits=1038 cache_misses=76104 hit_rate=0.0135 miss_per_expert=0.8995 direct_loads=7461 copy_calls=250695 copied=564063.75 MiB copy_ms=435818.839 copy_ms_per_batch=33.784 sync_calls=250695 sync_ms=35865.800 sync_ms_per_batch=2.780] perf=[prefill: 0.89 t/s, generation: 1.56 t/s] 2026-07-11T07:35:46+02:00
+[bitexact] START B_q8on_cacheOFF q8_uniform=0 reserve=16 2026-07-11T07:35:46+02:00
+[bitexact] DONE B_q8on_cacheOFF rc=0 cap=[ds4: CUDA streaming expert cache capped from 256 to 154 experts (available 7.02 GiB, reserve 6.00 GiB, 6.75 MiB/expert)] spex=[ds4: SPEX stats: selected_batches=12900 selected_experts=84619 cache_hits=0 cache_misses=6 hit_rate=0.0000 miss_per_expert=0.0001 direct_loads=84613 copy_calls=253857 copied=571178.25 MiB copy_ms=447202.368 copy_ms_per_batch=34.667 sync_calls=253857 sync_ms=37162.312 sync_ms_per_batch=2.881] perf=[prefill: 0.88 t/s, generation: 1.53 t/s] 2026-07-11T07:45:19+02:00
+[bitexact] === DIFFS ===
+A (NO_Q8_F16_CACHE=1) ON vs OFF: 27 diff lines
+B (q8/f16 cache active) ON vs OFF: 24 diff lines
+BITEXACT_COMPLETE

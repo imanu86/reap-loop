@@ -1,0 +1,21 @@
+9,16c9,15
+<         * { margin: 0; padding: 0; box-sizing: border-box; }
+<         body { font-family: sans-serif; text-align: center; }
+<         nav { background: #c100; padding: 1.0; }
+<         nav a { margin: 0 1.0; }
+<         section { padding: 1.0 0; }
+<         button { margin: 1.0; }
+<         form { margin: 1.0; }
+<         input, button { display: block; margin: 1.0 auto; }
+---
+>         * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
+>         nav { background: #coffee; padding: 1.2; text-align: center; }
+>         nav a { margin: 0 2; }
+>         section { padding: 2; text-align: center; }
+>         button { margin: 2; padding: 2; }
+>         form { margin: 2; }
+>         input, button { display: block; margin: 2 auto; }
+27c26
+<         <p>Fresh, bold, cold, hot, rich, dark, large
+---
+>         <p>Fresh, bold, strong, coffee, rich, aroma, delightful, style, flavor, bean, roast

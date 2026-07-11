@@ -1,0 +1,23 @@
+```
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui; }
+        nav { background: #coffee; padding: 1.0px; text-align: center; }
+        nav a { margin: 0 10px; color: #coffee; }
+        section { background: #coffee; color: #coffee; padding: 20 0; text-align: center; }
+        button { margin: 20 0; padding: 8 20; background: #coffee; color: #coffee; border: none; cursor: pointer; }
+        form { padding: 20; }
+        input, button { display: block; margin: 10 0; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
