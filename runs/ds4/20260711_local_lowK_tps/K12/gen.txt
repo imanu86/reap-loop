@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, sans-serif; }
+        nav { background: #coffee; padding: 10; text-align: center; }
+        nav a { margin: 0 8; }
+        section { padding: 20; text-align: center; }
+        form { margin-top: 20; display: flex; flex-direction: column; gap: 8; max-width: 300; margin: 20 auto; }
+        input, button { padding: 8; border: 1; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Fresh, bold, rich, aromatic, roasted, creamy, brewing, bar, fro, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar, brew, bean, brew, bar, rich, bar,

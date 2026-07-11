@@ -1,0 +1,8 @@
+[probe] start 2026-07-11T02:33:31+02:00
+[probe] K=12 start 2026-07-11T02:33:31+02:00
+[probe] K=12 done rc=0 2026-07-11T02:54:00+02:00
+prefill: 0.38 t/s, generation: 1.20 t/s
+[probe] K=16 start 2026-07-11T02:54:00+02:00
+[probe] K=16 done rc=0 2026-07-11T03:20:27+02:00
+prefill: 0.27 t/s, generation: 1.12 t/s
+[probe] ALL DONE 2026-07-11T03:20:27+02:00

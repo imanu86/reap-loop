@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: Arial, sans-serif; background: #coffee; color: #000; }
+        nav { background: #brown; padding: 1.5rem; text-align: center; }
+        nav a { margin: 0 1.5rem; color: #000; text-decoration: none; }
+        section { padding: 2.5rem; text-align: center; }
+        h1 { font-size: 2.5rem; margin-bottom: 0.1.5rem; }
+        button { margin: 1.5rem 0; padding: 0.1.5rem 1.5rem; font-size: 1.5rem; background: #coffee; border: none; cursor: pointer; }
+        form { margin: 2.5rem auto; max-width: 300; }
+        input, button { display: block; width: 100%; margin: 1.5rem 0; padding: 0.1.5rem; }
+        button[type="submit"] { background: #coffee; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Freshly roasted, daily breed.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action
