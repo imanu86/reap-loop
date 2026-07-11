@@ -1,0 +1,7 @@
+# Le patch ds4 devono restare LF-only: applicate con `git apply` su pod Linux,
+# dove un CR nel contesto fa fallire l'hunk ("patch does not apply").
+# `text eol=lf` normalizza il blob a LF in `git add` e materializza LF a ogni
+# checkout, indipendentemente da core.autocrlf del clone.
+# (canonical/ ha il proprio `*.patch -text` che sovrascrive: blob gia' LF e
+#  volutamente byte-frozen sugli hash.)
+*.patch text eol=lf
