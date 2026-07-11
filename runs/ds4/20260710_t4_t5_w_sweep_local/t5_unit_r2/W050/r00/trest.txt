@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        nav { background: #e; padding: 1.rem; text-align: center; }
+        nav a { margin: 0 1.rem; color: #e; text-decoration: none; }
+        section { text-align: center; padding: 2.rem; }
+        h1 { font-size: 2.rem; margin-bottom: 0.rem; }
+        form { margin-top: 2.rem; }
+        input, button { margin: 0.rem 0; padding: 0.rem; }
+        button { cursor: pointer; }
+    </style>
+</head>
+<body>
+    <nav>
+        <a href="#">Home</a>
+        <a href="#">Menu</a>
+        <a href="#">Contact</a>
+    </nav>
+    <section>
+        <h1>Bean & Brew</h1>
+        <p>Your hand-pressed and air-pog, cold-water, extra-shot, and some used, and a mug, pour-.</p>
+        <button id="order">Order Now</button>
+    </section>
+    <form action="/submit">
+        <input type="text" name="name" placeholder="Your name" required>
+        <input type="email" name="email" placeholder="Your email" required>
+        <button type="submit">Send</button>
+    </form>
+    <script>
+        document.getElementById('order').addEventListener('click', 'click', function)() alert('Thank us for your order!');
+        document.querySelector('form').addEventListener('submit', function(e)') e.preventDefault() alert('Thank us for your order!');
+    </script>
+</body>
+</html>

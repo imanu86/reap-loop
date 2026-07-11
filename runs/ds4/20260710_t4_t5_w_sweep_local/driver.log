@@ -45,3 +45,11 @@
 [driver-v2] T5 weighted r2 done rc=0 2026-07-11T01:48:18+02:00
 [driver-v2] T5 unit r2 start 2026-07-11T01:48:18+02:00
 [run] W=50 run=0 ...
+[done] rows=1  verdict={'pairs': [(50, 2)], 'monotone_non_decreasing': None, 'level_spread': 0}
+[done] summaries in /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260710_t4_t5_w_sweep_local/t5_unit_r2
+[driver-v2] T5 unit r2 done rc=0 2026-07-11T02:32:01+02:00
+[driver-v2] T4 W=90 already done, skip 2026-07-11T02:32:01+02:00
+[driver-v2] T4 W=70 already done, skip 2026-07-11T02:32:01+02:00
+[driver-v2] T4 W=110 already done, skip 2026-07-11T02:32:01+02:00
+[driver-v2] T4 W=150 already done, skip 2026-07-11T02:32:01+02:00
+[driver-v2] ALL DONE 2026-07-11T02:32:01+02:00
