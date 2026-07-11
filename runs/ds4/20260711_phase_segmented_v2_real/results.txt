@@ -1,0 +1,45 @@
+PHASE-SEGMENTATION v2 on REAL unmasked K0 trace + per-phase unmet-demand map
+
+phase bounds(tok): head[65..245) css[245..3051) body[3051..3980) js[3980..4063]   window=50
+
+COFFEE in-domain control (mask's own session): whole-trace K23 coverage=57.6% (unmet 42.4%)  K12 coverage=45.0% (unmet 55.0%)
+  COFFEE window=50 residency: to-90% med=1538  to-indomain(58%) med=338  vs 394 budget
+  -> in-domain displacement the mask absorbs while staying usable; used as the admit target.
+
+===== CYBERPUNK (collapse-prompt, full router) =====
+phase tok: head=180  css=2806  body=929  js=84
+WHOLE-TRACE aggregate: k90/layer med=88  Gini med=0.77   (v1 proxy measured THIS, but keep-filtered -> saw only 9/layer)
+
+[A] PER-PHASE concentration (full router, /256) + hot-core stability
+  phase k90/L med  Gini | within-phase Jac (window=50: 1=frozen core inside phase)
+  head         58  0.84 |             0.35
+  css          76  0.80 |             0.51
+  body         74  0.79 |             0.46
+  js           47  0.88 |             0.50
+  BETWEEN-phase hot-core shift (Jaccard top-6, consecutive phases):
+      head -> css   Jaccard=0.21  (0.79 rotates)
+       css -> body  Jaccard=0.23  (0.77 rotates)
+      body -> js    Jaccard=0.24  (0.76 rotates)
+
+[B] UNMET DEMAND per phase = % of phase demand on experts the mask PRUNES
+  phase K23 unmet% K12 unmet% | admit/L to reach targets (K23):
+                              |  to-90%(med/sum)   to-indomain(med/sum/max)
+  head        49.6       60.2 |     38/1465          2/80   /7   
+  css         52.1       63.1 |     57/2215          2/117  /9   
+  body        59.7       70.5 |     54/2239          5/208  /12  
+  js          55.7       66.0 |     33/1241          3/115  /9   
+  (in-domain target coverage = coffee whole-trace K23 coverage, the displacement the mask was built to absorb)
+
+[B] INSTANTANEOUS residency vs 394 budget (window=50, full router, sum_L k):
+  phase | to-90%(med/p90/max) | to-INDOMAIN(med/max) | fits394 @90%? @indom?
+  head  |   1463/1469/1684 |    362/484  | @90%=NO   @indom=YES
+  css   |   1676/1906/2099 |    358/532  | @90%=NO   @indom=YES
+  body  |   1706/1846/1900 |    448/561  | @90%=NO   @indom=NO
+  js    |   1491/1271/1711 |    375/429  | @90%=NO   @indom=YES
+
+wrote targeting_map_K23.csv (phase,layer,n_admit,admit_experts)
+
+### ROBUSTNESS: body_start sweep (char-prop 3051 vs hint ~3200)
+  body_start=2901: CSS K23-unmet=51.9% win_ws_med=1658 | BODY K23-unmet=59.1% win_ws_med=1714
+  body_start=3051: CSS K23-unmet=52.1% win_ws_med=1676 | BODY K23-unmet=59.7% win_ws_med=1706
+  body_start=3201: CSS K23-unmet=52.1% win_ws_med=1672 | BODY K23-unmet=61.3% win_ws_med=1714
