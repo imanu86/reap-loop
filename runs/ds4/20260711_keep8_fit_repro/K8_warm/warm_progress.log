@@ -1,0 +1,5 @@
+[warm] server-start (KEEP_MODEL_PAGES=1, no drop_caches) 2026-07-11T19:20:46+02:00
+[warm] models up 2026-07-11T19:20:49+02:00
+[warm] WARMUP fired 2026-07-11T19:20:49+02:00
+[warm] WARMUP done 2026-07-11T19:27:08+02:00
+[warm] MEASURED fired 2026-07-11T19:27:08+02:00

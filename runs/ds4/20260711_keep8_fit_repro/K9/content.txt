@@ -1,0 +1,101 @@
+```<!DOCTYPE html>
+<html lang="co">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bean & Brew</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f5f0e8;
+            color: #2e1e1e;
+        }
+        nav {
+            background: #3b1f1f;
+            padding: 1rem 2rem;
+            display: flex;
+            gap: 1.5rem;
+}
+        nav a {
+            color: #f5e9d4;
+            text-decoration: none;
+        }
+        nav a:hover {
+            color: #d4a97a;
+}
+        .hero {
+            background: #d4a97a;
+            padding: 4rem 2rem;
+            text-align: center;
+}
+        .hero h1 {
+            font-size: 3.5rem;
+            margin: 0;
+}
+        .hero p {
+            font-size: 1.25rem;
+    }
+        #order {
+            background: #3b1f1f;
+            color: #f5e9d4;
+            border: none;
+            padding: 0.75rem 2rem;
+            font-size: 1.25rem;
+            cursor: pointer;
+    }
+        #order:hover {
+            background: #2e1e1e;
+}
+        form {
+            margin: 2rem auto;
+    }
+        form input {
+            display: block;
+    }
+        form input[type="text, email"] {
+            width: 100%;
+    }
+        form input[type="submit"] {
+    }
+        form input[type="submit"] {
+    }
+        footer {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }
+        .container {
+    }

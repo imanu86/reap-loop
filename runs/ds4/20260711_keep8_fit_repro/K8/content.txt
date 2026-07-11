@@ -1,0 +1,83 @@
+```<!!DOCTYPE html>
+<html lang="English">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    /* body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fdf8f0;
+    color: #3b1f1f;
+    }
+    nav {
+    background: #3b1f1f;
+    padding: 10px 20px;
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+    nav a {
+    color: #fdf8f0;
+    text-decoration: none;
+    font-weight: bold;
+}
+    nav a:hover {
+    color: #c0a696;
+}
+    section {
+    padding: 40px 20px;
+    text-align: center;
+}
+    .hero {
+    background: #c0a696;
+    padding: 60px 20px;
+}
+    .hero h1 {
+    font-size: 3em;
+    margin: 0;
+}
+    .hero p {
+    font-size: 1.2em;
+    margin: 10px 0 20px;
+}
+    button {
+    background: #3b1f1f;
+    color: #fdf8f0;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1.1em;
+    cursor: pointer;
+}
+    button:hover {
+    background: #5a3e3e;
+}
+    form {
+    margin: 20px auto;
+    max-width: 300px;
+}
+    form input {
+    width: 100%;
+    padding: 8px;
+    margin: 5px 0;
+    border: 1px solid #ccc;
+}
+    form input[type="submit"] {
+    background: #3b1f1f;
+    color: #fdf8f0;
+    border: none;
+    padding: 10px;
+}
+    footer {
+    text-align: center;
+    padding: 20px;
+    background: #3b1f1f;
+    color: #fdf8f0;
+}
+    </style>
+</head>
+<body>
+    <nav>
+    <a href="#">Home</

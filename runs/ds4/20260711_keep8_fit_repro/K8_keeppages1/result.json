@@ -1,0 +1,38 @@
+{
+  "k": 8,
+  "cache": 400,
+  "reserve": "1",
+  "load_s": 2.1,
+  "warmup_wall_s": 292.5,
+  "measured_wall_s": 466.3,
+  "usage": null,
+  "segments": {
+    "n": 0
+  },
+  "grade": {
+    "l0l3": 0,
+    "doctype": false,
+    "body": false,
+    "close_html": false,
+    "nav": false,
+    "h1": false,
+    "button": false,
+    "form": false,
+    "script": false,
+    "alert": false,
+    "looped": false,
+    "chars": 0
+  },
+  "enforcement": {
+    "layers": 40,
+    "max_distinct_per_layer": 8,
+    "distinct_per_layer_sample": {
+      "3": 8,
+      "4": 8,
+      "5": 8,
+      "6": 8,
+      "7": 8
+    },
+    "violations_outside_keep": 0
+  }
+}

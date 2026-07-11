@@ -1,0 +1,76 @@
+```<!!DOCTYPE html>
+<html lang="sera">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    /* body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fdf8f0;
+    color: #3b1f1f;
+    text-align: center;
+    }
+    nav {
+    background: #3b1f1f;
+    padding: 10px 0;
+    }
+    nav a {
+    color: #fdf8f0;
+    margin: 0 20px;
+    text-decoration: none;
+    font-weight: bold;
+    }
+    nav a:hover {
+    color: #c0a696;
+    }
+    section {
+    padding: 50px 20px;
+    background: #ead6c0;
+    }
+    h1 {
+    font-size: 3em;
+    margin: 0;
+    }
+    button {
+    background: #3b1f1f;
+    color: #fdf8f0;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+    margin-top: 20px;
+    }
+    button:hover {
+    background: #5a3a3a;
+    }
+    form {
+    margin: 20px auto;
+    padding: 20px;
+    max-width: 300px;
+    background: #fdf8f0;
+    border: 1px solid #c0a696;
+    border-radius: 5px;
+    }
+    input {
+    width: 100%;
+    padding: 10px 0;
+    margin: 10px 0;
+    border: 1px solid #c0a696;
+    border-radius: 5px;
+    }
+    input[type="submit"] {
+    background: #3b1f1f;
+    color: #fdf8f0;
+    border: none;
+    padding: 10px;
+    cursor: pointer;
+    }
+    input[type="submit":hover {
+    background: #5a3a3a;
+    }
+    footer {
+    margin-top: 20px;
+    padding: 10px;
+    background:

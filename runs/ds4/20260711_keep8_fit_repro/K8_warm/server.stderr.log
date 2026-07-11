@@ -1,0 +1,73 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.868s
+ds4: cuda backend initialized for graph diagnostics
+0711 19:20:48 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0711 19:20:48 ds4-server: listening on http://127.0.0.1:8014
+0711 19:20:49 ds4-server: chat ctx=0..231:231 prompt start
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.08 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0711 19:23:58 ds4-server: chat ctx=0..231:231 prompt done 189.626s
+ds4: REAP mask reload da /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_keep8_fit_repro/masks/sessK8_coffee.txt: 9920 entry potate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 1.63 GiB cached
+ds4: CUDA loading model tensors 2.87 GiB cached
+ds4: CUDA loading model tensors 4.28 GiB cached
+ds4: CUDA loading model tensors 5.34 GiB cached
+ds4: CUDA loading model tensors 6.79 GiB cached
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:25:33 ds4-server: chat ctx=231..281:50 gen=50 decoding chunk=0.53 t/s avg=0.53 t/s 95.120s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:25:56 ds4-server: chat ctx=281..331:50 gen=100 decoding chunk=2.19 t/s avg=0.85 t/s 117.903s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:26:14 ds4-server: chat ctx=331..381:50 gen=150 decoding chunk=2.82 t/s avg=1.11 t/s 135.624s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:26:30 ds4-server: chat ctx=381..431:50 gen=200 decoding chunk=3.15 t/s avg=1.32 t/s 151.497s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:26:46 ds4-server: chat ctx=431..481:50 gen=250 decoding chunk=3.12 t/s avg=1.49 t/s 167.541s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 19:27:01 ds4-server: chat ctx=481..531:50 gen=300 decoding chunk=3.24 t/s avg=1.64 t/s 182.955s
+0711 19:27:07 ds4-server: chat ctx=531..551:20 gen=320 decoding chunk=3.18 t/s avg=1.69 t/s 189.247s
+0711 19:27:07 ds4-server: chat ctx=0..231:231 gen=320 finish=length 378.882s
+0711 19:27:08 ds4-server: live kv cache miss live=551 prompt=231 common=231 reason=token-mismatch
+0711 19:27:08 ds4-server: chat ctx=0..231:231 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached

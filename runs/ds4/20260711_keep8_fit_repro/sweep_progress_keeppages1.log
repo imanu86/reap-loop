@@ -1,0 +1,6 @@
+[sweep] START cache=400 ntok=512 2026-07-11T18:42:00+02:00
+[sweep] K=8 cache=400 trace=1 server-start 2026-07-11T18:42:02+02:00
+[sweep] K=8 request-fired 2026-07-11T18:42:04+02:00
+[RESULT] K=8 ws=320 cache=400 fit=FITS wall=387s  | promptdone=prompt done 173.801s |  | mask='REAP mask applied: 40 layer' | enf=[maxdistinct/layer=8 violations_outside_keep=0] | chars=1452 close_html=0 | chunks=gen=50 decoding chunk=0.65 t/s avg=0.65 t/s|gen=100 decoding chunk=2.59 t/s avg=1.04 t/s|gen=150 decoding chunk=3.40 t/s avg=1.35 t/s|gen=200 decoding chunk=3.29 t/s avg=1.59 t/s|gen=250 decoding chunk=3.54 t/s avg=1.78 t/s|gen=300 decoding chunk=3.56 t/s avg=1.95 t/s|gen=350 decoding chunk=3.48 t/s avg=2.08 t/s|gen=400 decoding chunk=3.66 t/s avg=2.20 t/s|gen=450 decoding chunk=3.57 t/s avg=2.29 t/s|gen=500 decoding chunk=3.66 t/s avg=2.38 t/s|gen=512 decoding chunk=3.70 t/s avg=2.40 t/s|
+[sweep] K=9 cache=400 trace=0 server-start 2026-07-11T18:48:35+02:00
+[sweep] K=9 request-fired 2026-07-11T18:48:40+02:00
