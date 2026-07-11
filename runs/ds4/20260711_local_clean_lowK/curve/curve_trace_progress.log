@@ -1,0 +1,16 @@
+[curve] START K12_cache32_cyber K=12 cache=32 label=cyberpunk 2026-07-11T09:59:57+02:00
+[curve] DONE K12_cache32_cyber rc=0 wall=252s perf=[prefill: 1.26 t/s, generation: 1.77 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K12_cyberpunk.csv 2026-07-11T10:04:09+02:00
+[curve] START K23_cache32_cyber K=23 cache=32 label=cyberpunk 2026-07-11T10:04:09+02:00
+[curve] DONE K23_cache32_cyber rc=0 wall=246s perf=[prefill: 0.64 t/s, generation: 3.08 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K23_cyberpunk.csv 2026-07-11T10:08:15+02:00
+[curve] START K16_cache32_cyber K=16 cache=32 label=cyberpunk 2026-07-11T10:08:15+02:00
+[curve] DONE K16_cache32_cyber rc=0 wall=123s perf=[prefill: 3.76 t/s, generation: 3.25 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K16_cyberpunk.csv 2026-07-11T10:10:18+02:00
+[curve] START K38_cache32_cyber K=38 cache=32 label=cyberpunk 2026-07-11T10:10:18+02:00
+[curve] DONE K38_cache32_cyber rc=0 wall=114s perf=[prefill: 8.89 t/s, generation: 3.07 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K38_cyberpunk.csv 2026-07-11T10:12:12+02:00
+[curve] START K23_cache516_cyber K=23 cache=516 label=cyberpunk 2026-07-11T10:12:12+02:00
+[curve] DONE K23_cache516_cyber rc=0 wall=120s perf=[prefill: 8.98 t/s, generation: 2.93 t/s] hit_rate=0.8313 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K23_cyberpunk.csv 2026-07-11T10:14:12+02:00
+[curve] CORE_COMPLETE 2026-07-11T10:14:12+02:00
+[curve] START K12_cache32_coffee K=12 cache=32 label=coffee 2026-07-11T10:14:12+02:00
+[curve] DONE K12_cache32_coffee rc=0 wall=404s perf=[prefill: 1.22 t/s, generation: 2.27 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K12_coffee.csv 2026-07-11T10:20:56+02:00
+[curve] START K23_cache32_coffee K=23 cache=32 label=coffee 2026-07-11T10:20:56+02:00
+[curve] DONE K23_cache32_coffee rc=0 wall=627s perf=[prefill: 0.77 t/s, generation: 1.61 t/s] hit_rate=0.0000 cap=[] route_rows=11961 -> /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_masked_route_traces/route_masked_K23_coffee.csv 2026-07-11T10:31:23+02:00
+[curve] ALL_COMPLETE 2026-07-11T10:31:23+02:00

@@ -1,0 +1,35 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>✦ AI BCH · Cyber Program Shop</title>
+    <!-- Font (inter & cyber) -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gag" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:400,700&family=Orshare+Mono&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Orshare Mono', monospace;
+        }
+
+        body {
+            background: #100e100;
+            background-image: radial-gradient: #000 0%, ## #0040e0 40%, #void;
+            background: #000;
+            color: #limegreen;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+            font-size: 1.2rem;
+            background: #000;
+            background: fixed;
+            background: #000;
+            background: #000;
+            background: #
