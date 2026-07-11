@@ -1,0 +1,117 @@
+{
+  "schema": "reap-loop/boot-probe/v1",
+  "started_utc": "2026-07-11T05:03:04.972344+00:00",
+  "host": {
+    "provenance": "measured",
+    "hostname": "WORKSTATION",
+    "platform": "Linux-6.18.33.2-microsoft-standard-WSL2-x86_64-with-glibc2.39",
+    "python": "3.12.3"
+  },
+  "gpu": {
+    "provenance": "measured",
+    "tool": "nvidia-smi",
+    "name": "NVIDIA GeForce RTX 3060",
+    "vram_total_bytes": 12884901888,
+    "vram_free_bytes": 7772045312,
+    "vram_used_bytes": 4932501504
+  },
+  "model": {
+    "provenance": "measured",
+    "path": "/root/models/ds4-2bit.gguf",
+    "quant_gate": "iq2_xxs",
+    "quant_down": "q2_k",
+    "footprint_per_expert_bytes": 7077888,
+    "footprint_per_expert_mib": 6.75,
+    "n_moe_layers": 43,
+    "n_experts": 256,
+    "top_k": 6,
+    "shared_experts_per_layer": 1,
+    "recalls_per_token": 258,
+    "decode_demand_bytes_per_token": 1826095104,
+    "expert_bytes": 77913391104,
+    "nonexpert_resident_bytes": 8801384796,
+    "total_bytes": 86714775900
+  },
+  "ram": {
+    "provenance": "measured",
+    "source": "/proc/meminfo",
+    "ram_total_bytes": 65311195136,
+    "ram_available_bytes": 63016792064
+  },
+  "bandwidth": {
+    "provenance": "measured",
+    "sample_gib": 2.0,
+    "threads": 4,
+    "page_cache_dropped": false,
+    "drop_caches_skipped": true,
+    "ssd_cold_single_gibs": 0.3555,
+    "ssd_cold_threaded_gibs": 0.6695,
+    "ram_warm_gibs": 2.6723,
+    "warning": "page cache NOT dropped (no root): ssd_cold numbers may be page-cache-warm and over-optimistic"
+  },
+  "baseline": {
+    "provenance": "estimated",
+    "model": "copy-bound ceiling (RAM-BW proxy for H2D, compute ignored)",
+    "miss_fraction": 0.514,
+    "miss_bytes_per_token": 938539349,
+    "baseline_tps_ceiling": 3.057,
+    "note": "replace with a real ds4 -n 32 run on first boot (probe c)"
+  },
+  "derived": {
+    "cache": {
+      "provenance": "derived",
+      "formula": "floor((vram_total*(1-reserve_frac) - nonexpert_resident) / footprint)",
+      "reserve_frac": 0.1,
+      "reserve_bytes": 1288490188,
+      "usable_vram_bytes": 2795026904,
+      "cache_slots": 394,
+      "cache_slots_gib": 2.597,
+      "free_vram_now_bytes": 7772045312
+    },
+    "k_initial": {
+      "provenance": "invariant",
+      "source": "E-CAL cov90 floor + decision-model knee (docs/DECISION_MODEL.md)",
+      "cov90_k_floor": 38,
+      "knee_for_class": 48,
+      "task_class_assumed": "wide",
+      "k_initial": 48,
+      "note": "HW-agnostic starting provision; the runtime width sensor (>=150 tok) refines K*, and a proven rewind airbag can tighten toward K12-16"
+    },
+    "offload_regime": {
+      "provenance": "derived",
+      "working_set_bytes_at_k_initial": 14608760832,
+      "working_set_gib": 13.605,
+      "ram_fit_ratio": 4.314,
+      "working_set_fits_ram": true,
+      "decode_ssd_demand_gibs": 2.6721,
+      "ssd_throughput_ratio": 0.2506,
+      "ssd_throughput_ratio_lt_1": true,
+      "prefetch_speedup_threaded_over_single": 1.88,
+      "deeply_ssd_bound": false,
+      "wrap_recommended": false,
+      "rule": "wrap=on iff working set spills RAM AND SSD cannot feed decode (both dimensionless; never an absolute MB/s)"
+    },
+    "speed_calibration": {
+      "provenance": "estimated",
+      "baseline_tps": null,
+      "baseline_tps_ceiling": 3.057,
+      "note": "t/s is minted ONCE at boot and used only to auto-normalize the objective's speed term; it is NEVER re-read by the controller at runtime (P2). Ratios, not absolutes, drive control."
+    }
+  },
+  "launch": {
+    "env": {
+      "DS4_PACE": "1",
+      "DS4_PACE_AUTO": "1",
+      "DS4_PACE_KEEP": "48",
+      "DS4_PACE_WRAP": "0",
+      "DS4_PACE_WRAP_ROTATE_DELTA": "0"
+    },
+    "ds4_flags": [
+      "--ssd-streaming",
+      "--ssd-streaming-cache-experts",
+      "394"
+    ],
+    "model": "/root/models/ds4-2bit.gguf"
+  },
+  "probe_wall_s": 24.4
+}

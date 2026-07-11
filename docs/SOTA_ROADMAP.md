@@ -60,10 +60,15 @@ locale). Le config si **calcolano** dal modello, non si provano a tentativi.
 
 ---
 
-## Auto-calibrazione (il cuore "qualsiasi hardware") — DA COSTRUIRE
+## Auto-calibrazione (il cuore "qualsiasi hardware") — `[FATTO — script + design + 3060 profile]`
 
-Candidata patch/tool **"boot-probe"** (nessun artifact ancora — `[TODO]`, la sua
-esistenza è il gate P2). Probe ~60-90 s al primo avvio su un HW nuovo:
+Tool **"boot-probe"** COSTRUITO: `scripts/boot_probe.py` + `docs/BOOT_PROBE_DESIGN.md`
++ primo profilo di riferimento `runs/ds4/20260711_bootprobe/{profile.json,REPORT.md}`
+(3060 misurato, gate P2 (a)-(b)-(c) soddisfatto — probe `--no-ds4` in 24.4 s).
+Consumato da PACE via il contratto di lancio `DS4_PACE_AUTO` (`--emit-launch`
+mappa il profilo su `DS4_PACE_KEEP`/`DS4_PACE_WRAP`/`--ssd-streaming-cache-experts`;
+nessuna patch engine richiesta oggi, reader in-engine riservato patch 0029). Probe
+~60-90 s al primo avvio su un HW nuovo:
 
 | Sonda | Cosa misura | Cosa decide |
 |---|---|---|
@@ -174,7 +179,7 @@ interventi runtime.
 
 | Sotto-task | Stato | Evidenza |
 |---|---|---|
-| Cache sizing da boot-probe | `[TODO]` | dipende dall'auto-calibrazione (sopra). Effetto cache dominante: LRU sim cap258=0.34 → cap512=0.59 → cap1024=0.74 (nota J17 `EXPERIMENTS_LEDGER.md`). |
+| Cache sizing da boot-probe | `[SBLOCCATO — boot-probe FATTO]` | dipendenza auto-calibrazione ora soddisfatta (`scripts/boot_probe.py`: `derived.cache.cache_slots`=394 sul 3060, dtype-aware). Resta da cablare lo slot derivato nel path di sizing S4. Effetto cache dominante: LRU sim cap258=0.34 → cap512=0.59 → cap1024=0.74 (nota J17 `EXPERIMENTS_LEDGER.md`). |
 | Prefill / TTFT — prompt-derived prefetch SENZA mask apply | `[TODO]` | **gap J12** (`EXPERIMENTS_LEDGER.md`): unica cura nota del prefill 115-213 s (es. J6 114.994 s, J34 158.896 s). Serve separare il prefetch-dal-prompt dall'apply-della-mask. (Correlato: hygiene-fix del ledger M1c in S0 — il 266s W100 era prefill a cache fredda, non un vero costo prefill.) |
 | SPEX hidden consumer | `[TODO] — condizionato` | SOLO se boot-probe (b) dice **deeply-SSD-bound** (rapporto adimensionale banda/domanda_decode < 1, **mai** un MB/s assoluto): converte recall→velocità solo lì (gate full baseline 0.24→0.77, 3.2x); sul caso pratico 3060 RALLENTA ~1.55x (`CLAIMS_CURRENT.md` "PREFETCH SPEX-dense", **OPEN**). |
 | Promozione precisione session-learned | `[PARCHEGGIATA]` | E1 negativo per il pin statico (`5ea4c64`, `runs/ds4/20260710_e1_top_expert_mass/`): top-1 per-token ~30.5% ma identità NON stabile (cross-task overlap 2.5%, within-coding 7.8%) → pin statico cattura ~5.7% massa/layer (tetto live-sessione 16.7%) a costo 21.4% del cache 407-slot. Riprendere SOLO se S4 stalla, e solo nella variante **live per-sessione** (E2 pod A/B, ~$1-2). |
