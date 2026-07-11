@@ -1,0 +1,1227 @@
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI CYR SHOP • NEGOZIO CYERPUNK</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', 'Segoe UI', monospace, system-ui;
+        }
+
+        body {
+            background: #0c0c0c;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: radial-gradient(cell at 20% 30%, #1a1a2e, #050505);
+        }
+
+        .container {
+            max-width: 1200px;
+            width: 100%;
+            background: #121218;
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 40px #00e0ff40, inset 0 0 20px #00f0ff20;
+            border-radius: 28px;
+            padding: 30px 25px;
+            backdrop-filter: blur(2px);
+            transition: 0.2s;
+        }
+
+        /* CYPERPUNK GRIGLIA */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            align-items: start;
+        }
+
+        /* BRANO MARCIA */
+        .brand {
+            font-size: 2.8rem;
+            font-weight: 800;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            background: linear-gradient(45deg, #00f0ff, #f0f, #ff5e00);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            filter: drop-shadow(0 0 20px #00f0ff);
+            margin-bottom: 10px;
+        }
+
+        .tagline {
+            color: #b5b5ff;
+            font-size: 1.2rem;
+            border-left: 4px solid #f0f;
+            padding-left: 16px;
+            margin: 10px 0 20px 0;
+            text-shadow: 0 0 8px #b5b5ff80;
+        }
+
+        .card {
+            background: #1e1e2a;
+            border: 1px solid #3a3a5a;
+            border-radius: 24px;
+            padding: 24px 20px;
+            box-shadow: 0 0 15px #0f0f2a;
+            transition: 0.3s;
+        }
+
+        .card:hover {
+            border-color: #f0f;
+            box-shadow: 0 0 30px #f0f;
+        }
+
+        .card h3 {
+            color: #f0f;
+            font-size: 1.8rem;
+            border-bottom: 2px dashed #f0f;
+            padding-bottom: 8px;
+            margin-bottom: 20px;
+            letter-spacing: 2px;
+        }
+
+        .feature-item {
+            display: flex;
+            gap: 12px;
+            margin: 18px 0;
+            color: #d0d0f0;
+            font-weight: 500;
+            align-items: center;
+        }
+
+        .feature-item::before {
+            content: "◆";
+            color: #00f0ff;
+            font-size: 1.8rem;
+            filter: drop-shadow(0 0 8px #00f0ff);
+        }
+
+        .price-high {
+            font-size: 2.2rem;
+            font-weight: bold;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700;
+            background: #2a2a20;
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 40px;
+            margin: 10px 0;
+        }
+
+        .badne {
+            background: #f0f;
+            color: #0c0c0c;
+            padding: 4px 16px;
+            border-radius: 40px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+
+        /* MODULO CONTATTI */
+        .contact-form {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .contact-form input,
+        .contact-form textarea {
+            background: #0c0c14;
+            border: 1px solid #3a3a6a;
+            border-radius: 40px;
+            padding: 16px 20px;
+            font-size: 1rem;
+            color: #f0f0ff;
+            outline: none;
+            transition: 0.2s;
+            font-weight: 500;
+        }
+
+        .contact-form input:focus,
+        .contact-form textarea:focus {
+            border-color: #f0f;
+            box-shadow: 0 0 20px #f0f;
+        }
+
+        .contact-form textarea {
+            min-height: 120px;
+            resize: vertical;
+            border-radius: 28px;
+        }
+
+        .btn-cyper {
+            background: transparent;
+            border: 2px solid #f0f;
+            color: #f0f;
+            padding: 16px 30px;
+            font-size: 1.4rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.3s;
+            background: #1e1e3a;
+            box-shadow: 0 0 20px #f0f;
+            margin-top: 10px;
+        }
+
+        .btn-cyper:hover {
+            background: #f0f;
+            color: #0c0c0c;
+            box-shadow: 0 0 40px #f0f, inset 0 0 20px #fff;
+            transform: scale(1.02);
+        }
+
+        .footer-note {
+            margin-top: 30px;
+            text-align: center;
+            color: #6a6a9a;
+            border-top: 1px solid #2a2a4a;
+            padding-top: 20px;
+            font-size: 0.9rem;
+        }
+
+        /* POPUP */
+        .popup-over {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #0c0c0ce0;
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .popup-card {
+            background: #1e1e2a;
+            border: 2px solid #f0f;
+            border-radius: 60px 20px 60px 20px;
+            padding: 40px 50px;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 0 80px #f0f;
+            text-align: center;
+            animation: popup 0.4s cubic-bier(0.16, 1, 0.3, 1);
+        }
+
+        @keyframes popup {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        .popup-card h2 {
+            font-size: 2.5rem;
+            background: linear-gradient(45deg, #f0f, #00f0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .popup-card p {
+            color: #b0b0e0;
+            margin: 20px 0;
+            font-size: 1.2rem;
+        }
+
+        .popup-card .btn-cyper {
+            background: #f0f;
+            color: #0c0c0c;
+            border: none;
+            padding: 12px 40px;
+            font-size: 1.2rem;
+        }
+
+        /* RESPONSIVE */
+        @media (max-width: 800px) {
+            .grid-2 { grid-template-columns: 1fr; gap: 30px; }
+            .brand { font-size: 2rem; }
+        }
+
+        /* SCROLL BAR */
+        ::-webkit-scrollbar { width: 8px; background: #1a1a2e; }
+        ::-webkit-scrollbar-thumb { background: #f0f; border-radius: 20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <!-- BRAND -->
+    <div class="brand">✨ AI CYR SHOP</div>
+    <div class="tagline">▌ codice cpot & intelligenza artificiale — cyberpunk programming</div>
+
+    <!-- GRIGLIA -->
+    <div class="grid-2">
+        <!-- COL SINISTRA (OFFERTE -->
+        <div class="card">
+            <h3>�───  OFFERTE  �───</h3>
+            <div class="feature-item">Modello AI quantistico • GPT 6.0</div>
+            <div class="feature-item">API neurali in tempo reale</div>
+            <div class="feature-item">Supporto 24h con slot</div>
+            <div class="feature-item">Debug con coscienza artificiale</div>
+            <div class="price-high">⚡ da ¥ 8.200.00</div>
+            <div class="badne">safari cyber • 30%</div>
+            <p style="color:#9a9aff; margin-top:20px;">〰 include: 2 estensioni cervello + 1 anno</p>
+        </div>
+
+        <!-- COL D DISTA: MODULO -->
+        <div class="card">
+            <h3>�█ CONTATTO NEIRONICO</h3>
+            <form class="contact-form" id="contactForm">
+                <input type="text" placeholder="📡 full name / username" required name="name">
+                <input type="email" placeholder="�--- email / cifratura" required name="email">
+                <textarea placeholder="�message / prompt di richiesta" required name="message" minlength="5"></textarea>
+                <button type="submit" class="btn-cyper" id="sendBtn">�── invio cifrato �──</button>
+            </form>
+            <p style="color:#6a6a9a; font-size:0.9rem; margin-top:15px;">◆ tutti i campi sono cprognati</p>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <div class="footer-note">
+        <span>�⚢</span> AI CYR SHOP 2025 • codice quantistico per dev<br>
+        <span style="opacity:0.5;">〰 interfaccia neurolink 〰</span>
+    </div>
+</div>
+
+<!-- POPUP -->
+<div class="popup-over" id="popupOver">
+    <div class="popup-card">
+        <h2>✦ RICRETA INVIATA</h2>
+        <p>✔️ il tuo messaggio è stato cprognato nella rete cyber. un confirmo arrerà in 24h.</p>
+        <button class="btn-cyper" id="closePopup">�── ok / tornare �──</button>
+    </div>
+</div>
+
+<script>
+    // DOM document
+    const form = document.getElementById('contactForm');
+    const popupOver = document.getElementById('popupOver');
+    const closeBtn = document.getElementById('closePopup');
+    const sendBtn = document.getElementById('sendBtn');
+
+    form.addEventListener('submit', (e) => {
+        e.preventDefault(); // blocchiamo invio tradivo
+        // mostrare popup
+        popupOver.style.display = 'flex';
+        // (possiamo anche cancellare form)
+        // opzione: non inviare dati
+        // reset opcionale: 
+        // form fields si possono resare
+        // ma non lasciamo
+        // eventuale: 
+        // not: non inviare a server
+        // ma solo pop
+        // 
+        // pulizia: 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
+        // 
