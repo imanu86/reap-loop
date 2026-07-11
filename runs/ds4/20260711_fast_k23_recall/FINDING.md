@@ -1,4 +1,125 @@
-# 2026-07-11 Recall: "K23 + cache256, sito parziale e veloce" — NOT FOUND as a single run
+# 2026-07-11 Recall: "K23 + cache256, sito parziale e veloce"
+
+## UPDATE — run identificato dall'utente, verdetto config-velocità
+
+L'utente ha trovato il run direttamente:
+`runs/ds4/20260709_requested4_html800_cache256/html_local_k23_rotate32_cache256_r01`.
+La ricerca sotto (sezioni originali) non l'aveva isolato come "il" run perché
+2.61 t/s non sembrava "altissimo" a confronto dei numeri pod cache1024
+(13-17 t/s); ma **confrontato con la giusta baseline — altri probe locali
+allo stesso K/cache senza la leva-RAM — è il punto più veloce misurato sul
+3060**, e la domanda giusta era "perché è più veloce delle ALTRE probe
+locali", non "è veloce quanto il pod".
+
+### Config esatta (verificata in `runner_manifest.json` + `server_env.json`)
+
+- Variant: `local_k23_rotate32_cache256`. Profilo `SOTA_LOCAL_3060_TIMED`.
+- PACE: `warmup=50 keep=23[23..96] step=0` → W50 pieno/K0, poi K23 fisso;
+  `rotate(on=1, every=32, decay=0.980)`; `wrap=1`; niente breath/prebreath/
+  relearn/exchange (tutti a 0/999999).
+- Cache: `--ssd-streaming-cache-experts 256` (`cache_experts_default: 258`),
+  `DS4_PACE_CACHE_TARGET_SLOTS=256`.
+- **Leva-RAM attiva**: `DS4_CUDA_NO_DIRECT_IO=1`, `DS4_CUDA_KEEP_MODEL_PAGES=1`,
+  `DS4_CUDA_NO_Q8_F16_CACHE=1`, `DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.25`.
+- **Prefetch attivo**: `DS4_REAP_PREFETCH_THREADS=16`, `DS4_REAP_PREFETCH_LOCK=1`
+  → log `REAP prefetch (fattorino): 40 layer, 920 expert, ~2.5k range, 6.07 GiB
+  touched in 278-1946 ms (16 thread, mlock)`, **23 eventi** (uno per ogni
+  rotazione a 32 token) → **23 × 6.07 GiB ≈ 139.6 GiB touched** cumulativo nel
+  run, come riportato dal coordinator.
+- Misure (da `summary.csv`/ledger): **avg 2.61 t/s**, first50 2.32 t/s, last
+  chunk 2.89 t/s, `finish_s == length` (800 token, nessun EOS: si ferma per
+  budget, non per fine naturale).
+- Qualità (verificata in `content_measured.txt`): apre con `<!DOCTYPE html>`,
+  `<html lang="it">`, `<head>` completo (meta, title, `<style>` con reset
+  CSS, header, `.page`, card layout, `.btn`), struttura sana fino a un certo
+  punto, poi degrada in un loop di classi CSS ripetute (`.form-group`, ecc.)
+  senza mai chiudere `</html>` né emettere `<form>`/`<script>` funzionanti
+  entro 800 token — coerente con la nota del coordinator "loop CSS dopo il
+  primo pezzo, MA testa doc buona (doctype+form+popup) prima del collasso" e
+  con il verdict registrato altrove nel ledger (`repeat_flag=0` per questo
+  specifico run: non triple-repeat, ma comunque non chiude).
+
+### Confronto con la probe di stanotte (`runs/ds4/20260711_local_clean_lowK`)
+
+Letti `bitexact/bitexact.log` e `bitexact2/bitexact2.log` + i `diag.txt`
+sorgente (`bitexact/A_q8off_cacheON/diag.txt`,
+`bitexact2/K12_cache1024_q8off/diag.txt`):
+
+| | **rotate32 K23 cache256 (il run trovato)** | **A_q8off_cacheON (stanotte, cache256)** | **K12_cache1024_q8off (stanotte, cache1024)** |
+|---|---|---|---|
+| K / mask | K23, **PACE dinamico** (warmup+rotate) | K12, **REAP_MASK_FILE statico** (no PACE) | K12, **REAP_MASK_FILE statico** (no PACE) |
+| cache-experts | 256 | 256 | 1024 (capped a 916) |
+| `DS4_CUDA_NO_DIRECT_IO` / `KEEP_MODEL_PAGES` | **1 / 1** | **assente** (nessuna riga di log correlata) | **assente** |
+| `DS4_REAP_PREFETCH_THREADS`/`LOCK` ("fattorino") | **16 / 1**, 23 eventi loggati | **assente** — zero righe `fattorino`/`mlock` in tutto `diag.txt` | **assente** — zero righe `fattorino`/`mlock` |
+| hit_rate cache GPU | n/d (PACE non logga SPEX hit-rate in questo formato) | **0.0134** (quasi tutto miss/evict, 256 slot troppo piccoli per K12 su tutta la sessione) | **0.9811** (quasi tutto hit) |
+| **generation t/s** | **2.61** | **1.65** | **1.14** |
+
+Verificato con grep mirato: né `A_q8off_cacheON/diag.txt` né
+`K12_cache1024_q8off/diag.txt` contengono **nessuna** riga `fattorino`,
+`mlock`, o `PACE on` — la probe di stanotte non ha mai attivato prefetch
+16-thread né PACE; ha usato solo `DS4_REAP_MASK_FILE` statico via CLI diretta.
+Ho anche verificato che l'assenza della leva-RAM non è un caso isolato di
+questo run: **tutti** i run della matrice `requested4_html800_cache256`
+(incluso il fratello non-rotate `local_k23_cache256`, 3.06 t/s) condividono
+lo stesso blocco leva-RAM+prefetch nel loro `server_env.json` — è il default
+del profilo `SOTA_LOCAL_3060_TIMED`, non una scelta ad-hoc di questo run
+specifico.
+
+### IPOTESI CONFERMATA
+
+**La leva-RAM (`KEEP_MODEL_PAGES`+`NO_DIRECT_IO`) + prefetch 16-thread/mlock
+("fattorino") è la causa della velocità, non la dimensione della cache.**
+Evidenza a favore:
+
+1. **cache256 con leva (2.61-3.06 t/s) batte cache256 senza leva (1.65 t/s)**
+   a parità di ordine di grandezza di cache — stesso cache-experts=256, la
+   sola differenza strutturale rilevata è leva+prefetch+PACE-dinamico vs
+   mask statico senza leva.
+2. **cache1024 senza leva (1.14 t/s) è il più lento di tutti**, nonostante
+   hit_rate GPU quasi perfetto (0.98) — la dimensione/hit-rate della cache
+   *GPU* non è il collo di bottiglia quando manca la leva-RAM: il tempo lo
+   mangia altrove (probabile I/O diretto ripetuto/pagine non trattenute in
+   RAM, dato che senza `KEEP_MODEL_PAGES`+`NO_DIRECT_IO` ogni pagina toccata
+   può tornare a richiedere una vera lettura invece di un page-cache hit).
+   Questo spiega anche perché una cache256 quasi-sempre-miss (hit_rate
+   0.0134) può comunque battere una cache1024 quasi-sempre-hit (0.9811): il
+   miss/hit della cache **GPU** qui non è il fattore dominante, lo è la
+   leva-RAM.
+
+**Caveat onesto**: non esiste (ancora) un A/B pulito a una sola leva di
+differenza — tra "il run trovato" e "la probe di stanotte" cambiano
+simultaneamente K (23 vs 12), meccanismo mask (PACE dinamico+rotate vs
+REAP_MASK_FILE statico), *e* leva-RAM+prefetch. La direzione dell'effetto è
+coerente su entrambi i confronti disponibili (cache256 vs cache256, e
+cache256 vs cache1024), ma per chiudere la causalità serve una probe dedicata
+che vari **solo** `DS4_CUDA_NO_DIRECT_IO`/`KEEP_MODEL_PAGES`/
+`DS4_REAP_PREFETCH_THREADS`/`LOCK` a parità di K/cache/mask-method.
+
+### Raccomandazione
+
+**Questa è la config-velocità di riferimento del 3060 da riprodurre**, col
+fix qualità (rewind/entropia-widen visti nel lavoro di stanotte) sopra:
+
+```
+DS4_PACE=1 DS4_PACE_WARMUP=50 DS4_PACE_KEEP=23 DS4_PACE_KEEP_MIN=23 DS4_PACE_KEEP_MAX=96
+DS4_PACE_ROTATE=1 DS4_PACE_ROTATE_EVERY=32 DS4_PACE_ROTATE_DECAY=0.98 DS4_PACE_WRAP=1
+DS4_PACE_CACHE_TARGET_SLOTS=256 DS4_PACE_CACHE_FLOOR=1
+DS4_CUDA_NO_DIRECT_IO=1 DS4_CUDA_KEEP_MODEL_PAGES=1 DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.25
+DS4_REAP_PREFETCH_THREADS=16 DS4_REAP_PREFETCH_LOCK=1
+--ssd-streaming-cache-experts 256
+```
+
+cioè **cache-minima (256) + leva-RAM + prefetch 16-thread/mlock**, NON
+cache grande. Prossimo passo suggerito: portare il fix qualità (rewind su
+segnale di collasso / entropy-widen, dal lavoro di `20260711_pivotal_k12_rewind`
+e affini) sopra esattamente questa config invariata, invece che su una
+cache grande o su un mask statico senza leva — quelle due varianti sono
+misurate più lente, non solo meno pulite.
+
+---
+
+## Log di ricerca originale (prima che l'utente trovasse il run)
 
 Read-only forensic pass over `runs/ds4/`, `docs/EXPERIMENTS_LEDGER.md`,
 `docs/DS4_EXPERIMENT_LEDGER_20260710.md`, `docs/CLAIMS_CURRENT.md`,
