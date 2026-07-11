@@ -1,0 +1,7 @@
+=== START cyberpunk ntok=4000 ctx=6144 08:25:36 ===
+=== END cyberpunk rc=0 gen_chars=15043 route_rows=159961 08:42:04 ===
+ds4: prefill: 6.34 t/s, generation: 4.09 t/s
+=== START coffee ntok=1000 ctx=3072 08:42:04 ===
+=== END coffee rc=0 gen_chars=2498 route_rows=31601 08:45:29 ===
+ds4: prefill: 13.85 t/s, generation: 4.21 t/s
+ALL_DONE 08:45:29
