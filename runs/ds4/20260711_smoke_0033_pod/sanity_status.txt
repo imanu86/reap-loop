@@ -1,0 +1,1 @@
+RC=0 elapsed=32s tier=0 cache=256 keep=12 twarm=512 ntok=8 prompt=cyberpunk_prompt.txt
