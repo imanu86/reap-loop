@@ -1,0 +1,490 @@
+From 8ea0e7d016774110afaec465eb6955e5cdc7b399 Mon Sep 17 00:00:00 2001
+From: imanu <imanu86@gmail.com>
+Date: Sun, 12 Jul 2026 16:27:16 +0200
+Subject: [PATCH] pace: add strong-knock adaptive width and SPEX cadence
+
+---
+ ds4.c | 363 +++++++++++++++++++++++++++++++++++++++++++++++++++++-----
+ 1 file changed, 336 insertions(+), 27 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 568c28f..9a0fb99 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7406,6 +7406,12 @@ float            g_reap_pin_mass[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+  * pruned by the mass core is temporarily eligible in the router mask and gets
+  * first-class residency priority. The array is exported for ds4_cuda.cu. */
+ uint8_t          g_reap_spex_pin[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++/* patch 0045: aggregate rank-weighted SPEX support between admission epochs.
++ * This is prediction support, not calibrated router gate mass. */
++static double    g_reap_spex_support[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++static uint32_t  g_reap_spex_support_samples[DS4_MAX_LAYER];
++static uint32_t  g_reap_spex_last_refresh[DS4_MAX_LAYER];
++static uint8_t   g_reap_spex_refreshed[DS4_MAX_LAYER];
+ volatile uint32_t g_reap_pin_epoch = 0;
+ static float g_reap_bias_masked[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static const void *g_reap_bias_tensor[DS4_MAX_LAYER];
+@@ -7512,6 +7518,21 @@ static struct {
+     int      lm_bootstrap;       /* generated tokens at K0 before seed */
+     int      lm_window;          /* sliding window length (clamp 10..20, cap WIN_MAX) */
+     int      lm_k;               /* eligible experts/layer (floor DS4_N_EXPERT_USED) */
++    int      lm_adaptive_k;      /* 0045: strong-knock acceleration controls K */
++    int      lm_k_min;           /* 0045: adaptive lower bound */
++    int      lm_k_max;           /* 0045: adaptive upper bound */
++    double   lm_knock_threshold; /* 0045: selected-normalized weight floor */
++    double   lm_knock_gain;      /* 0045: delta-K per excess strong knock */
++    int      lm_knock_step_up;   /* 0045: max K growth per token */
++    int      lm_knock_step_down; /* 0045: max K shrink per token */
++    double   lm_knock_deadband;  /* 0045: ignore small count acceleration */
++    int      lm_knock_update_every; /* 0045: resize cadence in decode tokens */
++    int      lm_knock_prefetch;   /* 0045: page-touch all adaptive growth */
++    int      lm_knock_min_history; /* 0045: react before the 10-token ring fills */
++    uint32_t lm_knock_current;   /* 0045: strong blocked experts in prior token */
++    uint32_t lm_knock_ring[32];  /* 0045: previous token counts */
++    int      lm_knock_ring_pos;
++    int      lm_knock_ring_fill;
+     int      lm_observe_top;     /* unbiased top-N recorded per token/layer */
+     int      lm_x;               /* integer windowed-knock threshold */
+     int      lm_max_swaps;       /* per layer per scan */
+@@ -7685,6 +7706,7 @@ static int ds4_reap_mask_apply_layer_direct(
+ }
+ 
+ static uint32_t ds4_spex_mask_add_cap(void);
++static void ds4_spex_mask_reset_state(void);
+ 
+ static int ds4_spex_mask_core_ready(void) {
+     return (g_pace.lm_on && g_pace.lm_seeded) ||
+@@ -13164,6 +13186,53 @@ static void ds4_pace_init(void) {
+             g_pace.lm_k           = pace_env_i("DS4_PACE_LIVEMASK_K", 8);
+             if (g_pace.lm_k < (int)DS4_N_EXPERT_USED) g_pace.lm_k = (int)DS4_N_EXPERT_USED;
+             if (g_pace.lm_k > (int)DS4_N_EXPERT) g_pace.lm_k = (int)DS4_N_EXPERT;
++            /* patch 0045: adaptive width from acceleration in the count of
++             * strong full-router experts blocked by the effective mask. */
++            g_pace.lm_adaptive_k = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_ADAPTIVE", 0) ? 1 : 0;
++            g_pace.lm_k_min = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_MIN", g_pace.lm_k);
++            g_pace.lm_k_max = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_MAX", g_pace.lm_k);
++            if (g_pace.lm_k_min < (int)DS4_N_EXPERT_USED)
++                g_pace.lm_k_min = (int)DS4_N_EXPERT_USED;
++            if (g_pace.lm_k_max > (int)DS4_N_EXPERT)
++                g_pace.lm_k_max = (int)DS4_N_EXPERT;
++            if (g_pace.lm_k_max < g_pace.lm_k_min)
++                g_pace.lm_k_max = g_pace.lm_k_min;
++            if (g_pace.lm_adaptive_k) g_pace.lm_k = g_pace.lm_k_min;
++            g_pace.lm_knock_threshold = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_THRESHOLD", 0.15);
++            if (g_pace.lm_knock_threshold < 0.0)
++                g_pace.lm_knock_threshold = 0.0;
++            if (g_pace.lm_knock_threshold > 1.0)
++                g_pace.lm_knock_threshold = 1.0;
++            g_pace.lm_knock_gain = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_GAIN", 0.5);
++            if (g_pace.lm_knock_gain < 0.0) g_pace.lm_knock_gain = 0.0;
++            g_pace.lm_knock_step_up = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_STEP_UP", 4);
++            if (g_pace.lm_knock_step_up < 1) g_pace.lm_knock_step_up = 1;
++            g_pace.lm_knock_step_down = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_STEP_DOWN", 1);
++            if (g_pace.lm_knock_step_down < 1)
++                g_pace.lm_knock_step_down = 1;
++            g_pace.lm_knock_deadband = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_DEADBAND", 2.0);
++            if (g_pace.lm_knock_deadband < 0.0)
++                g_pace.lm_knock_deadband = 0.0;
++            g_pace.lm_knock_update_every = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_UPDATE_EVERY", 2);
++            if (g_pace.lm_knock_update_every < 1)
++                g_pace.lm_knock_update_every = 1;
++            g_pace.lm_knock_prefetch = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_PREFETCH", 0) ? 1 : 0;
++            g_pace.lm_knock_min_history = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_MIN_HISTORY", 2);
++            if (g_pace.lm_knock_min_history < 1)
++                g_pace.lm_knock_min_history = 1;
++            if (g_pace.lm_knock_min_history > g_pace.lm_window)
++                g_pace.lm_knock_min_history = g_pace.lm_window;
+             g_pace.lm_observe_top = pace_env_i("DS4_PACE_LIVEMASK_OBSERVE_TOP", 16);
+             if (g_pace.lm_observe_top < 1) g_pace.lm_observe_top = 1;
+             if (g_pace.lm_observe_top > DS4_LM_OBS_MAX) g_pace.lm_observe_top = DS4_LM_OBS_MAX;
+@@ -13258,6 +13327,18 @@ static void ds4_pace_init(void) {
+                 g_pace.lm_bootstrap, g_pace.lm_window, g_pace.lm_k,
+                 g_pace.lm_observe_top, g_pace.lm_x, g_pace.lm_max_swaps,
+                 g_pace.lm_cooldown, g_pace.lm_hyst, g_pace.lm_weighted, g_pace.lm_pin);
++            if (g_pace.lm_adaptive_k)
++                fprintf(stderr,
++                    "ds4: PACE LIVEMASK adaptive-K ON - K=%d..%d "
++                    "strong_weight>=%.3f gain=%.3f step=+%d/-%d "
++                    "deadband=%.3f every=%d prefetch=%d history=%d..%d\n",
++                    g_pace.lm_k_min, g_pace.lm_k_max,
++                    g_pace.lm_knock_threshold, g_pace.lm_knock_gain,
++                    g_pace.lm_knock_step_up, g_pace.lm_knock_step_down,
++                    g_pace.lm_knock_deadband,
++                    g_pace.lm_knock_update_every,
++                    g_pace.lm_knock_prefetch,
++                    g_pace.lm_knock_min_history, g_pace.lm_window);
+             if (g_pace.lm_k <= 8)
+                 fprintf(stderr, "ds4: PACE LIVEMASK note: K=%d is the AGGRESSIVE stress config; "
+                     "wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.\n", g_pace.lm_k);
+@@ -13512,6 +13593,25 @@ static void ds4_pace_livemask_note_probs(uint32_t il, const float *probs) {
+     uint16_t *id = &g_pace.lm_cur_id[(size_t)il * DS4_LM_OBS_MAX];
+     float    *sh = &g_pace.lm_cur_share[(size_t)il * DS4_LM_OBS_MAX];
+     g_pace.lm_cur_n[il] = ds4_pace_livemask_topk(probs, id, sh, g_pace.lm_observe_top);
++
++    if (g_pace.lm_adaptive_k && g_pace.lm_seeded) {
++        uint16_t strong_id[DS4_MAX_EXPERT_USED];
++        float strong_share[DS4_MAX_EXPERT_USED];
++        int strong_n = ds4_pace_livemask_topk(
++            probs, strong_id, strong_share, DS4_N_EXPERT_USED);
++        double selected_sum = 0.0;
++        for (int i = 0; i < strong_n; i++) selected_sum += strong_share[i];
++        if (selected_sum > 0.0) {
++            for (int i = 0; i < strong_n; i++) {
++                const uint32_t e = strong_id[i];
++                const double selected_weight = strong_share[i] / selected_sum;
++                if (selected_weight >= g_pace.lm_knock_threshold &&
++                    ds4_reap_mask_effectively_pruned(il, e)) {
++                    g_pace.lm_knock_current++;
++                }
++            }
++        }
++    }
+ }
+ 
+ /* Roll the ring exactly one slot: evict the token leaving the window (subtract
+@@ -13757,6 +13857,117 @@ static void ds4_pace_livemask_pressure_eval(const ds4_weights *weights) {
+     }
+ }
+ 
++/* patch 0045: causal adaptive width. The prior token contributes one global
++ * count of strong full-router experts blocked by the effective mask. Compare
++ * it with the preceding window, integrate the acceleration into K, then grow
++ * or shrink each anchored layer without a wholesale re-rank. */
++static int ds4_pace_livemask_adapt_k(
++        const ds4_weights *weights,
++        ds4_reap_expert_id **promo,
++        uint32_t *promo_n,
++        uint32_t *promo_cap) {
++    if (!g_pace.lm_adaptive_k || !g_pace.lm_seeded) return 0;
++    const int window = g_pace.lm_window > 32 ? 32 : g_pace.lm_window;
++    double mean = 0.0;
++    for (int i = 0; i < g_pace.lm_knock_ring_fill; i++)
++        mean += g_pace.lm_knock_ring[i];
++    if (g_pace.lm_knock_ring_fill > 0)
++        mean /= g_pace.lm_knock_ring_fill;
++    const uint32_t current = g_pace.lm_knock_current;
++    const double acceleration = (double)current - mean;
++
++    if (window > 0) {
++        g_pace.lm_knock_ring[g_pace.lm_knock_ring_pos] = current;
++        g_pace.lm_knock_ring_pos = (g_pace.lm_knock_ring_pos + 1) % window;
++        if (g_pace.lm_knock_ring_fill < window)
++            g_pace.lm_knock_ring_fill++;
++    }
++    g_pace.lm_knock_current = 0;
++
++    const int old_k = g_pace.lm_k;
++    int new_k = old_k;
++    const uint32_t since_seed = g_pace.lm_tok - g_pace.lm_seed_tok;
++    const int update_due =
++        (since_seed % (uint32_t)g_pace.lm_knock_update_every) == 0;
++    if (update_due &&
++        g_pace.lm_knock_ring_fill >= g_pace.lm_knock_min_history) {
++        int delta_k = 0;
++        if (fabs(acceleration) > g_pace.lm_knock_deadband)
++            delta_k = (int)lround(g_pace.lm_knock_gain * acceleration);
++        if (delta_k > g_pace.lm_knock_step_up)
++            delta_k = g_pace.lm_knock_step_up;
++        if (delta_k < -g_pace.lm_knock_step_down)
++            delta_k = -g_pace.lm_knock_step_down;
++        new_k += delta_k;
++        if (new_k < g_pace.lm_k_min) new_k = g_pace.lm_k_min;
++        if (new_k > g_pace.lm_k_max) new_k = g_pace.lm_k_max;
++    }
++
++    int dirty = 0;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    if (new_k != old_k) {
++        for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++            if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++            const double *ws =
++                &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++            if (new_k > old_k) {
++                for (int slot = old_k; slot < new_k; slot++) {
++                    int best = -1;
++                    double best_mass = -1.0;
++                    for (uint32_t e = 0; e < ne; e++) {
++                        if (!g_reap_mask_pruned[il][e]) continue;
++                        if (ws[e] > best_mass) {
++                            best = (int)e;
++                            best_mass = ws[e];
++                        }
++                    }
++                    if (best < 0) break;
++                    g_reap_mask_pruned[il][best] = 0;
++                    if (promo && promo_n && promo_cap) {
++                        if (*promo_n == *promo_cap) {
++                            *promo_cap = *promo_cap ? *promo_cap * 2u : 64u;
++                            *promo = xrealloc(
++                                *promo, *promo_cap * sizeof(**promo));
++                        }
++                        (*promo)[*promo_n].layer = il;
++                        (*promo)[*promo_n].expert = (uint32_t)best;
++                        (*promo_n)++;
++                    }
++                    dirty = 1;
++                }
++            } else {
++                for (int slot = old_k; slot > new_k; slot--) {
++                    int victim = -1;
++                    double victim_mass = 1e300;
++                    for (uint32_t e = 0; e < ne; e++) {
++                        if (g_reap_mask_pruned[il][e]) continue;
++                        if (ws[e] < victim_mass) {
++                            victim = (int)e;
++                            victim_mass = ws[e];
++                        }
++                    }
++                    if (victim < 0) break;
++                    g_reap_mask_pruned[il][victim] = 1;
++                    dirty = 1;
++                }
++            }
++        }
++        g_pace.lm_k = new_k;
++    }
++
++    if (g_pace.lm_log) {
++        fprintf(g_pace.lm_log,
++                "{\"ev\":\"adaptive_k\",\"tok\":%u,\"strong\":%u,"
++                "\"mean10\":%.6g,\"accel\":%.6g,\"old_k\":%d,"
++                "\"new_k\":%d,\"history\":%d,\"update_due\":%d}\n",
++                g_pace.lm_tok, current, mean, acceleration, old_k, new_k,
++                g_pace.lm_knock_ring_fill, update_due);
++        fflush(g_pace.lm_log);
++    }
++    return dirty;
++}
++
+ /* Continuous loop: per eligible layer, cooldown-gated, up to max_swaps one-in/
+  * one-out swaps. Triple-gate: sustained knock (count>=X), candidate hotter by
+  * hyst, per-layer cooldown. K stays constant; window roll-off is the decay.
+@@ -13820,8 +14031,14 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+     int lm_max_swaps_eff = g_pace.lm_pressure_active ? g_pace.lm_pressure_max_swaps : g_pace.lm_max_swaps;
+     int dirty = 0;
+     const int pf_on = ds4_reap_prefetch_delta_enabled();   /* fattorino delta */
++    const int adaptive_pf_on = pf_on && g_pace.lm_knock_prefetch;
+     ds4_reap_expert_id *promo = NULL;
+     uint32_t promo_n = 0, promo_cap = 0;
++    dirty |= ds4_pace_livemask_adapt_k(
++        weights,
++        adaptive_pf_on ? &promo : NULL,
++        adaptive_pf_on ? &promo_n : NULL,
++        adaptive_pf_on ? &promo_cap : NULL);
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
+         if ((g_pace.lm_tok - g_pace.lm_last_swap_tok[il]) <
+@@ -13971,6 +14188,13 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+     g_pace.lm_pressure_blocked_mass = 0.0;
+     g_pace.lm_pressure_resident_mass = 0.0;
+     g_pace.lm_pressure_eligible_cool = 0;
++    /* patch 0045: every prompt starts from the configured lower bound with a
++     * clean strong-knock history. */
++    if (g_pace.lm_adaptive_k) g_pace.lm_k = g_pace.lm_k_min;
++    g_pace.lm_knock_current = 0;
++    memset(g_pace.lm_knock_ring, 0, sizeof(g_pace.lm_knock_ring));
++    g_pace.lm_knock_ring_pos = 0;
++    g_pace.lm_knock_ring_fill = 0;
+     /* 0044: no provisional expert survives a prompt boundary. The full mask
+      * apply below then restores a true K0 bootstrap without stale overlays. */
+     if (ds4_spex_mask_add_cap() > 0) {
+@@ -14246,6 +14470,9 @@ static void ds4_pace_emit(const char *ev, double score, double hit);
+ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+                                        const ds4_weights *weights,
+                                        const char *why) {
++    /* 0045: SPEX is independent of LIVEMASK and must never retain a lane or
++     * prediction history across requests when the PACE core owns the mask. */
++    ds4_spex_mask_reset_state();
+     /* patch 0035: LIVEMASK re-bootstraps at K0 on every new prompt. Runs before
+      * the DS4_PACE gate so it fires even when the full controller is off. */
+     ds4_pace_livemask_reset(model, weights);
+@@ -17342,6 +17569,43 @@ static uint32_t ds4_spex_mask_add_cap(void) {
+     return metal_graph_spex_env_u32("DS4_PACE_LIVEMASK_SPEX_ADD", 0, 16);
+ }
+ 
++static uint32_t ds4_spex_mask_cadence(void) {
++    return metal_graph_spex_env_u32(
++        "DS4_PACE_LIVEMASK_SPEX_CADENCE", 1, 64);
++}
++
++static void ds4_spex_mask_reset_state(void) {
++    int had_pin = 0;
++    for (uint32_t il = 0; il < DS4_MAX_LAYER && !had_pin; il++) {
++        for (uint32_t e = 0; e < DS4_MAX_EXPERT; e++) {
++            if (g_reap_spex_pin[il][e]) {
++                had_pin = 1;
++                break;
++            }
++        }
++    }
++    memset(g_reap_spex_pin, 0, sizeof(g_reap_spex_pin));
++    memset(g_reap_spex_support, 0, sizeof(g_reap_spex_support));
++    memset(g_reap_spex_support_samples, 0,
++           sizeof(g_reap_spex_support_samples));
++    memset(g_reap_spex_last_refresh, 0,
++           sizeof(g_reap_spex_last_refresh));
++    memset(g_reap_spex_refreshed, 0,
++           sizeof(g_reap_spex_refreshed));
++    if (had_pin) g_reap_pin_epoch++;
++}
++
++static uint32_t ds4_spex_mask_copy_active(uint32_t il,
++                                          int32_t *out,
++                                          uint32_t out_cap) {
++    if (il >= DS4_MAX_LAYER || !out || out_cap == 0) return 0;
++    uint32_t n = 0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && n < out_cap; e++) {
++        if (g_reap_spex_pin[il][e]) out[n++] = (int32_t)e;
++    }
++    return n;
++}
++
+ static int ds4_spex_mask_wrap_enabled(void) {
+     static int cached = -1;
+     if (cached < 0) {
+@@ -17377,51 +17641,93 @@ static uint32_t ds4_spex_mask_update_layer(
+         target_il >= DS4_N_LAYER || target_il >= DS4_MAX_LAYER) {
+         return 0;
+     }
++    double *support = g_reap_spex_support[target_il];
++    for (uint32_t i = 0; ranked_ids && i < ranked_n; i++) {
++        const int32_t id = ranked_ids[i];
++        if (id < 0 || (uint32_t)id >= DS4_N_EXPERT) continue;
++        /* Borda-style rank support in (0,1]. It lets this cadence experiment
++         * aggregate prediction persistence without pretending SPX1 logits are
++         * calibrated gate probabilities. */
++        support[(uint32_t)id] +=
++            (double)(ranked_n - i) / (double)ranked_n;
++    }
++    if (ranked_n > 0) g_reap_spex_support_samples[target_il]++;
++
++    const uint32_t cadence = ds4_spex_mask_cadence();
++    const int refresh = !g_reap_spex_refreshed[target_il] ||
++        pos - g_reap_spex_last_refresh[target_il] >= cadence;
++    if (!refresh) {
++        return ds4_spex_mask_copy_active(target_il, out_add, out_cap);
++    }
++
+     uint8_t next[DS4_MAX_EXPERT];
+     memset(next, 0, sizeof(next));
+     uint32_t n = 0;
+-    for (uint32_t i = 0; ranked_ids && i < ranked_n && n < cap && n < out_cap; i++) {
+-        const int32_t id = ranked_ids[i];
+-        if (id < 0 || (uint32_t)id >= DS4_N_EXPERT) continue;
+-        const uint32_t e = (uint32_t)id;
+-        if (!g_reap_mask_pruned[target_il][e] || next[e]) continue;
+-        next[e] = 1;
+-        out_add[n++] = id;
++    while (n < cap && n < out_cap) {
++        int32_t best = -1;
++        double best_support = 0.0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++            if (!g_reap_mask_pruned[target_il][e] || next[e]) continue;
++            if (support[e] > best_support ||
++                (support[e] == best_support && support[e] > 0.0 &&
++                 (best < 0 || e < (uint32_t)best))) {
++                best = (int32_t)e;
++                best_support = support[e];
++            }
++        }
++        if (best < 0 || best_support <= 0.0) break;
++        next[(uint32_t)best] = 1;
++        n++;
++    }
++
++    uint8_t *cur = g_reap_spex_pin[target_il];
++    /* No usable prediction means hold the current lane; never turn a transient
++     * readback miss into an eviction of all provisional experts. */
++    if (n == 0) memcpy(next, cur, DS4_N_EXPERT);
++
++    ds4_reap_expert_id batch[16];
++    uint32_t entrants = 0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && entrants < 16; e++) {
++        if (next[e] && !cur[e]) {
++            batch[entrants].layer = target_il;
++            batch[entrants].expert = e;
++            entrants++;
++        }
+     }
+ 
+     int wrap_ready = 1;
+     double wrap_ms = 0.0;
+-    if (n > 0 && ds4_spex_mask_wrap_enabled()) {
+-        ds4_reap_expert_id batch[16];
+-        for (uint32_t i = 0; i < n; i++) {
+-            batch[i].layer = target_il;
+-            batch[i].expert = (uint32_t)out_add[i];
+-        }
++    if (entrants > 0 && ds4_spex_mask_wrap_enabled()) {
+         const double wrap_t0 = now_sec();
+-        wrap_ready = ds4_reap_prefetch_batch_sync(model, weights, batch, n);
++        wrap_ready = ds4_reap_prefetch_batch_sync(
++            model, weights, batch, entrants);
+         wrap_ms = (now_sec() - wrap_t0) * 1000.0;
+-        if (!wrap_ready) {
+-            memset(next, 0, sizeof(next));
+-            n = 0; /* fail closed: never expose an expert before its WRAP batch */
+-        }
+     }
+ 
+-    uint8_t *cur = g_reap_spex_pin[target_il];
+-    const int changed = memcmp(cur, next, DS4_N_EXPERT) != 0;
+-    if (changed) {
+-        memcpy(cur, next, DS4_N_EXPERT);
+-        g_reap_pin_epoch++;
+-        (void)ds4_reap_mask_apply_layer(model, weights, target_il);
++    int changed = 0;
++    if (wrap_ready) {
++        changed = memcmp(cur, next, DS4_N_EXPERT) != 0;
++        if (changed) {
++            memcpy(cur, next, DS4_N_EXPERT);
++            g_reap_pin_epoch++;
++            (void)ds4_reap_mask_apply_layer(model, weights, target_il);
++        }
++        g_reap_spex_last_refresh[target_il] = pos;
++        g_reap_spex_refreshed[target_il] = 1;
++        memset(support, 0, DS4_MAX_EXPERT * sizeof(*support));
++        g_reap_spex_support_samples[target_il] = 0;
+     }
++    n = ds4_spex_mask_copy_active(target_il, out_add, out_cap);
+ 
+     FILE *fh = ds4_spex_mask_log();
+     if (fh) {
+         fprintf(fh,
+                 "{\"ev\":\"spex_add\",\"pos\":%u,\"source_layer\":%u,"
+-                "\"target_layer\":%u,\"ranked\":%u,\"added\":%u,"
+-                "\"changed\":%d,\"wrap_ready\":%d,\"wrap_ms\":%.3f,"
++                "\"target_layer\":%u,\"ranked\":%u,\"active\":%u,"
++                "\"entrants\":%u,\"cadence\":%u,\"changed\":%d,"
++                "\"wrap_ready\":%d,\"wrap_ms\":%.3f,"
+                 "\"ids\":[",
+-                pos, source_il, target_il, ranked_n, n, changed,
++                pos, source_il, target_il, ranked_n, n, entrants, cadence, changed,
+                 wrap_ready, wrap_ms);
+         for (uint32_t i = 0; i < n; i++)
+             fprintf(fh, "%s%d", i ? "," : "", out_add[i]);
+@@ -17439,6 +17745,9 @@ static void ds4_spex_mask_consume_layer(const ds4_model   *model,
+                                         uint32_t           pos,
+                                         uint32_t           il) {
+     if (ds4_spex_mask_add_cap() == 0 || il >= DS4_MAX_LAYER) return;
++    /* Cadence > 1 is a multi-token lease. The lane is replaced atomically by
++     * the next admission epoch instead of being discarded after one use. */
++    if (ds4_spex_mask_cadence() > 1) return;
+     uint8_t *row = g_reap_spex_pin[il];
+     uint32_t released = 0;
+     for (uint32_t e = 0; e < DS4_N_EXPERT; e++) released += row[e] != 0;
+-- 
+2.54.0.windows.1
+

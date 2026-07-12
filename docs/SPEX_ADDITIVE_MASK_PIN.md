@@ -4,6 +4,11 @@ Status: experimental, off by default. CUDA build on RTX 3060/sm_86 passes.
 The mechanism smoke passes; the first performance smoke is negative and the
 policy is not ready for an L0-L3 quality verdict.
 
+Successor: patch 0045 adds configurable 1/2/4 admission, multi-token
+rank-support cadence, and a weight-triggered adaptive K16..K50 core. See
+`docs/SPEX_ADAPTIVE_K_STRONG_KNOCK.md`. The 0044 top4/K23 result below remains
+the historical baseline and must not be conflated with the 0045 screening.
+
 ## Policy
 
 The stable core remains K23 selected from observed router mass. SPEX does not
