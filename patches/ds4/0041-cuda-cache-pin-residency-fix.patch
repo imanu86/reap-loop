@@ -1,0 +1,111 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -123,6 +123,8 @@
+ static uint64_t g_inplace_reuse_hits;
+ static uint64_t g_inplace_admissions;
+ static uint64_t g_inplace_slot_uploads;
++static uint64_t g_inplace_pin_admits;   /* experts pinned at full cap (~= resident working set) */
++static uint64_t g_inplace_pin_rejects;  /* admits that hit the pin-budget wall (residual churn) */
+ static int g_spex_stats_enabled = -1;
+ static int g_spex_stats_atexit_registered;
+ static int g_spex_stats_printed;
+@@ -959,10 +961,13 @@
+     if (g_inplace_reuse_hits || g_inplace_admissions || g_inplace_slot_uploads) {
+         fprintf(stderr,
+                 "ds4: SPEX inplace: reuse_hits=%llu admissions=%llu "
+-                "slot_uploads=%llu (compact re-gather bypassed)\n",
++                "slot_uploads=%llu pin_admits=%llu pin_rejects=%llu "
++                "(compact re-gather bypassed)\n",
+                 (unsigned long long)g_inplace_reuse_hits,
+                 (unsigned long long)g_inplace_admissions,
+-                (unsigned long long)g_inplace_slot_uploads);
++                (unsigned long long)g_inplace_slot_uploads,
++                (unsigned long long)g_inplace_pin_admits,
++                (unsigned long long)g_inplace_pin_rejects);
+     }
+ }
+ 
+@@ -4310,7 +4315,15 @@
+             cuda_stream_expert_cache_slot &s = cache->slots[i];
+             if (s.valid && s.layer == layer) s.knock *= cfg->decay;
+         }
+-        if (cache->tier_calls >= cfg->warmup) cuda_tier_seed(cache);
++        /* Strategy 2 (seed-after-grow): defer the 0033 dynamic tier seed until
++         * the cache has fully grown to the configured budget, so tier==2/pinned
++         * classification (and the cuda_tier_note_resident promotions gated on
++         * tier_seeded) never fire on a tiny prefill-phase capacity and lock in
++         * prefill-transient experts.  Flag toggles only -> bit-exact. */
++        if (cache->tier_calls >= cfg->warmup &&
++            cache->capacity >= cuda_stream_expert_cache_configured_budget()) {
++            cuda_tier_seed(cache);
++        }
+         return;
+     }
+     const double vram_keep = (cfg->x + cfg->y) - cfg->hyst;
+@@ -4579,22 +4592,49 @@
+          * beyond the budget new admissions stay LRU-evictable (honest degrade
+          * to the per-token-copy behaviour, warned once). */
+         if (!entry.pinned) {
+-            const uint32_t reserve = cache->capacity / 8u + 1u;
+-            const uint32_t sticky_budget =
+-                cache->capacity > reserve ? cache->capacity - reserve : 0u;
+-            if (cache->pinned_count < sticky_budget) {
+-                entry.pinned = 1;
+-                cache->pinned_count++;
+-            } else {
+-                static int warned_capacity_wall = 0;
+-                if (!warned_capacity_wall) {
+-                    warned_capacity_wall = 1;
+-                    fprintf(stderr,
+-                            "ds4: DS4_CUDA_INPLACE_RESIDENT capacity wall: working "
+-                            "set exceeds pin budget (%u slots); new admissions stay "
+-                            "LRU-evictable and may re-copy per token. Raise "
+-                            "DS4_CUDA_STREAMING_EXPERT_CACHE_N.\n",
+-                            sticky_budget);
++            /* Strategy 2 (pin-after-grow): only pin once the cache has fully
++             * grown to the configured budget (decode-stable / post-prefill),
++             * mirroring 0031's freeze-after-warmup.  During the prefill growth
++             * climb (capacity 10 -> ... -> budget) the sticky budget derived
++             * from the TINY live capacity caps pins at ~8, and every subsequent
++             * release_all()+realloc on growth wipes them -> the working set is
++             * re-admitted (re-copied H2D) every token.  Pinning only at full
++             * capacity makes the pinned set the decode-routed working set, and
++             * sticky resolves to capacity-(capacity/8+1) against the true
++             * ceiling (400 -> 349).  This changes only WHEN a slot becomes
++             * eviction-immune, never which weights the GEMM reads -> bit-exact. */
++            const uint32_t full_cap =
++                cuda_stream_expert_cache_configured_budget();
++            if (full_cap != 0 && cache->capacity >= full_cap) {
++                /* Reserve slots kept LRU-evictable so the working set that
++                 * exceeds the pin budget still has victims.  Default cap/8+1
++                 * (12.5%); tune down via DS4_CUDA_INPLACE_RESERVE_SLOTS when the
++                 * routed working set is close to capacity (e.g. K8 ~= 350 vs
++                 * cap 400) so the whole set pins and admissions plateau. */
++                uint32_t reserve = cache->capacity / 8u + 1u;
++                { const char *rs = getenv("DS4_CUDA_INPLACE_RESERVE_SLOTS");
++                  if (rs && rs[0]) {
++                      char *e = NULL; unsigned long v = strtoul(rs, &e, 10);
++                      if (e && *e == '\0' && v < cache->capacity) reserve = (uint32_t)v;
++                  } }
++                const uint32_t sticky_budget =
++                    cache->capacity > reserve ? cache->capacity - reserve : 0u;
++                if (cache->pinned_count < sticky_budget) {
++                    entry.pinned = 1;
++                    cache->pinned_count++;
++                    g_inplace_pin_admits++;
++                } else {
++                    g_inplace_pin_rejects++;
++                    static int warned_capacity_wall = 0;
++                    if (!warned_capacity_wall) {
++                        warned_capacity_wall = 1;
++                        fprintf(stderr,
++                                "ds4: DS4_CUDA_INPLACE_RESIDENT capacity wall: working "
++                                "set exceeds pin budget (%u slots); new admissions stay "
++                                "LRU-evictable and may re-copy per token. Raise "
++                                "DS4_CUDA_STREAMING_EXPERT_CACHE_N.\n",
++                                sticky_budget);
++                    }
+                 }
+             }
+         }
