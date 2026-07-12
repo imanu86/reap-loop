@@ -1,0 +1,33 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 2.285s
+ds4: cuda backend initialized for graph diagnostics
+0712 18:22:28 ds4-server: context buffers 151.57 MiB (ctx=6144, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1538)
+0712 18:22:28 ds4-server: listening on http://127.0.0.1:8073
+0712 18:22:29 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE LIVEMASK on - bootstrap=16 window=10 K=16 observe_top=16 X=11 max_swaps=1 cooldown=16 hyst=999.000 weighted=0 pin=0
+ds4: PACE LIVEMASK adaptive-K ON - K=16..50 strong_weight>=0.150 gain=0.500 step=+4/-1 deadband=2.000 every=2 prefetch=0 history=2..10
+ds4: PACE LIVEMASK 0046 counterfactual-admission ON (window=3 tokens) - growth-slot entrants ranked by counterfactual rolling mean, expulsion/incumbent protection stays mass10
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=10 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0712 18:24:11 ds4-server: chat ctx=0..78:78 prompt done 97.295s
+ds4: REAP mask bias = HARD veto (-1000000000.0000)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=16 K=16 window=10
+0712 18:24:39 ds4-server: shutdown requested, draining requests
+0712 18:24:39 ds4-server: chat ctx=78..95:17 gen=17 decoding chunk=0.64 t/s avg=0.64 t/s 26.522s
+0712 18:24:39 ds4-server: chat ctx=0..78:78 final stream failed
+0712 18:24:39 ds4-server: chat ctx=0..78:78 gen=17 finish=error error="client stream write failed" 123.822s

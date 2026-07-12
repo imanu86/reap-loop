@@ -1,0 +1,24 @@
+INVALID — ENVIRONMENTAL CONTAMINATION, NOT A VERDICT
+
+This run was killed at 2026-07-12 18:24:39 (gen=17 tokens, 64 chars of clean,
+coherent prose — no degeneration) by a CONCURRENT AGENT's `pkill -x ds4-server`
+(a prefill-test agent on the same machine), which kills every ds4-server on
+the host indiscriminately. Confirmed by the orchestrator: coordination error
+on their side, not a failure of the 0046 fix or of this run's config.
+
+Evidence in this directory:
+- server.stderr.log: "shutdown requested, draining requests" at gen=17,
+  then "client stream write failed" — an external SIGTERM, not a crash.
+- stream_live.txt / response.json: 64 chars, coherent Italian prose opening
+  ("Ecco una landing page single-file in stile cyberpunk per un nego"),
+  zero repetition, zero malformation.
+- STOP_REASON.txt says "finished_or_budget" — MISLEADING, superseded by this
+  file: the client stream simply ended when the server was killed, which the
+  guard could not distinguish from a normal server-side stop.
+
+FAIL-FAST ACCOUNTING: this run does NOT count as run 1 of arm A. The protocol
+restarts cleanly at armA_run1b. No quality or tripwire conclusion of any kind
+may be drawn from this directory.
+
+Post-incident kill discipline (binding, from the orchestrator): never
+`pkill -x ds4-server`; only ever `kill $(cat <run_dir>/server.pid)`.

@@ -1,0 +1,17 @@
+{
+  "stream": true,
+  "stream_events": 17,
+  "elapsed_s": 123.866627,
+  "usage": null,
+  "client_stop": null,
+  "stream_error": null,
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un nego"
+      },
+      "finish_reason": null
+    }
+  ]
+}

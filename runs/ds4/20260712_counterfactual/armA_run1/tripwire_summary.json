@@ -1,0 +1,18 @@
+{
+  "run_dir": "/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1",
+  "elapsed_s": 129.5,
+  "k_updates": 0,
+  "k_avg": null,
+  "k_p90": null,
+  "k_max": null,
+  "admit_events_total": 0,
+  "admit_source_counts": {
+    "cf": 0,
+    "mass10": 0
+  },
+  "union_by_layer_top5": [],
+  "union_max_count": 0,
+  "union_max_pct": 0.0,
+  "admit_bucket_rates": {},
+  "tps_recent": 0.626
+}
