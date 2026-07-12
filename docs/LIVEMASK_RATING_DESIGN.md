@@ -144,3 +144,55 @@ Le regole sono **arbitrarie ora**. Ordine corretto:
    render/chiusura `</html>`, t/s) → sweet spot.
 
 Non tunare a intuito: prima il mechanism, poi lo sweep sui numeri.
+
+## 7. BRIDGE "pin per massa" (DECIDE → TIENE) — CONTRATTO DI COORDINAMENTO
+
+**Lacuna diagnosticata (2026-07-12, verificata sul codice 0035):** il reap loop decide la
+SELEZIONE (chi è eleggibile) ma **non comanda il pin**. Prove nel codice:
+- lo scan sceglie il candidato per **frequenza** (`lm_wcount`), non per massa; la massa
+  (`lm_wshare`) la usa solo per vittima + margine di gate;
+- dopo lo swap fa solo `ds4_reap_mask_apply` (applica la mask); il commento è esplicito:
+  *"il delta-prefetch non è presente… la residenza segue lo stream **emergentemente** via 0033
+  (cold miss alla prima richiesta, poi re-pin)"* → il pin **non è comandato**, emerge dai miss;
+- il canale esplicito `DS4_PACE_LIVEMASK_PIN`/`lm_pin` è uno **stub deferito** ("tier bridge not wired").
+
+Manca l'arco **DECIDE → TIENE**: il motore ha già il segnale di massa (`lm_wshare` = Σ share =
+freq×peso) ma non lo esporta come **ordine di pin** al layer di residenza.
+
+### Il seam (FROZEN — nessuna sessione lo ridefinisce)
+
+Segue il precedente di `g_reap_mask_pruned` (globale che ds4.c scrive e ds4_cuda.cu legge):
+
+```c
+/* ds4.c produce, ds4_cuda.cu consuma. Massa windowed dell'expert ELEGGIBILE; 0.0 se pruned. */
+extern float           g_reap_pin_mass[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+extern volatile uint32_t g_reap_pin_epoch;   /* bump a ogni cambio della mask/pin_mass */
+```
+
+- **Attivazione:** `DS4_REAP_PIN_BY_MASS=1` (entrambi i lati gate su questo env; default 0 =
+  comportamento emergente attuale → **niente si rompe da spento**).
+- **Semantica:** `g_reap_pin_mass[L][e]` = `lm_wshare[L][e]` se `e` è eleggibile (mask non-pruned),
+  `0.0` altrimenti. Più alto = tieni pinnato. Aggiornato **una volta per token decode** a fine
+  scan (dopo che la mask si è assestata). `g_reap_pin_epoch++` a ogni variazione.
+
+### Produttore — ds4.c / motore rating [→ sessione PRESSIONE, quizzical-bose]
+
+1. **Rank per MASSA:** seed e scelta candidato ordinano per `lm_wshare` (massa), non `lm_wcount`.
+   `lm_wcount` resta come **gate di knock sostenuto** (≥X token), ma l'ORDINE è per massa.
+2. Popola `g_reap_pin_mass` da `lm_wshare` per gli eleggibili (0 per i pruned) ogni token; bump epoch.
+3. La promozione a pressione aggregata (§4.3) ci sale sopra: sotto pressione ruota più in fretta,
+   e il `g_reap_pin_mass` pubblicato riflette quella rotazione (nessun nuovo seam).
+
+### Consumatore — ds4_cuda.cu / residenza [→ sessione CACHE/PIN, cool-elbakyan]
+
+1. **Prerequisito:** fix cache-growth-pin-thrash PRIMA (senza, qualunque pin viene azzerato).
+2. Cabla `lm_pin`: con `DS4_REAP_PIN_BY_MASS=1`, **pinna attivamente** il set eleggibile invece di
+   aspettare il cold-miss; in eviction, butta per **primo il residente con `g_reap_pin_mass` più basso**
+   (non LRU puro).
+3. **Fattorino (WRAP async)** per il carico BATCH quando il motore ruota molti expert insieme (§4.4b).
+
+### Sync point
+
+Nome array + semantica + env sono **congelati da questo contratto**. Nessuna sessione li cambia
+in autonomia: ogni modifica del seam torna all'orchestratore. Le due metà si costruiscono in
+parallelo e si incastrano su questo seam.
