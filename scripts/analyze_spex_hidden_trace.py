@@ -118,7 +118,7 @@ def load_routing(path: Path, max_selected: int) -> dict[tuple[int, int], Routing
     return rows
 
 
-def iter_hidden(path: Path, n_embd_expected: int):
+def iter_hidden(path: Path, n_embd_expected: int, prefix_order: str = "pos_layer", pos_offset: int = 0):
     with path.open("rb") as fh:
         header = fh.read(DSH1_HEADER.size)
         if len(header) != DSH1_HEADER.size:
@@ -136,7 +136,12 @@ def iter_hidden(path: Path, n_embd_expected: int):
                 break
             if len(blob) != row_bytes:
                 raise SystemExit(f"{path}: truncated DSH1 row {idx}")
-            pos, layer = DSH1_ROW_PREFIX.unpack_from(blob, 0)
+            a, b = DSH1_ROW_PREFIX.unpack_from(blob, 0)
+            if prefix_order == "layer_pos":
+                layer, pos = a, b
+            else:
+                pos, layer = a, b
+            pos += pos_offset
             hidden = np.frombuffer(blob, dtype="<f2", count=n_embd, offset=DSH1_ROW_PREFIX.size)
             yield idx, pos, layer, hidden
             idx += 1
@@ -161,13 +166,14 @@ def evaluate(args: argparse.Namespace) -> str:
     skipped_no_target = 0
     skipped_last_layer = 0
 
-    for idx, pos, layer, hidden in iter_hidden(args.hidden_trace, n_embd):
+    for idx, pos, layer, hidden in iter_hidden(args.hidden_trace, n_embd, args.hidden_prefix_order, args.hidden_pos_offset):
         if args.limit and idx >= args.limit:
             break
-        if layer + 1 >= n_layer:
+        target_layer = layer + args.target_layer_delta
+        if target_layer >= n_layer or target_layer < 0:
             skipped_last_layer += 1
             continue
-        target = routing.get((pos, layer + 1))
+        target = routing.get((pos, target_layer))
         if not target or not target.experts:
             skipped_no_target += 1
             continue
@@ -191,7 +197,7 @@ def evaluate(args: argparse.Namespace) -> str:
                     if expert in pred:
                         weighted_hit += float(weight)
             totals[k].add(hit_count, target_count, weighted_hit, weight_total)
-            by_layer[layer + 1][k].add(hit_count, target_count, weighted_hit, weight_total)
+            by_layer[target_layer][k].add(hit_count, target_count, weighted_hit, weight_total)
 
     lines = [
         f"spex={args.spex}",
@@ -215,6 +221,9 @@ def main() -> int:
     ap.add_argument("--spex", required=True, type=Path, help="Hidden SPX1 predictor file")
     ap.add_argument("--hidden-trace", required=True, type=Path, help="DSH1 hidden trace")
     ap.add_argument("--routing-csv", required=True, type=Path, help="DS4 routing CSV")
+    ap.add_argument("--hidden-prefix-order", choices=["pos_layer", "layer_pos"], default="pos_layer", help="Order of the two uint32 fields in each DSH1 row")
+    ap.add_argument("--hidden-pos-offset", type=int, default=0, help="Offset added to DSH1 positions before matching routing CSV")
+    ap.add_argument("--target-layer-delta", type=int, default=1, help="Routing layer compared against each hidden row layer")
     ap.add_argument("--k", type=int, nargs="+", default=[6, 8, 12, 16, 23])
     ap.add_argument("--max-selected", type=int, default=6)
     ap.add_argument("--limit", type=int, default=0, help="Limit hidden rows for quick checks")
