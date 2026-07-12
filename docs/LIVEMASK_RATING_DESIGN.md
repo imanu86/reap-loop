@@ -109,7 +109,7 @@ Il cooldown resta solo **backstop** per input patologici (domanda A-B-A-B/token)
    più swap/layer. **Ruota più veloce, MAI allarga K** (§0). È il "respiro di fase" fatto con la
    velocità di rotazione. **Ipotesi del collasso K8:** il promote lento (X≥3 + cooldown) non regge
    il picco di pressione dello shift → i codice-esperti non entrano in tempo → word-salad. →
-   env `_PRESSURE_PROMOTE` (soglia pressione), `_PRESSURE_COOLDOWN`/`_PRESSURE_X` (valori accelerati).
+   env `DS4_PACE_LIVEMASK_PRESSURE` (ratio pressione, 0=off) + `_PRESSURE_KNOCK`/`_PRESSURE_COOLDOWN`/`_PRESSURE_X`/`_PRESSURE_MAX_SWAPS` (valori accelerati). **[impl. patch 0039 — questi sono i nomi REALI nel codice]**
 4. **Co-occorrenza (SPEX):** se A e B vanno spesso insieme, promuovere A **pre-scalda** B
    (il predittore SPEX lo fa cross-layer).
 4b. **SWAP GROSSO → FATTORINO async (intuizione utente 2026-07-12):** quando la promozione a
@@ -132,8 +132,12 @@ Il cooldown resta solo **backstop** per input patologici (domanda A-B-A-B/token)
 
 - **Esistenti (0035/0037):** `_K`, `_WINDOW`, `_X`, `_MAX_SWAPS`, `_COOLDOWN`, `_HYST`,
   `_OBSERVE_TOP`, `_BOOTSTRAP`, `_WEIGHTED`.
-- **Da aggiungere:** `_BLOCKED_WEIGHT`, `_RANK_WEIGHT`, `_DEMOTE_HORIZON`, `_PROMO_RATE_CAP`,
-  `_PHASE_BREATH`.
+- **Landati (0038):** `_BLOCKED_WEIGHT`, `_DEMOTE_HORIZON`, `_PROMO_RATE_CAP`.
+- **Landati (0039 pressione):** `DS4_PACE_LIVEMASK_PRESSURE` (ratio, 0=off), `_PRESSURE_KNOCK`,
+  `_PRESSURE_COOLDOWN`, `_PRESSURE_X`, `_PRESSURE_MAX_SWAPS`.
+- **Landati (0040 bridge §7):** `DS4_REAP_PIN_BY_MASS` (produttore; default 0 = byte-identico a 0038,
+  md5 verificato 3a3988bb).
+- **Da aggiungere:** `_RANK_WEIGHT`, `_PHASE_BREATH`.
 
 ## 6. Piano
 
