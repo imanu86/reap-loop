@@ -1,0 +1,2 @@
+[cf_tripwire_monitor] watching run-dir=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1b
+[cf_tripwire_monitor] TRIPWIRE FIRED: speed_to_k0 :: t/s=0.544 < 1.5 sustained over >50 tokens

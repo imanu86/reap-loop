@@ -1,0 +1,49 @@
+{
+  "run_dir": "/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1b",
+  "elapsed_s": 180.8,
+  "k_updates": 36,
+  "k_avg": 26.36111111111111,
+  "k_p90": 32,
+  "k_max": 33,
+  "admit_events_total": 920,
+  "admit_source_counts": {
+    "cf": 920,
+    "mass10": 0
+  },
+  "union_by_layer_top5": [
+    [
+      3,
+      23
+    ],
+    [
+      4,
+      23
+    ],
+    [
+      5,
+      23
+    ],
+    [
+      6,
+      23
+    ],
+    [
+      7,
+      23
+    ]
+  ],
+  "union_max_count": 23,
+  "union_max_pct": 8.98,
+  "admit_bucket_rates": {
+    "0": 320,
+    "1": 440,
+    "2": 160
+  },
+  "tps_recent": 0.544,
+  "tripwire_triggered": {
+    "reason": "speed_to_k0",
+    "detail": "t/s=0.544 < 1.5 sustained over >50 tokens",
+    "elapsed_s": 180.8,
+    "at_utc": "2026-07-12T17:07:11Z"
+  }
+}

@@ -1,0 +1,7 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="ita">
+<head>
+    <meta charset

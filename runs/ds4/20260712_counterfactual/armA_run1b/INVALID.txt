@@ -1,0 +1,26 @@
+INVALID — AMBIENTALE (page-cache fredda post drop_caches), NON UN VERDETTO
+
+Tripwire "speed_to_k0" scattato a t/s=0.544 (<1.5 sostenuto >50 tok) alle
+17:07:11Z. MA il taglio è un probabile falso positivo ambientale: i test
+cold del prefill dell'agente precedente hanno chiuso con drop_caches →
+page-cache fredda → ogni expert va a SSD. 0.47-0.54 t/s è compatibile col
+freddo puro (anche K0-full fa ~0.8 da freddo); la soglia 1.5 era calibrata
+su warm (2.9-3.3). Orchestratore concorde: non conta per il fail-fast.
+
+SEGNALE POSITIVO DA PRESERVARE (meccanismo, non verdetto qualità):
+- La QUALITÀ reggeva al momento del taglio: transizione pulita
+  prosa → ```html con <!DOCTYPE html>, <html lang="ita">, <head>,
+  <meta charset — zero tag-salad, zero ripetizione.
+- Controller adaptive-K sano: K avg 26.36, p90 32, max 33 su clamp 16..50
+  (nessuna saturazione); 36 update.
+- Ammissione controfattuale attiva e coerente: 920 admit, TUTTI source=cf.
+- Unione max per layer 23/256 = 8.98% (tripwire union a 50%: lontano).
+- Churn in DECADIMENTO: bucket admits 320 → 440 → 160 (trend corretto,
+  nessun rotate-costante).
+
+PROSSIMO: armA_run1c con PRE-WARM documentato (stessa richiesta,
+max_tokens 40, sullo stesso server appena avviato) PRIMA del measured;
+tripwire velocità attivo solo sul measured (che parte warm); unione/churn
+attivi da subito. REGOLA FERMA: se run1c con warm documentato resta <1.5
+t/s sostenuto, il verdetto velocità→K0 STA (fallimento reale: il churn
+controfattuale costa troppo). Niente terza scusa.

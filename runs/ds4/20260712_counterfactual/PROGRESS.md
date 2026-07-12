@@ -69,7 +69,17 @@ as-found, see patch header).
 
 ## Run table (updated live)
 
-| run | esito | motivo stop | grader | K avg/p90 | admit/tok | union max | t/s |
+| run | esito | motivo stop | grader | K avg/p90 | admit tot (fonte) | union max | t/s |
 |---|---|---|---|---|---|---|---|
-| armA_run1 | INVALID (killed by concurrent agent) | external pkill at gen=17 | n/a | n/a | n/a | n/a | n/a |
-| armA_run1b | IN CORSO | — | — | — | — | — | — |
+| armA_run1 | INVALID ambientale (pkill agente concorrente) | external SIGTERM a gen=17 | n/a (64 char prosa pulita) | n/a | n/a | n/a | n/a |
+| armA_run1b | INVALID ambientale (page-cache fredda post drop_caches) | tripwire speed_to_k0 a 0.544 t/s | n/a (qualita' PULITA al taglio: prosa -> ```html + DOCTYPE/head corretti) | 26.36 / 32 (max 33) | 920 (100% cf) | 23/256 = 8.98% | 0.54 (freddo) |
+| armA_run1c | IN CORSO (con pre-warm documentato) | — | — | — | — | — | — |
+
+Aggiornamento protocollo dopo run1b (ordine orchestratore):
+- pre-warm documentato (stesso prompt, max_tokens 40, stesso server) PRIMA
+  del measured; RUN_META registra timestamps/durata/rc del warmup.
+- tripwire velocita': misura solo lo stream measured (parte warm);
+  unione/churn attivi da subito (warmup incluso).
+- REGOLA FERMA: se run1c con warm documentato resta <1.5 t/s sostenuto, il
+  verdetto velocita'->K0 STA (fallimento reale del meccanismo: il churn
+  controfattuale costa troppo). Niente terza scusa.

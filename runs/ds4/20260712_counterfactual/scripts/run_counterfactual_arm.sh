@@ -70,6 +70,27 @@ with open(sys.argv[2], "w", encoding="utf-8") as dst:
     json.dump(request, dst, ensure_ascii=False, indent=2)
 PY
 
+# Pre-warm request: same prompt, short budget, non-stream, executed on the
+# same server BEFORE the measured request so expert cache + page cache are
+# warm when measurement starts (historical oracle50/livemask smoke practice;
+# added after armA_run1b's cold-cache speed false positive). The speed
+# tripwire only computes t/s from the measured stream (stream_events.jsonl),
+# so it is effectively armed post-warm; the union/churn tripwires read
+# livemask.jsonl from byte 0 and therefore stay active from the very start,
+# warmup included.
+python3 - "$OUT/request.json" "$OUT/warmup_request.json" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as src:
+    request = json.load(src)
+request["max_tokens"] = 40
+request["stream"] = False
+request.pop("stream_options", None)
+with open(sys.argv[2], "w", encoding="utf-8") as dst:
+    json.dump(request, dst, ensure_ascii=False, indent=2)
+PY
+
 # ---- baseline env (task GPU section) ----
 export DS4_CUDA_NO_DIRECT_IO=1
 export DS4_CUDA_KEEP_MODEL_PAGES=1
@@ -163,6 +184,35 @@ if [[ "$ready" != 1 ]]; then
   echo "server_not_ready" > "$OUT/STOP_REASON.txt"
   exit 1
 fi
+
+# ---- documented pre-warm (before any measurement) ----
+warmup_t0=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+warmup_s0=$(date +%s.%N)
+set +e
+curl -fsS -m 1800 \
+  -H "Content-Type: application/json" \
+  -d @"$OUT/warmup_request.json" \
+  "http://127.0.0.1:$PORT/v1/chat/completions" \
+  > "$OUT/warmup_response.json" 2> "$OUT/warmup_curl.err"
+warmup_rc=$?
+set -e
+warmup_s1=$(date +%s.%N)
+warmup_t1=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+warmup_dur=$(python3 -c "print(round($warmup_s1 - $warmup_s0, 1))")
+{
+  echo "warmup_started_utc=$warmup_t0"
+  echo "warmup_finished_utc=$warmup_t1"
+  echo "warmup_duration_s=$warmup_dur"
+  echo "warmup_curl_rc=$warmup_rc"
+  echo "warmup_max_tokens=40"
+  echo "warmup_note=same prompt as measured, non-stream, run on the same server instance BEFORE the measured request; warms expert cache + page cache. Speed tripwire measures only the measured stream (post-warm); union/churn tripwires include warmup livemask events."
+} >> "$OUT/RUN_META.txt"
+if [[ "$warmup_rc" != 0 ]]; then
+  echo "warmup request failed (rc=$warmup_rc); aborting run as invalid-setup" >&2
+  echo "warmup_failed_rc=$warmup_rc" > "$OUT/STOP_REASON.txt"
+  exit 1
+fi
+echo "warmup done in ${warmup_dur}s"
 
 # Start the tripwire monitor in the background; it self-stops on
 # response.json, WATCHDOG_KILL.txt, or its own trigger.
