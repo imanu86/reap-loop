@@ -1,0 +1,50 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.411s
+ds4: cuda backend initialized for graph diagnostics
+0712 09:56:13 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 09:56:13 ds4-server: listening on http://127.0.0.1:8052
+0712 09:56:14 ds4-server: chat ctx=0..60:60 prompt start
+ds4: PACE LIVEMASK on - bootstrap=10 window=8 K=23 observe_top=16 X=3 max_swaps=2 cooldown=16 hyst=1.000 weighted=0 pin=0
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=8 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: CUDA loading model tensors 0.00 GiB cached
+0712 09:56:24 ds4-server: chat ctx=0..60:60 prompt done 9.929s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=23 window=8
+0712 09:56:42 ds4-server: chat ctx=60..100:40 gen=40 decoding chunk=2.15 t/s avg=2.15 t/s 18.632s
+0712 09:56:42 ds4-server: chat ctx=0..60:60 gen=40 finish=length 28.564s
+0712 09:56:42 ds4-server: live kv cache miss live=100 prompt=60 common=60 reason=token-mismatch
+0712 09:56:43 ds4-server: chat ctx=0..60:60 prompt start
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 0.01 GiB cached
+0712 09:56:52 ds4-server: chat ctx=0..60:60 prompt done 8.510s
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=23 window=8
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0712 09:57:10 ds4-server: chat ctx=60..110:50 gen=50 decoding chunk=2.78 t/s avg=2.78 t/s 17.982s
+0712 09:57:27 ds4-server: chat ctx=110..160:50 gen=100 decoding chunk=2.99 t/s avg=2.88 t/s 34.701s
+0712 09:57:45 ds4-server: chat ctx=160..210:50 gen=150 decoding chunk=2.90 t/s avg=2.89 t/s 51.936s
+0712 09:58:02 ds4-server: chat ctx=210..260:50 gen=200 decoding chunk=2.99 t/s avg=2.91 t/s 68.654s
+0712 09:58:19 ds4-server: chat ctx=260..310:50 gen=250 decoding chunk=2.96 t/s avg=2.92 t/s 85.551s
+0712 09:58:37 ds4-server: chat ctx=310..360:50 gen=300 decoding chunk=2.96 t/s avg=2.93 t/s 102.426s
+0712 09:58:54 ds4-server: chat ctx=360..410:50 gen=350 decoding chunk=2.93 t/s avg=2.93 t/s 119.471s
+0712 09:59:12 ds4-server: chat ctx=410..460:50 gen=400 decoding chunk=2.94 t/s avg=2.93 t/s 136.451s
+0712 09:59:29 ds4-server: chat ctx=460..510:50 gen=450 decoding chunk=2.94 t/s avg=2.93 t/s 153.471s
+0712 09:59:47 ds4-server: chat ctx=510..560:50 gen=500 decoding chunk=2.92 t/s avg=2.93 t/s 170.603s
+0712 10:00:04 ds4-server: chat ctx=560..610:50 gen=550 decoding chunk=2.94 t/s avg=2.93 t/s 187.625s
+0712 10:00:22 ds4-server: chat ctx=610..660:50 gen=600 decoding chunk=2.84 t/s avg=2.92 t/s 205.202s
+0712 10:00:40 ds4-server: chat ctx=660..710:50 gen=650 decoding chunk=2.91 t/s avg=2.92 t/s 222.407s
+0712 10:00:57 ds4-server: chat ctx=710..760:50 gen=700 decoding chunk=2.92 t/s avg=2.92 t/s 239.533s
+0712 10:01:15 ds4-server: chat ctx=760..810:50 gen=750 decoding chunk=2.90 t/s avg=2.92 t/s 256.759s
+0712 10:01:32 ds4-server: chat ctx=810..860:50 gen=800 decoding chunk=2.91 t/s avg=2.92 t/s 273.921s
+0712 10:01:51 ds4-server: chat ctx=860..910:50 gen=850 decoding chunk=2.90 t/s avg=2.92 t/s 291.151s
+0712 10:02:08 ds4-server: chat ctx=910..960:50 gen=900 decoding chunk=2.93 t/s avg=2.92 t/s 308.202s
+0712 10:02:08 ds4-server: chat ctx=0..60:60 gen=900 finish=length 316.715s
+0712 10:02:08 ds4-server: shutdown requested, draining requests

@@ -1,0 +1,13 @@
+[ws] START 2026-07-12T09:47:58+02:00
+[ws] clamp rilassato: hit=1
+[ws] build md5=7d05e34a5695 err=0
+[win5] up=1 W=5 2026-07-12T09:49:21+02:00
+[RESULT-win5] W=5 close=0 chars=2940 | avg=2.92 t/s
+  tail: ...tml <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html <!index.html 
+[win8] up=1 W=8 2026-07-12T09:56:14+02:00
+[RESULT-win8] W=8 close=0 chars=2148 | avg=2.92 t/s
+  tail: ...TML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!HTML <!
+[win12] up=1 W=12 2026-07-12T10:02:16+02:00
+[RESULT-win12] W=12 close=0 chars=1916 | avg=3.00 t/s
+  tail: ...' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box' *' box
+[win16] up=1 W=16 2026-07-12T10:08:07+02:00
