@@ -1,0 +1,276 @@
+diff --git a/ds4.c b/ds4.c
+index 9a0fb99..1fd203e 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7412,6 +7412,34 @@ static double    g_reap_spex_support[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static uint32_t  g_reap_spex_support_samples[DS4_MAX_LAYER];
+ static uint32_t  g_reap_spex_last_refresh[DS4_MAX_LAYER];
+ static uint8_t   g_reap_spex_refreshed[DS4_MAX_LAYER];
++/* patch 0046: counterfactual admission fix. Short rolling mean (default 3
++ * decode tokens, DS4_PACE_ADAPTIVE_CF_ADMIT_WINDOW) of the counterfactual
++ * (pre-mask) selected-top6 weight for currently EXCLUDED experts. This is a
++ * fast, short-horizon companion to lm_wshare's slow ~10-20 token mass10
++ * integral. When DS4_PACE_ADAPTIVE_CF_ADMIT=1, ds4_pace_livemask_adapt_k
++ * ranks growth-slot entrants by THIS signal instead of mass10, connecting
++ * the strong-knock trigger (B(t)/A(t), also counterfactual) to the
++ * admission actuator. Expulsion / incumbent protection when K shrinks stays
++ * on mass10 unconditionally. Off (0, default) reproduces 0045 exactly. */
++#define DS4_CF_ADMIT_WINDOW_MAX 8
++static double    g_cf_admit_ring[DS4_MAX_LAYER][DS4_MAX_EXPERT][DS4_CF_ADMIT_WINDOW_MAX];
++static double    g_cf_admit_sum[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++static int       g_cf_admit_ring_pos[DS4_MAX_LAYER];
++static int       g_cf_admit_ring_fill[DS4_MAX_LAYER];
++
++/* patch 0046 (post-review fix): an admitted expert's ring/sum FREEZE while it
++ * is resident -- note_probs only samples currently-excluded experts. If it is
++ * later expelled (mass10 victim) without clearing, its stale pre-expulsion
++ * sum can make it look like the top re-admission candidate on the very next
++ * growth event regardless of current demand: a ghost-churn source unrelated
++ * to any real signal. Call this at every live resident->excluded transition
++ * (never at admitted->resident, which needs no clear) so each exclusion
++ * stint starts cold. Cheap: O(1), only touched on actual mask transitions. */
++static inline void ds4_cf_admit_clear(uint32_t il, uint32_t e) {
++    if (il >= DS4_MAX_LAYER || e >= DS4_MAX_EXPERT) return;
++    memset(g_cf_admit_ring[il][e], 0, sizeof(g_cf_admit_ring[il][e]));
++    g_cf_admit_sum[il][e] = 0.0;
++}
+ volatile uint32_t g_reap_pin_epoch = 0;
+ static float g_reap_bias_masked[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static const void *g_reap_bias_tensor[DS4_MAX_LAYER];
+@@ -7533,6 +7561,8 @@ static struct {
+     uint32_t lm_knock_ring[32];  /* 0045: previous token counts */
+     int      lm_knock_ring_pos;
+     int      lm_knock_ring_fill;
++    int      lm_cf_admit;        /* 0046: DS4_PACE_ADAPTIVE_CF_ADMIT master gate */
++    int      lm_cf_admit_window; /* 0046: rolling-mean length in decode tokens (1..8) */
+     int      lm_observe_top;     /* unbiased top-N recorded per token/layer */
+     int      lm_x;               /* integer windowed-knock threshold */
+     int      lm_max_swaps;       /* per layer per scan */
+@@ -7627,6 +7657,44 @@ static inline int ds4_reap_mask_effectively_pruned(uint32_t il, uint32_t e) {
+     return g_reap_mask_pruned[il][e] && !g_reap_spex_pin[il][e];
+ }
+ 
++/* patch 0046: soft-mask bias. DS4_REAP_MASK_SOFT_BIAS unset or 0.0 (default)
++ * reproduces the original hard -1e9 veto exactly. A nonzero finite value
++ * (e.g. -2.0) lets a pruned expert with very strong instantaneous demand
++ * still win the argmax/top-k in the SAME token, paying only a soft penalty
++ * instead of being categorically excluded. Independent of patch 0046's
++ * counterfactual admission fix; reads its env once and caches. Deliberately
++ * uses getenv/atof directly (not pace_env_d) because this helper's first
++ * caller runs before pace_env_* is defined further down the file. */
++static float ds4_reap_mask_bias_value(void) {
++    static int   cached = 0;
++    static float value = -1.0e9f;
++    if (!cached) {
++        const char *s = getenv("DS4_REAP_MASK_SOFT_BIAS");
++        double v = (s && *s) ? atof(s) : 0.0;
++        /* Post-review guard: atof("nan")/("inf")/garbage must never reach the
++         * router logits (NaN/inf bias would poison every downstream softmax),
++         * and a positive value would REWARD exclusion instead of penalizing
++         * it (a typo like "2.0" meant as "-2.0"). Reject both by falling back
++         * to the safe hard veto -- never silently do the opposite of what a
++         * soft-mask bias is for. */
++        if (!isfinite(v) || v >= 0.0) {
++            if (s && *s && v != 0.0)
++                fprintf(stderr,
++                        "ds4: REAP mask SOFT BIAS: rejecting invalid "
++                        "DS4_REAP_MASK_SOFT_BIAS=%s (must be finite and "
++                        "negative) -- falling back to HARD veto\n", s);
++            v = 0.0;
++        }
++        value = (v != 0.0) ? (float)v : -1.0e9f;
++        cached = 1;
++        fprintf(stderr,
++                "ds4: REAP mask bias = %s (%.4f)\n",
++                (value <= -1.0e9f) ? "HARD veto" : "SOFT finite",
++                (double)value);
++    }
++    return value;
++}
++
+ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weights) {
+     uint32_t slot = 0, ranges_updated = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && slot < DS4_MAX_LAYER; il++) {
+@@ -7635,7 +7703,7 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+         const float *orig = (const float *)tensor_data(model, layer->ffn_exp_probs_b);
+         for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
+             g_reap_bias_masked[slot][e] = orig[e] +
+-                (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
++                (ds4_reap_mask_effectively_pruned(il, e) ? ds4_reap_mask_bias_value() : 0.0f);
+         }
+         g_reap_bias_tensor[slot] = layer->ffn_exp_probs_b;
+         int upd = ds4_gpu_model_range_update(model->map,
+@@ -7669,7 +7737,7 @@ static int ds4_reap_mask_apply_layer(const ds4_model *model,
+             (const float *)tensor_data(model, layer->ffn_exp_probs_b);
+         for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
+             g_reap_bias_masked[slot][e] = orig[e] +
+-                (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
++                (ds4_reap_mask_effectively_pruned(il, e) ? ds4_reap_mask_bias_value() : 0.0f);
+         }
+         g_reap_bias_tensor[slot] = layer->ffn_exp_probs_b;
+         if (slot >= g_reap_bias_n) g_reap_bias_n = slot + 1u;
+@@ -7696,7 +7764,7 @@ static int ds4_reap_mask_apply_layer_direct(
+         (const float *)tensor_data(model, layer->ffn_exp_probs_b);
+     for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
+         g_reap_bias_masked[slot][e] = orig[e] +
+-            (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
++            (ds4_reap_mask_effectively_pruned(il, e) ? ds4_reap_mask_bias_value() : 0.0f);
+     }
+     return ds4_gpu_model_range_update(
+                model->map,
+@@ -13233,6 +13301,17 @@ static void ds4_pace_init(void) {
+                 g_pace.lm_knock_min_history = 1;
+             if (g_pace.lm_knock_min_history > g_pace.lm_window)
+                 g_pace.lm_knock_min_history = g_pace.lm_window;
++            /* patch 0046: counterfactual admission fix. Off by default so
++             * 0045 is reproduced exactly; when on, growth-slot entrants in
++             * ds4_pace_livemask_adapt_k are picked by the short counterfactual
++             * rolling mean (this window) instead of mass10. */
++            g_pace.lm_cf_admit = pace_env_i(
++                "DS4_PACE_ADAPTIVE_CF_ADMIT", 0) ? 1 : 0;
++            g_pace.lm_cf_admit_window = pace_env_i(
++                "DS4_PACE_ADAPTIVE_CF_ADMIT_WINDOW", 3);
++            if (g_pace.lm_cf_admit_window < 1) g_pace.lm_cf_admit_window = 1;
++            if (g_pace.lm_cf_admit_window > DS4_CF_ADMIT_WINDOW_MAX)
++                g_pace.lm_cf_admit_window = DS4_CF_ADMIT_WINDOW_MAX;
+             g_pace.lm_observe_top = pace_env_i("DS4_PACE_LIVEMASK_OBSERVE_TOP", 16);
+             if (g_pace.lm_observe_top < 1) g_pace.lm_observe_top = 1;
+             if (g_pace.lm_observe_top > DS4_LM_OBS_MAX) g_pace.lm_observe_top = DS4_LM_OBS_MAX;
+@@ -13339,6 +13418,16 @@ static void ds4_pace_init(void) {
+                     g_pace.lm_knock_update_every,
+                     g_pace.lm_knock_prefetch,
+                     g_pace.lm_knock_min_history, g_pace.lm_window);
++            if (g_pace.lm_adaptive_k)
++                fprintf(stderr,
++                    "ds4: PACE LIVEMASK 0046 counterfactual-admission %s "
++                    "(window=%d tokens) - growth-slot entrants %s, "
++                    "expulsion/incumbent protection stays mass10\n",
++                    g_pace.lm_cf_admit ? "ON" : "off",
++                    g_pace.lm_cf_admit_window,
++                    g_pace.lm_cf_admit ?
++                        "ranked by counterfactual rolling mean" :
++                        "ranked by mass10 (0045 behavior)");
+             if (g_pace.lm_k <= 8)
+                 fprintf(stderr, "ds4: PACE LIVEMASK note: K=%d is the AGGRESSIVE stress config; "
+                     "wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.\n", g_pace.lm_k);
+@@ -13611,6 +13700,39 @@ static void ds4_pace_livemask_note_probs(uint32_t il, const float *probs) {
+                 }
+             }
+         }
++        if (g_pace.lm_cf_admit) {
++            /* patch 0046: feed the per-expert short rolling mean used by
++             * ds4_pace_livemask_adapt_k for growth-slot admission. Every
++             * currently-excluded expert gets one sample this token: its
++             * selected_weight if it appears in the counterfactual top-6
++             * (threshold-free, unlike the strong-knock count above), else
++             * 0.0. The ring free-runs only while an expert stays excluded;
++             * a resident expert's history is simply not touched (no signal
++             * needed while it is already admitted). */
++            uint32_t ne = DS4_N_EXPERT;
++            if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++            const int W   = g_pace.lm_cf_admit_window;
++            const int pos = g_cf_admit_ring_pos[il];
++            const int fill = g_cf_admit_ring_fill[il];
++            for (uint32_t e = 0; e < ne; e++) {
++                if (!ds4_reap_mask_effectively_pruned(il, e)) continue;
++                double sample = 0.0;
++                if (selected_sum > 0.0) {
++                    for (int i = 0; i < strong_n; i++) {
++                        if (strong_id[i] == (uint16_t)e) {
++                            sample = strong_share[i] / selected_sum;
++                            break;
++                        }
++                    }
++                }
++                double *ring = g_cf_admit_ring[il][e];
++                const double old = (fill >= W) ? ring[pos] : 0.0;
++                g_cf_admit_sum[il][e] += sample - old;
++                ring[pos] = sample;
++            }
++            g_cf_admit_ring_pos[il] = (pos + 1) % W;
++            if (g_cf_admit_ring_fill[il] < W) g_cf_admit_ring_fill[il]++;
++        }
+     }
+ }
+ 
+@@ -13912,13 +14034,33 @@ static int ds4_pace_livemask_adapt_k(
+             const double *ws =
+                 &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
+             if (new_k > old_k) {
++                /* patch 0046: growth-slot admission ranking. OFF (default)
++                 * reproduces 0045 exactly: rank candidates by mass10 (ws[e],
++                 * the ~10-20 token windowed counterfactual share). ON: rank
++                 * by the fast ~lm_cf_admit_window-token counterfactual
++                 * rolling mean instead -- this connects WHO gets admitted to
++                 * WHY K grew (the strong-knock trigger is itself
++                 * counterfactual and short-horizon). ws[e] is kept as a
++                 * deterministic tie-break so a cold ring (all-zero CF
++                 * average, e.g. right after seed) does not fall back to
++                 * arbitrary lowest-index selection. */
++                const int cf_on = g_pace.lm_cf_admit;
++                const int cf_fill = g_cf_admit_ring_fill[il];
+                 for (int slot = old_k; slot < new_k; slot++) {
+                     int best = -1;
++                    double best_score = -1.0;
+                     double best_mass = -1.0;
+                     for (uint32_t e = 0; e < ne; e++) {
+                         if (!g_reap_mask_pruned[il][e]) continue;
+-                        if (ws[e] > best_mass) {
++                        double score = ws[e];
++                        if (cf_on) {
++                            score = cf_fill > 0 ?
++                                g_cf_admit_sum[il][e] / (double)cf_fill : 0.0;
++                        }
++                        if (score > best_score ||
++                            (score == best_score && ws[e] > best_mass)) {
+                             best = (int)e;
++                            best_score = score;
+                             best_mass = ws[e];
+                         }
+                     }
+@@ -13934,6 +14076,14 @@ static int ds4_pace_livemask_adapt_k(
+                         (*promo)[*promo_n].expert = (uint32_t)best;
+                         (*promo_n)++;
+                     }
++                    if (g_pace.lm_log) {
++                        fprintf(g_pace.lm_log,
++                                "{\"ev\":\"cf_admit\",\"tok\":%u,\"layer\":%u,"
++                                "\"expert\":%d,\"score\":%.6g,\"mass10\":%.6g,"
++                                "\"source\":\"%s\"}\n",
++                                g_pace.lm_tok, il, best, best_score,
++                                ws[best], cf_on ? "cf" : "mass10");
++                    }
+                     dirty = 1;
+                 }
+             } else {
+@@ -13949,6 +14099,7 @@ static int ds4_pace_livemask_adapt_k(
+                     }
+                     if (victim < 0) break;
+                     g_reap_mask_pruned[il][victim] = 1;
++                    ds4_cf_admit_clear(il, (uint32_t)victim);
+                     dirty = 1;
+                 }
+             }
+@@ -14094,6 +14245,7 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+                 g_pace.lm_promo_win_count >= g_pace.lm_promo_rate_cap) break;
+             g_reap_mask_pruned[il][vic]  = 1;
+             g_reap_mask_pruned[il][cand] = 0;
++            ds4_cf_admit_clear(il, (uint32_t)vic);
+             g_pace.lm_last_swap_tok[il]  = g_pace.lm_tok;
+             if (g_pace.lm_promo_rate_cap > 0) g_pace.lm_promo_win_count++;
+             dirty = 1;
+@@ -14195,6 +14347,14 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+     memset(g_pace.lm_knock_ring, 0, sizeof(g_pace.lm_knock_ring));
+     g_pace.lm_knock_ring_pos = 0;
+     g_pace.lm_knock_ring_fill = 0;
++    /* patch 0046: no counterfactual admission history survives a prompt
++     * boundary either -- same clean-slate discipline as the knock ring
++     * above, so a new request never inherits another prompt's admission
++     * bias. */
++    memset(g_cf_admit_ring, 0, sizeof(g_cf_admit_ring));
++    memset(g_cf_admit_sum, 0, sizeof(g_cf_admit_sum));
++    memset(g_cf_admit_ring_pos, 0, sizeof(g_cf_admit_ring_pos));
++    memset(g_cf_admit_ring_fill, 0, sizeof(g_cf_admit_ring_fill));
+     /* 0044: no provisional expert survives a prompt boundary. The full mask
+      * apply below then restores a true K0 bootstrap without stale overlays. */
+     if (ds4_spex_mask_add_cap() > 0) {
