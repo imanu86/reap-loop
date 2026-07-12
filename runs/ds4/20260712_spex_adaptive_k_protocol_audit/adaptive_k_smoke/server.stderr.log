@@ -1,0 +1,35 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.854s
+ds4: cuda backend initialized for graph diagnostics
+0712 15:34:01 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0712 15:34:01 ds4-server: listening on http://127.0.0.1:8061
+0712 15:34:03 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE LIVEMASK on - bootstrap=16 window=10 K=16 observe_top=16 X=11 max_swaps=1 cooldown=16 hyst=999.000 weighted=0 pin=0
+ds4: PACE LIVEMASK adaptive-K ON - K=16..50 strong_weight>=0.150 gain=0.500 history=2..10
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=10 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+0712 15:35:06 ds4-server: chat ctx=0..78:78 prompt done 60.560s
+ds4: CUDA loading model tensors 0.71 GiB cached
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=16 K=16 window=10
+0712 15:35:46 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=1.26 t/s avg=1.26 t/s 39.833s
+0712 15:35:56 ds4-server: chat ctx=128..158:30 gen=80 decoding chunk=2.98 t/s avg=1.60 t/s 49.895s
+0712 15:35:56 ds4-server: chat ctx=0..78:78 gen=80 finish=length 110.460s
+0712 15:35:57 ds4-server: shutdown requested, draining requests
+ds4: expert tiering observe summary batches=3483 slots=40764 compact=24876 hit_rate=0.5034 hits=10390 misses=10250 direct=4236 evictions=9994 direct=28593.00 MiB compact=167913.00 MiB
+ds4: expert tiering observe layer=1 batches=81 slots=948 compact=686 hit_rate=0.0000 misses=480 direct=206 evictions=474 cap=256 top=204:13,212:12,27:11,82:11,146:11,7:10
+ds4: expert tiering observe layer=2 batches=81 slots=948 compact=683 hit_rate=0.0000 misses=480 direct=203 evictions=474 cap=256 top=65:17,128:14,182:14,125:13,74:12,174:12
+ds4: expert tiering observe layer=0 batches=81 slots=948 compact=680 hit_rate=0.0000 misses=480 direct=200 evictions=474 cap=256 top=74:14,174:13,177:13,245:12,11:11,65:11
+ds4: expert tiering observe layer=9 batches=81 slots=948 compact=588 hit_rate=0.3750 misses=300 direct=108 evictions=294 cap=256 top=185:85,26:77,47:76,63:67,195:51,232:39
+ds4: expert tiering observe layer=15 batches=81 slots=948 compact=580 hit_rate=0.3979 misses=289 direct=100 evictions=283 cap=256 top=176:74,104:70,96:51,90:50,71:47,134:38

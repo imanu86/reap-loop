@@ -5,6 +5,9 @@ The first 80-token runs were mechanism micro-smokes only. They cannot measure
 completion or L0-L3 quality. The committed runner now defaults to a 4000-token
 stream with client stops on `</html>` or objective repetition signatures.
 
+Full raw audit, including invalid and negative runs:
+`runs/ds4/20260712_spex_adaptive_k_protocol_audit/REPORT.md`.
+
 ## Question
 
 Can a narrow anchored mask widen before quality collapses when the

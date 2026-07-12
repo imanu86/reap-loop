@@ -1,0 +1,74 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.583s
+ds4: cuda backend initialized for graph diagnostics
+0712 16:14:25 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0712 16:14:25 ds4-server: listening on http://127.0.0.1:8073
+0712 16:14:27 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE LIVEMASK on - bootstrap=16 window=10 K=16 observe_top=16 X=11 max_swaps=1 cooldown=16 hyst=999.000 weighted=0 pin=0
+ds4: PACE LIVEMASK adaptive-K ON - K=16..50 strong_weight>=0.150 gain=0.500 step=+4/-1 deadband=2.000 every=2 prefetch=0 history=2..10
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=10 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: expert tiering observe enabled (DS4_EXPERT_TIERING=observe; log=)
+ds4: CUDA loading model tensors 0.15 GiB cached
+0712 16:14:38 ds4-server: chat ctx=0..78:78 prompt done 10.078s
+ds4: SPEX hidden GPU weights uploaded 86.00 MiB
+ds4: SPEX hidden SPX1 loaded '/mnt/c/Users/imanu/source/repos/moe-aggressive-commit/runs/spex/spex_model/ds4flash_d2_nextlayer.spex' L=43 D=4096 E=256 weights=90177536 bytes; hidden-readback prefetch=off gpu-prefetch=on
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=16 K=16 window=10
+ds4: SPEX hidden GPU scoring active cap=54 (hidden-prefetch=off gpu-prefetch=on)
+ds4: SPEX hidden GPU topK async readback not scheduled (reported once)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=180 schedule_failed=4 ready=165 not_ready=5 zero=649 dry=0 seed_calls=86 seed_ok=86 seed_failed=0 skipped_all_resident=79 candidate_experts=330 seed_experts=151 resident_before=179 seed_ms=207.453
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=356 schedule_failed=8 ready=329 not_ready=9 zero=657 dry=0 seed_calls=174 seed_ok=174 seed_failed=0 skipped_all_resident=155 candidate_experts=658 seed_experts=295 resident_before=363 seed_ms=394.333
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=537 schedule_failed=12 ready=495 not_ready=14 zero=665 dry=0 seed_calls=259 seed_ok=259 seed_failed=0 skipped_all_resident=236 candidate_experts=990 seed_experts=426 resident_before=564 seed_ms=555.287
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=537 schedule_failed=12 ready=495 not_ready=14 zero=666 dry=0 seed_calls=259 seed_ok=259 seed_failed=0 skipped_all_resident=236 candidate_experts=990 seed_experts=426 resident_before=564 seed_ms=555.287
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=737 schedule_failed=16 ready=683 not_ready=18 zero=674 dry=0 seed_calls=323 seed_ok=323 seed_failed=0 skipped_all_resident=360 candidate_experts=1366 seed_experts=519 resident_before=847 seed_ms=659.746
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=917 schedule_failed=21 ready=848 not_ready=23 zero=684 dry=0 seed_calls=409 seed_ok=409 seed_failed=0 skipped_all_resident=439 candidate_experts=1696 seed_experts=668 resident_before=1028 seed_ms=824.359
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=1276 schedule_failed=29 ready=1180 not_ready=32 zero=700 dry=0 seed_calls=580 seed_ok=580 seed_failed=0 skipped_all_resident=600 candidate_experts=2360 seed_experts=960 resident_before=1400 seed_ms=1171.112
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=1276 schedule_failed=29 ready=1180 not_ready=32 zero=701 dry=0 seed_calls=580 seed_ok=580 seed_failed=0 skipped_all_resident=600 candidate_experts=2360 seed_experts=960 resident_before=1400 seed_ms=1171.112
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 7.86 GiB cached
+0712 16:15:09 ds4-server: chat ctx=78..128:50 gen=50 decoding chunk=1.68 t/s avg=1.68 t/s 29.837s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=1463 schedule_failed=32 ready=1355 not_ready=36 zero=708 dry=0 seed_calls=657 seed_ok=657 seed_failed=0 skipped_all_resident=698 candidate_experts=2710 seed_experts=1074 resident_before=1636 seed_ms=1302.197
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=1651 schedule_failed=37 ready=1528 not_ready=41 zero=718 dry=0 seed_calls=735 seed_ok=735 seed_failed=0 skipped_all_resident=793 candidate_experts=3056 seed_experts=1206 resident_before=1850 seed_ms=1458.457
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=2007 schedule_failed=45 ready=1860 not_ready=49 zero=734 dry=0 seed_calls=907 seed_ok=907 seed_failed=0 skipped_all_resident=953 candidate_experts=3720 seed_experts=1485 resident_before=2235 seed_ms=1785.996
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=2192 schedule_failed=50 ready=2030 not_ready=54 zero=744 dry=0 seed_calls=988 seed_ok=988 seed_failed=0 skipped_all_resident=1042 candidate_experts=4060 seed_experts=1619 resident_before=2441 seed_ms=1939.924
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=2386 schedule_failed=55 ready=2209 not_ready=59 zero=754 dry=0 seed_calls=1060 seed_ok=1060 seed_failed=0 skipped_all_resident=1149 candidate_experts=4418 seed_experts=1736 resident_before=2682 seed_ms=2075.976
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: SPEX hidden-gpu prefetch stats periodic scheduled=2562 schedule_failed=59 ready=2373 not_ready=63 zero=762 dry=0 seed_calls=1148 seed_ok=1148 seed_failed=0 skipped_all_resident=1225 candidate_experts=4746 seed_experts=1890 resident_before=2856 seed_ms=2255.581
+0712 16:15:31 ds4-server: chat ctx=128..158:30 gen=80 decoding chunk=1.41 t/s avg=1.56 t/s 51.138s
+0712 16:15:31 ds4-server: chat ctx=0..78:78 gen=80 finish=length 61.219s
+0712 16:15:31 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=3483 selected_experts=24876 cache_hits=4574 cache_misses=18256 hit_rate=0.2004 miss_per_expert=0.7339 direct_loads=4236 copy_calls=67476 copied=151821.00 MiB copy_ms=30506.454 copy_ms_per_batch=8.759 sync_calls=67476 sync_ms=7640.693 sync_ms_per_batch=2.194
+ds4: SPEX hidden-gpu prefetch stats exit scheduled=2628 schedule_failed=60 ready=2436 not_ready=64 zero=764 dry=0 seed_calls=1172 seed_ok=1172 seed_failed=0 skipped_all_resident=1264 candidate_experts=4872 seed_experts=1934 resident_before=2938 seed_ms=2314.272
+ds4: expert tiering observe summary batches=3483 slots=40764 compact=24876 hit_rate=0.2216 hits=4574 misses=16066 direct=4236 evictions=15810 direct=28593.00 MiB compact=167913.00 MiB
+ds4: expert tiering observe layer=1 batches=81 slots=948 compact=686 hit_rate=0.0000 misses=480 direct=206 evictions=474 cap=256 top=82:12,78:11,35:10,114:10,204:10,19:9
+ds4: expert tiering observe layer=2 batches=81 slots=948 compact=683 hit_rate=0.0000 misses=480 direct=203 evictions=474 cap=256 top=128:15,65:14,84:12,182:12,20:11,195:11
+ds4: expert tiering observe layer=0 batches=81 slots=948 compact=680 hit_rate=0.0000 misses=480 direct=200 evictions=474 cap=256 top=52:13,174:13,74:12,11:11,104:11,109:11
+ds4: expert tiering observe layer=6 batches=81 slots=948 compact=581 hit_rate=0.1208 misses=422 direct=101 evictions=416 cap=256 top=213:82,64:66,188:62,179:49,16:46,111:46
+ds4: expert tiering observe layer=7 batches=81 slots=948 compact=571 hit_rate=0.1125 misses=426 direct=91 evictions=420 cap=256 top=105:122,137:62,141:59,122:58,12:56,238:41

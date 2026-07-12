@@ -1,0 +1,19 @@
+artifact,status,use
+spex_cadence_smoke,mechanism-only,cadence2/4/8 cache256
+spex_cadence_smoke_cache400,mechanism-only,cadence2/4/8 cache400
+spex_cadence_quality_n3,negative-incomplete,r1/r2 malformed and r3 aborted; never call n3
+adaptive_k_smoke,invalid,reset bug
+adaptive_k_smoke_fix,aborted,uncapped adaptive prefetch
+adaptive_k_smoke_stepcap,mechanism-only,step cap with expensive adaptive page-touch
+adaptive_k_smoke_nodelta,mechanism-only,adaptive page-touch disabled
+adaptive_k_smoke_every2,mechanism-only,update cadence2
+adaptive_k_spex_add0_warm,negative-prefix,malformed doctype at 80-token cap
+adaptive_k_spex_add1,invalid,startup collision
+adaptive_k_spex_add1_clean,invalid-interrupted,polluted/interrupted request
+adaptive_k_spex_add1_clean2,mechanism-only,add1 first valid mechanism smoke
+adaptive_k_spex_add1_warm,mechanism-only,add1 repeated mechanism smoke
+adaptive_k_spex_add2,mechanism-only,add2 mechanism smoke
+adaptive_k_spex_add4,mechanism-only,add4 mechanism smoke
+runner_80token_adaptive_original.sh,protocol-evidence,contains erroneous fixed 80-token request
+runner_cadence_original.sh,protocol-evidence,exact cadence runner
+summarize_adaptive_k_smokes.py,analysis,summary extraction helper
