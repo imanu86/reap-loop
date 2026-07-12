@@ -1,0 +1,54 @@
+diff --git a/ds4.c b/ds4.c
+index 1fd203e..6872617 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -14453,6 +14453,37 @@ static void ds4_pace_note_selected_batch(uint32_t il,
+     }
+ }
+ 
++/* patch 0049: soft-mask breakthrough observability. With a FINITE mask bias
++ * (DS4_REAP_MASK_SOFT_BIAS, patch 0046) an effectively-pruned expert CAN win
++ * the post-bias top-k in the same token -- that is the whole point of the
++ * soft mask. This logs each such breakthrough to the LIVEMASK JSONL so an
++ * external tripwire can distinguish a healthy escape valve (rare, decaying
++ * bursts at phase transitions) from soft dissolution (a stable fraction of
++ * tokens routing around the mask = K0 with extra steps). selected_ids are
++ * the ACTUAL router selections read back from the GPU (post-bias), so this
++ * is a direct measurement, not an inference. No-op (single cached int
++ * compare) unless the soft bias is active AND the livemask log is open. */
++static void ds4_soft_mask_note_selected(uint32_t il,
++                                        uint32_t pos,
++                                        const int32_t *selected_ids,
++                                        uint32_t n_selected) {
++    static int soft_on = -1;
++    if (soft_on < 0) soft_on = ds4_reap_mask_bias_value() > -1.0e9f ? 1 : 0;
++    if (!soft_on || !g_reap_mask_on || !g_pace.lm_log) return;
++    if (!selected_ids || il >= DS4_MAX_LAYER) return;
++    for (uint32_t i = 0; i < n_selected && i < DS4_MAX_EXPERT_USED; i++) {
++        const int32_t e = selected_ids[i];
++        if (e < 0 || (uint32_t)e >= DS4_MAX_EXPERT) continue;
++        if (ds4_reap_mask_effectively_pruned(il, (uint32_t)e)) {
++            fprintf(g_pace.lm_log,
++                    "{\"ev\":\"soft_breakthrough\",\"pos\":%u,"
++                    "\"layer\":%u,\"expert\":%d}\n",
++                    pos, il, e);
++            fflush(g_pace.lm_log);
++        }
++    }
++}
++
+ static inline int ds4_pace_rotate_wants_router(void) {
+     if (!ds4_pace_active()) return 0;
+     return (g_pace.rotate_on || g_pace.relearn_on_tighten) &&
+@@ -17704,6 +17735,11 @@ static void metal_graph_spex_note_selected(
+             }
+         }
+         ds4_pace_note_selected(il, selected_ids, weights_for_pace, n_selected);
++        /* patch 0049: decode-only (prefill positions would swamp the log and
++         * are not what the dissolution tripwire reasons about). */
++        if (g->spex_trace_decode_active)
++            ds4_soft_mask_note_selected(il, g->spex_trace_pos,
++                                        selected_ids, n_selected);
+     }
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return;
+     g->spex_prefetch_selected_valid = false;

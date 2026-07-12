@@ -103,6 +103,16 @@ def main():
     ap.add_argument("--admit-peak-floor", type=float, default=5.0,
                      help="minimum peak bucket rate before non-decay can fire "
                           "(avoids false triggers on trivially low churn)")
+    ap.add_argument("--breakthrough-frac-limit", type=float, default=0.25,
+                     help="arm B soft-dissolution wire: max fraction of recent "
+                          "decode positions allowed to have >=1 soft-mask "
+                          "breakthrough, sustained")
+    ap.add_argument("--breakthrough-window", type=int, default=120,
+                     help="position window for the breakthrough fraction")
+    ap.add_argument("--breakthrough-grace-pos", type=int, default=240,
+                     help="positions of history required before the "
+                          "soft-dissolution wire can fire (lets initial "
+                          "phase-transition bursts decay first)")
     ap.add_argument("--poll-interval", type=float, default=1.0)
     ap.add_argument("--max-wall-s", type=float, default=7500.0)
     args = ap.parse_args()
@@ -111,11 +121,17 @@ def main():
 
     pos_state = {}
     k_samples = []
-    admit_layer_sets = {}   # layer -> set(expert)
+    admit_layer_sets = {}   # layer -> set(expert); arm B: breakthrough sets
     admit_tok_buckets = {}  # bucket_idx -> count
     admit_events_total = 0
     cf_admit_source_counts = {"cf": 0, "mass10": 0}
     tok_events = []  # (t_s, event_count) from stream_events.jsonl
+    bt_pos_set = set()       # decode positions with >=1 soft breakthrough
+    bt_events_total = 0
+    bt_first_pos = None
+    bt_last_pos = None
+    bt_first_tok_events = 0  # len(tok_events) when the first breakthrough landed
+    bt_over_since = None     # wall-clock start of a sustained over-limit stretch
 
     def log(msg):
         print(f"[cf_tripwire_monitor] {msg}", file=sys.stderr, flush=True)
@@ -143,10 +159,35 @@ def main():
             ),
             "admit_bucket_rates": dict(sorted(admit_tok_buckets.items())),
             "tps_recent": tps_recent(),
+            "breakthrough_events_total": bt_events_total,
+            "breakthrough_positions": len(bt_pos_set),
+            "breakthrough_pos_range": [bt_first_pos, bt_last_pos],
+            "breakthrough_recent_frac": bt_recent_frac(),
         }
         if extra:
             summary.update(extra)
         args.out.write_text(json.dumps(summary, ensure_ascii=False, indent=2))
+
+    def bt_cur_pos():
+        """Advancing decode-position clock for the breakthrough window.
+
+        Uses the max of (a) the highest breakthrough position seen and (b) the
+        highest position implied by the measured SSE stream (prompt offset +
+        generated tokens, anchored on the first breakthrough's offset). The
+        clock must keep advancing when breakthroughs STOP, so a healthy
+        decaying burst sees its window fraction fall instead of freezing."""
+        if bt_first_pos is None:
+            return None
+        est = bt_first_pos + max(0, len(tok_events) - bt_first_tok_events)
+        return max(bt_last_pos or 0, est)
+
+    def bt_recent_frac():
+        cur = bt_cur_pos()
+        if cur is None:
+            return None
+        lo = cur - args.breakthrough_window
+        hits = sum(1 for p in bt_pos_set if lo < p <= cur)
+        return round(hits / float(args.breakthrough_window), 4)
 
     def tps_recent():
         if len(tok_events) < 2:
@@ -228,6 +269,26 @@ def main():
                     tok = obj.get("tok", 0)
                     bucket = tok // args.admit_bucket_tokens
                     admit_tok_buckets[bucket] = admit_tok_buckets.get(bucket, 0) + 1
+                elif ev == "soft_breakthrough":
+                    # Arm B (0049 instrumentation): an effectively-pruned
+                    # expert won the post-bias top-k through the finite
+                    # soft-mask penalty. Counted both per-position (soft
+                    # dissolution wire) and into the union sets (breakthrough
+                    # is the only escape channel from a fixed mask, so the
+                    # union wire semantics carry over directly).
+                    bt_events_total += 1
+                    pos = obj.get("pos")
+                    layer = obj.get("layer")
+                    expert = obj.get("expert")
+                    if layer is not None and expert is not None:
+                        admit_layer_sets.setdefault(layer, set()).add(expert)
+                    if pos is not None:
+                        if bt_first_pos is None:
+                            bt_first_pos = pos
+                            bt_first_tok_events = len(tok_events)
+                        bt_pos_set.add(pos)
+                        if bt_last_pos is None or pos > bt_last_pos:
+                            bt_last_pos = pos
 
         # -- tail stream_events.jsonl for t/s --
         if ev_fh is None and args.events_log.exists():
@@ -288,6 +349,35 @@ def main():
                     break
             else:
                 below_tps_since = None
+
+        # -- tripwire 4 (arm B): soft-mask dissolution --
+        # A healthy soft bias is an escape valve: breakthrough bursts at
+        # phase transitions that then DECAY. If, past the grace period, more
+        # than breakthrough-frac-limit of the recent decode positions keep
+        # having breakthroughs and this stays true for 60 sustained seconds,
+        # the router is stably routing around the mask: K0 with extra steps,
+        # soft edition.
+        cur_bt_pos = bt_cur_pos()
+        if (
+            cur_bt_pos is not None
+            and bt_first_pos is not None
+            and cur_bt_pos - bt_first_pos >= args.breakthrough_grace_pos
+        ):
+            frac = bt_recent_frac()
+            if frac is not None and frac > args.breakthrough_frac_limit:
+                if bt_over_since is None:
+                    bt_over_since = now
+                elif now - bt_over_since >= 60.0:
+                    trigger(
+                        "soft_dissolution",
+                        f"breakthrough fraction {frac:.2%} > "
+                        f"{args.breakthrough_frac_limit:.0%} of last "
+                        f"{args.breakthrough_window} positions, sustained "
+                        f">=60s past grace ({args.breakthrough_grace_pos} pos)",
+                    )
+                    break
+            else:
+                bt_over_since = None
 
         write_summary()
         time.sleep(args.poll_interval)

@@ -22,7 +22,9 @@ if summary.exists():
         extra = (
             f"k_avg={d.get('k_avg')} k_p90={d.get('k_p90')} "
             f"union_pct={d.get('union_max_pct')} tps={d.get('tps_recent')} "
-            f"admits={d.get('admit_events_total')}"
+            f"admits={d.get('admit_events_total')} "
+            f"bt={d.get('breakthrough_events_total')} "
+            f"bt_frac={d.get('breakthrough_recent_frac')}"
         )
     except Exception as exc:  # noqa: BLE001
         extra = f"summary_read_error:{exc}"
