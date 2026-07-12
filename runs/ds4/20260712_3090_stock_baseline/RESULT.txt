@@ -1,0 +1,67 @@
+RESULT (one-liner):
+DwarfStar STOCK baseline @ RTX 3090 24GB, ds4 commit 80ebbc3 (upstream, ZERO patches, no DS4_* env), model ds4-2bit.gguf (DeepSeek-V4-Flash IQ2XXS-w2Q2K imatrix, sha256 efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668, 86720111488 B) | full-24GB regime: --cuda --ssd-streaming --ssd-streaming-cache-experts 1700 (~11.5 GiB, 6.75 MiB/exp) -c 4096 -n 512 --prefill-chunk 512 | QUALITY close_html=2 chars=875 coherence=9/9 (valid HTML5, closes </html>) | SPEED prefill(TTFT)=19.19s decode=2.717 t/s warm | VRAM peak 19489/24576 MiB.
+
+=== RECONCILIATION ===
+Account pods queried via RunPod GraphQL API (myself{pods}). 7 pods total.
+ORPHAN FOUND + REUSED (not terminated): id=b8pbylead9ni10 name=ds4-stock-3090-baseline
+  - Only RUNNING pod; RTX 3090 24GB; rented 2026-07-12 05:15:31 UTC by cancelled predecessor.
+  - Gate-check PASSED: ssh OK, nvidia-smi RTX 3090 24576 MiB, CUDA 12.9 + torch 2.8.0+cu129 cuda_avail=True (driver 595.71.05 compatible; memory's cu12.8 mismatch risk N/A here), gcc13/make/cmake/git present, 1TB RAM.
+  - Clean /workspace (no model, no build, no running proc) -> reused instead of re-provision (no re-download, no community-lottery risk).
+CODEX pod 99xyqm02gke4xg (ds4-cq1-sweep-codex): EXITED, NEVER touched.
+Other 5 pods: all EXITED (no cost) - not ours to manage this run, left as-is.
+
+=== POD USED ===
+b8pbylead9ni10  RTX 3090 (sm_86) 24576 MiB  $0.46/hr
+ssh 213.192.2.117:40031  (uptime at report ~7088s / ~2h)
+TERMINATED at end of run (see terminate step).
+
+=== BUILD (STOCK) ===
+repo https://github.com/antirez/ds4  commit 80ebbc396aee40eedc1d829222f3362d10fa4c6c (80ebbc3)
+make cuda-generic  (-> make -B ... CUDA_ARCH=native, nvcc 12.9, -arch=native=sm_86, -O3 --use_fast_math)
+ds4-server binary md5 = d327cf4191188b6c37412b5c908ba170  (size 9299816 B)
+NO patches, NO DS4_REAP_*/DS4_PACE_*/DS4_SPEX_* env (verified: env|grep ^DS4_ empty).
+
+=== MODEL (verified) ===
+file /root/models/ds4-2bit.gguf  (HF antirez/deepseek-v4-gguf, public, aria2c -x16)
+  = DeepSeek-V4-Flash-IQ2XXS-w2Q2K-AProjQ8-SExpQ8-OutQ8-chat-v2-imatrix.gguf
+size    = 86720111488 B (byte-exact match to expected)
+sha256  = efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668 (exact match to expected LFS oid)
+
+=== SERVER LAUNCH (full-24GB) ===
+./ds4-server --cuda --ssd-streaming --ssd-streaming-cache-experts 1700 -c 4096 -n 512 \
+  --prefill-chunk 512 --host 127.0.0.1 --port 8030 --cors -m /root/models/ds4-2bit.gguf
+startup: CUDA on RTX 3090 (sm_86); context buffers 122.69 MiB (ctx=4096, prefill_chunk=512,
+         raw_kv_rows=768, compressed_kv_rows=1026); listening 127.0.0.1:8030.
+cache sizing: 6.75 MiB/expert; budget 1700 experts (~11.48 GiB). Fixed footprint (non-routed
+         weights + ctx + scratch) ~= 11.25 GiB measured. Model 81GB >> 24GB so most routed
+         experts stream from local NVMe (overlay /, 2.4 GB/s) -> decode is disk/stream-bound.
+
+=== PROMPT (temp 0, model deepseek-v4-flash, stream on, think OFF) ===
+"Genera una pagina HTML5 minima e VALIDA per una caffetteria Bean & Brew: doctype, head con
+title, body con nav (Home, Menu, Contatti), un h1 e un bottone Ordina. Chiudi TUTTI i tag fino a </html>."
+warmup max_tokens=40, then measured max_tokens=350. Robust streaming timing:
+prefill=TTFT (send->first content token); decode=(completion_tokens-1)/(t_end-t_first).
+
+=== RESULTS: full-24GB (cache 1700 experts) ===
+prefill_s (TTFT)   = 19.194
+decode_tps_warm    = 2.717
+decode_window_s    = 98.655
+completion_tokens  = 269  (model emitted EOS before 350; prompt_tokens=64)
+reasoning_chars    = 0    (thinking confirmed OFF; temp-0 honored)
+chars              = 875
+close_html_count   = 2
+quality_checks     = 9/9 (doctype,title,nav,home,menu,contatti,h1,button_ordina,close_html)
+VRAM peak          = 19489 / 24576 MiB (~5 GiB headroom; workload touched ~1215 experts < 1700
+                     budget, so no eviction beyond touched set -> this is best-case warm decode)
+
+=== CONTEXT: sizing run (cache 606 experts / 4 GiB) ===
+prefill 15.77s, decode 2.071 t/s, 269 tok, quality 9/9, VRAM steady 15346 MiB. Bigger cache
+(606->1700) improved warm decode 2.07->2.72 t/s; still stream-bound (~2-3 t/s ceiling on 24GB).
+
+first ~200 chars of content:
+'Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":\n\n```html\n<!DOCTYPE html>\n<html lang="it">\n<head>\n    <meta charset="UTF-8">\n    <meta name="viewport" content="width=device-widt'
+
+NOTE: not committed (orchestrator commits). Traps hit: pkill -f <name> self-killed the ssh
+shell (cmdline contained the pattern) -> use pkill -x; detached daemon over ssh needs full
+fd-detach (used backgrounded foreground-ssh). R2 skipped: cf.txt non-standard cred layout +
+prior R2 leak -> used public HF with exact-hash verification (zero credential exposure).

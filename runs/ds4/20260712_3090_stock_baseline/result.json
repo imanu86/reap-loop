@@ -1,0 +1,23 @@
+{
+  "prefill_s": 19.194,
+  "decode_tps_warm": 2.717,
+  "decode_window_s": 98.6552,
+  "completion_tokens": 269,
+  "prompt_tokens": 64,
+  "n_content_deltas": 269,
+  "reasoning_chars": 0,
+  "chars": 875,
+  "close_html_count": 2,
+  "quality_checks": {
+    "doctype": true,
+    "title": true,
+    "nav": true,
+    "home": true,
+    "menu": true,
+    "contatti": true,
+    "h1": true,
+    "button_ordina": true,
+    "close_html": true
+  },
+  "quality_passed": "9/9"
+}
