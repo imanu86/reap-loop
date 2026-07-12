@@ -1,0 +1,56 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 3.045s
+ds4: cuda backend initialized for graph diagnostics
+0712 18:51:34 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 18:51:35 ds4-server: listening on http://127.0.0.1:8071
+0712 18:51:35 ds4-server: chat ctx=0..64:64 prompt start
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1183 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1459 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1659 ms (8 threads)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1599 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1159 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1826 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1574 ms (8 threads)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 2166 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 3101 ms (8 threads)
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 2986 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 2213 ms (8 threads)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1959 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 2042 ms (8 threads)
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1963 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1435 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1710 ms (8 threads)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 2025 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1394 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 1683 ms (8 threads)
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 9256 ms (8 threads)
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 15800 ms (8 threads)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 9434 ms (8 threads)
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 8275 ms (8 threads)
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: REAP prefetch (fattorino delta): 256 expert, 768 range, 1731.0 MiB touched in 4871 ms (8 threads)
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0712 18:54:35 ds4-server: chat ctx=0..64:64 prompt done 168.736s
+ds4: CUDA loading model tensors 1.75 GiB cached
+ds4: CUDA loading model tensors 2.57 GiB cached
+ds4: CUDA loading model tensors 3.70 GiB cached
+ds4: CUDA loading model tensors 5.49 GiB cached
+ds4: CUDA loading model tensors 7.21 GiB cached
+ds4: CUDA loading model tensors 7.86 GiB cached
+0712 18:56:56 ds4-server: chat ctx=64..84:20 gen=20 decoding chunk=0.15 t/s avg=0.15 t/s 134.733s
+0712 18:56:56 ds4-server: chat ctx=0..64:64 gen=20 finish=length 303.475s
+0712 18:56:57 ds4-server: shutdown requested, draining requests

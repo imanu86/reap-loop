@@ -1,0 +1,16 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.320s
+ds4: cuda backend initialized for graph diagnostics
+0712 18:34:04 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 18:34:04 ds4-server: listening on http://127.0.0.1:8071
+0712 18:34:05 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+0712 18:34:19 ds4-server: chat ctx=0..64:64 prompt done 13.810s
+0712 18:34:43 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=2.17 t/s avg=2.17 t/s 23.087s
+0712 18:34:48 ds4-server: chat ctx=114..124:10 gen=60 decoding chunk=2.25 t/s avg=2.18 t/s 27.523s
+0712 18:34:48 ds4-server: chat ctx=0..64:64 gen=60 finish=length 41.337s
+0712 18:34:49 ds4-server: shutdown requested, draining requests
