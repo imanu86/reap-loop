@@ -1,0 +1,17 @@
+DS4_CUDA_KEEP_MODEL_PAGES=1
+DS4_CUDA_NO_DIRECT_IO=1
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=1
+DS4_PACE=0
+DS4_REAP_MASK_FILE=masks/mask60_self.txt
+INVOCATION_ID=758c08da1e0d46f99a31ce892b880850
+JOURNAL_STREAM=9:17057
+LANG=C.UTF-8
+MEMORY_PRESSURE_WATCH=/sys/fs/cgroup/system.slice/ds4bake-self60-run1b.service/memory.pressure
+MEMORY_PRESSURE_WRITE=c29tZSAyMDAwMDAgMjAwMDAwMAA=
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/snap/bin
+PWD=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_virtual_bake
+SHLVL=1
+SYSTEMD_EXEC_PID=854
+USER=root
+_=/usr/bin/env

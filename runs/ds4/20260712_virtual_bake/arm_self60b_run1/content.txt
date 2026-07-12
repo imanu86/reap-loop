@@ -1,0 +1,366 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code · Cyberpunk Store</title>
+    <!-- Font futuristico -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0a0f1e;
+            font-family: 'Orbitron', sans-serif;
+            color: #d0f0ff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: 
+                linear-gradient(45deg, rgba(0, 255, 255, 0.03) 0%, transparent 70%),
+                repeating-linear-gradient(0deg, transparent, transparent 40px, rgba(0, 255, 255, 0.05) 40px, rgba(0, 255, 255, 0.05) 41px),
+                repeating-linear-gradient(90deg, transparent, transparent 40px, rgba(0, 255, 255, 0.05) 40px, rgba(0, 255, 255, 0.05) 41px);
+        }
+
+        /* Glitch / neon base */
+        .cyber-card {
+            max-width: 700px;
+            width: 100%;
+            background: rgba(10, 15, 30, 0.85);
+            backdrop-filter: blur(4px);
+            border: 2px solid #00f7ff;
+            box-shadow: 0 0 30px rgba(0, 247, 255, 0.3), inset 0 0 20px rgba(0, 247, 255, 0.1);
+            padding: 2.5rem 2rem;
+            border-radius: 24px;
+            transition: 0.2s;
+            position: relative;
+        }
+
+        .cyber-card:hover {
+            box-shadow: 0 0 50px rgba(0, 247, 255, 0.6), inset 0 0 30px rgba(0, 247, 255, 0.2);
+            border-color: #ff00c8;
+        }
+
+        h1 {
+            font-size: 2.4rem;
+            font-weight: 900;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 6px;
+            background: linear-gradient(90deg, #00f7ff, #ff00c8, #00f7ff);
+            background-size: 200% 100%;
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            animation: neonShift 3s linear infinite;
+            margin-bottom: 0.25rem;
+        }
+
+        @keyframes neonShift {
+            0% { background-position: 0% 50%; }
+            100% { background-position: 200% 50%; }
+        }
+
+        .sub-glow {
+            text-align: center;
+            font-size: 0.9rem;
+            letter-spacing: 3px;
+            color: #b0ffff;
+            border-bottom: 1px solid #ff00c8;
+            padding-bottom: 0.8rem;
+            margin-bottom: 1.8rem;
+            text-shadow: 0 0 8px #00f7ff;
+        }
+
+        .offer-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1.2rem;
+            justify-content: center;
+            margin: 1.5rem 0;
+        }
+
+        .offer-item {
+            background: rgba(0, 247, 255, 0.05);
+            border: 1px solid #00f7ff88;
+            padding: 0.8rem 1.2rem;
+            border-radius: 40px;
+            font-weight: 700;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: 0.2s;
+            backdrop-filter: blur(2px);
+            box-shadow: 0 0 10px rgba(0, 247, 255, 0.2);
+        }
+
+        .offer-item:hover {
+            background: #ff00c822;
+            border-color: #ff00c8;
+            box-shadow: 0 0 20px #ff00c8;
+            transform: scale(1.02);
+        }
+
+        .price-tag {
+            color: #ffd700;
+            text-shadow: 0 0 6px #ffd700;
+        }
+
+        .contact-form {
+            margin-top: 2rem;
+            border-top: 1px dashed #ff00c888;
+            padding-top: 1.8rem;
+        }
+
+        .form-row {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+            margin-bottom: 1.2rem;
+        }
+
+        label {
+            font-size: 0.8rem;
+            letter-spacing: 2px;
+            color: #b0ffff;
+        }
+
+        input, textarea {
+            background: rgba(0, 20, 40, 0.8);
+            border: 1px solid #00f7ff;
+            border-radius: 12px;
+            padding: 0.9rem 1rem;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.85rem;
+            color: #e0ffff;
+            outline: none;
+            transition: 0.2s;
+            box-shadow: 0 0 5px rgba(0, 247, 255, 0.2);
+        }
+
+        input:focus, textarea:focus {
+            border-color: #ff00c8;
+            box-shadow: 0 0 20px rgba(255, 0, 200, 0.5);
+            background: rgba(0, 10, 30, 0.9);
+        }
+
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            background: transparent;
+            border: 2px solid #ff00c8;
+            color: #ff00c8;
+            padding: 1rem 2.5rem;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.1rem;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            border-radius: 60px;
+            cursor: pointer;
+            transition: 0.25s;
+            display: block;
+            margin: 0.5rem auto 0;
+            width: fit-content;
+            box-shadow: 0 0 15px rgba(255, 0, 200, 0.2);
+        }
+
+        .btn-submit:hover {
+            background: #ff00c8;
+            color: #0a0f1e;
+            box-shadow: 0 0 40px #ff00c8, inset 0 0 20px #fff;
+            transform: scale(1.02);
+        }
+
+        .footer-note {
+            margin-top: 1.8rem;
+            font-size: 0.65rem;
+            text-align: center;
+            color: #6f8faf;
+            letter-spacing: 2px;
+        }
+
+        /* POPUP */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 5, 15, 0.8);
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .popup-overlay.active {
+            display: flex;
+        }
+
+        .popup-box {
+            background: #121828;
+            border: 2px solid #00f7ff;
+            border-radius: 30px;
+            padding: 2.5rem 2rem;
+            max-width: 400px;
+            width: 90%;
+            box-shadow: 0 0 60px #00f7ff66, inset 0 0 30px #00f7ff22;
+            text-align: center;
+            animation: popRise 0.3s ease;
+        }
+
+        @keyframes popRise {
+            0% { transform: scale(0.8); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+
+        .popup-box h2 {
+            font-size: 1.8rem;
+            background: linear-gradient(90deg, #00f7ff, #ff00c8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+            margin-bottom: 0.5rem;
+        }
+
+        .popup-box p {
+            color: #b0ffff;
+            margin: 1rem 0;
+            font-size: 0.9rem;
+            letter-spacing: 2px;
+        }
+
+        .popup-close {
+            background: transparent;
+            border: 1px solid #ff00c8;
+            color: #ff00c8;
+            padding: 0.6rem 2rem;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            border-radius: 40px;
+            cursor: pointer;
+            transition: 0.2s;
+            margin-top: 0.8rem;
+            letter-spacing: 3px;
+        }
+
+        .popup-close:hover {
+            background: #ff00c8;
+            color: #0a0f1e;
+            box-shadow: 0 0 30px #ff00c8;
+        }
+
+        /* responsive */
+        @media (max-width: 500px) {
+            .cyber-card { padding: 1.5rem; }
+            h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-card">
+        <h1>⚡ AI CODE ⚡</h1>
+        <div class="sub-glow">▸ NEGOZIO DI PROGRAMMAZIONE EVOLUTA ◂</div>
+
+        <div class="offer-grid">
+            <span class="offer-item">🤖 AGENTI AUTONOMI</span>
+            <span class="offer-item">🧠 NEURAL API</span>
+            <span class="offer-item">⚡ PROMPT ENGINE</span>
+            <span class="offer-item">🛒 <span class="price-tag">$0.99</span> AI MODULI</span>
+        </div>
+
+        <p style="text-align: center; font-size: 0.9rem; letter-spacing: 2px; color: #b0ffff; margin: 1rem 0;">
+            [ <span style="color: #ff00c8;">CYBER</span> · DEAL ] <br> 
+            <span style="font-size: 0.8rem;">〚 ogni ordine include un layer di ottimizzazione neurale 〛</span>
+        </p>
+
+        <!-- MODULO CONTATTI -->
+        <div class="contact-form">
+            <form id="contactForm" onsubmit="return handleForm(event)">
+                <div class="form-row">
+                    <label for="name">◈ DESIGNATION</label>
+                    <input type="text" id="name" name="name" placeholder="il tuo tag..." required>
+                </div>
+                <div class="form-row">
+                    <label for="email">◈ CYBERMAIL</label>
+                    <input type="email" id="email" name="email" placeholder="node@ai.cyber" required>
+                </div>
+                <div class="form-row">
+                    <label for="message">◈ MESSAGE</label>
+                    <textarea id="message" name="message" placeholder="desiderio / codice / connessione..." required></textarea>
+                </div>
+                <button type="submit" class="btn-submit">◈ TRASMISSIONE ◈</button>
+            </form>
+        </div>
+
+        <div class="footer-note">
+            <span>🔒 protocollo crittato · AI Code 2025</span>
+        </div>
+    </div>
+
+    <!-- POPUP (richiesta inviata) -->
+    <div id="popupOverlay" class="popup-overlay">
+        <div class="popup-box">
+            <h2>✔️ RICHIESTA INVIATA</h2>
+            <p>🔹 segnale ricevuto nella rete neurale<br>risposta entro 24h</p>
+            <button class="popup-close" onclick="closePopup()">[ CHIUDI ]</button>
+        </div>
+    </div>
+
+    <script>
+        // Funzione form + popup
+        function handleForm(e) {
+            e.preventDefault();
+            
+            // (opzionale) raccolta dati, qui puoi gestire invio reale
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const message = document.getElementById('message').value.trim();
+            
+            // Mostra popup
+            document.getElementById('popupOverlay').classList.add('active');
+            
+            // Reset form (opzionale)
+            document.getElementById('contactForm').reset();
+            
+            // Non inviamo nulla al server (simulazione)
+            return false;
+        }
+
+        function closePopup() {
+            document.getElementById('popupOverlay').classList.remove('active');
+        }
+
+        // Chiudi popup con ESC
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closePopup();
+            }
+        });
+
+        // Click fuori dal popup (overlay) chiude
+        document.getElementById('popupOverlay').addEventListener('click', function(e) {
+            if (e.target === document.getElementById('popupOverlay')) {
+                closePopup();
+            }
+        });
+    </script>
+</body>
+</html>

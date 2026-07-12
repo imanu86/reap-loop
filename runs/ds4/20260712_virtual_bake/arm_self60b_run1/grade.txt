@@ -1,0 +1,13 @@
+LIVELLO L2
+  has_body_struct: True
+  nav: False
+  hero: True
+  form: True
+  style: True
+  script: True
+  button: True
+  js_errors: 0
+  button_wired: True
+  form_wired: True
+  tag_mismatch: 0
+  restart: False
