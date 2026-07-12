@@ -1,0 +1,9 @@
+== meminfo BEFORE server start (depth8) 2026-07-12T18:19:47+02:00 ==
+MemTotal:       63780460 kB
+MemFree:         1262636 kB
+MemAvailable:   62175780 kB
+Cached:         61281292 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             44092 kB
+Writeback:             0 kB

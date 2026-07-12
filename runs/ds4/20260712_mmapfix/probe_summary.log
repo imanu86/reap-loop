@@ -1,0 +1,157 @@
+[off] === START 2026-07-12T18:01:23+02:00 gate='' extra='' ===
+== meminfo BEFORE server start (off) 2026-07-12T18:01:25+02:00 ==
+MemTotal:       63780460 kB
+MemFree:        61737704 kB
+MemAvailable:   62513320 kB
+Cached:          1225892 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               144 kB
+Writeback:             0 kB
+[off] up=1 load_secs=2.052782234 pid=849
+== meminfo AFTER model load (off) 2026-07-12T18:01:27+02:00 load_secs=2.052782234 ==
+MemTotal:       63780460 kB
+MemFree:        59934368 kB
+MemAvailable:   62004668 kB
+Cached:          2867956 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               148 kB
+Writeback:             0 kB
+[off] warmup done 2026-07-12T18:01:58+02:00
+[off] measured request wall_secs=62.259334901
+[off] content:
+prompt done 22.407s
+prompt done 18.630s
+avg=0.80 t/s
+1.38 t/s
+avg=1.38 t/s
+2.00 t/s
+avg=1.45 t/s
+[off] sleeping 27s to reach 2min post-load mark
+== meminfo AFTER ~2min run (off) 2026-07-12T18:03:27+02:00 ==
+MemTotal:       63780460 kB
+MemFree:        14265160 kB
+MemAvailable:   61673568 kB
+Cached:         48426932 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:                12 kB
+Writeback:             0 kB
+[off] === DONE 2026-07-12T18:03:30+02:00 ===
+[on] === START 2026-07-12T18:07:41+02:00 gate='DS4_CUDA_NO_WHOLE_MMAP_REGISTER=1' extra='' ===
+== meminfo BEFORE server start (on) 2026-07-12T18:07:43+02:00 ==
+MemTotal:       63780460 kB
+MemFree:        10120580 kB
+MemAvailable:   61683096 kB
+Cached:         51949872 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             24488 kB
+Writeback:             0 kB
+[on] up=1 load_secs=4.911301555 pid=3871
+== meminfo AFTER model load (on) 2026-07-12T18:07:48+02:00 load_secs=4.911301555 ==
+MemTotal:       63780460 kB
+MemFree:         9743980 kB
+MemAvailable:   61314152 kB
+Cached:         52305296 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             24500 kB
+Writeback:             0 kB
+[on] warmup done 2026-07-12T18:08:40+02:00
+[on] measured request wall_secs=27.950444794
+[on] content:
+prompt done 42.553s
+prompt done 10.578s
+avg=0.70 t/s
+3.84 t/s
+avg=3.84 t/s
+3.70 t/s
+avg=3.82 t/s
+[on] sleeping 39s to reach 2min post-load mark
+== meminfo AFTER ~2min run (on) 2026-07-12T18:09:49+02:00 ==
+MemTotal:       63780460 kB
+MemFree:         9829660 kB
+MemAvailable:   61659044 kB
+Cached:         52830480 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               144 kB
+Writeback:             0 kB
+[on] === DONE 2026-07-12T18:09:51+02:00 ===
+[depth8] === START 2026-07-12T18:14:58+02:00 gate='DS4_CUDA_NO_WHOLE_MMAP_REGISTER=1' extra='DS4_CUDA_SELECTED_STAGE_DEPTH=8 DS4_CUDA_WEIGHT_CACHE_VERBOSE=1' ===
+== meminfo BEFORE server start (depth8) 2026-07-12T18:15:00+02:00 ==
+MemTotal:       63780460 kB
+MemFree:         1308120 kB
+MemAvailable:   62426192 kB
+Cached:         61486540 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               236 kB
+Writeback:             0 kB
+[depth8] up=1 load_secs=5.068775829 pid=5358
+== meminfo AFTER model load (depth8) 2026-07-12T18:15:05+02:00 load_secs=5.068775829 ==
+MemTotal:       63780460 kB
+MemFree:          722960 kB
+MemAvailable:   61917872 kB
+Cached:         61911320 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               252 kB
+Writeback:             0 kB
+[depth8] warmup done 2026-07-12T18:15:46+02:00
+[depth8] measured request wall_secs=.024811473
+[depth8] content:
+prompt done 39.047s
+[depth8] sleeping 79s to reach 2min post-load mark
+== meminfo AFTER ~2min run (depth8) 2026-07-12T18:17:09+02:00 ==
+MemTotal:       63780460 kB
+MemFree:         1597728 kB
+MemAvailable:   62435664 kB
+Cached:         61206040 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               272 kB
+Writeback:             0 kB
+[depth8] === DONE 2026-07-12T18:17:11+02:00 ===
+[depth8] === START 2026-07-12T18:19:45+02:00 gate='DS4_CUDA_NO_WHOLE_MMAP_REGISTER=1' extra='DS4_CUDA_SELECTED_STAGE_DEPTH=8' ===
+== meminfo BEFORE server start (depth8) 2026-07-12T18:19:47+02:00 ==
+MemTotal:       63780460 kB
+MemFree:         1262636 kB
+MemAvailable:   62175780 kB
+Cached:         61281292 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             44092 kB
+Writeback:             0 kB
+[depth8] up=1 load_secs=3.569568368 pid=7287
+== meminfo AFTER model load (depth8) 2026-07-12T18:19:51+02:00 load_secs=3.569568368 ==
+MemTotal:       63780460 kB
+MemFree:          666392 kB
+MemAvailable:   61630048 kB
+Cached:         61679832 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             55708 kB
+Writeback:             0 kB
+[depth8] warmup done 2026-07-12T18:20:13+02:00
+[depth8] measured request wall_secs=129.611350611
+[depth8] content:
+prompt done 12.907s
+prompt done 34.602s
+avg=0.54 t/s
+0.63 t/s
+avg=0.63 t/s
+1.06 t/s
+avg=0.68 t/s
+== meminfo AFTER ~2min run (depth8) 2026-07-12T18:22:23+02:00 ==
+MemTotal:       63780460 kB
+MemFree:          362344 kB
+MemAvailable:   61387044 kB
+Cached:         62279988 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               160 kB
+Writeback:             0 kB
+[depth8] === DONE 2026-07-12T18:22:25+02:00 ===

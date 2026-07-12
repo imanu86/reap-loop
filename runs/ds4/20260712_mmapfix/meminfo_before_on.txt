@@ -1,0 +1,9 @@
+== meminfo BEFORE server start (on) 2026-07-12T18:07:43+02:00 ==
+MemTotal:       63780460 kB
+MemFree:        10120580 kB
+MemAvailable:   61683096 kB
+Cached:         51949872 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             24488 kB
+Writeback:             0 kB

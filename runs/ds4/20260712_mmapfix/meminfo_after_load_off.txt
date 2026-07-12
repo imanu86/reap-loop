@@ -1,0 +1,9 @@
+== meminfo AFTER model load (off) 2026-07-12T18:01:27+02:00 load_secs=2.052782234 ==
+MemTotal:       63780460 kB
+MemFree:        59934368 kB
+MemAvailable:   62004668 kB
+Cached:          2867956 kB
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:               148 kB
+Writeback:             0 kB

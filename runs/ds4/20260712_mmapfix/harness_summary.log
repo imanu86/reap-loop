@@ -1,0 +1,22 @@
+== meminfo before harness (gate OFF) ==
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             74804 kB
+Writeback:             0 kB
+exit=0
+== meminfo after harness (gate OFF) ==
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             74960 kB
+Writeback:             0 kB
+== meminfo before harness (gate ON) ==
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:             14432 kB
+Writeback:             0 kB
+exit=0
+== meminfo after harness (gate ON) ==
+Unevictable:           0 kB
+Mlocked:               0 kB
+Dirty:              7852 kB
+Writeback:             0 kB

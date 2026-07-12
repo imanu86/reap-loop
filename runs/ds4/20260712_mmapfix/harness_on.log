@@ -1,0 +1,9 @@
+[harness] file=/root/models/ds4-mtp.gguf size=3.546 GiB
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA whole-mmap registration skipped (DS4_CUDA_NO_WHOLE_MMAP_REGISTER=1); weight access will use fd-backed chunked H2D staging / bounded per-range registration
+[harness] ds4_gpu_set_model_map -> 1
+ds4: CUDA loading model tensors into device cache
+[harness] ds4_gpu_cache_model_range(head off=0 bytes=4194304) -> 1
+[harness] ds4_gpu_cache_model_range(mid off=1900019712 bytes=4194304) -> 1
+[harness] ds4_gpu_cache_model_range(tail off=3803408096 bytes=4194304) -> 1
+[harness] PASS

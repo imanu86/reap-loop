@@ -1,0 +1,1 @@
+{"id":"chatcmpl-1","object":"chat.completion","created":1783872520,"model":"deepseek-v4-flash","choices":[{"index":0,"message":{"role":"assistant","content":"Hi! How can I"},"finish_reason":"length"}],"usage":{"prompt_tokens":7,"completion_tokens":5,"total_tokens":12,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":7}}}
