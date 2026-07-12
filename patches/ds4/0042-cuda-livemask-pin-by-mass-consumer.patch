@@ -1,0 +1,134 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -4423,6 +4423,56 @@
+     }
+ }
+ 
++/* ===================================================================== *
++ * FROZEN §7 SEAM CONSUMER (DS4_REAP_PIN_BY_MASS) -- livemask pin-by-mass.
++ * Producer (ds4.c) publishes, once per decode token after the mask settles:
++ *   g_reap_pin_mass[L][e] = lm_wshare[L][e] if e eligible (mask non-pruned)
++ *                           else 0.0f ;   g_reap_pin_epoch++ on every change.
++ * Both are C-linkage globals OWNED by ds4.c per §7.  ds4.c has NOT defined
++ * them yet, so we provide WEAK zero definitions here: the consumer builds/
++ * links/runs standalone (gate OFF => all-zero mass, no behaviour change) and
++ * the producer's future STRONG ds4.c definition wins at link with no
++ * duplicate-symbol collision.  Do NOT redefine the seam name/semantics/env.
++ *
++ * DIMS: ds4.c declares [DS4_MAX_LAYER][DS4_MAX_EXPERT] with DS4_MAX_LAYER=61
++ * (ds4.c:111) / DS4_MAX_EXPERT=384 (ds4.c:122) living in an ANONYMOUS enum
++ * inside ds4.c -- absent from this TU (not exported via ds4_gpu.h; grep of
++ * this file for the token = 0 hits).  Cross-TU array externs match by NUMERIC
++ * extent, not macro name, so we mirror the literals and static_assert their
++ * product against this file's existing DS4_CUDA_STREAM_EXPERT_MAX (== 61u*384u,
++ * line 40) so any future dim drift on either side is a COMPILE error, never a
++ * silent mis-index. */
++enum {
++    DS4_REAP_PIN_MAX_LAYER  = 61,   /* == ds4.c DS4_MAX_LAYER  */
++    DS4_REAP_PIN_MAX_EXPERT = 384   /* == ds4.c DS4_MAX_EXPERT */
++};
++static_assert((unsigned)DS4_REAP_PIN_MAX_LAYER * (unsigned)DS4_REAP_PIN_MAX_EXPERT
++                  == (unsigned)DS4_CUDA_STREAM_EXPERT_MAX,
++              "g_reap_pin_mass dims must equal ds4.c DS4_MAX_LAYER*DS4_MAX_EXPERT");
++
++extern "C" {
++/* Weak zero defs -- ds4.c's future strong definition overrides at link. */
++__attribute__((weak)) float g_reap_pin_mass[DS4_REAP_PIN_MAX_LAYER]
++                                           [DS4_REAP_PIN_MAX_EXPERT];
++__attribute__((weak)) volatile uint32_t g_reap_pin_epoch;
++}
++
++/* Gate: OFF (unset or "0") => every hook below is byte-for-byte 0040. */
++static int cuda_reap_pin_by_mass_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) cached = cuda_pin_env_flag("DS4_REAP_PIN_BY_MASS");
++    return cached;
++}
++
++/* Bounds-safe read: slot/param layer,expert are model-routed ids already
++ * < 61 / < n_total_expert(<=384), but clamp defensively so an out-of-range id
++ * can never index past the seam arrays. */
++static inline float cuda_reap_pin_mass_lookup(uint32_t layer, uint32_t expert) {
++    if (layer  >= (uint32_t)DS4_REAP_PIN_MAX_LAYER ||
++        expert >= (uint32_t)DS4_REAP_PIN_MAX_EXPERT) return 0.0f;
++    return g_reap_pin_mass[layer][expert];
++}
++
+ static uint32_t cuda_stream_expert_cache_lru_slot(
+         cuda_stream_expert_cache *cache) {
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+@@ -4437,13 +4487,39 @@
+     uint32_t slot = 0;
+     int best_tier = 0;
+     uint64_t best_age = 0;
++    float best_mass = 0.0f;
++    /* §7 mass-weighted eviction: with DS4_REAP_PIN_BY_MASS, the victim is the
++     * non-pinned resident with the LOWEST producer pin-mass (ineligible / low
++     * share evicted before the marked working set); the 0033 (tier,age) order
++     * stays the tiebreak when masses are equal.  Gate OFF => by_mass==0, the
++     * per-slot lookup is NOT called (m is the literal 0.0f), the test takes the
++     * else-branch (t<best_tier || (t==best_tier && a<best_age)) which for
++     * !have|other reproduces the original expression exactly and best_mass is
++     * dead => byte-identical victim to 0040.  Reads cache->slots[i].layer/
++     * .expert = LIVE resident identity (correct at this point). */
++    const int by_mass = cuda_reap_pin_by_mass_enabled();
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+         if (cache->slots[i].pinned) continue;
+         const int t = cache->slots[i].tier;
+         const uint64_t a = cache->slots[i].age;
+-        if (!have || t < best_tier || (t == best_tier && a < best_age)) {
++        const float m = by_mass
++            ? cuda_reap_pin_mass_lookup(cache->slots[i].layer,
++                                        cache->slots[i].expert)
++            : 0.0f;
++        int better;
++        if (!have) {
++            better = 1;
++        } else if (by_mass) {
++            better = (m < best_mass) ||
++                     (m == best_mass &&
++                      (t < best_tier || (t == best_tier && a < best_age)));
++        } else {
++            better = (t < best_tier || (t == best_tier && a < best_age));
++        }
++        if (better) {
+             best_tier = t;
+-            best_age = a;
++            best_age  = a;
++            best_mass = m;
+             slot = i;
+             have = 1;
+         }
+@@ -4620,9 +4696,28 @@
+                 const uint32_t sticky_budget =
+                     cache->capacity > reserve ? cache->capacity - reserve : 0u;
+                 if (cache->pinned_count < sticky_budget) {
+-                    entry.pinned = 1;
+-                    cache->pinned_count++;
+-                    g_inplace_pin_admits++;
++                    /* §7 pin-by-mass: with DS4_REAP_PIN_BY_MASS, pin only the
++                     * eligible set (producer mass>0).  Ineligible admits stay
++                     * LRU-evictable and are NOT counted as a pin-budget wall
++                     * (that reject path is a distinct, capacity-driven event).
++                     * The 0040 full-cap+sticky gate still WINS as the outer
++                     * necessary condition; by-mass only filters WHICH budgeted
++                     * slots pin.  IDENTITY: key the lookup on the incoming
++                     * function params (layer,expert) -- the expert being
++                     * ADMITTED -- NOT entry.layer/entry.expert, which at this
++                     * point still hold the evicted victim's STALE ids (entry is
++                     * bound to cache->slots[slot] @4577; its identity is only
++                     * assigned below at ~4647-4649).  Gate OFF => pin_ok==1 =>
++                     * the three statements run exactly as in 0040 (byte-id). */
++                    int pin_ok = 1;
++                    if (cuda_reap_pin_by_mass_enabled()) {
++                        pin_ok = cuda_reap_pin_mass_lookup(layer, expert) > 0.0f;
++                    }
++                    if (pin_ok) {
++                        entry.pinned = 1;
++                        cache->pinned_count++;
++                        g_inplace_pin_admits++;
++                    }
+                 } else {
+                     g_inplace_pin_rejects++;
+                     static int warned_capacity_wall = 0;
