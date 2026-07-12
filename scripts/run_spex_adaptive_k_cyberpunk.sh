@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Short syntax/performance screen for patch 0045. This is not an L0-L3 verdict.
+# Quality-length screen for patch 0045 with active completion/repetition guard.
+# A single run is not an L0-L3 verdict.
 set -euo pipefail
 
 MAX_ADD=${1:-}
@@ -15,6 +16,8 @@ MODEL=${DS4_MODEL:-/root/models/ds4-2bit.gguf}
 SPX1=${DS4_SPX1:-/mnt/c/Users/imanu/source/repos/moe-aggressive-commit/runs/spex/spex_model/ds4flash_d2_nextlayer.spex}
 SOURCE_REQUEST=${DS4_REQUEST:-$REPO/runs/ds4/20260709_k23_unit_vs_weighted_cache256_html800/html_local_k23_weighted_warmup_cache256_r01/request_measured.json}
 PORT=${PORT:-8070}
+MAX_TOKENS=${MAX_TOKENS:-4000}
+CTX=${CTX:-6144}
 
 if pgrep -x ds4-server >/dev/null; then
   echo "ds4-server is already running; refusing to disturb it" >&2
@@ -22,15 +25,15 @@ if pgrep -x ds4-server >/dev/null; then
 fi
 
 mkdir -p "$OUT"
-python3 - "$SOURCE_REQUEST" "$OUT/request.json" <<'PY'
+python3 - "$SOURCE_REQUEST" "$OUT/request.json" "$MAX_TOKENS" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as src:
     request = json.load(src)
-request["max_tokens"] = 80
-request["stream"] = False
-request.pop("stream_options", None)
+request["max_tokens"] = int(sys.argv[3])
+request["stream"] = True
+request["stream_options"] = {"include_usage": True}
 with open(sys.argv[2], "w", encoding="utf-8") as dst:
     json.dump(request, dst, ensure_ascii=False, indent=2)
 PY
@@ -95,7 +98,7 @@ fi
 env | LC_ALL=C sort > "$OUT/server_env.txt"
 "$BIN" -m "$MODEL" --cuda --ssd-streaming \
   --ssd-streaming-cache-experts 256 --prefill-chunk 512 \
-  -c 2048 -n 2048 --host 127.0.0.1 --port "$PORT" --cors \
+  -c "$CTX" -n "$((MAX_TOKENS + 256))" --host 127.0.0.1 --port "$PORT" --cors \
   >"$OUT/server.stdout.log" 2>"$OUT/server.stderr.log" &
 pid=$!
 trap 'kill "$pid" 2>/dev/null || true; wait "$pid" 2>/dev/null || true' EXIT
@@ -110,18 +113,14 @@ for _ in $(seq 1 150); do
 done
 [[ "$ready" == 1 ]] || { echo "server not ready" >&2; exit 1; }
 
-curl -fsS -m 1800 -H 'Content-Type: application/json' \
-  --data-binary @"$OUT/request.json" \
-  "http://127.0.0.1:$PORT/v1/chat/completions" >"$OUT/response.json"
-
-python3 - "$OUT/response.json" <<'PY'
-import json
-import re
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as fh:
-    text = json.load(fh)["choices"][0]["message"]["content"]
-bad = bool(re.search(r"<!DOCTYPE\s+html\s*\n\s*<html", text, re.I))
-print("screen=malformed-doctype" if bad else "screen=no-obvious-prefix-error")
-raise SystemExit(3 if bad else 0)
-PY
+python3 "$REPO/scripts/stream_stop_guard.py" \
+  --url "http://127.0.0.1:$PORT/v1/chat/completions" \
+  --request "$OUT/request.json" \
+  --response "$OUT/response.json" \
+  --events "$OUT/stream_events.jsonl" \
+  --timeout 7200 \
+  --stop-html-close \
+  --stop-repeat \
+  --repeat-ngram 3 \
+  --repeat-window 120 \
+  --repeat-count 3
