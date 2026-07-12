@@ -1,0 +1,77 @@
+From 76f6345643eaf77173e87499d2ef09a5234e154b Mon Sep 17 00:00:00 2001
+From: reap-loop <reap-loop@localhost>
+Date: Sat, 11 Jul 2026 20:05:00 +0200
+Subject: [PATCH] pace: fix WRAP default-on-unset ternary (0014-fix)
+
+ds4_pace_init's WRAP block resolved g_pace.wrap_on via
+  (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1)
+which sets WRAP ON whenever DS4_PACE_WRAP (and its aliases
+DS4_REAP_WRAP / DS4_REAP_PREFETCH) are unset -- the w==NULL case falls
+into the inner (w ? 0 : 1), and w is NULL, so it evaluates to 1.
+
+PACE_DESIGN.md documents DS4_PACE_WRAP default as 0 ("Off by
+default"): on a practical SSD-light config, unconditional WRAP bulk
+page-in on every mask change measured 0.82 vs 1.27 t/s, a ~35%
+regression. Any caller that sets DS4_PACE=1 without separately setting
+DS4_PACE_WRAP=0 silently eats that cost.
+
+Fix: default to 0 (off) when unset, matching the documented default;
+only an explicit non-"0" value turns WRAP on.
+
+  g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : 0;
+
+Also reconciles the stale 0014e comment on the sibling WRAP gate in
+ds4_reap_prefetch_working_set(), which described the old (buggy)
+"Default ON when PACE drives it" behavior; it now notes wrap_on
+defaults to off there too.
+
+Env-gated / doc-aligned default-value fix only: no code path changes
+for callers who already set DS4_PACE_WRAP explicitly (0 or non-0), and
+DS4_PACE itself is off by default, so stock (non-PACE) behaviour is
+unchanged either way.
+---
+ ds4.c | 17 ++++++++++++-----
+ 1 file changed, 12 insertions(+), 5 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 0d0aaeb..cdf81d4 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -12687,9 +12687,11 @@ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+     if (!checked) {
+         checked = 1;
+         /* WRAP (0013/0014): DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat
+-         * DS4_REAP_PREFETCH. Default ON when PACE drives it (g_pace.wrap_on
+-         * already gates the call site); enabled here iff any is set non-zero,
+-         * OR PACE is active with wrap_on (so PACE need not set the env). */
++         * DS4_REAP_PREFETCH. Off by default (ds4_pace_init's g_pace.wrap_on
++         * now defaults to 0 too -- see the fixed WRAP block there); enabled
++         * here iff any of the env aliases is explicitly set non-zero, OR
++         * PACE is active AND its own wrap_on was explicitly turned on (so
++         * PACE need not additionally set this function's env var). */
+         const char *p = getenv("DS4_PACE_WRAP");
+         if (!p) p = getenv("DS4_REAP_WRAP");
+         if (!p) p = getenv("DS4_REAP_PREFETCH");
+@@ -12842,12 +12844,17 @@ static void ds4_pace_init(void) {
+     g_pace.stable       = (uint32_t)pace_env_i("DS4_PACE_STABLE", 120);
+     g_pace.anneal_warm  = (uint32_t)pace_env_i("DS4_PACE_ANNEAL_WARM", 300);
+     g_pace.s1_on        = pace_env_i("DS4_PACE_S1", 0);
+-    /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_PREFETCH */
++    /* WRAP: DS4_PACE_WRAP, alias DS4_REAP_WRAP, back-compat DS4_REAP_PREFETCH.
++     * Off by default (PACE_DESIGN.md: DS4_PACE_WRAP default 0) -- on a
++     * practical SSD-light config, unconditional bulk page-in on every mask
++     * change *slows* t/s (~35%), so WRAP must be an opt-in, not an
++     * unset-means-on fallback.  Only an explicit non-"0" value turns it on;
++     * unset, "", or "0" all resolve to off. */
+     {
+         const char *w = getenv("DS4_PACE_WRAP");
+         if (!w) w = getenv("DS4_REAP_WRAP");
+         if (!w) w = getenv("DS4_REAP_PREFETCH");
+-        g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : (w ? 0 : 1);
++        g_pace.wrap_on = (w && *w && strcmp(w, "0")) ? 1 : 0;
+     }
+     g_pace.wrap_rotate = pace_env_i("DS4_PACE_WRAP_ROTATE", 0);
+     g_pace.cache_flush = pace_env_i("DS4_PACE_CACHE_FLUSH", 0);
+-- 
+2.43.0
+

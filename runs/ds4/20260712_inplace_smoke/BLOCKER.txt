@@ -1,0 +1,10 @@
+20260712 IN-PLACE decode smoke — BLOCKED, not run.
+Target binary /root/ds4-rebuild/ds4-server (md5 fe5e48ad, DS4_CUDA_INPLACE_RESIDENT) DOES NOT EXIST.
+- /root/ds4-rebuild/  : no such directory
+- only ds4-server on /root: /root/ds4/ds4-server  md5=81f1c530  (Jul 4 baseline, NO feature strings)
+- feature exists ONLY as unapplied source patches:
+    patches/ds4/0036-cuda-inplace-resident-nocopy.patch (Jul 12 01:41)
+    patches/ds4/0036a-cuda-inplace-epoch-fix.patch      (Jul 12 02:16)
+- no binary anywhere (/root or /mnt/c reap-loop) contains string DS4_CUDA_INPLACE_RESIDENT.
+Did NOT run the old baseline: its env vars are inert -> RUN A==RUN B would falsely read as compute-bound.
+Isolation forbids clone/checkout/build under /root, so cannot self-build here. GPU left idle. No server started.

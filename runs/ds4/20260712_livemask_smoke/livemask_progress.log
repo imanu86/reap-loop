@@ -1,0 +1,9 @@
+[lm] START 2026-07-12T05:56:02+02:00 bin=d687ba913de6e9153f0ffdc2eaefc0ef
+[lm] server up=1 2026-07-12T05:56:07+02:00
+[lm] warmup done 2026-07-12T05:58:17+02:00
+[lm] measured done 2026-07-12T06:02:07+02:00
+[RESULT-LIVEMASK] prompt done 107.421s | RENDE(close_html)=2 chars=845 | livemask_swaps=4 tier_events=602 tier_promo=604
+  seed: mask applied|LIVEMASK seed|
+  SPEX: 
+  chunks: gen=50 decoding chunk=1.91 t/s avg=1.91 t/s|gen=100 decoding chunk=2.32 t/s avg=2.09 t/s|gen=150 decoding chunk=2.70 t/s avg=2.26 t/s|gen=200 decoding chunk=2.98 t/s avg=2.41 t/s|gen=250 decoding chunk=2.98 t/s avg=2.50 t/s|gen=300 decoding chunk=2.88 t/s avg=2.56 t/s|
+[lm] COMPLETE 2026-07-12T06:02:12+02:00

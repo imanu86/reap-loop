@@ -1,0 +1,76 @@
+```<!!DOCTYPE html>
+<html lang="sera">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew</title>
+    <style>
+    /* body {
+    font-family: 's-serif, 'Arial', sans-serif;
+    margin: 0;
+    padding: 0;
+    background: #fdf8f0;
+    color: #3b1f1f;
+}
+nav {
+    background: #3b1f1f;
+    padding: 10px 20px;
+    display: flex;
+    gap: 20px;
+}
+nav a {
+    color: #fdf8f0;
+    text-decoration: none;
+}
+nav a:hover {
+    text-decoration: underline;
+}
+section {
+    padding: 40px 20px;
+}
+h1 {
+    font-size: 3em;
+    margin: 0;
+}
+button {
+    background: #c07f4f;
+    border: none;
+    padding: 10px 20px;
+    font-size: 1em;
+    color: #fff;
+    cursor: pointer;
+}
+form {
+    margin-top: 20px;
+}
+form input {
+    display: block;
+    margin-bottom: 10px;
+    padding: 5px;
+}
+form input[type="submit"] {
+    background: #3b1f1f;
+    color: #fff;
+    border: none;
+    padding: 10px 20px;
+}
+</style>
+<nav>
+    <a href="#">Home</a>
+<a href="#">Menu</a>
+<a href="#">Contact</a>
+</nav>
+<section>
+    <h1>Bean & Brew</h1>
+    <p>Welcome to our coffee shop. <button id="order">Order Now</button></p>
+</section>
+<form action="/submit">
+    <input type="text" name="name" placeholder="Name" required="">
+    <input type="email" name="email" placeholder="Email" required="">
+    <input type="submit" value="Submit">
+</form>
+<script>
+document.addEventListener: 'DOM/button' button, true
+document.addEventListener: 'DOM/button' button, true
+document.addEventListener: 'DOM/button' button, true
+document.addEventListener: 'DOM/button' button, true
+document.addEventListener: 'DOM/button'

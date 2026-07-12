@@ -1,0 +1,16 @@
+[pin] server-start 2026-07-11T20:16:06+02:00
+[pin] server pid 450
+[pin] models up=1 2026-07-11T20:16:08+02:00
+[pin] WARMUP fired 2026-07-11T20:16:08+02:00
+[pin] WARMUP done bytes=1408 2026-07-11T20:22:19+02:00
+[pin] MEASURED fired 2026-07-11T20:22:20+02:00
+[pin] MEASURED done wall=744s bytes=2088 2026-07-11T20:34:44+02:00
+[pin] GREEDY64 fired 2026-07-11T20:34:44+02:00
+[pin] GREEDY64 done bytes= 2026-07-11T20:44:45+02:00
+[RESULT-PIN] K=8 cache=400 PIN=1 budget=3500MB
+  measured_wall=744s bytes=2088
+  MEASURED chunks: 
+  SPEX_FINAL: 
+  pin_freeze=2
+  pin_rotate=0
+[pin] COMPLETE 2026-07-11T20:44:47+02:00

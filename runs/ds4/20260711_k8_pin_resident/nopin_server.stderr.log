@@ -1,0 +1,39 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.912s
+ds4: cuda backend initialized for graph diagnostics
+0711 21:31:22 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0711 21:31:22 ds4-server: listening on http://127.0.0.1:8016
+0711 21:31:22 ds4-server: chat ctx=0..231:231 prompt start
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0711 21:34:32 ds4-server: chat ctx=0..231:231 prompt done 190.014s
+ds4: REAP mask reload da /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260711_keep8_fit_repro/masks/sessK8_coffee.txt: 9920 entry potate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 1.40 GiB cached
+ds4: CUDA loading model tensors 2.38 GiB cached
+ds4: CUDA loading model tensors 3.40 GiB cached
+ds4: CUDA loading model tensors 4.45 GiB cached
+ds4: CUDA loading model tensors 5.38 GiB cached
+ds4: CUDA loading model tensors 6.61 GiB cached
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0711 21:36:05 ds4-server: chat ctx=231..281:50 gen=50 decoding chunk=0.54 t/s avg=0.54 t/s 92.614s
+0711 21:36:09 ds4-server: chat ctx=281..295:14 gen=64 decoding chunk=3.70 t/s avg=0.66 t/s 96.397s
+0711 21:36:09 ds4-server: chat ctx=0..231:231 gen=64 finish=length 286.422s
+0711 21:36:09 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=2795 selected_experts=23212 cache_hits=15899 cache_misses=1013 hit_rate=0.9401 miss_per_expert=0.0436 direct_loads=6700 copy_calls=23139 copied=52062.75 MiB copy_ms=197929.892 copy_ms_per_batch=70.816 sync_calls=23139 sync_ms=6262.829 sync_ms_per_batch=2.241

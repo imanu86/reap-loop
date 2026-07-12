@@ -1,0 +1,82 @@
+From e3abc7593fb08584b9d0c96050ddf07f056f3fb6 Mon Sep 17 00:00:00 2001
+From: reap-loop <reap-loop@localhost>
+Date: Sun, 12 Jul 2026 02:00:00 +0200
+Subject: [PATCH] cuda: fix 0036 cross-layer epoch bump defeated by 0034
+ (0036a)
+
+0034 stamps cache->slots[slot].valid = 0 as the FIRST statement of
+cuda_stream_expert_cache_load_slot (defense-in-depth so a torn buffer
+can never be observed as a valid hit). 0036 later added, lower in the
+same function, a cross-layer victim epoch bump:
+
+    cuda_stream_expert_cache_slot &entry = cache->slots[slot];
+    if (cuda_inplace_resident_enabled()) {
+        if (entry.valid && entry.layer != layer)   // entry.valid == 0
+            cuda_inplace_epoch_bump(entry.layer);  // NEVER fires
+        cuda_inplace_epoch_bump(layer);
+        ...
+    }
+
+Because 0034 already zeroed entry.valid at the top, the guard
+entry.valid is ALWAYS 0 by the time 0036 reads it, so the cross-layer
+bump NEVER fires. Under the livemask dynamic admit/evict regime a
+cross-layer eviction of an unpinned resident then goes undetected: the
+other layer keeps a stale in-place slot map pointing at the repurposed
+slot, and its decode GEMM reads the WRONG expert's weights -- silent,
+non-bit-exact, counted as 0 misses.
+
+Fix: capture the slot's (valid, layer) identity at function entry,
+BEFORE 0034 zeroes valid, and base the cross-layer bump on the captured
+values. entry.layer is not touched by 0034 so it still held the old
+layer, but entry.valid did not; capturing both keeps the test
+self-consistent and robust to any future reordering.
+
+No env var, no success/failure-path change. When DS4_CUDA_INPLACE_RESIDENT
+is unset the two captured locals are dead loads the optimizer drops and
+the epoch-bump block is never entered, so the default engine stays
+byte-identical to post-0036.
+
+Follow-on to 0036 (applies after it); pairs with 0034.
+---
+ ds4_cuda.cu | 18 ++++++++++++++++--
+ 1 file changed, 16 insertions(+), 2 deletions(-)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index ca98236..5f59831 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -4493,6 +4493,16 @@ static int cuda_stream_expert_cache_load_slot(
+         uint64_t down_expert_bytes,
+         int defer_upload_sync,
+         int prompt_like_batch) {
++    /* 0036a epoch-fix: capture this slot's PRE-repurpose (valid,layer)
++     * identity BEFORE 0034's `cache->slots[slot].valid = 0` stamp (just
++     * below) zeroes it.  0036's cross-layer epoch bump further down must
++     * test the identity the slot had on entry: reading entry.valid AFTER 0034
++     * always sees 0, so the bump for a genuine cross-layer eviction would never
++     * fire and that other layer's stale in-place slot map would keep pointing
++     * at this repurposed slot -- its decode GEMM would then read the WRONG
++     * expert's weights (silent, non-bit-exact, counted as 0 misses). */
++    const int      inplace_prev_valid = cache->slots[slot].valid;
++    const uint32_t inplace_prev_layer = cache->slots[slot].layer;
+     /* 0034 stale-slot fix: stamp this slot invalid before the first buffer
+      * write below.  If any of the copies that follow fail partway through,
+      * the slot is left holding a torn buffer; clearing valid here (not just
+@@ -4555,8 +4565,12 @@ static int cuda_stream_expert_cache_load_slot(
+          * path for BOTH the evicted victim's layer and the admitted expert's
+          * layer.  Bump both epochs so a stale fast-path reuse can never read a
+          * repurposed slot. */
+-        if (entry.valid && entry.layer != layer) {
+-            cuda_inplace_epoch_bump(entry.layer);
++        if (inplace_prev_valid && inplace_prev_layer != layer) {
++            /* 0036a: test the PRE-0034 identity captured at function entry, not
++             * entry.valid -- 0034 zeroed it at the top, so the original test
++             * never fired for a real cross-layer eviction and left that other
++             * layer's stale in-place binding live over a now-repurposed slot. */
++            cuda_inplace_epoch_bump(inplace_prev_layer);
+         }
+         cuda_inplace_epoch_bump(layer);
+         /* 0036 cache-first: pin the admitted expert on first touch (sticky) so
+-- 
+2.43.0
+

@@ -1,0 +1,27 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.896s
+ds4: cuda backend initialized for graph diagnostics
+0712 05:39:39 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 05:39:39 ds4-server: listening on http://127.0.0.1:8022
+0712 05:39:40 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.01 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: DBGCAP final_cap=10 requested=400
+ds4: DBGCAP final_cap=12 requested=400
+ds4: DBGCAP final_cap=16 requested=400
+0712 05:40:39 ds4-server: chat ctx=0..64:64 prompt done 58.392s
+ds4: DBGCAP final_cap=400 requested=400
+ds4: SPEX routing trace enabled: /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_oracle50/route_k0w.csv (weights: on)
+ds4: CUDA loading model tensors 7.05 GiB cached
+0712 05:41:37 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=0.87 t/s avg=0.87 t/s 57.530s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0712 05:42:51 ds4-server: chat ctx=114..144:30 gen=80 decoding chunk=0.42 t/s avg=0.62 t/s 129.090s
+0712 05:42:51 ds4-server: chat ctx=0..64:64 gen=80 finish=length 187.507s
+0712 05:42:51 ds4-server: shutdown requested, draining requests

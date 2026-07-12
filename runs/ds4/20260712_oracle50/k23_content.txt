@@ -1,0 +1,34 @@
+Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew - Caffetteria</title>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Menu</a></li>
+            <li><a href="#">Contatti</a></li>
+        </ul>
+    </nav>
+    <h1>Benvenuti da Bean & Brew</h1>
+    <button type="button">Ordina</button>
+</body>
+</html>
+```
+
+La pagina è completa e valida secondo gli standard HTML5. Include:
+
+- `<!DOCTYPE html>` per dichiarare il tipo di documento HTML5
+- `<html lang="it">` per specificare la lingua
+- `<meta charset="UTF-8">` e `<meta name="viewport">` per la corretta impostazione
+- `<title>Bean & Brew - Caffetteria</title>` per il titolo della pagina
+- `<nav>` con i collegamenti di navigazione (Home, Menu, Contatti
+- `<h1>` per il titolo principale
+- `<button>` per il pulsante di ordinazione
+- Tutti i tag sono correttamente chiusi fino a `</html>`

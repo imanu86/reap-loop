@@ -1,0 +1,52 @@
+Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bean & Brew - Caffetteria</title>
+</head>
+<body>
+
+<header>
+<nav>
+<ul>
+<li><a href="Home">Home</a</li></>
+<li><a href="Menu">Menu</a</li></>
+<li><a href="Contatti">Contatti</a</li></>
+</nav>
+</header>
+
+<main>
+<h1>Benvenuti da Bean & Brew</h1>
+<p>Sccegliete il vostro caffè preferito e ordinate subito!</p>
+<button>Ordina</button>
+</main>
+
+<footer>
+<p>© 2023 - Bean & Brew - Caffetteria</p>
+</footer>
+
+</html>
+</html>
+
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>Bean & Brew - Caffetteria</title>
+</head>
+<body>
+
+<header>
+<nav>
+<ul>
+<li><a href="Home">Home</a</li></>
+<li><a href="Menu">Menu</a</li></>
+<li><a href="Contatti">Contatti</a</li></>
+</nav>
+</header>
+
+<main>
+<h1>Benvenuti da Bean & Brew</h1>
+<p>Sccegliete il vost

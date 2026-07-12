@@ -1,0 +1,91 @@
+From 4937aec412c8d3f1fbc8591f5b00afd1f9977233 Mon Sep 17 00:00:00 2001
+From: reap-loop <reap-loop@localhost>
+Date: Sat, 11 Jul 2026 20:00:00 +0200
+Subject: [PATCH] cuda: fix stale-identity slot on load_slot/D2D failure (0034)
+
+0024 (resident-hit fix) stopped calling
+cuda_stream_expert_cache_invalidate() on a single failed slot load,
+correctly avoiding a whole-cache collapse -- but it only set the local
+cache_slot=-1, leaving the underlying expert_cache slot itself with its
+OLD expert identity and valid=1, sitting over a buffer that load_slot
+may have partially overwritten with the NEW expert weights before it
+failed. A later cuda_stream_expert_cache_find() for the old expert
+matches that stale slot and serves corrupted, non-bit-exact weights for
+the rest of the session.
+
+Fix, in cuda_stream_selected_cache_begin_compact_load():
+ 1. In the load_slot() failure else-branch, mark the failed slot
+    valid=0 before setting cache_slot=-1, so find() can never match it
+    again until a clean load_slot() re-fills it.
+ 2. In the twin !copied_from_global_cache D2D-readout-failure branch,
+    mark that slot valid=0 before falling through to the direct load,
+    for the same reason: a slot whose copy-out we just proved is bad
+    should not keep matching find().
+ 3. Defense in depth: stamp cache->slots[slot].valid=0 at the very top
+    of cuda_stream_expert_cache_load_slot(), before its first buffer
+    write, so a partial failure can never be observed as a valid hit
+    even via a call path that does not go through the two guarded
+    sites above.
+
+Restores the residency != selection invariant on the failure path:
+degrade only the failing expert (0024s intent), without leaving a
+corrupted slot matchable by identity. All hooks are unconditional slot
+bookkeeping already on this failure path -- no new env var, no change
+to the success path, so stock (non-failure) behaviour is unchanged.
+---
+ ds4_cuda.cu | 25 +++++++++++++++++++++++++
+ 1 file changed, 25 insertions(+)
+
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index c3757c6..c66ee79 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -4390,6 +4390,15 @@ static int cuda_stream_expert_cache_load_slot(
+         uint64_t down_expert_bytes,
+         int defer_upload_sync,
+         int prompt_like_batch) {
++    /* 0034 stale-slot fix: stamp this slot invalid before the first buffer
++     * write below.  If any of the copies that follow fail partway through,
++     * the slot is left holding a torn buffer; clearing valid here (not just
++     * in the two call-site failure branches downstream) means a partial
++     * failure can never be observed as a hit by find(), even via a future
++     * call path that doesn't go through those two guarded sites.  On
++     * success this function re-sets valid=1 with the new expert's identity
++     * below. */
++    cache->slots[slot].valid = 0;
+     const uint64_t gate_src =
+         gate_offset + (uint64_t)expert * gate_expert_bytes;
+     const uint64_t up_src =
+@@ -5630,6 +5639,16 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                      * the ~GiB slot pool orphaned so the cache could never
+                      * re-allocate).  Degrade only THIS expert to a direct load
+                      * and keep the resident cache alive. */
++                    /* 0034 stale-slot fix: 0024 stopped calling invalidate()
++                     * here but left this slot's OLD identity (expert X,
++                     * valid=1) mapped onto a buffer that load_slot may have
++                     * partially overwritten with the NEW expert's weights.  A
++                     * later find() for expert X would match this slot and
++                     * serve corrupted, non-bit-exact weights for the rest of
++                     * the session.  Mark it invalid so find() can't match it;
++                     * the slot remains eviction-eligible (age untouched) and
++                     * gets a clean load_slot() on its next use. */
++                    expert_cache->slots[load_slot].valid = 0;
+                     cache_slot = -1;
+                 }
+             }
+@@ -5649,6 +5668,12 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                     /* 0024 resident-hit fix: keep the cache resident on a
+                      * transient device-to-device copy failure; this expert
+                      * falls through to a direct load below. */
++                    /* 0034 stale-slot fix: the D2D readout out of this slot
++                     * just failed, so its buffer contents can no longer be
++                     * trusted.  Invalidate it before falling through to the
++                     * direct load so a later find() can't match a slot whose
++                     * copy-out we just proved is bad. */
++                    expert_cache->slots[(uint32_t)cache_slot].valid = 0;
+                 }
+             }
+         }
+-- 
+2.43.0
+

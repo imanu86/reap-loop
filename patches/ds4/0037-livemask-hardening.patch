@@ -1,0 +1,80 @@
+diff --git a/ds4.c b/ds4.c
+index 994c57d..934dfb9 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7513,6 +7513,8 @@ static struct {
+     int      lm_in_prefill;      /* private prefill flag (no PACE coupling) */
+     int      lm_warned_mutex;    /* one-shot mutual-exclusion warning */
+     int      lm_assert_done;     /* one-shot router-probs-unbiased tripwire */
++    int      lm_tripwire_done;   /* patch 0037: one-shot POST-SEED freeze tripwire (functional version of lm_assert_done) */
++    uint32_t lm_seed_tok;        /* patch 0037: lm_tok value recorded at seed, anchors the post-seed tripwire delay */
+     uint16_t *lm_ring_id;        /* [WIN_MAX][DS4_MAX_LAYER][OBS_MAX] recorded ids */
+     float    *lm_ring_share;     /* [WIN_MAX][DS4_MAX_LAYER][OBS_MAX] unbiased shares */
+     int      *lm_ring_n;         /* [WIN_MAX][DS4_MAX_LAYER] entries stored per slot */
+@@ -12836,9 +12838,21 @@ static void ds4_pace_init(void) {
+             g_pace.lm_x           = pace_env_i("DS4_PACE_LIVEMASK_X", 3);
+             if (g_pace.lm_x < 1) g_pace.lm_x = 1;
+             g_pace.lm_max_swaps   = pace_env_i("DS4_PACE_LIVEMASK_MAX_SWAPS", 2);
+-            if (g_pace.lm_max_swaps < 0) g_pace.lm_max_swaps = 0;
++            if (g_pace.lm_max_swaps < 1) g_pace.lm_max_swaps = 1;
++            /* patch 0037: structural Anchor-Law bound. No env override may
++             * authorize a wholesale re-rank (rotate32-style collapse): cap
++             * swaps/scan to at most half the mask width, regardless of what
++             * DS4_PACE_LIVEMASK_MAX_SWAPS requests. */
++            {
++                int lm_max_swaps_cap = g_pace.lm_k / 2;
++                if (lm_max_swaps_cap < 1) lm_max_swaps_cap = 1;
++                if (g_pace.lm_max_swaps > lm_max_swaps_cap) g_pace.lm_max_swaps = lm_max_swaps_cap;
++            }
+             g_pace.lm_cooldown    = pace_env_i("DS4_PACE_LIVEMASK_COOLDOWN", 64);
+-            if (g_pace.lm_cooldown < 0) g_pace.lm_cooldown = 0;
++            /* patch 0037: structural floor. The gradual-swap Anchor-Law
++             * guarantee requires a real cooldown; DS4_PACE_LIVEMASK_COOLDOWN=0
++             * must not be able to disable it. */
++            if (g_pace.lm_cooldown < 1) g_pace.lm_cooldown = 1;
+             g_pace.lm_hyst        = pace_env_d("DS4_PACE_LIVEMASK_HYST", 1.0);
+             g_pace.lm_weighted    = pace_env_i("DS4_PACE_LIVEMASK_WEIGHTED", 0);
+             g_pace.lm_pin         = pace_env_i("DS4_PACE_LIVEMASK_PIN", 0);
+@@ -13203,6 +13217,7 @@ static void ds4_pace_livemask_seed(const ds4_model *model,
+     }
+     ds4_reap_mask_apply(model, weights);          /* 0011 actuator */
+     g_pace.lm_seeded = 1;
++    g_pace.lm_seed_tok = g_pace.lm_tok;  /* patch 0037: anchor for the post-seed freeze tripwire */
+     if (g_pace.lm_log) {
+         fprintf(g_pace.lm_log,
+                 "{\"ev\":\"seed\",\"tok\":%u,\"K\":%d,\"window\":%d}\n",
+@@ -13221,6 +13236,34 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+     if (!g_pace.lm_on || !g_pace.lm_seeded) return;
+     uint32_t ne = DS4_N_EXPERT;
+     if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    /* patch 0037: functional freeze-detection tripwire. The seed-time check
++     * in ds4_pace_livemask_seed() is structurally non-functional: at seed the
++     * sliding window still holds only pre-mask K0-bootstrap data, so a pruned
++     * expert ALWAYS shows nonzero windowed share there and the check ALWAYS
++     * passes. Re-check once the bootstrap data has aged out of the window
++     * (~lm_window tokens after seed), when the window actually reflects
++     * post-mask routing. If by then NO pruned expert has knocked at all, the
++     * router_probs readback is biased (mask folded into probs) and live
++     * re-admission is silently frozen -- warn once, do not abort. */
++    if (!g_pace.lm_tripwire_done &&
++        g_pace.lm_tok >= g_pace.lm_seed_tok + (uint32_t)g_pace.lm_window) {
++        g_pace.lm_tripwire_done = 1;
++        int ok = 0;
++        for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER && !ok; il++) {
++            if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++            const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
++            const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++            for (uint32_t e = 0; e < ne; e++) {
++                if (g_reap_mask_pruned[il][e] && (wc[e] > 0 || ws[e] > 0.0)) { ok = 1; break; }
++            }
++        }
++        if (!ok) {
++            fprintf(stderr,
++                "ds4: PACE LIVEMASK WARNING: router_probs appears biased / loop "
++                "frozen -- re-admission disabled (no pruned expert has knocked in "
++                "the %d tokens since seed). (reported once)\n", g_pace.lm_window);
++        }
++    }
+     int dirty = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;

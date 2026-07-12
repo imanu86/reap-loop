@@ -1,0 +1,16 @@
+[smoke] START 2026-07-12T04:04:27+02:00 bin=d687ba913de6e9153f0ffdc2eaefc0ef
+[smoke] A inplace=1 start 2026-07-12T04:04:30+02:00
+[smoke] A warmup done 2026-07-12T04:06:01+02:00
+[smoke] A measured done 2026-07-12T04:06:54+02:00
+[RESULT-A] inplace=1 | prompt done 13.101s | verify_warn=1 close_html=0 chars=215
+  SPEX(total warmup+measured): cache_hits=1417 cache_misses=25183 hit_rate=0.0533 miss_per_expert=0.7661 direct_loads=7070 copy_calls=96759 copied=217707.75 MiB
+  inplace_log: INPLACE_RESIDENT capacity wall: working set exceeds pin budget |inplace: reuse_hits=0 admissions=24383 slot_uploads=4300 |
+  chunks(last5): gen=40 decoding chunk=1.79 t/s avg=1.79 t/s|gen=50 decoding chunk=1.46 t/s avg=1.46 t/s|gen=60 decoding chunk=2.29 t/s avg=1.56 t/s|
+[smoke] B inplace=0 start 2026-07-12T04:07:01+02:00
+[smoke] B warmup done 2026-07-12T04:07:30+02:00
+[smoke] B measured done 2026-07-12T04:08:00+02:00
+[RESULT-B] inplace=0 | prompt done 9.012s | verify_warn=1 close_html=0 chars=215
+  SPEX(total warmup+measured): cache_hits=20343 cache_misses=6257 hit_rate=0.7648 miss_per_expert=0.1904 direct_loads=7070 copy_calls=39981 copied=89957.25 MiB
+  inplace_log: 
+  chunks(last5): gen=40 decoding chunk=2.97 t/s avg=2.97 t/s|gen=50 decoding chunk=2.70 t/s avg=2.70 t/s|gen=60 decoding chunk=4.02 t/s avg=2.85 t/s|
+[smoke] COMPLETE 2026-07-12T04:08:04+02:00

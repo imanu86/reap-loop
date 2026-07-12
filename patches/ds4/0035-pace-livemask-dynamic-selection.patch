@@ -1,0 +1,469 @@
+diff --git a/ds4.c b/ds4.c
+index 0d0aaeb..994c57d 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7492,6 +7492,36 @@ static struct {
+     /* breath re-learn window accumulator */
+     double  *bmass;
+     uint32_t bmass_rows;
++
++    /* ---- patch 0035: LIVEMASK - live dynamic K-wide selection mask ---- */
++    int      lm_on;              /* DS4_PACE_LIVEMASK master gate (independent of DS4_PACE) */
++    int      lm_bootstrap;       /* generated tokens at K0 before seed */
++    int      lm_window;          /* sliding window length (clamp 10..20, cap WIN_MAX) */
++    int      lm_k;               /* eligible experts/layer (floor DS4_N_EXPERT_USED) */
++    int      lm_observe_top;     /* unbiased top-N recorded per token/layer */
++    int      lm_x;               /* integer windowed-knock threshold */
++    int      lm_max_swaps;       /* per layer per scan */
++    int      lm_cooldown;        /* per-layer tokens between swaps */
++    double   lm_hyst;            /* share margin candidate must beat victim by */
++    int      lm_weighted;        /* reserved recency weighting hook (v0 no-op) */
++    int      lm_pin;             /* deferred explicit tier bridge (v1) */
++    FILE    *lm_log;             /* optional JSONL seed/swap events */
++    int      lm_seeded;
++    uint32_t lm_tok;             /* generated-token counter */
++    int      lm_ring_pos;
++    int      lm_ring_fill;
++    int      lm_in_prefill;      /* private prefill flag (no PACE coupling) */
++    int      lm_warned_mutex;    /* one-shot mutual-exclusion warning */
++    int      lm_assert_done;     /* one-shot router-probs-unbiased tripwire */
++    uint16_t *lm_ring_id;        /* [WIN_MAX][DS4_MAX_LAYER][OBS_MAX] recorded ids */
++    float    *lm_ring_share;     /* [WIN_MAX][DS4_MAX_LAYER][OBS_MAX] unbiased shares */
++    int      *lm_ring_n;         /* [WIN_MAX][DS4_MAX_LAYER] entries stored per slot */
++    uint16_t *lm_wcount;         /* [DS4_MAX_LAYER][DS4_MAX_EXPERT] windowed integer knock */
++    double   *lm_wshare;         /* [DS4_MAX_LAYER][DS4_MAX_EXPERT] windowed summed share */
++    uint16_t *lm_cur_id;         /* [DS4_MAX_LAYER][OBS_MAX] per-token scratch */
++    float    *lm_cur_share;      /* [DS4_MAX_LAYER][OBS_MAX] per-token scratch */
++    int      *lm_cur_n;          /* [DS4_MAX_LAYER] per-token scratch count */
++    uint32_t *lm_last_swap_tok;  /* [DS4_MAX_LAYER] per-layer cooldown */
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -12772,9 +12802,76 @@ static double pace_env_d(const char *name, double dflt) {
+     return (end != v && *end == '\0') ? x : dflt;
+ }
+ 
++/* patch 0035: LIVEMASK static maxima (used by ds4_pace_init alloc below). */
++#ifndef DS4_LM_WIN_MAX
++#define DS4_LM_WIN_MAX 32
++#endif
++#ifndef DS4_LM_OBS_MAX
++#define DS4_LM_OBS_MAX 16
++#endif
++
+ static void ds4_pace_init(void) {
+     if (g_pace.enabled != 0) return;   /* already inited (or explicitly off) */
+     memset(&g_pace, 0, sizeof(g_pace));
++
++    /* patch 0035: LIVEMASK config is parsed here (once) but is INDEPENDENT of
++     * DS4_PACE - it self-seeds. Parsed before the DS4_PACE early-return so it
++     * arms even when the full PACE controller is off. */
++    {
++        const char *lm = getenv("DS4_PACE_LIVEMASK");
++        g_pace.lm_on = (lm && *lm && strcmp(lm, "0") != 0) ? 1 : 0;
++        if (g_pace.lm_on) {
++            g_pace.lm_bootstrap   = pace_env_i("DS4_PACE_LIVEMASK_BOOTSTRAP", 10);
++            if (g_pace.lm_bootstrap < 1) g_pace.lm_bootstrap = 1;
++            g_pace.lm_window      = pace_env_i("DS4_PACE_LIVEMASK_WINDOW", 16);
++            if (g_pace.lm_window < 10) g_pace.lm_window = 10;   /* clamp 10..20 */
++            if (g_pace.lm_window > 20) g_pace.lm_window = 20;
++            if (g_pace.lm_window > DS4_LM_WIN_MAX) g_pace.lm_window = DS4_LM_WIN_MAX;
++            g_pace.lm_k           = pace_env_i("DS4_PACE_LIVEMASK_K", 8);
++            if (g_pace.lm_k < (int)DS4_N_EXPERT_USED) g_pace.lm_k = (int)DS4_N_EXPERT_USED;
++            if (g_pace.lm_k > (int)DS4_N_EXPERT) g_pace.lm_k = (int)DS4_N_EXPERT;
++            g_pace.lm_observe_top = pace_env_i("DS4_PACE_LIVEMASK_OBSERVE_TOP", 16);
++            if (g_pace.lm_observe_top < 1) g_pace.lm_observe_top = 1;
++            if (g_pace.lm_observe_top > DS4_LM_OBS_MAX) g_pace.lm_observe_top = DS4_LM_OBS_MAX;
++            g_pace.lm_x           = pace_env_i("DS4_PACE_LIVEMASK_X", 3);
++            if (g_pace.lm_x < 1) g_pace.lm_x = 1;
++            g_pace.lm_max_swaps   = pace_env_i("DS4_PACE_LIVEMASK_MAX_SWAPS", 2);
++            if (g_pace.lm_max_swaps < 0) g_pace.lm_max_swaps = 0;
++            g_pace.lm_cooldown    = pace_env_i("DS4_PACE_LIVEMASK_COOLDOWN", 64);
++            if (g_pace.lm_cooldown < 0) g_pace.lm_cooldown = 0;
++            g_pace.lm_hyst        = pace_env_d("DS4_PACE_LIVEMASK_HYST", 1.0);
++            g_pace.lm_weighted    = pace_env_i("DS4_PACE_LIVEMASK_WEIGHTED", 0);
++            g_pace.lm_pin         = pace_env_i("DS4_PACE_LIVEMASK_PIN", 0);
++            const char *llg = getenv("DS4_PACE_LIVEMASK_LOG");
++            if (llg && *llg) g_pace.lm_log = fopen(llg, "w");
++            g_pace.lm_ring_id    = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(uint16_t));
++            g_pace.lm_ring_share = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(float));
++            g_pace.lm_ring_n     = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER, sizeof(int));
++            g_pace.lm_wcount     = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(uint16_t));
++            g_pace.lm_wshare     = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(double));
++            g_pace.lm_cur_id     = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(uint16_t));
++            g_pace.lm_cur_share  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(float));
++            g_pace.lm_cur_n      = xmalloc_zeroed((size_t)DS4_MAX_LAYER, sizeof(int));
++            g_pace.lm_last_swap_tok = xmalloc_zeroed((size_t)DS4_MAX_LAYER, sizeof(uint32_t));
++            g_pace.lm_in_prefill = 1;
++            fprintf(stderr,
++                "ds4: PACE LIVEMASK on - bootstrap=%d window=%d K=%d observe_top=%d "
++                "X=%d max_swaps=%d cooldown=%d hyst=%.3f weighted=%d pin=%d\n",
++                g_pace.lm_bootstrap, g_pace.lm_window, g_pace.lm_k,
++                g_pace.lm_observe_top, g_pace.lm_x, g_pace.lm_max_swaps,
++                g_pace.lm_cooldown, g_pace.lm_hyst, g_pace.lm_weighted, g_pace.lm_pin);
++            if (g_pace.lm_k <= 8)
++                fprintf(stderr, "ds4: PACE LIVEMASK note: K=%d is the AGGRESSIVE stress config; "
++                    "wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.\n", g_pace.lm_k);
++            if (g_pace.lm_pin)
++                fprintf(stderr, "ds4: PACE LIVEMASK_PIN=1 requested but the explicit tier bridge "
++                    "is DEFERRED to v1 - ignoring; residency follows selection emergently via 0033.\n");
++            if (!getenv("DS4_CUDA_NO_Q8_F16_CACHE"))
++                fprintf(stderr, "ds4: PACE LIVEMASK reminder: set DS4_CUDA_NO_Q8_F16_CACHE=1 and "
++                    "DS4_PACE_TIER=1 for representation-neutral 2-bit residency serving.\n");
++        }
++    }
++
+     const char *e = getenv("DS4_PACE");
+     if (!e || !*e || !strcmp(e, "0")) { g_pace.enabled = -1; return; }
+     g_pace.enabled = 1;
+@@ -12917,6 +13014,312 @@ static inline int ds4_pace_active(void) {
+     return g_pace.enabled == 1;
+ }
+ 
++/* ======================================================================== *
++ * PATCH 0035 - PACE LIVEMASK: a live, self-built dynamic K-wide SELECTION
++ * mask. Master gate DS4_PACE_LIVEMASK (default 0), INDEPENDENT of DS4_PACE
++ * and DS4_REAP_MASK_FILE. Bootstraps at true K0 on the live prompt, seeds a
++ * top-K mask from observed unbiased routing demand, then keeps a hard sliding
++ * window (last W generated tokens) as the promote/prune RATING and does at
++ * most a couple Anchor-Law-gated one-in/one-out swaps per layer per scan.
++ * Reuses the 0011 actuator (g_reap_mask_pruned + ds4_reap_mask_apply). ON
++ * intentionally breaks bit-exactness (restricting selection is the point);
++ * OFF is a pure no-op (byte-identical to stock).
++ * ======================================================================== */
++#ifndef DS4_LM_WIN_MAX
++#define DS4_LM_WIN_MAX 32
++#endif
++#ifndef DS4_LM_OBS_MAX
++#define DS4_LM_OBS_MAX 16
++#endif
++
++static inline int ds4_pace_livemask_active(void) {
++    if (g_pace.enabled == 0) ds4_pace_init();
++    return g_pace.lm_on != 0;
++}
++
++/* True during BOTH bootstrap and post-seed decode; false in prefill. OR-ed into
++ * the existing router_probs readback guard. */
++static inline int ds4_pace_livemask_wants_router(void) {
++    return ds4_pace_livemask_active() && !g_pace.lm_in_prefill;
++}
++
++/* exp_probs_b exists only on the non-hash layers (3..42); hash layers 0-2 have
++ * no router bias and must never be masked. */
++static inline int ds4_pace_livemask_layer_ok(const ds4_weights *weights,
++                                             uint32_t il) {
++    return weights && il < DS4_N_LAYER && il < DS4_MAX_LAYER &&
++           weights->layer[il].ffn_exp_probs_b != NULL;
++}
++
++/* Partial-select the unbiased top-obs of probs[] by value (obs << N_EXPERT).
++ * out_share[j] = probs[id] / sum(all probs). Returns the number selected. */
++static int ds4_pace_livemask_topk(const float *probs, uint16_t *out_id,
++                                  float *out_share, int obs) {
++    if (!probs || obs <= 0) return 0;
++    if (obs > DS4_LM_OBS_MAX) obs = DS4_LM_OBS_MAX;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    double tot = 0.0;
++    for (uint32_t e = 0; e < ne; e++) tot += (double)probs[e];
++    if (tot <= 0.0) tot = 1.0;
++    int n = 0;
++    for (int k = 0; k < obs && (uint32_t)k < ne; k++) {
++        int best = -1;
++        float bestv = -3.4e38f;
++        for (uint32_t e = 0; e < ne; e++) {
++            int seen = 0;
++            for (int p = 0; p < n; p++) {
++                if (out_id[p] == (uint16_t)e) { seen = 1; break; }
++            }
++            if (seen) continue;
++            if (probs[e] > bestv) { bestv = probs[e]; best = (int)e; }
++        }
++        if (best < 0) break;
++        out_id[n] = (uint16_t)best;
++        out_share[n] = (float)((double)probs[best] / tot);
++        n++;
++    }
++    return n;
++}
++
++/* Forward-pass hook: record this token/layer unbiased top-obs into the scratch.
++ * Uses UNBIASED probs (pre exp_probs_b) so a BLOCKED expert still registers true
++ * demand - the invariant the seed tripwire guards. */
++static void ds4_pace_livemask_note_probs(uint32_t il, const float *probs) {
++    if (!g_pace.lm_on || g_pace.lm_in_prefill) return;
++    if (il >= DS4_N_LAYER || il >= DS4_MAX_LAYER || !probs) return;
++    uint16_t *id = &g_pace.lm_cur_id[(size_t)il * DS4_LM_OBS_MAX];
++    float    *sh = &g_pace.lm_cur_share[(size_t)il * DS4_LM_OBS_MAX];
++    g_pace.lm_cur_n[il] = ds4_pace_livemask_topk(probs, id, sh, g_pace.lm_observe_top);
++}
++
++/* Roll the ring exactly one slot: evict the token leaving the window (subtract
++ * its stored floats), then overwrite the slot with the just-finished token
++ * (add). Subtract-then-add of the SAME stored floats keeps the window sum
++ * exact. This hard window (not EWMA) is the phase-adaptivity engine. */
++static void ds4_pace_livemask_commit(void) {
++    if (!g_pace.lm_on) return;
++    int W = g_pace.lm_window;
++    if (W <= 0) return;
++    int s = g_pace.lm_ring_pos;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        size_t rbase = ((size_t)s * DS4_MAX_LAYER + il) * DS4_LM_OBS_MAX;
++        uint16_t *rid = &g_pace.lm_ring_id[rbase];
++        float    *rsh = &g_pace.lm_ring_share[rbase];
++        size_t nslot = (size_t)s * DS4_MAX_LAYER + il;
++        uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
++        double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        int oldn = g_pace.lm_ring_n[nslot];
++        for (int j = 0; j < oldn; j++) {
++            uint16_t e = rid[j];
++            if (e < DS4_MAX_EXPERT) {
++                if (wc[e] > 0) wc[e]--;
++                ws[e] -= (double)rsh[j];
++            }
++        }
++        int n = g_pace.lm_cur_n[il];
++        if (n > DS4_LM_OBS_MAX) n = DS4_LM_OBS_MAX;
++        uint16_t *cid = &g_pace.lm_cur_id[(size_t)il * DS4_LM_OBS_MAX];
++        float    *csh = &g_pace.lm_cur_share[(size_t)il * DS4_LM_OBS_MAX];
++        for (int j = 0; j < n; j++) {
++            uint16_t e = cid[j];
++            float sv = csh[j];
++            rid[j] = e;
++            rsh[j] = sv;
++            if (e < DS4_MAX_EXPERT) {
++                wc[e]++;
++                ws[e] += (double)sv;
++            }
++        }
++        g_pace.lm_ring_n[nslot] = n;
++        g_pace.lm_cur_n[il] = 0;
++    }
++    g_pace.lm_ring_pos = (s + 1) % W;
++    if (g_pace.lm_ring_fill < W) g_pace.lm_ring_fill++;
++}
++
++/* At token ~bootstrap: build the K-wide mask = top-K experts/layer by windowed
++ * demand (count primary, share tiebreak), push it through the 0011 actuator. */
++static void ds4_pace_livemask_seed(const ds4_model *model,
++                                   const ds4_weights *weights) {
++    if (!g_pace.lm_on) return;
++    int K = g_pace.lm_k;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    uint8_t keep[DS4_MAX_EXPERT];
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++        memset(keep, 0, ne);
++        const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
++        const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        for (int k = 0; k < K; k++) {
++            int best = -1;
++            long bestc = -1;
++            double bests = -1.0;
++            for (uint32_t e = 0; e < ne; e++) {
++                if (keep[e]) continue;
++                long c = (long)wc[e];
++                if (c > bestc || (c == bestc && ws[e] > bests)) {
++                    bestc = c; bests = ws[e]; best = (int)e;
++                }
++            }
++            if (best < 0) break;
++            keep[best] = 1;
++        }
++        for (uint32_t e = 0; e < ne; e++)
++            g_reap_mask_pruned[il][e] = keep[e] ? 0 : 1;
++    }
++    /* Router-probs-unbiased tripwire (one-shot): at least one PRUNED expert must
++     * retain nonzero windowed share, else the readback distribution is biased
++     * (mask folded into probs) and live re-admission would silently freeze. */
++    if (!g_pace.lm_assert_done) {
++        g_pace.lm_assert_done = 1;
++        int ok = 0;
++        for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER && !ok; il++) {
++            if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++            const double *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++            for (uint32_t e = 0; e < ne; e++) {
++                if (g_reap_mask_pruned[il][e] && ws[e] > 0.0) { ok = 1; break; }
++            }
++        }
++        if (!ok) {
++            fprintf(stderr,
++                "ds4: PACE LIVEMASK WARNING: no pruned expert retains nonzero windowed "
++                "share at seed - router_probs readback may be BIASED (mask folded into "
++                "probs); live re-admission would freeze. (reported once)\n");
++        }
++    }
++    /* Mutual-exclusion one-shot: LIVEMASK owns g_reap_mask_pruned. */
++    if (!g_pace.lm_warned_mutex) {
++        g_pace.lm_warned_mutex = 1;
++        const char *mf = getenv("DS4_REAP_MASK_FILE");
++        int pace_mask = (ds4_pace_active() && (g_pace.keep > 0 || g_pace.rotate_on));
++        if ((mf && *mf) || pace_mask) {
++            fprintf(stderr,
++                "ds4: PACE LIVEMASK WARNING: another g_reap_mask_pruned writer is active "
++                "(DS4_PACE keep/rotate, DS4_REAP_MASK_FILE, 0026 admit or 0015 rotate) - "
++                "LIVEMASK owns the mask; running two corrupts the anchor. (reported once)\n");
++        }
++    }
++    ds4_reap_mask_apply(model, weights);          /* 0011 actuator */
++    g_pace.lm_seeded = 1;
++    if (g_pace.lm_log) {
++        fprintf(g_pace.lm_log,
++                "{\"ev\":\"seed\",\"tok\":%u,\"K\":%d,\"window\":%d}\n",
++                g_pace.lm_tok, g_pace.lm_k, g_pace.lm_window);
++        fflush(g_pace.lm_log);
++    }
++    fprintf(stderr, "ds4: PACE LIVEMASK seeded at tok=%u K=%d window=%d\n",
++            g_pace.lm_tok, g_pace.lm_k, g_pace.lm_window);
++}
++
++/* Continuous loop: per eligible layer, cooldown-gated, up to max_swaps one-in/
++ * one-out swaps. Triple-gate: sustained knock (count>=X), candidate hotter by
++ * hyst, per-layer cooldown. K stays constant; window roll-off is the decay. */
++static void ds4_pace_livemask_scan(const ds4_model *model,
++                                   const ds4_weights *weights) {
++    if (!g_pace.lm_on || !g_pace.lm_seeded) return;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    int dirty = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++        if ((g_pace.lm_tok - g_pace.lm_last_swap_tok[il]) <
++            (uint32_t)g_pace.lm_cooldown) continue;
++        const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
++        const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        for (int sw = 0; sw < g_pace.lm_max_swaps; sw++) {
++            int cand = -1;
++            long candc = -1;
++            for (uint32_t e = 0; e < ne; e++) {
++                if (!g_reap_mask_pruned[il][e]) continue;
++                if ((long)wc[e] > candc) { candc = (long)wc[e]; cand = (int)e; }
++            }
++            int vic = -1;
++            double vmin = 1e300;
++            for (uint32_t e = 0; e < ne; e++) {
++                if (g_reap_mask_pruned[il][e]) continue;
++                if (ws[e] < vmin) { vmin = ws[e]; vic = (int)e; }
++            }
++            if (cand < 0 || vic < 0) break;
++            if ((long)wc[cand] < (long)g_pace.lm_x) break;         /* sustained knock */
++            if (ws[cand] < ws[vic] + g_pace.lm_hyst) break;        /* hotter by margin */
++            g_reap_mask_pruned[il][vic]  = 1;
++            g_reap_mask_pruned[il][cand] = 0;
++            g_pace.lm_last_swap_tok[il]  = g_pace.lm_tok;
++            dirty = 1;
++            if (g_pace.lm_log) {
++                fprintf(g_pace.lm_log,
++                    "{\"ev\":\"swap\",\"tok\":%u,\"layer\":%u,\"in\":%d,"
++                    "\"out\":%d,\"cand_count\":%ld,\"cand_share\":%.6g,"
++                    "\"vic_share\":%.6g}\n",
++                    g_pace.lm_tok, il, cand, vic, (long)wc[cand], ws[cand], ws[vic]);
++                fflush(g_pace.lm_log);
++            }
++        }
++    }
++    /* One device apply per scan if anything moved (0011 actuator). The 0021
++     * delta-prefetch that would page in the entered expert is not present in
++     * this applied chain; residency instead follows the selection stream
++     * emergently through 0033 (first-request cold miss, then re-pin). */
++    if (dirty) ds4_reap_mask_apply(model, weights);
++}
++
++/* Per-decode-token driver. EXACT ORDERING kills the off-by-one:
++ * (1) commit the PRIOR token, (2) bootstrap-gate / seed, (3) else scan,
++ * (4) advance tok. note_probs for this token then runs during its forward pass,
++ * feeding the NEXT commit. */
++static void ds4_pace_livemask_tick(const ds4_model *model,
++                                   const ds4_weights *weights) {
++    if (!g_pace.lm_on) return;
++    g_pace.lm_in_prefill = 0;                       /* decode has begun */
++    ds4_pace_livemask_commit();                     /* (1) */
++    if (!g_pace.lm_seeded) {                         /* (2) */
++        if (g_pace.lm_tok < (uint32_t)g_pace.lm_bootstrap) {
++            g_pace.lm_tok++;
++            return;
++        }
++        ds4_pace_livemask_seed(model, weights);
++        g_pace.lm_tok++;
++        return;
++    }
++    ds4_pace_livemask_scan(model, weights);         /* (3) */
++    g_pace.lm_tok++;                                /* (4) */
++}
++
++/* Prefill boundary: zero all live state and unmask on device so the next prompt
++ * re-bootstraps at true K0 (mask-matched-at-birth). */
++static void ds4_pace_livemask_reset(const ds4_model *model,
++                                    const ds4_weights *weights) {
++    if (!g_pace.lm_on) return;
++    size_t ring = (size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX;
++    if (g_pace.lm_ring_id)    memset(g_pace.lm_ring_id, 0, ring * sizeof(uint16_t));
++    if (g_pace.lm_ring_share) memset(g_pace.lm_ring_share, 0, ring * sizeof(float));
++    if (g_pace.lm_ring_n)     memset(g_pace.lm_ring_n, 0,
++                                     (size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * sizeof(int));
++    if (g_pace.lm_wcount)     memset(g_pace.lm_wcount, 0,
++                                     (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(uint16_t));
++    if (g_pace.lm_wshare)     memset(g_pace.lm_wshare, 0,
++                                     (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(double));
++    if (g_pace.lm_cur_id)     memset(g_pace.lm_cur_id, 0,
++                                     (size_t)DS4_MAX_LAYER * DS4_LM_OBS_MAX * sizeof(uint16_t));
++    if (g_pace.lm_cur_share)  memset(g_pace.lm_cur_share, 0,
++                                     (size_t)DS4_MAX_LAYER * DS4_LM_OBS_MAX * sizeof(float));
++    if (g_pace.lm_cur_n)      memset(g_pace.lm_cur_n, 0,
++                                     (size_t)DS4_MAX_LAYER * sizeof(int));
++    if (g_pace.lm_last_swap_tok) memset(g_pace.lm_last_swap_tok, 0,
++                                     (size_t)DS4_MAX_LAYER * sizeof(uint32_t));
++    g_pace.lm_seeded = 0;
++    g_pace.lm_tok = 0;
++    g_pace.lm_ring_pos = 0;
++    g_pace.lm_ring_fill = 0;
++    g_pace.lm_in_prefill = 1;
++    if (g_reap_mask_on && model && weights) {
++        memset(g_reap_mask_pruned, 0, sizeof(g_reap_mask_pruned));
++        ds4_reap_mask_apply(model, weights);
++    }
++}
++
+ /* ---- gate-mass accumulation (called per layer, per decode token) ---- */
+ static inline int ds4_pace_wants_selected_weights(void) {
+     if (!ds4_pace_active()) return 0;
+@@ -13169,6 +13572,9 @@ static void ds4_pace_emit(const char *ev, double score, double hit);
+ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+                                        const ds4_weights *weights,
+                                        const char *why) {
++    /* patch 0035: LIVEMASK re-bootstraps at K0 on every new prompt. Runs before
++     * the DS4_PACE gate so it fires even when the full controller is off. */
++    ds4_pace_livemask_reset(model, weights);
+     if (!ds4_pace_active()) return;
+     if (g_pace.cur_keep > 0 && model && weights) {
+         ds4_pace_unmask(model, weights);
+@@ -16200,11 +16606,17 @@ static void metal_graph_spex_note_selected(
+     metal_graph_spex_trace_selected(g, il, selected_ids, n_selected);
+     /* PACE rotate: optional raw-router probability readback for K-constant
+      * mask refresh. This stays off unless DS4_PACE_ROTATE=1. */
+-    if (g && g->router_probs && ds4_pace_rotate_wants_router()) {
++    if (g && g->router_probs &&
++        (ds4_pace_rotate_wants_router() || ds4_pace_livemask_wants_router())) {
+         float probs[DS4_MAX_EXPERT];
+         if (ds4_gpu_tensor_read(g->router_probs, 0, probs,
+                                 (uint64_t)DS4_N_EXPERT * sizeof(float)) != 0) {
+             ds4_pace_note_router_probs(il, probs);
++            /* patch 0035: record unbiased demand for the live selection mask.
++             * Gated to decode by spex_trace_decode_active so prefill tokens do
++             * not pollute the bootstrap window. */
++            if (g->spex_trace_decode_active)
++                ds4_pace_livemask_note_probs(il, probs);
+         }
+     }
+     /* PACE (0014): in-memory gate-mass + hit-rate, including prefill.
+@@ -21996,6 +22408,8 @@ static bool metal_graph_eval_token_raw_swa_streaming(
+     ds4_reap_mask_poll(model, weights);
+     /* PACE (0014): in-engine controller tick, decode tokens only (logits!=NULL). */
+     if (logits) ds4_pace_tick(model, weights, token);
++    /* patch 0035: LIVEMASK tick (independent of DS4_PACE), decode tokens only. */
++    if (logits) ds4_pace_livemask_tick(model, weights);
+     if (static_decode_map) {
+         if (!static_map_state_cache || !g->streaming_static_decode_map_current) {
+             ok = metal_graph_stream_map_decode_static_all(model, weights);

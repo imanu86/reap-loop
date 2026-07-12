@@ -1,0 +1,14 @@
+[nopin] server-start (PIN OFF) 2026-07-11T21:31:20+02:00
+[nopin] server pid 404
+[nopin] models up=1 2026-07-11T21:31:22+02:00
+[nopin] GREEDY64 fired 2026-07-11T21:31:22+02:00
+[nopin] GREEDY64 done bytes=423 2026-07-11T21:36:09+02:00
+=== BIT-EXACT COMPARE (nopin_64 as prefix of pin-ON 512-tok outputs) ===
+  nopin_64 len=89
+  vs measuredM_content.txt: common_prefix_chars=22 nopin_len=89 -> DIFFER at char 22
+    nopin head: '```<!!DOCTYPE html>\n``\n<\n<html lang="L5-1.5-1.5-1.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.'
+    pinON head: '```<!!DOCTYPE html>\n```\n<!DOCTYPE html>\n<html lang="sera">\n<head>\n    <meta char'
+  vs measured_content.txt: common_prefix_chars=20 nopin_len=89 -> DIFFER at char 20
+    nopin head: '```<!!DOCTYPE html>\n``\n<\n<html lang="L5-1.5-1.5-1.5.5.5.5.5.5.5.5.5.5.5.5.5.5.5.'
+    pinON head: '```<!!DOCTYPE html>\n<html lang="sera">\n    <meta charset="UTF-8">\n    <meta name'
+[nopin] COMPLETE 2026-07-11T21:36:11+02:00

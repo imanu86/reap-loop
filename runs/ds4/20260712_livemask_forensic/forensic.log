@@ -1,0 +1,36 @@
+[k0] start 2026-07-12T05:14:01+02:00 extra=
+[k0] up=1
+[k0] done, trace rows=2401 close_html=0
+[livemask] start 2026-07-12T05:23:03+02:00 extra=DS4_PACE_LIVEMASK=1 DS4_PACE_LIVEMASK_BOOTSTRAP=10 DS4_PACE_LIVEMASK_WINDOW=10 DS4_PACE_LIVEMASK_COOLDOWN=8 DS4_PACE_LIVEMASK_K=8 DS4_PACE_LIVEMASK_LOG=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_livemask_forensic/livemask/livemask.jsonl
+[livemask] up=1
+[livemask] done, trace rows=2401 close_html=0
+=== ANALISI ===
+layers tracciati: 40
+
+TOTALI (finestra primi 40 token):
+  K0 esperti-distinti (layer,expert) VOLUTI: 0
+  Livemask esperti-distinti OTTENUTI: 0
+  BLOCCATI (K0 li voleva, livemask no): 0
+
+Per-layer (L: K0_voluti / LM_eleggibili / BLOCCATI) -- primi 12 layer MoE + i piu' bloccati:
+  L 3: K0= 0 LM= 0 BLOCCATI=0
+  L 4: K0= 0 LM= 0 BLOCCATI=0
+  L 5: K0= 0 LM= 0 BLOCCATI=0
+  L 6: K0= 0 LM= 0 BLOCCATI=0
+  L 7: K0= 0 LM= 0 BLOCCATI=0
+  L 8: K0= 0 LM= 0 BLOCCATI=0
+  L 9: K0= 0 LM= 0 BLOCCATI=0
+  L10: K0= 0 LM= 0 BLOCCATI=0
+  L11: K0= 0 LM= 0 BLOCCATI=0
+  L12: K0= 0 LM= 0 BLOCCATI=0
+  L13: K0= 0 LM= 0 BLOCCATI=0
+  L14: K0= 0 LM= 0 BLOCCATI=0
+  ...top-bloccati:
+  L 3: K0= 0 LM= 0 BLOCCATI=0
+  L 4: K0= 0 LM= 0 BLOCCATI=0
+  L 5: K0= 0 LM= 0 BLOCCATI=0
+  L 6: K0= 0 LM= 0 BLOCCATI=0
+  L 7: K0= 0 LM= 0 BLOCCATI=0
+  L 8: K0= 0 LM= 0 BLOCCATI=0
+
+Larghezza K0 (esperti-distinti/layer nella finestra): media=0.0 max=0 min=0  <-- se >>8, K8 e' troppo stretto

@@ -1,0 +1,4 @@
+Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":
+
+```HTML
+<! tuom, con @nessuna possibile selezione di valutazione #<! tuom, <è una cprodo, alle code, con l'ora di fun

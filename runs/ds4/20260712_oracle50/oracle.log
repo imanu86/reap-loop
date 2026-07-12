@@ -1,0 +1,71 @@
+[k0w] start 2026-07-12T05:39:37+02:00
+[k0w] up=1 2026-07-12T05:39:40+02:00
+[k0w] trace rows=3196 2026-07-12T05:42:54+02:00
+pos,layer,n,e0,e1,e2,e3,e4,e5,w0,w1,w2,w3,w4,w5
+64,3,6,119,60,48,118,226,108,0.342843473,0.281710833,0.259416103,0.232980117,0.201307654,0.181741789
+trace rows=3195 layers=40
+mask k23 (per MASSA): keep/layer media=23.0 min=23 max=23 tot=920
+mask k50 (per MASSA): keep/layer media=47.0 min=33 max=61 tot=1881
+Traceback (most recent call last):
+  File "<stdin>", line 31, in <module>
+ModuleNotFoundError: No module named 'numpy'
+[k23] start 2026-07-12T05:42:59+02:00
+[k23] up=1 2026-07-12T05:43:11+02:00
+[RESULT-k23] prompt done 122.711s  | RENDE close_html=2 chars=1095 | chunks=gen=250 decoding chunk=3.05 t/s avg=2.56 t/s|gen=300 decoding chunk=3.04 t/s avg=2.63 t/s|gen=329 decoding chunk=3.06 t/s avg=2.66 t/s|
+--- HTML k23 (primi 600) ---
+Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew - Caffetteria</title>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Menu</a></li>
+            <li><a href="#">Contatti</a></li>
+        </ul>
+    </nav>
+    <h1>Benvenuti da Bean & Brew</h1>
+    <button type="button">Ordina</button>
+</body>
+</html>
+```
+
+La pagina è completa e valida secondo
+[k50] start 2026-07-12T05:47:28+02:00
+[k50] up=1 2026-07-12T05:47:30+02:00
+[RESULT-k50] prompt done 14.111s  | RENDE close_html=2 chars=920 | chunks=gen=200 decoding chunk=2.86 t/s avg=2.49 t/s|gen=250 decoding chunk=2.92 t/s avg=2.57 t/s|gen=284 decoding chunk=3.08 t/s avg=2.62 t/s|
+--- HTML k50 (primi 600) ---
+Ecco una pagina HTML5 valida e minima per la caffetteria "Bean & Brew":
+
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bean & Brew - Caffetteria</title>
+</head>
+<body>
+    <nav>
+        <ul>
+            <li><a href="#">Home</a></li>
+            <li><a href="#">Menu</a></li>
+            <li><a href="#">Contatti</a></li>
+        </ul>
+    </nav>
+    <h1>Bean & Brew</h1>
+    <button>Ordina</button>
+</body>
+</html>
+```
+
+La pagina è completa e valida, include:
+- `<!DOCTYPE html>` per 
+[oracle] COMPLETE 2026-07-12T05:49:38+02:00

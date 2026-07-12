@@ -1,0 +1,46 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 8.788s
+ds4: cuda backend initialized for graph diagnostics
+0712 05:14:13 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 05:14:14 ds4-server: listening on http://127.0.0.1:8021
+0712 05:14:16 ds4-server: chat ctx=0..74:74 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.12 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: DBGCAP final_cap=10 requested=400
+ds4: DBGCAP final_cap=12 requested=400
+ds4: DBGCAP final_cap=16 requested=400
+ds4: CUDA loading model tensors 0.00 GiB cached
+0712 05:19:29 ds4-server: chat ctx=0..74:74 prompt done 307.117s
+ds4: DBGCAP final_cap=400 requested=400
+ds4: SPEX routing trace enabled: /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_livemask_forensic/k0/route.csv (weights: off)
+ds4: CUDA loading model tensors 7.70 GiB cached
+0712 05:22:22 ds4-server: chat ctx=74..124:50 gen=50 decoding chunk=0.30 t/s avg=0.30 t/s 168.430s
+ds4: CUDA loading model tensors 7.86 GiB cached
+0712 05:22:57 ds4-server: chat ctx=124..134:10 gen=60 decoding chunk=0.29 t/s avg=0.30 t/s 202.432s
+0712 05:22:57 ds4-server: chat ctx=0..74:74 gen=60 finish=length 509.554s
+0712 05:22:57 ds4-server: shutdown requested, draining requests

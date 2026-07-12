@@ -1,0 +1,456 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index c3757c6..c1ce786 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -118,6 +118,11 @@ struct cuda_spex_stats {
+ };
+ 
+ static cuda_spex_stats g_spex_stats;
++/* 0036 in-place resident counters (defined here so cuda_spex_stats_print can
++ * report them; incremented by the in-place decode path far below). */
++static uint64_t g_inplace_reuse_hits;
++static uint64_t g_inplace_admissions;
++static uint64_t g_inplace_slot_uploads;
+ static int g_spex_stats_enabled = -1;
+ static int g_spex_stats_atexit_registered;
+ static int g_spex_stats_printed;
+@@ -951,6 +956,14 @@ static void cuda_spex_stats_print(void) {
+             (unsigned long long)g_spex_stats.selected_sync_calls,
+             sync_ms,
+             sync_ms_per_batch);
++    if (g_inplace_reuse_hits || g_inplace_admissions || g_inplace_slot_uploads) {
++        fprintf(stderr,
++                "ds4: SPEX inplace: reuse_hits=%llu admissions=%llu "
++                "slot_uploads=%llu (compact re-gather bypassed)\n",
++                (unsigned long long)g_inplace_reuse_hits,
++                (unsigned long long)g_inplace_admissions,
++                (unsigned long long)g_inplace_slot_uploads);
++    }
+ }
+ 
+ static void cuda_spex_stats_print_atexit(void) {
+@@ -3225,7 +3238,12 @@ static void cuda_stream_selected_cache_release(void) {
+     memset(&g_stream_selected_cache, 0, sizeof(g_stream_selected_cache));
+ }
+ 
++static void cuda_inplace_reset_all(void); /* 0036 fwd decl (defined below) */
++
+ static void cuda_stream_expert_cache_release_all(void) {
++    /* 0036: the resident slab is about to be freed/reallocated -- drop every
++     * in-place slot map so a stale index can never point into a moved slab. */
++    cuda_inplace_reset_all();
+     if (g_stream_expert_cache.gate_ptr) {
+         (void)cudaFree(g_stream_expert_cache.gate_ptr);
+     }
+@@ -3918,6 +3936,87 @@ static const cuda_pin_config *cuda_pin_get_config(void) {
+     return &g_pin_cfg;
+ }
+ 
++/* ---- 0036 in-place resident (no-copy) decode path ----------------------
++ * When DS4_CUDA_INPLACE_RESIDENT=1 the routed-MoE decode GEMM reads each
++ * resident expert directly from its VRAM cache slot in g_stream_expert_cache
++ * (the uniform-stride slab the kernel already indexes as base +
++ * slot*expert_bytes) instead of re-gathering the routed subset into a
++ * per-token compact buffer.  A per-layer resident-slot map + a per-layer dirty
++ * epoch make staging INCREMENTAL: a layer whose routed expert set is unchanged
++ * and still fully resident reuses the prior binding with ZERO copies, ZERO
++ * finds and ZERO uploads.  All hooks are no-ops unless the env is set, so the
++ * default engine is byte-identical to post-0033. */
++struct cuda_inplace_config {
++    int ready;
++    int enabled;   /* DS4_CUDA_INPLACE_RESIDENT master gate (default off) */
++    int verify;    /* DS4_CUDA_INPLACE_VERIFY    debug: re-find + assert  */
++};
++static cuda_inplace_config g_inplace_cfg;
++static const cuda_inplace_config *cuda_inplace_get_config(void) {
++    if (g_inplace_cfg.ready) return &g_inplace_cfg;
++    g_inplace_cfg.enabled = cuda_pin_env_flag("DS4_CUDA_INPLACE_RESIDENT");
++    g_inplace_cfg.verify = cuda_pin_env_flag("DS4_CUDA_INPLACE_VERIFY");
++    g_inplace_cfg.ready = 1;
++    return &g_inplace_cfg;
++}
++static int cuda_inplace_resident_enabled(void) {
++    return cuda_inplace_get_config()->enabled;
++}
++
++/* Per-layer persistent staging state for the in-place decode path.  Keyed by
++ * layer index: the expert cache is keyed by (layer,expert), so residency of
++ * layer L is independent of admissions in any other layer. */
++struct cuda_inplace_layer_state {
++    std::vector<int32_t> prev_ids;       /* compact_ids snapshot (order-sensitive) */
++    std::vector<int32_t> prev_slot_ids;  /* slot_ids snapshot (routed order)       */
++    std::vector<int32_t> prev_slot_map;  /* last uploaded resident-slot map         */
++    int32_t *slot_dev = NULL;            /* persistent device int32[slot_count]     */
++    uint64_t slot_dev_capacity = 0;      /* element capacity of slot_dev            */
++    ds4_gpu_tensor slot_dev_tensor{};    /* tensor view the GEMM reads              */
++    uint32_t prev_count = 0;             /* compact_count                           */
++    uint32_t slot_count = 0;             /* routed slot count (n_tokens*n_expert)   */
++    uint64_t epoch_seen = 0;             /* g_inplace_epoch[layer] at last build    */
++    const void *model_map = NULL;
++    uint32_t n_total_expert = 0;
++    uint64_t gate_offset = 0;
++    uint64_t up_offset = 0;
++    uint64_t down_offset = 0;
++    uint64_t gate_expert_bytes = 0;
++    uint64_t down_expert_bytes = 0;
++    uint8_t valid = 0;
++};
++static std::vector<cuda_inplace_layer_state> g_inplace_layer;
++static std::vector<uint64_t> g_inplace_epoch; /* per-layer (layer,expert)->slot dirty ctr */
++/* g_inplace_reuse_hits / g_inplace_admissions / g_inplace_slot_uploads are
++ * declared near g_spex_stats (used by cuda_spex_stats_print, defined earlier). */
++
++static uint64_t cuda_inplace_epoch_get(uint32_t layer) {
++    return (uint64_t)layer < g_inplace_epoch.size() ? g_inplace_epoch[layer] : 0ull;
++}
++static void cuda_inplace_epoch_bump(uint32_t layer) {
++    if ((uint64_t)layer >= g_inplace_epoch.size()) {
++        g_inplace_epoch.resize((size_t)layer + 1u, 0ull);
++    }
++    g_inplace_epoch[layer]++;
++}
++/* Invalidate ALL in-place bindings + epochs.  Called whenever the resident
++ * expert-cache slab is (re)allocated -- every such path funnels through
++ * cuda_stream_expert_cache_release_all -- so a stale slot map can never survive
++ * a slab move. */
++static void cuda_inplace_reset_all(void) {
++    for (cuda_inplace_layer_state &st : g_inplace_layer) {
++        if (st.slot_dev) { (void)cudaFree(st.slot_dev); }
++        st.slot_dev = NULL;
++        st.slot_dev_capacity = 0;
++        st.valid = 0;
++        st.prev_ids.clear();
++        st.prev_slot_ids.clear();
++        st.prev_slot_map.clear();
++        memset(&st.slot_dev_tensor, 0, sizeof(st.slot_dev_tensor));
++    }
++    g_inplace_epoch.clear();
++}
++
+ /* Freeze: pin the `budget` highest-demand resident slots (the hot keeps).  The
+  * budget is a sub-budget of the ALREADY-allocated cache (pinning a slot adds no
+  * VRAM -- it only forbids its eviction), and we always keep >= capacity/8 + 1
+@@ -3990,7 +4089,11 @@ static void cuda_pin_begin_call(cuda_stream_expert_cache *cache, uint32_t layer)
+         }
+     }
+     cache->pin_calls++;
+-    if (!cache->pin_frozen && cache->pin_calls >= cfg->warmup) {
++    if (!cache->pin_frozen && cache->pin_calls >= cfg->warmup &&
++        !cuda_inplace_resident_enabled()) {
++        /* 0036: under in-place residency, pin-on-admit (load_slot) owns the
++         * pinned set from first touch; the warmup EWMA freeze would fight it
++         * (stale snapshot + reserve clamp), so it is disabled. */
+         cuda_pin_freeze(cache);
+     }
+ }
+@@ -4438,6 +4541,41 @@ static int cuda_stream_expert_cache_load_slot(
+         return 0;
+     }
+     cuda_stream_expert_cache_slot &entry = cache->slots[slot];
++    if (cuda_inplace_resident_enabled()) {
++        /* 0036: a (layer,expert)->slot rebinding invalidates the in-place fast
++         * path for BOTH the evicted victim's layer and the admitted expert's
++         * layer.  Bump both epochs so a stale fast-path reuse can never read a
++         * repurposed slot. */
++        if (entry.valid && entry.layer != layer) {
++            cuda_inplace_epoch_bump(entry.layer);
++        }
++        cuda_inplace_epoch_bump(layer);
++        /* 0036 cache-first: pin the admitted expert on first touch (sticky) so
++         * a resident routed expert is never evicted and always HITs on later
++         * tokens.  Bounded by capacity - reserve so the LRU keeps a victim;
++         * beyond the budget new admissions stay LRU-evictable (honest degrade
++         * to the per-token-copy behaviour, warned once). */
++        if (!entry.pinned) {
++            const uint32_t reserve = cache->capacity / 8u + 1u;
++            const uint32_t sticky_budget =
++                cache->capacity > reserve ? cache->capacity - reserve : 0u;
++            if (cache->pinned_count < sticky_budget) {
++                entry.pinned = 1;
++                cache->pinned_count++;
++            } else {
++                static int warned_capacity_wall = 0;
++                if (!warned_capacity_wall) {
++                    warned_capacity_wall = 1;
++                    fprintf(stderr,
++                            "ds4: DS4_CUDA_INPLACE_RESIDENT capacity wall: working "
++                            "set exceeds pin budget (%u slots); new admissions stay "
++                            "LRU-evictable and may re-copy per token. Raise "
++                            "DS4_CUDA_STREAMING_EXPERT_CACHE_N.\n",
++                            sticky_budget);
++                }
++            }
++        }
++    }
+     entry.valid = 1;
+     entry.model_map = model_map;
+     entry.model_size = model_size;
+@@ -5460,6 +5598,168 @@ extern "C" int ds4_gpu_stream_expert_cache_seed_selected(
+     return 1;
+ }
+ 
++/* 0036: build or reuse the per-layer in-place binding for the decode GEMM.
++ * On success g_inplace_layer[layer] holds a resident-slot map the caller may
++ * return on immediately (routed_moe_launch reads the resident slab + this map,
++ * incurring ZERO weight copies).  Returns 1 when the binding is ready (fast
++ * reuse OR incremental rebuild), -1 on a hard failure (caller falls back to the
++ * legacy compact path so the token still produces correct output). */
++static int cuda_inplace_begin_layer(
++        cuda_stream_expert_cache *cache,
++        const void    *model_map,
++        uint64_t       model_size,
++        uint32_t       layer,
++        const int32_t *compact_ids,
++        const int32_t *slot_ids,
++        uint32_t       n_total_expert,
++        uint32_t       compact_count,
++        uint32_t       slot_count,
++        uint64_t       gate_offset,
++        uint64_t       up_offset,
++        uint64_t       down_offset,
++        uint64_t       gate_expert_bytes,
++        uint64_t       down_expert_bytes,
++        int            prompt_like_batch) {
++    if (!cache || !cache->valid) return -1;
++    if ((uint64_t)layer >= g_inplace_layer.size()) {
++        g_inplace_layer.resize((size_t)layer + 1u);
++    }
++    cuda_inplace_layer_state &st = g_inplace_layer[layer];
++    const cuda_inplace_config *cfg = cuda_inplace_get_config();
++    const uint64_t epoch_now = cuda_inplace_epoch_get(layer);
++
++    /* ---- FAST PATH: routed set unchanged and still resident -> reuse ---- */
++    if (st.valid && st.slot_dev &&
++        st.prev_count == compact_count &&
++        st.slot_count == slot_count &&
++        st.epoch_seen == epoch_now &&
++        st.model_map == model_map &&
++        st.n_total_expert == n_total_expert &&
++        st.gate_offset == gate_offset &&
++        st.up_offset == up_offset &&
++        st.down_offset == down_offset &&
++        st.gate_expert_bytes == gate_expert_bytes &&
++        st.down_expert_bytes == down_expert_bytes &&
++        st.prev_ids.size() == (size_t)compact_count &&
++        st.prev_slot_ids.size() == (size_t)slot_count &&
++        memcmp(st.prev_ids.data(), compact_ids,
++               (size_t)compact_count * sizeof(int32_t)) == 0 &&
++        memcmp(st.prev_slot_ids.data(), slot_ids,
++               (size_t)slot_count * sizeof(int32_t)) == 0) {
++        if (cfg->verify) {
++            for (uint32_t c = 0; c < compact_count; c++) {
++                const int vslot = cuda_stream_expert_cache_find(
++                        cache, model_map, model_size, layer, n_total_expert,
++                        (uint32_t)compact_ids[c], gate_offset, up_offset,
++                        down_offset, gate_expert_bytes, down_expert_bytes);
++                if (vslot < 0) {
++                    fprintf(stderr,
++                            "ds4: INPLACE_VERIFY layer=%u idx=%u expert=%d "
++                            "fast-path reuse but expert is NOT resident\n",
++                            layer, c, compact_ids[c]);
++                }
++            }
++        }
++        g_inplace_reuse_hits++;
++        return 1;
++    }
++
++    /* ---- REBUILD (incremental): find residents, admit misses exactly once ---- */
++    std::vector<int32_t> resident_slot(compact_count);
++    for (uint32_t c = 0; c < compact_count; c++) {
++        if (compact_ids[c] < 0 || (uint32_t)compact_ids[c] >= n_total_expert) {
++            st.valid = 0;
++            return -1;
++        }
++        const uint32_t expert = (uint32_t)compact_ids[c];
++        int slot = cuda_stream_expert_cache_find(
++                cache, model_map, model_size, layer, n_total_expert, expert,
++                gate_offset, up_offset, down_offset,
++                gate_expert_bytes, down_expert_bytes);
++        if (slot < 0) {
++            const uint32_t load_slot =
++                cuda_stream_expert_cache_lru_slot(cache);
++            const int append = !cache->slots[load_slot].valid;
++            if (!cuda_stream_expert_cache_load_slot(
++                        cache, model_map, model_size, load_slot, layer,
++                        n_total_expert, expert, gate_offset, up_offset,
++                        down_offset, gate_expert_bytes, down_expert_bytes,
++                        0, prompt_like_batch)) {
++                st.valid = 0;
++                return -1;
++            }
++            if (append && cache->count < cache->capacity) cache->count++;
++            slot = (int)load_slot;
++            g_inplace_admissions++;
++        }
++        cache->slots[(uint32_t)slot].age = ++cache->tick;
++        cuda_pin_note_resident(cache, (uint32_t)slot);
++        cuda_tier_note_resident(cache, (uint32_t)slot);
++        resident_slot[c] = slot;
++    }
++
++    /* Build the routed-position -> resident-slot map the kernel indexes. */
++    std::vector<int32_t> slot_map(slot_count);
++    for (uint32_t j = 0; j < slot_count; j++) {
++        const int32_t ci = slot_ids[j];
++        if (ci < 0 || (uint32_t)ci >= compact_count) {
++            st.valid = 0;
++            return -1;
++        }
++        slot_map[j] = resident_slot[(uint32_t)ci];
++    }
++
++    if (st.slot_dev_capacity < (uint64_t)slot_count) {
++        if (st.slot_dev) { (void)cudaFree(st.slot_dev); st.slot_dev = NULL; }
++        if (!cuda_ok(cudaMalloc((void **)&st.slot_dev,
++                                (size_t)slot_count * sizeof(int32_t)),
++                     "inplace slot map alloc")) {
++            st.slot_dev_capacity = 0;
++            st.valid = 0;
++            return -1;
++        }
++        st.slot_dev_capacity = slot_count;
++    }
++
++    /* Upload the slot map only when it changed (a stable-order routed set that
++     * happens to re-derive identical residency skips even this metadata H2D). */
++    const int need_upload =
++        st.prev_slot_map.size() != (size_t)slot_count ||
++        memcmp(st.prev_slot_map.data(), slot_map.data(),
++               (size_t)slot_count * sizeof(int32_t)) != 0;
++    if (need_upload) {
++        if (!cuda_ok(cudaMemcpy(st.slot_dev, slot_map.data(),
++                                (size_t)slot_count * sizeof(int32_t),
++                                cudaMemcpyHostToDevice),
++                     "inplace slot map upload")) {
++            st.valid = 0;
++            return -1;
++        }
++        st.prev_slot_map.assign(slot_map.begin(), slot_map.end());
++        g_inplace_slot_uploads++;
++    }
++
++    st.prev_ids.assign(compact_ids, compact_ids + compact_count);
++    st.prev_slot_ids.assign(slot_ids, slot_ids + slot_count);
++    st.prev_count = compact_count;
++    st.slot_count = slot_count;
++    st.model_map = model_map;
++    st.n_total_expert = n_total_expert;
++    st.gate_offset = gate_offset;
++    st.up_offset = up_offset;
++    st.down_offset = down_offset;
++    st.gate_expert_bytes = gate_expert_bytes;
++    st.down_expert_bytes = down_expert_bytes;
++    /* Re-read AFTER admissions: this rebuild's own admits bumped epoch[layer];
++     * capturing the post-admit value lets the next token's fast path match. */
++    st.epoch_seen = cuda_inplace_epoch_get(layer);
++    st.slot_dev_tensor.ptr = st.slot_dev;
++    st.slot_dev_tensor.bytes = (uint64_t)slot_count * sizeof(int32_t);
++    st.slot_dev_tensor.owner = 0;
++    st.valid = 1;
++    return 1;
++}
++
+ static int cuda_stream_selected_cache_begin_compact_load(
+         const void    *model_map,
+         uint64_t       model_size,
+@@ -5564,6 +5864,27 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     cuda_pin_begin_call(expert_cache, layer); /* 0031: demand clock + freeze */
+     cuda_tier_begin_call(expert_cache, layer); /* 0033: knock clock + seed/demote */
+ 
++    /* 0036: in-place resident decode path.  When enabled and the global expert
++     * cache is live, stage INCREMENTALLY into the resident slab (find resident /
++     * admit-once) and bind the GEMM directly to those slots -- no per-token
++     * D2D re-gather into the compact buffer, no slot_ids upload on reuse.  On a
++     * hard failure we fall through to the legacy compact path below. */
++    const int inplace_enabled = cuda_inplace_resident_enabled();
++    if (inplace_enabled && !expert_cache_disabled &&
++        expert_cache && expert_cache->valid) {
++        const int rc = cuda_inplace_begin_layer(
++                expert_cache, model_map, model_size, layer,
++                compact_ids, slot_ids, n_total_expert, compact_count,
++                slot_count, gate_offset, up_offset, down_offset,
++                gate_expert_bytes, down_expert_bytes, prompt_like_batch);
++        if (rc >= 0) {
++            return 1;
++        }
++        if ((uint64_t)layer < g_inplace_layer.size()) {
++            g_inplace_layer[layer].valid = 0;
++        }
++    }
++
+     for (uint32_t i = 0; i < compact_count; i++) {
+         if (compact_ids[i] < 0 || (uint32_t)compact_ids[i] >= n_total_expert) {
+             fprintf(stderr,
+@@ -15058,7 +15379,39 @@ static int routed_moe_launch(
+         return 0;
+     }
+     const uint64_t required_slot_count = (uint64_t)n_tokens * n_expert;
++    /* 0036: in-place resident decode binding.  When enabled and this layer has a
++     * live in-place slot map (built by cuda_inplace_begin_layer), the GEMM reads
++     * each routed expert straight from its resident slab slot -- selected[] holds
++     * resident cache-slot indices and the slab stride equals gate/down_expert_bytes
++     * (already the kernel's stride arg), so no kernel change is needed.  Decode
++     * only (n_tokens==1); the sorted prefill path is left on the compact path. */
++    const cuda_inplace_layer_state *inplace_state = NULL;
++    if (cuda_inplace_resident_enabled() && n_tokens == 1u &&
++        g_ssd_streaming_mode &&
++        g_stream_expert_cache.valid &&
++        g_stream_expert_cache.gate_ptr &&
++        g_stream_expert_cache.up_ptr &&
++        g_stream_expert_cache.down_ptr &&
++        g_stream_expert_cache.gate_expert_bytes == gate_expert_bytes &&
++        g_stream_expert_cache.down_expert_bytes == down_expert_bytes &&
++        (uint64_t)layer_index < g_inplace_layer.size()) {
++        const cuda_inplace_layer_state &s = g_inplace_layer[layer_index];
++        if (s.valid && s.slot_dev && s.slot_dev_tensor.ptr &&
++            s.model_map == model_map &&
++            s.n_total_expert == n_total_expert &&
++            (uint64_t)s.slot_count >= required_slot_count &&
++            s.gate_offset == gate_offset &&
++            s.up_offset == up_offset &&
++            s.down_offset == down_offset &&
++            s.gate_expert_bytes == gate_expert_bytes &&
++            s.down_expert_bytes == down_expert_bytes &&
++            s.slot_dev_tensor.bytes >= required_slot_count * sizeof(int32_t)) {
++            inplace_state = &s;
++        }
++    }
++    const int use_inplace = (inplace_state != NULL);
+     const int use_stream_selected_cache =
++        !use_inplace &&
+         g_ssd_streaming_mode &&
+         g_stream_selected_cache.valid &&
+         g_stream_selected_cache.model_map == model_map &&
+@@ -15077,17 +15430,24 @@ static int routed_moe_launch(
+         g_stream_selected_cache.slot_selected_tensor.bytes >=
+             required_slot_count * sizeof(int32_t);
+     const ds4_gpu_tensor *selected_tensor =
+-        use_stream_selected_cache ? &g_stream_selected_cache.slot_selected_tensor : selected;
++        use_inplace ? &inplace_state->slot_dev_tensor :
++        (use_stream_selected_cache ? &g_stream_selected_cache.slot_selected_tensor : selected);
+     const int32_t *selected_ptr = (const int32_t *)selected_tensor->ptr;
+-    const char *gate_w = use_stream_selected_cache
++    const char *gate_w = use_inplace
++        ? g_stream_expert_cache.gate_ptr
++        : (use_stream_selected_cache
+         ? g_stream_selected_cache.gate_ptr
+-        : cuda_model_range_ptr(model_map, gate_offset, gate_bytes, "moe_gate");
+-    const char *up_w = use_stream_selected_cache
++        : cuda_model_range_ptr(model_map, gate_offset, gate_bytes, "moe_gate"));
++    const char *up_w = use_inplace
++        ? g_stream_expert_cache.up_ptr
++        : (use_stream_selected_cache
+         ? g_stream_selected_cache.up_ptr
+-        : cuda_model_range_ptr(model_map, up_offset, gate_bytes, "moe_up");
+-    const char *down_w = use_stream_selected_cache
++        : cuda_model_range_ptr(model_map, up_offset, gate_bytes, "moe_up"));
++    const char *down_w = use_inplace
++        ? g_stream_expert_cache.down_ptr
++        : (use_stream_selected_cache
+         ? g_stream_selected_cache.down_ptr
+-        : cuda_model_range_ptr(model_map, down_offset, down_bytes, "moe_down");
++        : cuda_model_range_ptr(model_map, down_offset, down_bytes, "moe_down"));
+     if (!gate_w || !up_w || !down_w) return 0;
+ 
+     int ok = 1;

@@ -1,0 +1,1 @@
+{"model": "deepseek-v4-flash", "messages": [{"role": "system", "content": "Rispondi diretto, senza ragionamento."}, {"role": "user", "content": "Scrivi una pagina HTML minima per una caffetteria Bean & Brew: nav, un titolo, un bottone Ordina. Chiudi bene i tag."}], "max_tokens": 60, "temperature": 0, "stream": false, "think": false, "thinking": {"type": "disabled"}}

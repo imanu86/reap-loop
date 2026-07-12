@@ -1,0 +1,231 @@
+diff --git a/ds4.c b/ds4.c
+index 934dfb9..71cf218 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7524,6 +7524,24 @@ static struct {
+     float    *lm_cur_share;      /* [DS4_MAX_LAYER][OBS_MAX] per-token scratch */
+     int      *lm_cur_n;          /* [DS4_MAX_LAYER] per-token scratch count */
+     uint32_t *lm_last_swap_tok;  /* [DS4_MAX_LAYER] per-layer cooldown */
++
++    /* ---- patch 0038: RATING LEVERS - tunable promote/prune policy knobs for
++     * the 0035/0037 mechanism. Every field here defaults to reproducing 0037
++     * behavior exactly; all are gated by DS4_PACE_LIVEMASK like the rest of
++     * this block. See docs/LIVEMASK_RATING_DESIGN.md S4-5.
++     * DEFERRED (not implemented here, see design doc S4 items 3 and 1):
++     *   _PHASE_SWAP_BOOST - needs a phase detector; the sliding window
++     *     already re-adapts on its own via roll-off, so a separate phase
++     *     detector is redundant until a sweep shows the plain window is
++     *     too slow to react.
++     *   _RANK_WEIGHT - redundant with lm_wshare, which is already the
++     *     share-weighted (not binary-count) rating. */
++    double   lm_blocked_weight;   /* weight on a PRUNED expert's wshare add; default 1.0 = unweighted (current 0037 behavior) */
++    int      lm_demote_horizon;   /* tokens-since-last-knock before an eligible expert becomes preferred victim; default = lm_window */
++    int      lm_promo_rate_cap;   /* max swap-ins per lm_promo_rate_cap generated tokens, 0 = unlimited (current 0037 behavior) */
++    uint32_t lm_promo_win_tok;    /* [state] tumbling-window start (lm_tok value) for the promo rate cap */
++    int      lm_promo_win_count;  /* [state] promotions counted in the current rate-cap window */
++    uint16_t *lm_since_seen;      /* [DS4_MAX_LAYER][DS4_MAX_EXPERT] tokens since expert last appeared in observed top-N (feeds demote_horizon) */
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -12848,7 +12866,14 @@ static void ds4_pace_init(void) {
+                 if (lm_max_swaps_cap < 1) lm_max_swaps_cap = 1;
+                 if (g_pace.lm_max_swaps > lm_max_swaps_cap) g_pace.lm_max_swaps = lm_max_swaps_cap;
+             }
+-            g_pace.lm_cooldown    = pace_env_i("DS4_PACE_LIVEMASK_COOLDOWN", 64);
++            /* patch 0038: default lowered 64 -> 16. The 64 was carried over
++             * from 0033's RESIDENCY-tier default; a SELECTION mask needs to
++             * track demand shifts that happen in ~10-20 tokens (the same
++             * order as lm_window), and 64 tokens between swaps/layer lets a
++             * cold resident stay eligible long after it stops serving. 16 is
++             * the primary rotation-responsiveness knob for the sweep -
++             * DS4_PACE_LIVEMASK_COOLDOWN still overrides it either way. */
++            g_pace.lm_cooldown    = pace_env_i("DS4_PACE_LIVEMASK_COOLDOWN", 16);
+             /* patch 0037: structural floor. The gradual-swap Anchor-Law
+              * guarantee requires a real cooldown; DS4_PACE_LIVEMASK_COOLDOWN=0
+              * must not be able to disable it. */
+@@ -12856,6 +12881,17 @@ static void ds4_pace_init(void) {
+             g_pace.lm_hyst        = pace_env_d("DS4_PACE_LIVEMASK_HYST", 1.0);
+             g_pace.lm_weighted    = pace_env_i("DS4_PACE_LIVEMASK_WEIGHTED", 0);
+             g_pace.lm_pin         = pace_env_i("DS4_PACE_LIVEMASK_PIN", 0);
++            /* patch 0038: rating levers (docs/LIVEMASK_RATING_DESIGN.md S4-5).
++             * Every default below reproduces 0037 behavior exactly. */
++            g_pace.lm_blocked_weight = pace_env_d("DS4_PACE_LIVEMASK_BLOCKED_WEIGHT", 1.0);
++            if (g_pace.lm_blocked_weight < 0.0) g_pace.lm_blocked_weight = 0.0;
++            g_pace.lm_demote_horizon = pace_env_i("DS4_PACE_LIVEMASK_DEMOTE_HORIZON", g_pace.lm_window);
++            if (g_pace.lm_demote_horizon < 1) g_pace.lm_demote_horizon = 1;
++            /* clamp <= window: since_seen resolution beyond the window is not
++             * meaningful (see ds4_pace_livemask_commit tracking below). */
++            if (g_pace.lm_demote_horizon > g_pace.lm_window) g_pace.lm_demote_horizon = g_pace.lm_window;
++            g_pace.lm_promo_rate_cap = pace_env_i("DS4_PACE_LIVEMASK_PROMO_RATE_CAP", 0);
++            if (g_pace.lm_promo_rate_cap < 0) g_pace.lm_promo_rate_cap = 0;
+             const char *llg = getenv("DS4_PACE_LIVEMASK_LOG");
+             if (llg && *llg) g_pace.lm_log = fopen(llg, "w");
+             g_pace.lm_ring_id    = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(uint16_t));
+@@ -12867,6 +12903,7 @@ static void ds4_pace_init(void) {
+             g_pace.lm_cur_share  = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(float));
+             g_pace.lm_cur_n      = xmalloc_zeroed((size_t)DS4_MAX_LAYER, sizeof(int));
+             g_pace.lm_last_swap_tok = xmalloc_zeroed((size_t)DS4_MAX_LAYER, sizeof(uint32_t));
++            g_pace.lm_since_seen = xmalloc_zeroed((size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT, sizeof(uint16_t));  /* patch 0038 */
+             g_pace.lm_in_prefill = 1;
+             fprintf(stderr,
+                 "ds4: PACE LIVEMASK on - bootstrap=%d window=%d K=%d observe_top=%d "
+@@ -12883,6 +12920,13 @@ static void ds4_pace_init(void) {
+             if (!getenv("DS4_CUDA_NO_Q8_F16_CACHE"))
+                 fprintf(stderr, "ds4: PACE LIVEMASK reminder: set DS4_CUDA_NO_Q8_F16_CACHE=1 and "
+                     "DS4_PACE_TIER=1 for representation-neutral 2-bit residency serving.\n");
++            /* patch 0038: rating levers banner (defaults print as the 0037
++             * equivalents: blocked_weight=1.0, demote_horizon=window, cap=0). */
++            fprintf(stderr,
++                "ds4: PACE LIVEMASK rating levers: blocked_weight=%.3f demote_horizon=%d "
++                "promo_rate_cap=%d%s\n",
++                g_pace.lm_blocked_weight, g_pace.lm_demote_horizon, g_pace.lm_promo_rate_cap,
++                g_pace.lm_promo_rate_cap == 0 ? " (unlimited)" : "");
+         }
+     }
+ 
+@@ -13115,6 +13159,8 @@ static void ds4_pace_livemask_commit(void) {
+     if (!g_pace.lm_on) return;
+     int W = g_pace.lm_window;
+     if (W <= 0) return;
++    uint32_t ne = DS4_N_EXPERT;             /* patch 0038: demote-horizon aging range */
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
+     int s = g_pace.lm_ring_pos;
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         size_t rbase = ((size_t)s * DS4_MAX_LAYER + il) * DS4_LM_OBS_MAX;
+@@ -13135,18 +13181,48 @@ static void ds4_pace_livemask_commit(void) {
+         if (n > DS4_LM_OBS_MAX) n = DS4_LM_OBS_MAX;
+         uint16_t *cid = &g_pace.lm_cur_id[(size_t)il * DS4_LM_OBS_MAX];
+         float    *csh = &g_pace.lm_cur_share[(size_t)il * DS4_LM_OBS_MAX];
++        uint16_t *ss = g_pace.lm_since_seen ?
++            &g_pace.lm_since_seen[(size_t)il * DS4_MAX_EXPERT] : NULL;  /* patch 0038 */
+         for (int j = 0; j < n; j++) {
+             uint16_t e = cid[j];
+             float sv = csh[j];
++            /* patch 0038: BLOCKED_WEIGHT - a PRUNED expert's wshare contribution
++             * is scaled by lm_blocked_weight at accumulation time (checking
++             * g_reap_mask_pruned here, not at scan time). The SCALED value -
++             * not the raw share - is what gets stored in the ring, so the
++             * later subtract (when this token rolls off the window) removes
++             * exactly what was added; the window sum stays exact even if the
++             * expert's pruned-status flips before that roll-off. wcount (the
++             * integer knock gate) is left UNweighted by design - only wshare
++             * (the magnitude/rating) is affected. Default weight 1.0 makes
++             * wv == sv: byte-identical to 0037. */
++            float wv = sv;
++            if (e < DS4_MAX_EXPERT && g_reap_mask_pruned[il][e])
++                wv *= (float)g_pace.lm_blocked_weight;
+             rid[j] = e;
+-            rsh[j] = sv;
++            rsh[j] = wv;
+             if (e < DS4_MAX_EXPERT) {
+                 wc[e]++;
+-                ws[e] += (double)sv;
++                ws[e] += (double)wv;
+             }
+         }
+         g_pace.lm_ring_n[nslot] = n;
+         g_pace.lm_cur_n[il] = 0;
++        /* patch 0038: DEMOTE_HORIZON bookkeeping - age every expert one tick,
++         * then zero the ones observed this token. At the default
++         * (lm_demote_horizon == lm_window), "ss[e] >= horizon" coincides
++         * exactly with wcount[e]==0 (same set of commit events drive both
++         * counters), which already carries wshare==0 and already wins the
++         * plain min-wshare victim scan - see ds4_pace_livemask_scan() below,
++         * so the default reproduces 0037 selection. */
++        if (ss) {
++            for (uint32_t e = 0; e < ne; e++)
++                if (ss[e] < 0xFFFFu) ss[e]++;
++            for (int j = 0; j < n; j++) {
++                uint16_t e = cid[j];
++                if (e < DS4_MAX_EXPERT) ss[e] = 0;
++            }
++        }
+     }
+     g_pace.lm_ring_pos = (s + 1) % W;
+     if (g_pace.lm_ring_fill < W) g_pace.lm_ring_fill++;
+@@ -13264,6 +13340,19 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+                 "the %d tokens since seed). (reported once)\n", g_pace.lm_window);
+         }
+     }
++    /* patch 0038: PROMO_RATE_CAP - global tumbling budget on promotions
++     * (swap-ins) across ALL layers in this scan, refreshed every
++     * lm_promo_rate_cap generated tokens. Checked once per scan call (once
++     * per generated token) for the refresh, and inline per swap attempt below
++     * for the actual gate, so multiple layers spending the same budget within
++     * one token are still capped correctly. Default 0 = unlimited: both the
++     * refresh and the gate below are compiled-in no-ops (`> 0` guards), so
++     * this is byte-identical to 0037 at default. */
++    if (g_pace.lm_promo_rate_cap > 0 &&
++        (g_pace.lm_tok - g_pace.lm_promo_win_tok) >= (uint32_t)g_pace.lm_promo_rate_cap) {
++        g_pace.lm_promo_win_tok = g_pace.lm_tok;
++        g_pace.lm_promo_win_count = 0;
++    }
+     int dirty = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
+@@ -13271,6 +13360,8 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+             (uint32_t)g_pace.lm_cooldown) continue;
+         const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
+         const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        const uint16_t *ss = g_pace.lm_since_seen ?
++            &g_pace.lm_since_seen[(size_t)il * DS4_MAX_EXPERT] : NULL;  /* patch 0038 */
+         for (int sw = 0; sw < g_pace.lm_max_swaps; sw++) {
+             int cand = -1;
+             long candc = -1;
+@@ -13278,18 +13369,40 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+                 if (!g_reap_mask_pruned[il][e]) continue;
+                 if ((long)wc[e] > candc) { candc = (long)wc[e]; cand = (int)e; }
+             }
++            /* patch 0038: DEMOTE_HORIZON preferred-victim pass. An eligible
++             * (in-mask) expert unseen in the observed top-N for at least
++             * lm_demote_horizon committed tokens is forced to the front of
++             * the eviction queue (min-wshare tiebreak among the cold set),
++             * ahead of the plain min-wshare pick below. If no expert is cold
++             * by that horizon, fall through unchanged to the original 0037
++             * scan (min-wshare over all eligible experts) - so a run with no
++             * cold experts, or DEMOTE_HORIZON left at its default, selects
++             * exactly what 0037 would have. */
+             int vic = -1;
+             double vmin = 1e300;
+-            for (uint32_t e = 0; e < ne; e++) {
+-                if (g_reap_mask_pruned[il][e]) continue;
+-                if (ws[e] < vmin) { vmin = ws[e]; vic = (int)e; }
++            if (ss) {
++                for (uint32_t e = 0; e < ne; e++) {
++                    if (g_reap_mask_pruned[il][e]) continue;
++                    if (ss[e] < (uint16_t)g_pace.lm_demote_horizon) continue;
++                    if (vic < 0 || ws[e] < vmin) { vmin = ws[e]; vic = (int)e; }
++                }
++            }
++            if (vic < 0) {
++                for (uint32_t e = 0; e < ne; e++) {
++                    if (g_reap_mask_pruned[il][e]) continue;
++                    if (ws[e] < vmin) { vmin = ws[e]; vic = (int)e; }
++                }
+             }
+             if (cand < 0 || vic < 0) break;
+             if ((long)wc[cand] < (long)g_pace.lm_x) break;         /* sustained knock */
+             if (ws[cand] < ws[vic] + g_pace.lm_hyst) break;        /* hotter by margin */
++            /* patch 0038: rate-cap gate. No-op at default (cap=0). */
++            if (g_pace.lm_promo_rate_cap > 0 &&
++                g_pace.lm_promo_win_count >= g_pace.lm_promo_rate_cap) break;
+             g_reap_mask_pruned[il][vic]  = 1;
+             g_reap_mask_pruned[il][cand] = 0;
+             g_pace.lm_last_swap_tok[il]  = g_pace.lm_tok;
++            if (g_pace.lm_promo_rate_cap > 0) g_pace.lm_promo_win_count++;
+             dirty = 1;
+             if (g_pace.lm_log) {
+                 fprintf(g_pace.lm_log,
+@@ -13352,6 +13465,12 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+                                      (size_t)DS4_MAX_LAYER * sizeof(int));
+     if (g_pace.lm_last_swap_tok) memset(g_pace.lm_last_swap_tok, 0,
+                                      (size_t)DS4_MAX_LAYER * sizeof(uint32_t));
++    /* patch 0038: reset rating-lever state alongside the rest of LIVEMASK on
++     * every new prompt, same discipline as the 0035 fields above. */
++    if (g_pace.lm_since_seen)    memset(g_pace.lm_since_seen, 0,
++                                     (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(uint16_t));
++    g_pace.lm_promo_win_tok = 0;
++    g_pace.lm_promo_win_count = 0;
+     g_pace.lm_seeded = 0;
+     g_pace.lm_tok = 0;
+     g_pace.lm_ring_pos = 0;
