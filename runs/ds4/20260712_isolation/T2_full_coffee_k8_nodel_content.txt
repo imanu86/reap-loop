@@ -1,0 +1,151 @@
+Ecco una pagina HTML5 valida e minima per la caffetteria Bean & Brew:
+
+```HTML
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head>
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```HTML
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title>
+Bean & Brew
+</head
+<body
+<nav>
+Home
+Menu
+Contatti
+</h1
+Ordina
+</html
+```
+
+```html
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<title

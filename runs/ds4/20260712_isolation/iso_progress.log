@@ -1,0 +1,16 @@
+[iso] START 2026-07-12T09:21:15+02:00 prod=705ad783e22c full=0d97e5705d0d
+[iso] attendo GPU libera...
+[iso] GPU libera 2026-07-12T09:21:15+02:00
+[T1_prod_coffee_k8] up=1 bin=ds4-0039-work K=8 delta=0 2026-07-12T09:21:20+02:00
+[RESULT-T1_prod_coffee_k8] prompt done 19.014s | close=0 chars=1140 | avg=3.35 t/s
+  head: Ecco una pagina HTML5 valida e minima per la caffetteria Bean & Brew:  ```HTML <!DOCTYPE html> <html> <head> <title> Bean & Brew </head> <body <nav> Home Menu Contatti </h1 Ordina 
+[T2_full_coffee_k8_nodel] up=1 bin=ds4-fullstack K=8 delta=0 2026-07-12T09:25:22+02:00
+[RESULT-T2_full_coffee_k8_nodel] prompt done 11.055s | close=0 chars=1140 | avg=3.43 t/s
+  head: Ecco una pagina HTML5 valida e minima per la caffetteria Bean & Brew:  ```HTML <!DOCTYPE html> <html> <head> <title> Bean & Brew </head> <body <nav> Home Menu Contatti </h1 Ordina 
+[T3_full_coffee_k8_full] up=1 bin=ds4-fullstack K=8 delta=1 2026-07-12T09:28:12+02:00
+[RESULT-T3_full_coffee_k8_full] prompt done 10.671s | close=0 chars=1140 | avg=3.52 t/s
+  head: Ecco una pagina HTML5 valida e minima per la caffetteria Bean & Brew:  ```HTML <!DOCTYPE html> <html> <head> <title> Bean & Brew </head> <body <nav> Home Menu Contatti </h1 Ordina 
+[T4_prod_cyber_k23] up=1 bin=ds4-0039-work K=23 delta=0 2026-07-12T09:30:56+02:00
+[RESULT-T4_prod_cyber_k23] prompt done 15.695s | close=0 chars=2452 | avg=3.30 t/s
+  head: Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.  ```html <!DOCTYPE <html> <html> <head>     <meta charset="UTF-8" />  
+[iso] COMPLETE 2026-07-12T09:36:29+02:00

@@ -1,0 +1,42 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.428s
+ds4: cuda backend initialized for graph diagnostics
+0712 09:25:21 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 09:25:21 ds4-server: listening on http://127.0.0.1:8042
+0712 09:25:22 ds4-server: chat ctx=0..64:64 prompt start
+ds4: PACE LIVEMASK on - bootstrap=10 window=16 K=8 observe_top=16 X=3 max_swaps=2 cooldown=16 hyst=1.000 weighted=0 pin=0
+ds4: PACE LIVEMASK note: K=8 is the AGGRESSIVE stress config; wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=16 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: CUDA loading model tensors 0.13 GiB cached
+0712 09:25:35 ds4-server: chat ctx=0..64:64 prompt done 13.123s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=8 window=16
+0712 09:25:52 ds4-server: chat ctx=64..104:40 gen=40 decoding chunk=2.52 t/s avg=2.52 t/s 15.860s
+0712 09:25:52 ds4-server: chat ctx=0..64:64 gen=40 finish=length 28.987s
+0712 09:25:52 ds4-server: live kv cache miss live=104 prompt=64 common=64 reason=token-mismatch
+0712 09:25:52 ds4-server: chat ctx=0..64:64 prompt start
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+0712 09:26:03 ds4-server: chat ctx=0..64:64 prompt done 11.055s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=8 window=16
+0712 09:26:22 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=2.75 t/s avg=2.75 t/s 18.181s
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0712 09:26:36 ds4-server: chat ctx=114..164:50 gen=100 decoding chunk=3.52 t/s avg=3.09 t/s 32.365s
+0712 09:26:51 ds4-server: chat ctx=164..214:50 gen=150 decoding chunk=3.58 t/s avg=3.24 t/s 46.334s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0712 09:27:05 ds4-server: chat ctx=214..264:50 gen=200 decoding chunk=3.53 t/s avg=3.31 t/s 60.507s
+0712 09:27:20 ds4-server: chat ctx=264..314:50 gen=250 decoding chunk=3.54 t/s avg=3.35 t/s 74.620s
+0712 09:27:34 ds4-server: chat ctx=314..364:50 gen=300 decoding chunk=3.62 t/s avg=3.39 t/s 88.420s
+0712 09:27:48 ds4-server: chat ctx=364..414:50 gen=350 decoding chunk=3.55 t/s avg=3.41 t/s 102.494s
+0712 09:28:03 ds4-server: chat ctx=414..464:50 gen=400 decoding chunk=3.57 t/s avg=3.43 t/s 116.483s
+0712 09:28:03 ds4-server: chat ctx=0..64:64 gen=400 finish=length 127.541s
+0712 09:28:03 ds4-server: shutdown requested, draining requests
