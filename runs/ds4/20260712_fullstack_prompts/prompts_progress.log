@@ -1,0 +1,13 @@
+[batch] START 2026-07-12T08:11:59+02:00 bin=0d97e5705d0d
+[batch] attendo GPU libera (K23 in corso)...
+[batch] GPU libera 2026-07-12T08:19:04+02:00
+[coffee_k8] up=1 K=8 2026-07-12T08:19:12+02:00
+[RESULT-coffee_k8] K=8 prompt done 21.655s | close=0 chars=1140 | avg=3.77 t/s
+  head: Ecco una pagina HTML5 valida e minima per la caffetteria Bean & Brew:  ```HTML <!DOCTYPE html> <html> <head> <title> Bean & Brew </head> <body <nav> Home Menu Contatti </h1 Ordina 
+[cyber_k8] up=1 K=8 2026-07-12T08:22:54+02:00
+[RESULT-cyber_k8] K=8 prompt done 26.246s | close=0 chars=2095 | avg=3.76 t/s
+  head: Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup JS.  ```html index.html <!//<DOCTYPE <//> <!//<DOCTYPE <//> <!//<DOCTYPE <//> <!//<
+[cyber_k23] up=1 K=23 2026-07-12T08:28:31+02:00
+[RESULT-cyber_k23] K=23 prompt done 13.606s | close=0 chars=1655 | avg=2.95 t/s
+  head: Ecco una landing page cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.  ```html <!<!<! <!type="html"? <!title="Negozio di Programmazione AI -
+[batch] COMPLETE 2026-07-12T08:34:10+02:00

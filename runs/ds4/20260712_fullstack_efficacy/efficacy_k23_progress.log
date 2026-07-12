@@ -1,0 +1,8 @@
+[eff] START 2026-07-12T08:02:55+02:00 bin=0d97e5705d0d
+[eff] up=1 2026-07-12T08:03:00+02:00
+[eff] warmup done 2026-07-12T08:08:56+02:00
+[eff] measured done 2026-07-12T08:18:56+02:00
+[RESULT-EFFICACY] prompt done 352.506s  cap= | RENDE close=0 chars=0 | swaps=6  | avg=2.08 t/s
+--- content primi 300 char ---
+
+[eff] COMPLETE 2026-07-12T08:19:00+02:00

@@ -1,0 +1,1 @@
+{"model": "deepseek-v4-flash", "messages": [{"role": "user", "content": "Crea una landing page HTML/CSS/JS single-file per un negozio di programmazione AI in stile cyberpunk. Deve avere un modulo contatti e un popup JS che dice richiesta inviata. Codice valido e compatto."}], "max_tokens": 40, "temperature": 0, "stream": false, "think": false, "thinking": {"type": "disabled"}}

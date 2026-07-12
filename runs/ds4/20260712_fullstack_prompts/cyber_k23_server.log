@@ -1,0 +1,75 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.441s
+ds4: cuda backend initialized for graph diagnostics
+0712 08:28:31 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0712 08:28:31 ds4-server: listening on http://127.0.0.1:8035
+0712 08:28:31 ds4-server: chat ctx=0..60:60 prompt start
+ds4: PACE LIVEMASK on - bootstrap=10 window=16 K=23 observe_top=16 X=3 max_swaps=2 cooldown=16 hyst=1.000 weighted=0 pin=0
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=16 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: CUDA loading model tensors 0.08 GiB cached
+0712 08:28:50 ds4-server: chat ctx=0..60:60 prompt done 18.940s
+ds4: CUDA loading model tensors 1.77 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=23 window=16
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 2 expert, 6 range, 13.5 MiB touched in 2 ms (6 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 2 expert, 6 range, 13.5 MiB touched in 13 ms (6 threads)
+0712 08:29:11 ds4-server: chat ctx=60..100:40 gen=40 decoding chunk=2.03 t/s avg=2.03 t/s 19.694s
+0712 08:29:11 ds4-server: chat ctx=0..60:60 gen=40 finish=length 38.637s
+0712 08:29:11 ds4-server: live kv cache miss live=100 prompt=60 common=60 reason=token-mismatch
+0712 08:29:11 ds4-server: chat ctx=0..60:60 prompt start
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+0712 08:29:25 ds4-server: chat ctx=0..60:60 prompt done 13.606s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: PACE LIVEMASK seeded at tok=10 K=23 window=16
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 1 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 0 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 1 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 3 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 1 ms (3 threads)
+0712 08:29:48 ds4-server: chat ctx=60..110:50 gen=50 decoding chunk=2.24 t/s avg=2.24 t/s 22.371s
+ds4: CUDA loading model tensors 7.86 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 1 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 2 expert, 6 range, 13.5 MiB touched in 16 ms (6 threads)
+0712 08:30:07 ds4-server: chat ctx=110..160:50 gen=100 decoding chunk=2.81 t/s avg=2.49 t/s 40.158s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 13 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 2 expert, 6 range, 13.5 MiB touched in 2 ms (6 threads)
+0712 08:30:25 ds4-server: chat ctx=160..210:50 gen=150 decoding chunk=2.86 t/s avg=2.60 t/s 57.632s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 1 ms (3 threads)
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 14 ms (3 threads)
+0712 08:30:42 ds4-server: chat ctx=210..260:50 gen=200 decoding chunk=3.09 t/s avg=2.71 t/s 73.811s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP prefetch (fattorino delta): 1 expert, 3 range, 6.8 MiB touched in 22 ms (3 threads)
+0712 08:30:58 ds4-server: chat ctx=260..310:50 gen=250 decoding chunk=3.04 t/s avg=2.77 t/s 90.232s
+0712 08:31:16 ds4-server: chat ctx=310..360:50 gen=300 decoding chunk=3.05 t/s avg=2.81 t/s 106.617s
+0712 08:31:32 ds4-server: chat ctx=360..410:50 gen=350 decoding chunk=3.06 t/s avg=2.85 t/s 122.932s
+0712 08:31:50 ds4-server: chat ctx=410..460:50 gen=400 decoding chunk=3.04 t/s avg=2.87 t/s 139.387s
+0712 08:32:06 ds4-server: chat ctx=460..510:50 gen=450 decoding chunk=3.07 t/s avg=2.89 t/s 155.661s
+0712 08:32:24 ds4-server: chat ctx=510..560:50 gen=500 decoding chunk=2.98 t/s avg=2.90 t/s 172.412s
+0712 08:32:40 ds4-server: chat ctx=560..610:50 gen=550 decoding chunk=3.04 t/s avg=2.91 t/s 188.852s
+0712 08:32:58 ds4-server: chat ctx=610..660:50 gen=600 decoding chunk=3.01 t/s avg=2.92 t/s 205.470s
+0712 08:33:15 ds4-server: chat ctx=660..710:50 gen=650 decoding chunk=3.07 t/s avg=2.93 t/s 221.774s
+0712 08:33:32 ds4-server: chat ctx=710..760:50 gen=700 decoding chunk=3.01 t/s avg=2.94 t/s 238.376s
+0712 08:33:49 ds4-server: chat ctx=760..810:50 gen=750 decoding chunk=3.08 t/s avg=2.95 t/s 254.600s
+0712 08:34:07 ds4-server: chat ctx=810..860:50 gen=800 decoding chunk=2.98 t/s avg=2.95 t/s 271.387s
+0712 08:34:07 ds4-server: chat ctx=0..60:60 gen=800 finish=length 284.995s
+0712 08:34:07 ds4-server: shutdown requested, draining requests
