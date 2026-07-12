@@ -1,0 +1,79 @@
+{
+  "run_dir": "/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c",
+  "elapsed_s": 477.1,
+  "k_updates": 831,
+  "k_avg": 45.80746089049338,
+  "k_p90": 50,
+  "k_max": 50,
+  "admit_events_total": 9840,
+  "admit_source_counts": {
+    "cf": 9840,
+    "mass10": 0
+  },
+  "union_by_layer_top5": [
+    [
+      5,
+      127
+    ],
+    [
+      11,
+      124
+    ],
+    [
+      7,
+      122
+    ],
+    [
+      29,
+      122
+    ],
+    [
+      3,
+      121
+    ]
+  ],
+  "union_max_count": 127,
+  "union_max_pct": 49.61,
+  "admit_bucket_rates": {
+    "0": 640,
+    "1": 880,
+    "2": 480,
+    "3": 480,
+    "4": 640,
+    "5": 280,
+    "6": 200,
+    "7": 200,
+    "8": 200,
+    "9": 320,
+    "10": 200,
+    "11": 240,
+    "12": 200,
+    "13": 200,
+    "14": 200,
+    "15": 360,
+    "16": 400,
+    "17": 280,
+    "18": 200,
+    "19": 80,
+    "20": 360,
+    "21": 240,
+    "22": 40,
+    "23": 280,
+    "24": 200,
+    "25": 240,
+    "26": 200,
+    "27": 240,
+    "28": 160,
+    "29": 400,
+    "30": 240,
+    "31": 120,
+    "32": 440
+  },
+  "tps_recent": 2.597,
+  "tripwire_triggered": {
+    "reason": "churn_no_decay",
+    "detail": "peak_rate=880@bucket1, recent_rate=440@bucket32, 775 tok since peak without decay <50%",
+    "elapsed_s": 477.1,
+    "at_utc": "2026-07-12T18:21:10Z"
+  }
+}

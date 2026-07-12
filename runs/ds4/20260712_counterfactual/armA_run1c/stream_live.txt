@@ -1,0 +1,116 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+
+```html
+<!DOCTYPE html>
+<html lang="ita">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <title>AI Code Shop - Cyberpunk</title>
+    <style>
+        /* Reset e base */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: #0c0c0c;
+            font-family: 'Courier New', Courier, monospace;
+            color: #f0f0f0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* Navia cyberpunk */
+        .container {
+            max-width: 900px;
+            width: 100%;
+            background: #111;
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 40px #00f0ff88, inset 0 0 20px #00f0ff33;
+            padding: 30px 25px;
+            border-radius: 12px;
+            position: relative;
+            backdrop-filter: blur(2px);
+        }
+
+        /* Testo neon */
+        h1, h2 {
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            font-weight: 700;
+            color: #00f0ff;
+            text-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #0055ff;
+            margin-bottom: 20px;
+        }
+
+        h1 {
+            font-size: 2.2rem;
+            border-bottom: 2px dashed #ff00c0;
+            padding-bottom: 10px;
+        }
+
+        h2 {
+            font-size: 1.4rem;
+            margin-top: 10px;
+        }
+
+        .sub {
+            color: #ffa0ff;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 1.1rem;
+            background: #222;
+            padding: 8px 12px;
+            border-left: 6px solid #ff00c0;
+            box-shadow: 0 0 15px #ff00c066;
+        }
+
+        /* Grigle / colonnie */
+        .grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            justify-content: center;
+            margin-bottom: 30px;
+        }
+
+        .card {
+            background: #222;
+            border: 1px solid #00f0ff;
+            padding: 20px 15px;
+            border-radius: 8px;
+            flex: 1 1 180px;
+            text-align: center;
+            box-shadow: 0 0 10px #00f0ff33;
+            transition: 0.2s;
+        }
+
+        .card:hover {
+            border-color: #ff00c0;
+            box-shadow: 0 0 20px #ff00c0;
+        }
+
+        .card h3 {
+            color: #ff00c0;
+            font-size: 1.2rem;
+            margin-bottom: 8px;
+        }
+
+        .card p {
+            font-size: 0.9rem;
+            color: #ccc;
+        }
+
+        .prezzo {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+            color: #00ff80;
+            text-shadow: 0

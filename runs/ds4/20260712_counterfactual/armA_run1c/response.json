@@ -1,0 +1,17 @@
+{
+  "stream": true,
+  "stream_events": 826,
+  "elapsed_s": 461.061631,
+  "usage": null,
+  "client_stop": null,
+  "stream_error": null,
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.\n\n```html\n<!DOCTYPE html>\n<html lang=\"ita\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1, shrink-to-fit=no\">\n    <title>AI Code Shop - Cyberpunk</title>\n    <style>\n        /* Reset e base */\n        * {\n            margin: 0;\n            padding: 0;\n            box-sizing: border-box;\n        }\n\n        body {\n            background: #0c0c0c;\n            font-family: 'Courier New', Courier, monospace;\n            color: #f0f0f0;\n            min-height: 100vh;\n            display: flex;\n            align-items: center;\n            justify-content: center;\n            padding: 20px;\n        }\n\n        /* Navia cyberpunk */\n        .container {\n            max-width: 900px;\n            width: 100%;\n            background: #111;\n            border: 2px solid #00f0ff;\n            box-shadow: 0 0 40px #00f0ff88, inset 0 0 20px #00f0ff33;\n            padding: 30px 25px;\n            border-radius: 12px;\n            position: relative;\n            backdrop-filter: blur(2px);\n        }\n\n        /* Testo neon */\n        h1, h2 {\n            text-align: center;\n            text-transform: uppercase;\n            letter-spacing: 4px;\n            font-weight: 700;\n            color: #00f0ff;\n            text-shadow: 0 0 10px #00f0ff, 0 0 20px #00f0ff, 0 0 40px #0055ff;\n            margin-bottom: 20px;\n        }\n\n        h1 {\n            font-size: 2.2rem;\n            border-bottom: 2px dashed #ff00c0;\n            padding-bottom: 10px;\n        }\n\n        h2 {\n            font-size: 1.4rem;\n            margin-top: 10px;\n        }\n\n        .sub {\n            color: #ffa0ff;\n            text-align: center;\n            margin-bottom: 30px;\n            font-size: 1.1rem;\n            background: #222;\n            padding: 8px 12px;\n            border-left: 6px solid #ff00c0;\n            box-shadow: 0 0 15px #ff00c066;\n        }\n\n        /* Grigle / colonnie */\n        .grid {\n            display: flex;\n            flex-wrap: wrap;\n            gap: 20px;\n            justify-content: center;\n            margin-bottom: 30px;\n        }\n\n        .card {\n            background: #222;\n            border: 1px solid #00f0ff;\n            padding: 20px 15px;\n            border-radius: 8px;\n            flex: 1 1 180px;\n            text-align: center;\n            box-shadow: 0 0 10px #00f0ff33;\n            transition: 0.2s;\n        }\n\n        .card:hover {\n            border-color: #ff00c0;\n            box-shadow: 0 0 20px #ff00c0;\n        }\n\n        .card h3 {\n            color: #ff00c0;\n            font-size: 1.2rem;\n            margin-bottom: 8px;\n        }\n\n        .card p {\n            font-size: 0.9rem;\n            color: #ccc;\n        }\n\n        .prezzo {\n            display: block;\n            margin-top: 10px;\n            font-weight: bold;\n            color: #00ff80;\n            text-shadow: 0"
+      },
+      "finish_reason": null
+    }
+  ]
+}

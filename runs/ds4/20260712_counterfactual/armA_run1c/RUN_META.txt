@@ -1,0 +1,21 @@
+run_id=armA_run1c
+arm=A
+patch_chain=0011,...,0040,0041,0042,0043,0044,0045,0046-counterfactual-admission
+binary=/root/ds4-cf-work/ds4-server
+model=/root/models/ds4-2bit.gguf
+port=8073
+max_tokens=4000
+ctx=6144
+started_utc=2026-07-12T18:10:46Z
+watchdog_kill_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c/WATCHDOG_KILL.txt
+tripwire_stop_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c/TRIPWIRE_STOP.json
+server_pid_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c/server.pid
+live_stream_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c/stream_live.txt
+config=adaptive-K 0045 + counterfactual admission fix (DS4_PACE_ADAPTIVE_CF_ADMIT=1), SPEX off (add0)
+K=16..50 threshold=0.15 gain=0.5 step=+4/-1 update_every=2 deadband=2
+warmup_started_utc=2026-07-12T18:10:50Z
+warmup_finished_utc=2026-07-12T18:13:13Z
+warmup_duration_s=143.0
+warmup_curl_rc=0
+warmup_max_tokens=40
+warmup_note=same prompt as measured, non-stream, run on the same server instance BEFORE the measured request; warms expert cache + page cache. Speed tripwire measures only the measured stream (post-warm); union/churn tripwires include warmup livemask events.

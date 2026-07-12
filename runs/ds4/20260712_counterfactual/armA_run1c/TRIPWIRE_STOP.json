@@ -1,0 +1,6 @@
+{
+  "reason": "churn_no_decay",
+  "detail": "peak_rate=880@bucket1, recent_rate=440@bucket32, 775 tok since peak without decay <50%",
+  "elapsed_s": 477.1,
+  "at_utc": "2026-07-12T18:21:10Z"
+}

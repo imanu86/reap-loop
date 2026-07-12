@@ -1,0 +1,2 @@
+[cf_tripwire_monitor] watching run-dir=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armA_run1c
+[cf_tripwire_monitor] TRIPWIRE FIRED: churn_no_decay :: peak_rate=880@bucket1, recent_rate=440@bucket32, 775 tok since peak without decay <50%

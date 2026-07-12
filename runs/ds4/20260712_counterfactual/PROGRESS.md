@@ -73,7 +73,29 @@ as-found, see patch header).
 |---|---|---|---|---|---|---|---|
 | armA_run1 | INVALID ambientale (pkill agente concorrente) | external SIGTERM a gen=17 | n/a (64 char prosa pulita) | n/a | n/a | n/a | n/a |
 | armA_run1b | INVALID ambientale (page-cache fredda post drop_caches) | tripwire speed_to_k0 a 0.544 t/s | n/a (qualita' PULITA al taglio: prosa -> ```html + DOCTYPE/head corretti) | 26.36 / 32 (max 33) | 920 (100% cf) | 23/256 = 8.98% | 0.54 (freddo) |
-| armA_run1c | IN CORSO (con pre-warm documentato) | — | — | — | — | — | — |
+| armA_run1c | **FAIL — VERDETTO MECCANISMO VALIDO** (warm documentato 143s) | tripwire churn_no_decay (peak 880/bucket, ~200-440 costante per 775 tok) | L0 formale = artefatto troncamento; testo PULITO al taglio (3010 char, CSS coerente) | 45.81 / 50 (PEGGED al max, 831 update) | 9840 (100% cf) | 127/256 = 49.61% | 2.0-2.6 warm |
+| armB_run1 | IN CORSO (K23 fisso + soft-bias -2.0) | — | — | — | — | — | — |
+
+**BRACCIO A = FAIL, fail-fast applicato (niente run 2/3).** Il
+controfattuale-adaptive-K su dominio largo si dissolve verso K0: K pegged
+al tetto 50, churn costante (rotate, non fase-transizione), unione
+cumulativa 49.6% del pool. Dettagli e nota di onestà sul trigger:
+`armA_run1c/VERDICT.md`. Segnale positivo preservato: 3010 char PULITI a
+2.0-2.6 t/s warm — miglior prefisso mascherato su questo prompt (gli smoke
+0045 add0 producevano doctype malformato a 80 token); il warm di run1c
+valida retroattivamente run1b come falso ambientale.
+
+INFRA: WSL crashato (Wsl/Service/E_UNEXPECTED) durante/dopo la fine di
+run1c; riavviato dall'orchestratore — VM fresca, page-cache FREDDA, nessun
+processo superstite. Probabile pressione di memoria: d'ora in poi UN solo
+server + monitor leggero.
+
+Braccio B — tripwire adattati (niente adaptive-K):
+- churn-wire → tasso di BREAKTHROUGH del soft-bias (esperti esclusi che
+  bucano la penalità -2.0): se non decade dopo le transizioni (>25% dei
+  token che bucano stabilmente) = dissoluzione soft = FAIL.
+- unione 50% resta (sui breakthrough, unico canale di fuga dalla mask).
+- velocità 1.5 post-warm resta.
 
 Aggiornamento protocollo dopo run1b (ordine orchestratore):
 - pre-warm documentato (stesso prompt, max_tokens 40, stesso server) PRIMA
