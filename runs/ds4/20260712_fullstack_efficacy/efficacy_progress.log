@@ -1,0 +1,33 @@
+[eff] START 2026-07-12T07:49:51+02:00 bin=0d97e5705d0d
+[eff] up=1 2026-07-12T07:50:00+02:00
+[eff] warmup done 2026-07-12T07:55:45+02:00
+[eff] measured done 2026-07-12T08:00:07+02:00
+[RESULT-EFFICACY] prompt done 50.804s  cap= | RENDE close=0 chars=1773 | swaps=16  | avg=3.22 t/s
+--- content primi 300 char ---
+Ecco una landing page HTML5 completa e valida per l'app di food delivery RapidoEat:
+
+```html
+<!DOCTYPE <html>
+<html
+<!BODOCTYPE html>
+<!PILINGa>
+<!DOCTYPE
+<html>
+<!HTML>
+<!head>
+<!meta
+<!viewport
+<!title">
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!title
+<!titl
+[eff] COMPLETE 2026-07-12T08:00:10+02:00

@@ -40,5 +40,18 @@ Build: `make cuda CUDA_ARCH=sm_86`. Binario **md5=0d97e5705d0d**, 0 errori 0 war
 ## STEP LOG
 - [x] checkpoint 0: piano committato
 - [x] checkpoint 1: build fullstack OK (md5 0d97e5705d0d, /root/ds4-fullstack, sm_86, 0 err/warn)
-- [ ] checkpoint 2: run efficacia (prompt esigente food-delivery, full-ON) → risultati
-- [ ] checkpoint 3: analisi + verdetto
+- [x] checkpoint 2: run efficacia K8 full-ON → FATTO
+- [x] checkpoint 3: analisi/verdetto K8 → sotto
+
+## CHECKPOINT 3 — VERDETTO K8 (prompt esigente food-delivery)
+`[RESULT] prompt done 50.8s | RENDE close=0 chars=1773 | swaps=16 | avg=3.22 t/s`
+- **K8-per-massa COLLASSA** sul prompt esigente: word-salad (`<!DOCTYPE <html>`, loop `<!title`).
+  NON chiude </html>. Conferma l'intuizione utente: il render K8 del produttore era su prompt/output
+  MINUSCOLO → non generalizza a output multi-fase.
+- MA meccanica SANA: avg 3.22 t/s, NO thrash, pin-by-mass ON, seeded K=8, fattorino attivo, 16 swap.
+  → il problema è la LARGHEZZA K8, non la catena pin/massa/fattorino (che gira bene a velocità piena).
+- PROSSIMO: stesso prompt/stack a **K23** (larghezza già validata-render altrove). Se K23 rende →
+  K8-troppo-stretto confermato; se K23 collassa → sospetta bug integrazione, si indaga.
+
+## STEP LOG 2
+- [ ] checkpoint 4: run efficacia K23 → verdetto qualità dello stack a larghezza giusta
