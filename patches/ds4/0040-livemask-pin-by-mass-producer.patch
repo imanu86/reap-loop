@@ -1,0 +1,206 @@
+From da0b3f63d7cc87c1f11c3c876fb57de3e0caca50 Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sun, 12 Jul 2026 06:52:01 +0200
+Subject: [PATCH] livemask: pin-by-mass PRODUCER + mass-ranked selection (0040)
+
+Implements the PRODUCER half of the FROZEN "pin per massa" bridge seam
+(docs/LIVEMASK_RATING_DESIGN.md S7), assigned to this session by the ds4
+orchestrator. Applies after 0039. Gated on DS4_REAP_PIN_BY_MASS (default 0 =
+current 0038/0039 behavior, byte-identical); the consumer half (ds4_cuda.cu
+residency/pin) is built in the cache/pin session against the same seam.
+
+WHY. Diagnosed on 0035: the reap loop DECIDES selection but does NOT command the
+pin. The scan picks the swap candidate by FREQUENCY (lm_wcount) and uses mass
+(lm_wshare) only for victim/margin; after a swap it only re-applies the mask, so
+residency follows EMERGENTLY via cold-miss + re-pin. The DECIDE->TIENE arc is
+missing: the engine has the mass signal (lm_wshare = Sum share = freq x weight)
+but never exports it as a pin ORDER. Separately, the codex forensics showed a
+K23 mask built BY MASS renders complete HTML while a frequency/raw-router K23
+breaks at ~tok116 -- so MASS ranking, not K alone, is the quality lever.
+
+WHAT (producer side, ds4.c; all gated on DS4_REAP_PIN_BY_MASS=1):
+  * Rank by MASS: the seed and the swap candidate order by lm_wshare (mass)
+    instead of lm_wcount (frequency). lm_wcount stays ONLY as the sustained-knock
+    gate (wc[cand] >= X); the ORDER is by mass. Off default keeps the 0035 order
+    (wcount primary, wshare tiebreak) exactly.
+  * Publish the FROZEN seam: new non-static globals
+      float            g_reap_pin_mass[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+      volatile uint32_t g_reap_pin_epoch;
+    populated once per decode token after the mask settles (seed tail + scan
+    tail) via ds4_pace_livemask_publish_pin_mass(): pin_mass = lm_wshare for the
+    eligible (in-mask) expert, 0.0 if pruned (hash layers 0-2 stay 0.0). epoch
+    bumps each publish and on the prompt boundary. Non-static so the consumer's
+    `extern` links across the C/CUDA TU boundary (per S7; g_reap_mask_pruned
+    precedent but that one is static/internal).
+  * The 0039 aggregate-pressure promotion rides on top unchanged: under pressure
+    the mass-ranked rotation just runs faster, and the published g_reap_pin_mass
+    reflects it -- no new seam.
+
+SEAM IS FROZEN (S7): array name + semantics + env are the coordination contract;
+this session does not redefine them. Off default (DS4_REAP_PIN_BY_MASS=0):
+frequency ordering, no publish, array stays zeroed, epoch 0 -> byte-identical to
+0039 (and the consumer, also gated, reads nothing).
+---
+ ds4.c | 81 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++---
+ 1 file changed, 77 insertions(+), 4 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index eeccd7d..2ca32a3 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7393,6 +7393,16 @@ static long g_reap_mask_mtime_ns = -1;
+ static bool g_reap_mask_env_checked;
+ static bool g_reap_mask_on;
+ static uint8_t g_reap_mask_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++
++/* patch 0040: pin-by-mass seam (FROZEN contract, docs/LIVEMASK_RATING_DESIGN.md
++ * S7). ds4.c PRODUCES, ds4_cuda.cu consumes (follows the g_reap_mask_pruned
++ * precedent, but NON-static so the consumer's `extern` links across the C/CUDA
++ * TU boundary). g_reap_pin_mass[L][e] = windowed demand MASS (lm_wshare) of the
++ * ELIGIBLE (in-mask) expert, 0.0 if pruned; higher = keep pinned. epoch bumps on
++ * every publish. Both sides gate on DS4_REAP_PIN_BY_MASS (default 0): when off
++ * these stay zeroed and are never read, so nothing changes. */
++float            g_reap_pin_mass[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++volatile uint32_t g_reap_pin_epoch = 0;
+ static float g_reap_bias_masked[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static const void *g_reap_bias_tensor[DS4_MAX_LAYER];
+ static uint32_t g_reap_bias_n;
+@@ -7569,6 +7579,15 @@ static struct {
+     double   lm_pressure_blocked_mass;  /* [state] last-token summed mass (lm_wshare) of knocking blocked experts = ratio numerator (for the JSONL log) */
+     double   lm_pressure_resident_mass; /* [state] last-token summed mass (lm_wshare) of in-mask residents = ratio denominator (for the JSONL log) */
+     int      lm_pressure_eligible_cool; /* [state] last-token count of eligible experts fully cold (wcount == 0) = eviction-safety guard (for the JSONL log) */
++
++    /* ---- patch 0040: pin-by-mass PRODUCER (docs/LIVEMASK_RATING_DESIGN.md S7).
++     * When on (DS4_REAP_PIN_BY_MASS=1) the seed + swap candidate order by MASS
++     * (lm_wshare) instead of frequency (lm_wcount) - lm_wcount stays only as the
++     * sustained-knock gate (>=X) - and g_reap_pin_mass is published each token so
++     * the residency layer can pin the eligible set by mass instead of waiting for
++     * cold misses. Default 0 = frequency ordering + no publish = current 0038/0039
++     * behavior (byte-identical). */
++    int      lm_pin_by_mass;      /* DS4_REAP_PIN_BY_MASS master gate for the producer side */
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -12948,6 +12967,10 @@ static void ds4_pace_init(void) {
+                 if (lm_pmax_cap < 1) lm_pmax_cap = 1;
+                 if (g_pace.lm_pressure_max_swaps > lm_pmax_cap) g_pace.lm_pressure_max_swaps = lm_pmax_cap;
+             }
++            /* patch 0040: pin-by-mass producer gate (docs/LIVEMASK_RATING_DESIGN.md
++             * S7). Off default (0): seed+candidate stay frequency-ordered and
++             * g_reap_pin_mass is never published - byte-identical to 0039. */
++            g_pace.lm_pin_by_mass = pace_env_i("DS4_REAP_PIN_BY_MASS", 0) ? 1 : 0;
+             const char *llg = getenv("DS4_PACE_LIVEMASK_LOG");
+             if (llg && *llg) g_pace.lm_log = fopen(llg, "w");
+             g_pace.lm_ring_id    = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(uint16_t));
+@@ -12993,6 +13016,12 @@ static void ds4_pace_init(void) {
+                     g_pace.lm_pressure, g_pace.lm_pressure_knock,
+                     g_pace.lm_pressure_cooldown, g_pace.lm_pressure_x,
+                     g_pace.lm_pressure_max_swaps);
++            /* patch 0040: pin-by-mass banner (only when armed -> off-default
++             * stderr byte-identical). */
++            if (g_pace.lm_pin_by_mass)
++                fprintf(stderr,
++                    "ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate "
++                    "ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)\n");
+         }
+     }
+ 
+@@ -13294,6 +13323,26 @@ static void ds4_pace_livemask_commit(void) {
+     if (g_pace.lm_ring_fill < W) g_pace.lm_ring_fill++;
+ }
+ 
++/* patch 0040: publish the pin-by-mass seam (docs/LIVEMASK_RATING_DESIGN.md S7).
++ * For every (layer,expert): g_reap_pin_mass = lm_wshare if the expert is
++ * ELIGIBLE (in-mask), 0.0 if pruned (or on the non-maskable hash layers 0-2,
++ * whose rows stay 0.0). Bumps g_reap_pin_epoch. Called once per decode token
++ * after the mask settles (from the seed and scan tails). No-op at the off
++ * default (DS4_REAP_PIN_BY_MASS=0): never populates, epoch stays 0, the array
++ * stays zeroed, so the consumer (also gated on the same env) reads nothing. */
++static void ds4_pace_livemask_publish_pin_mass(const ds4_weights *weights) {
++    if (!g_pace.lm_pin_by_mass) return;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        if (!ds4_pace_livemask_layer_ok(weights, il)) continue;   /* hash layers keep 0.0 */
++        const double *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        for (uint32_t e = 0; e < ne; e++)
++            g_reap_pin_mass[il][e] = g_reap_mask_pruned[il][e] ? 0.0f : (float)ws[e];
++    }
++    g_reap_pin_epoch++;
++}
++
+ /* At token ~bootstrap: build the K-wide mask = top-K experts/layer by windowed
+  * demand (count primary, share tiebreak), push it through the 0011 actuator. */
+ static void ds4_pace_livemask_seed(const ds4_model *model,
+@@ -13315,9 +13364,14 @@ static void ds4_pace_livemask_seed(const ds4_model *model,
+             for (uint32_t e = 0; e < ne; e++) {
+                 if (keep[e]) continue;
+                 long c = (long)wc[e];
+-                if (c > bestc || (c == bestc && ws[e] > bests)) {
+-                    bestc = c; bests = ws[e]; best = (int)e;
+-                }
++                double s = ws[e];
++                /* patch 0040: order by demand MASS (wshare) when pin-by-mass is
++                 * on, with wcount as tiebreak; else the 0035 order (wcount
++                 * primary, wshare tiebreak) - byte-identical at the off default. */
++                int better = g_pace.lm_pin_by_mass
++                    ? (s > bests || (s == bests && c > bestc))
++                    : (c > bestc || (c == bestc && s > bests));
++                if (better) { bestc = c; bests = s; best = (int)e; }
+             }
+             if (best < 0) break;
+             keep[best] = 1;
+@@ -13358,6 +13412,7 @@ static void ds4_pace_livemask_seed(const ds4_model *model,
+         }
+     }
+     ds4_reap_mask_apply(model, weights);          /* 0011 actuator */
++    ds4_pace_livemask_publish_pin_mass(weights);  /* patch 0040: publish the freshly-seeded mass (S7) */
+     g_pace.lm_seeded = 1;
+     g_pace.lm_seed_tok = g_pace.lm_tok;  /* patch 0037: anchor for the post-seed freeze tripwire */
+     if (g_pace.lm_log) {
+@@ -13507,9 +13562,17 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+         for (int sw = 0; sw < lm_max_swaps_eff; sw++) {   /* patch 0039: pressure-accelerated swap budget (<= K/2) */
+             int cand = -1;
+             long candc = -1;
++            double candm = -1.0;   /* patch 0040: candidate mass (wshare) tracker */
+             for (uint32_t e = 0; e < ne; e++) {
+                 if (!g_reap_mask_pruned[il][e]) continue;
+-                if ((long)wc[e] > candc) { candc = (long)wc[e]; cand = (int)e; }
++                /* patch 0040: order the promotion candidate by demand MASS
++                 * (wshare) when pin-by-mass is on (wcount tiebreak); else the
++                 * 0035/0039 order (max wcount). The wcount>=X sustained-knock
++                 * gate below is unchanged either way (lm_wcount stays the gate). */
++                int better = g_pace.lm_pin_by_mass
++                    ? (ws[e] > candm || (ws[e] == candm && (long)wc[e] > candc))
++                    : ((long)wc[e] > candc);
++                if (better) { candm = ws[e]; candc = (long)wc[e]; cand = (int)e; }
+             }
+             /* patch 0038: DEMOTE_HORIZON preferred-victim pass. An eligible
+              * (in-mask) expert unseen in the observed top-N for at least
+@@ -13561,6 +13624,10 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+      * this applied chain; residency instead follows the selection stream
+      * emergently through 0033 (first-request cold miss, then re-pin). */
+     if (dirty) ds4_reap_mask_apply(model, weights);
++    /* patch 0040: publish g_reap_pin_mass once per decode token after the mask
++     * has settled (every token, not only on swaps - the windowed mass changes
++     * each token). No-op at the off default. */
++    ds4_pace_livemask_publish_pin_mass(weights);
+ }
+ 
+ /* Per-decode-token driver. EXACT ORDERING kills the off-by-one:
+@@ -13619,6 +13686,12 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+     g_pace.lm_pressure_blocked_mass = 0.0;
+     g_pace.lm_pressure_resident_mass = 0.0;
+     g_pace.lm_pressure_eligible_cool = 0;
++    /* patch 0040: clear the published pin-mass on the prompt boundary so the
++     * consumer never reads stale cross-prompt mass; bump epoch to signal it. */
++    if (g_pace.lm_pin_by_mass) {
++        memset(g_reap_pin_mass, 0, sizeof(g_reap_pin_mass));
++        g_reap_pin_epoch++;
++    }
+     g_pace.lm_seeded = 0;
+     g_pace.lm_tok = 0;
+     g_pace.lm_ring_pos = 0;
+-- 
+2.43.0
+

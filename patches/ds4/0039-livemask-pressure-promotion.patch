@@ -1,0 +1,295 @@
+From e1b288d2d0b8ecef8380c1e9531f419ca97595d9 Mon Sep 17 00:00:00 2001
+From: reap-loop <noreply@localhost>
+Date: Sun, 12 Jul 2026 05:38:23 +0200
+Subject: [PATCH] livemask: pressure-adaptive promotion by demand MASS (0039)
+
+Adds an AGGREGATE-PRESSURE promotion boost to the live dynamic K-wide mask
+(0035 livemask + 0037 anchor-law hardening + 0038 rating levers). Off by
+default; a single new gate env (DS4_PACE_LIVEMASK_PRESSURE=0) makes it
+byte-identical to 0038.
+
+WHY.  The K8 live mask runs fast (selection-only, no thrash) but COLLAPSES in
+quality on a prompt that changes phase.  Measured on "Genera una pagina HTML5
+... per una caffetteria": the output starts as prose then crashes into
+word-salad ("...in 1. non piu. in 1. non piu...") right after the seed
+(~tok 12).  Cause: the bootstrap seeds K8 from the first ~10 tokens = the PROSE
+intro, so the mask captures prose experts; generation then shifts to HTML CODE,
+which needs different experts, and the prose-K8 blocks them.  The 0037/0038
+promote is slow (sustained knock >=X + fixed cooldown) and cannot admit the
+code experts before the collapse.
+
+INTUITION (design doc S4 item 3, the 0038-DEFERRED _PHASE_SWAP_BOOST).  Beyond
+the per-expert temperature the rating must see the AGGREGATE demand, measured as
+MASS = frequency x weight.  Per (layer,expert) that mass is EXACTLY lm_wshare:
+the windowed sum of one unbiased router share per token the expert knocked =
+(wcount knocks) x (average per-knock share) = frequency x weight.  (It is NOT a
+raw knock count -- the 0037/0038 rating already had wcount; the miss was reading
+frequency ALONE and throwing the weight away.  It is also NOT wcount*wshare,
+which would be frequency^2 x weight, the wrong dimension.)
+
+The pressure is the DIFFERENTIAL of that mass, a dimensionless order parameter:
+    R = blocked_mass / (resident_mass + eps)
+  blocked_mass  = sum of wshare over PRUNED experts that knocked (wcount >= KNOCK
+                  frequency floor, to drop flukes)  -- the suppressed demand mass
+  resident_mass = sum of wshare over ELIGIBLE in-mask experts -- the served mass
+A prose->code shift pushes the new-phase experts' mass OUT of the mask WHILE the
+old-phase residents cool (their windowed mass rolls off), so BOTH movements
+raise R; it crosses ~1 at the crossover.  When R clears the threshold the scan
+PROMOTES FASTER: shorter transient cooldown, lower X, more swaps/layer.  HARD
+CONSTRAINT (design doc S0): rotate faster, NEVER widen K.  K stays 8; only the
+rotation SPEED changes, and the boosted swap budget is still Anchor-Law-clamped
+to <= K/2.  R is scale-invariant (numerator and denominator both extensive in
+layers/experts/share), so one float threshold ports across models and depths.
+
+WHAT.
+  * ds4_pace_livemask_pressure_eval() (new): once per decode token, sums
+    blocked_mass and resident_mass (= wshare) across all eligible layers and
+    counts eligible_cool (in-mask experts with wcount==0), then arms
+    lm_pressure_active when R = blocked_mass/(resident_mass+eps) >= _PRESSURE AND
+    eligible_cool > 0 (the differential guard: no cold resident = steady load,
+    not a phase shift -> do not accelerate, it would only thrash toward K0).
+  * ds4_pace_livemask_scan(): picks effective cooldown / X / max_swaps from the
+    accelerated values while boosted, else the 0038 values.  Anchor-Law bounds
+    hold in both branches (swaps <= K/2, cooldown >= 1; clamped at init).
+  * JSONL log (DS4_PACE_LIVEMASK_LOG): emits {"ev":"pressure","tok":N,
+    "blocked_mass":..,"resident_mass":..,"ratio":R,"eligible_cool":C,
+    "boost":0/1} per token, so the shift is visible.  Emitted ONLY when armed,
+    so at the off default the log stream is byte-identical to 0038.
+
+ENV (all defaults reproduce 0038 exactly; boost cannot arm unless _PRESSURE>0):
+  DS4_PACE_LIVEMASK_PRESSURE           FLOAT ratio threshold on blocked/resident
+                                       demand MASS; 0=off. Arming band ~0.5..1.0.
+  DS4_PACE_LIVEMASK_PRESSURE_KNOCK     min wcount (FREQUENCY floor) for a blocked
+                                       expert to donate its mass; default = _X
+  DS4_PACE_LIVEMASK_PRESSURE_COOLDOWN  accelerated per-layer cooldown; default 2 (floor 1)
+  DS4_PACE_LIVEMASK_PRESSURE_X         accelerated sustained-knock gate; default 1
+  DS4_PACE_LIVEMASK_PRESSURE_MAX_SWAPS accelerated swaps/layer/scan; default K/2 (capped K/2)
+
+Applies after 0038.  ON intentionally breaks bit-exactness (that is the point);
+OFF is a pure no-op (byte-identical to 0038 / stock).
+---
+ ds4.c | 156 ++++++++++++++++++++++++++++++++++++++++++++++++++++++++--
+ 1 file changed, 152 insertions(+), 4 deletions(-)
+
+diff --git a/ds4.c b/ds4.c
+index 71cf218..eeccd7d 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -7542,6 +7542,33 @@ static struct {
+     uint32_t lm_promo_win_tok;    /* [state] tumbling-window start (lm_tok value) for the promo rate cap */
+     int      lm_promo_win_count;  /* [state] promotions counted in the current rate-cap window */
+     uint16_t *lm_since_seen;      /* [DS4_MAX_LAYER][DS4_MAX_EXPERT] tokens since expert last appeared in observed top-N (feeds demote_horizon) */
++
++    /* ---- patch 0039: PRESSURE-adaptive promotion. Implements the 0038-DEFERRED
++     * "_PHASE_SWAP_BOOST" above (design doc S4 item 3): a real test on a
++     * prose->code phase shift showed the plain sliding window IS too slow to
++     * react - K8 seeds prose experts, the shift needs code experts, and the
++     * 0037/0038 promote (sustained knock >=X + cooldown) cannot admit them
++     * before the output collapses into word-salad. 0039 adds the AGGREGATE
++     * demand the per-expert rating is blind to, measured as MASS = frequency x
++     * weight. Per (layer,expert) the mass is exactly lm_wshare (the windowed sum
++     * of one unbiased router share per token the expert knocked = wcount knocks
++     * x average per-knock share). The pressure is the DIFFERENTIAL of that mass:
++     *   R = (mass BLOCKED outside the mask) / (mass still served by residents).
++     * A phase shift pushes the new-phase experts' mass OUT of the mask while the
++     * old-phase residents cool (their windowed mass rolls off), so BOTH move R
++     * up; R crosses ~1 at the crossover. When R clears the threshold the scan
++     * rotates FASTER (short cooldown, low X, more swaps) - but K is NEVER widened
++     * (design doc S0): only the rotation SPEED changes. Every field defaults to
++     * reproducing 0038 exactly (lm_pressure==0.0 = off). */
++    double   lm_pressure;         /* DS4_PACE_LIVEMASK_PRESSURE: FLOAT ratio threshold on blocked/resident demand-MASS; 0 = off (0038). Mass = freq x weight = lm_wshare. */
++    int      lm_pressure_knock;   /* DS4_PACE_LIVEMASK_PRESSURE_KNOCK: min windowed knock (wcount, FREQUENCY floor) for a pruned expert to donate its mass to blocked_mass; default lm_x */
++    int      lm_pressure_cooldown;/* DS4_PACE_LIVEMASK_PRESSURE_COOLDOWN: accelerated per-layer cooldown used while boosted (>=1) */
++    int      lm_pressure_x;       /* DS4_PACE_LIVEMASK_PRESSURE_X: accelerated sustained-knock gate used while boosted (>=1) */
++    int      lm_pressure_max_swaps;/* DS4_PACE_LIVEMASK_PRESSURE_MAX_SWAPS: accelerated swaps/layer/scan while boosted (capped K/2, Anchor-Law) */
++    int      lm_pressure_active;  /* [state] boost flag recomputed each decode token by ds4_pace_livemask_pressure_eval() */
++    double   lm_pressure_blocked_mass;  /* [state] last-token summed mass (lm_wshare) of knocking blocked experts = ratio numerator (for the JSONL log) */
++    double   lm_pressure_resident_mass; /* [state] last-token summed mass (lm_wshare) of in-mask residents = ratio denominator (for the JSONL log) */
++    int      lm_pressure_eligible_cool; /* [state] last-token count of eligible experts fully cold (wcount == 0) = eviction-safety guard (for the JSONL log) */
+ } g_pace;
+ 
+ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+@@ -12892,6 +12919,35 @@ static void ds4_pace_init(void) {
+             if (g_pace.lm_demote_horizon > g_pace.lm_window) g_pace.lm_demote_horizon = g_pace.lm_window;
+             g_pace.lm_promo_rate_cap = pace_env_i("DS4_PACE_LIVEMASK_PROMO_RATE_CAP", 0);
+             if (g_pace.lm_promo_rate_cap < 0) g_pace.lm_promo_rate_cap = 0;
++            /* patch 0039: PRESSURE-adaptive promotion (design doc S4 item 3).
++             * lm_pressure==0.0 disables the whole feature: the boost never arms,
++             * every effective scan param equals its 0038 value, and the
++             * pressure JSONL line is suppressed - byte-identical to 0038. The
++             * accelerated params only take effect while boosted, which can only
++             * happen when lm_pressure>0.0, so their non-zero defaults are inert
++             * at the off default. lm_pressure is a FLOAT ratio threshold on
++             * blocked/resident demand MASS (see ds4_pace_livemask_pressure_eval);
++             * parsed with the same strtod helper as BLOCKED_WEIGHT/HYST. Useful
++             * arming band ~0.5..1.0 (1.0 = blocked demand mass equals resident). */
++            g_pace.lm_pressure = pace_env_d("DS4_PACE_LIVEMASK_PRESSURE", 0.0);
++            if (g_pace.lm_pressure < 0.0) g_pace.lm_pressure = 0.0;
++            g_pace.lm_pressure_knock = pace_env_i("DS4_PACE_LIVEMASK_PRESSURE_KNOCK", g_pace.lm_x);
++            if (g_pace.lm_pressure_knock < 1) g_pace.lm_pressure_knock = 1;
++            g_pace.lm_pressure_cooldown = pace_env_i("DS4_PACE_LIVEMASK_PRESSURE_COOLDOWN", 2);
++            if (g_pace.lm_pressure_cooldown < 1) g_pace.lm_pressure_cooldown = 1;  /* Anchor-Law structural floor (0037) */
++            g_pace.lm_pressure_x = pace_env_i("DS4_PACE_LIVEMASK_PRESSURE_X", 1);
++            if (g_pace.lm_pressure_x < 1) g_pace.lm_pressure_x = 1;
++            g_pace.lm_pressure_max_swaps = pace_env_i("DS4_PACE_LIVEMASK_PRESSURE_MAX_SWAPS", g_pace.lm_k / 2);
++            if (g_pace.lm_pressure_max_swaps < 1) g_pace.lm_pressure_max_swaps = 1;
++            /* patch 0039: the boosted swap budget obeys the SAME structural
++             * Anchor-Law cap (0037) as lm_max_swaps: never more than half the
++             * mask width per scan, no matter what the env requests. "Rotate
++             * faster, never widen K" (design doc S0). */
++            {
++                int lm_pmax_cap = g_pace.lm_k / 2;
++                if (lm_pmax_cap < 1) lm_pmax_cap = 1;
++                if (g_pace.lm_pressure_max_swaps > lm_pmax_cap) g_pace.lm_pressure_max_swaps = lm_pmax_cap;
++            }
+             const char *llg = getenv("DS4_PACE_LIVEMASK_LOG");
+             if (llg && *llg) g_pace.lm_log = fopen(llg, "w");
+             g_pace.lm_ring_id    = xmalloc_zeroed((size_t)DS4_LM_WIN_MAX * DS4_MAX_LAYER * DS4_LM_OBS_MAX, sizeof(uint16_t));
+@@ -12927,6 +12983,16 @@ static void ds4_pace_init(void) {
+                 "promo_rate_cap=%d%s\n",
+                 g_pace.lm_blocked_weight, g_pace.lm_demote_horizon, g_pace.lm_promo_rate_cap,
+                 g_pace.lm_promo_rate_cap == 0 ? " (unlimited)" : "");
++            /* patch 0039: pressure banner. Printed ONLY when the feature is
++             * armed (lm_pressure>0.0), so off-default stderr is byte-identical to
++             * 0038. */
++            if (g_pace.lm_pressure > 0.0)
++                fprintf(stderr,
++                    "ds4: PACE LIVEMASK pressure boost ON - threshold=%.3g (blocked/resident mass-ratio) "
++                    "knock=%d accel(cooldown=%d X=%d max_swaps=%d) (K unchanged; faster rotation only)\n",
++                    g_pace.lm_pressure, g_pace.lm_pressure_knock,
++                    g_pace.lm_pressure_cooldown, g_pace.lm_pressure_x,
++                    g_pace.lm_pressure_max_swaps);
+         }
+     }
+ 
+@@ -13304,9 +13370,76 @@ static void ds4_pace_livemask_seed(const ds4_model *model,
+             g_pace.lm_tok, g_pace.lm_k, g_pace.lm_window);
+ }
+ 
++/* patch 0039: aggregate-PRESSURE evaluator, measured as demand MASS. For each
++ * (layer,expert) the mass is lm_wshare = the windowed sum of the unbiased router
++ * share = frequency x average weight (the user's "frequency x weight"; NOT a raw
++ * knock count). Across all eligible layers it forms two masses:
++ *   blocked_mass  = sum of wshare over PRUNED experts that actually knocked
++ *                   (wcount >= pressure_knock frequency floor, to drop flukes);
++ *   resident_mass = sum of wshare over ELIGIBLE (in-mask) experts (no floor -
++ *                   the sliding-window roll-off IS the cooling).
++ * The pressure is their ratio R = blocked_mass / (resident_mass + eps): a
++ * dimensionless phase-shift order parameter that rises when new-phase demand
++ * mass is pushed OUT of the mask WHILE the old-phase residents cool, crossing
++ * ~1 at the crossover. The boost arms when R clears the float threshold AND at
++ * least one fully-cold resident exists to evict (eviction-safety guard: high
++ * demand with no cold seat is steady saturated load, not a shift - accelerating
++ * there would only thrash the mask toward K0, design doc S0). K is never touched
++ * (S0): only the scan's rotation SPEED changes. No-op at the off default
++ * (lm_pressure<=0.0): returns with lm_pressure_active=0 and emits no log line,
++ * so the scan below runs exactly as 0038. Reads only the windowed counters
++ * (fresh from ds4_pace_livemask_commit) and the mask; writes only g_pace scratch. */
++static void ds4_pace_livemask_pressure_eval(const ds4_weights *weights) {
++    g_pace.lm_pressure_active = 0;
++    g_pace.lm_pressure_blocked_mass = 0.0;
++    g_pace.lm_pressure_resident_mass = 0.0;
++    g_pace.lm_pressure_eligible_cool = 0;
++    if (g_pace.lm_pressure <= 0.0) return;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    double blocked_mass = 0.0, resident_mass = 0.0;
++    int eligible_cool = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++        const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
++        const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++        for (uint32_t e = 0; e < ne; e++) {
++            if (g_reap_mask_pruned[il][e]) {
++                /* blocked demand mass = frequency x weight = wshare, gated by a
++                 * wcount frequency floor so a one-token fluke donates no mass. */
++                if ((int)wc[e] >= g_pace.lm_pressure_knock) blocked_mass += ws[e];
++            } else {
++                resident_mass += ws[e];
++                if (wc[e] == 0) eligible_cool++;
++            }
++        }
++    }
++    g_pace.lm_pressure_blocked_mass = blocked_mass;
++    g_pace.lm_pressure_resident_mass = resident_mass;
++    g_pace.lm_pressure_eligible_cool = eligible_cool;
++    /* Differential gate: fire only when the blocked/resident demand-MASS ratio
++     * clears the threshold AND >=1 cold resident is available as a safe victim.
++     * eps guards the empty/warmup denominator (resident_mass ~ 0 post-seed). */
++    double ratio = blocked_mass / (resident_mass + 1e-9);
++    if (ratio >= g_pace.lm_pressure && eligible_cool > 0)
++        g_pace.lm_pressure_active = 1;
++    if (g_pace.lm_log) {
++        fprintf(g_pace.lm_log,
++                "{\"ev\":\"pressure\",\"tok\":%u,\"blocked_mass\":%.6g,"
++                "\"resident_mass\":%.6g,\"ratio\":%.6g,\"eligible_cool\":%d,"
++                "\"boost\":%d}\n",
++                g_pace.lm_tok, blocked_mass, resident_mass, ratio,
++                eligible_cool, g_pace.lm_pressure_active);
++        fflush(g_pace.lm_log);
++    }
++}
++
+ /* Continuous loop: per eligible layer, cooldown-gated, up to max_swaps one-in/
+  * one-out swaps. Triple-gate: sustained knock (count>=X), candidate hotter by
+- * hyst, per-layer cooldown. K stays constant; window roll-off is the decay. */
++ * hyst, per-layer cooldown. K stays constant; window roll-off is the decay.
++ * patch 0039: under aggregate pressure (a phase shift) the cooldown, X and
++ * swaps/layer switch to their accelerated values so the incoming experts land
++ * in time - still Anchor-Law-bounded (swaps <= K/2, cooldown >= 1). */
+ static void ds4_pace_livemask_scan(const ds4_model *model,
+                                    const ds4_weights *weights) {
+     if (!g_pace.lm_on || !g_pace.lm_seeded) return;
+@@ -13353,16 +13486,25 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+         g_pace.lm_promo_win_tok = g_pace.lm_tok;
+         g_pace.lm_promo_win_count = 0;
+     }
++    /* patch 0039: evaluate aggregate pressure once per token, then pick the
++     * effective scan params. Off default (lm_pressure==0) => lm_pressure_active
++     * stays 0 => each _eff equals its 0038 value => byte-identical scan. Both
++     * candidate swap-count values were Anchor-Law-clamped to <= K/2 at init and
++     * both cooldowns to >= 1, so neither branch can violate design doc S0. */
++    ds4_pace_livemask_pressure_eval(weights);
++    int lm_cooldown_eff  = g_pace.lm_pressure_active ? g_pace.lm_pressure_cooldown  : g_pace.lm_cooldown;
++    int lm_x_eff         = g_pace.lm_pressure_active ? g_pace.lm_pressure_x         : g_pace.lm_x;
++    int lm_max_swaps_eff = g_pace.lm_pressure_active ? g_pace.lm_pressure_max_swaps : g_pace.lm_max_swaps;
+     int dirty = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
+         if ((g_pace.lm_tok - g_pace.lm_last_swap_tok[il]) <
+-            (uint32_t)g_pace.lm_cooldown) continue;
++            (uint32_t)lm_cooldown_eff) continue;      /* patch 0039: pressure-accelerated cooldown */
+         const uint16_t *wc = &g_pace.lm_wcount[(size_t)il * DS4_MAX_EXPERT];
+         const double   *ws = &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
+         const uint16_t *ss = g_pace.lm_since_seen ?
+             &g_pace.lm_since_seen[(size_t)il * DS4_MAX_EXPERT] : NULL;  /* patch 0038 */
+-        for (int sw = 0; sw < g_pace.lm_max_swaps; sw++) {
++        for (int sw = 0; sw < lm_max_swaps_eff; sw++) {   /* patch 0039: pressure-accelerated swap budget (<= K/2) */
+             int cand = -1;
+             long candc = -1;
+             for (uint32_t e = 0; e < ne; e++) {
+@@ -13394,7 +13536,7 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+                 }
+             }
+             if (cand < 0 || vic < 0) break;
+-            if ((long)wc[cand] < (long)g_pace.lm_x) break;         /* sustained knock */
++            if ((long)wc[cand] < (long)lm_x_eff) break;            /* sustained knock (patch 0039: pressure-accelerated X) */
+             if (ws[cand] < ws[vic] + g_pace.lm_hyst) break;        /* hotter by margin */
+             /* patch 0038: rate-cap gate. No-op at default (cap=0). */
+             if (g_pace.lm_promo_rate_cap > 0 &&
+@@ -13471,6 +13613,12 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+                                      (size_t)DS4_MAX_LAYER * DS4_MAX_EXPERT * sizeof(uint16_t));
+     g_pace.lm_promo_win_tok = 0;
+     g_pace.lm_promo_win_count = 0;
++    /* patch 0039: pressure scratch is recomputed every token, but zero it on
++     * the prompt boundary for the same clean-slate discipline as above. */
++    g_pace.lm_pressure_active = 0;
++    g_pace.lm_pressure_blocked_mass = 0.0;
++    g_pace.lm_pressure_resident_mass = 0.0;
++    g_pace.lm_pressure_eligible_cool = 0;
+     g_pace.lm_seeded = 0;
+     g_pace.lm_tok = 0;
+     g_pace.lm_ring_pos = 0;
+-- 
+2.43.0
+
