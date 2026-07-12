@@ -1,0 +1,131 @@
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1129,15 +1129,43 @@
+ static void *g_model_stage[4];
+ static cudaEvent_t g_model_stage_event[4];
+ static uint64_t g_model_stage_bytes;
+-static void *g_stream_selected_stage_raw[4];
+-static void *g_stream_selected_stage[4];
+-static cudaEvent_t g_stream_selected_stage_event[4];
++/* Ring depth for the pinned staging buffer used by cuda_model_copy_to_device_streamed
++ * (the streamed-selected-expert H2D path). Default 4 matches historical
++ * behavior; DS4_CUDA_SELECTED_STAGE_DEPTH can raise it (e.g. 8/16) to allow
++ * deeper pipelining of pread -> pinned-copy -> H2D across more in-flight
++ * chunks. Arrays are sized to the max and only the first N are used. */
++#define DS4_STREAM_SELECTED_STAGE_MAX 16
++static void *g_stream_selected_stage_raw[DS4_STREAM_SELECTED_STAGE_MAX];
++static void *g_stream_selected_stage[DS4_STREAM_SELECTED_STAGE_MAX];
++static cudaEvent_t g_stream_selected_stage_event[DS4_STREAM_SELECTED_STAGE_MAX];
+ static uint64_t g_stream_selected_stage_bytes;
++static int g_stream_selected_stage_depth_cached = -1;
+ static cudaStream_t g_stream_selected_upload_stream;
+ static cudaEvent_t g_stream_selected_upload_done_event;
+ static int g_stream_selected_upload_done_recorded;
+ static int g_stream_selected_upload_event_enabled = -1;
+ 
++static int cuda_stream_selected_stage_depth(void) {
++    if (g_stream_selected_stage_depth_cached < 0) {
++        int depth = 4;
++        const char *env = getenv("DS4_CUDA_SELECTED_STAGE_DEPTH");
++        if (env && env[0]) {
++            char *end = NULL;
++            long v = strtol(env, &end, 10);
++            if (end != env && v >= 1 && v <= DS4_STREAM_SELECTED_STAGE_MAX) {
++                depth = (int)v;
++            } else if (end != env) {
++                fprintf(stderr,
++                        "ds4: DS4_CUDA_SELECTED_STAGE_DEPTH=%s out of range "
++                        "[1,%d], using default %d\n",
++                        env, DS4_STREAM_SELECTED_STAGE_MAX, depth);
++            }
++        }
++        g_stream_selected_stage_depth_cached = depth;
++    }
++    return g_stream_selected_stage_depth_cached;
++}
++
+ static int cuda_ok(cudaError_t err, const char *what);
+ static const char *cuda_model_range_ptr_from_fd(
+         const void *model_map,
+@@ -3535,7 +3563,9 @@
+ }
+ 
+ static void cuda_stream_selected_stage_release(void) {
+-    for (size_t i = 0; i < 4; i++) {
++    /* Always sweep the full MAX range (not just the configured depth): safe
++     * regardless of whether depth changed, since unused slots are NULL. */
++    for (size_t i = 0; i < DS4_STREAM_SELECTED_STAGE_MAX; i++) {
+         if (g_stream_selected_stage_event[i]) {
+             (void)cudaEventDestroy(g_stream_selected_stage_event[i]);
+             g_stream_selected_stage_event[i] = NULL;
+@@ -3560,7 +3590,10 @@
+ 
+ static int cuda_stream_selected_stage_pool_alloc(uint64_t bytes) {
+     if (g_stream_selected_stage_bytes >= bytes) return 1;
+-    for (size_t i = 0; i < 4; i++) {
++    const int depth = cuda_stream_selected_stage_depth();
++    /* Release the full MAX range unconditionally: harmless (NULL-checked)
++     * and avoids leaking slots left over from a smaller previous depth. */
++    for (size_t i = 0; i < DS4_STREAM_SELECTED_STAGE_MAX; i++) {
+         if (g_stream_selected_stage_event[i]) {
+             (void)cudaEventDestroy(g_stream_selected_stage_event[i]);
+             g_stream_selected_stage_event[i] = NULL;
+@@ -3583,7 +3616,7 @@
+             return 0;
+         }
+     }
+-    for (size_t i = 0; i < 4; i++) {
++    for (int i = 0; i < depth; i++) {
+         cudaError_t err = cudaMallocHost(&g_stream_selected_stage_raw[i],
+                                          (size_t)bytes);
+         if (err != cudaSuccess) {
+@@ -3607,6 +3640,9 @@
+         }
+     }
+     g_stream_selected_stage_bytes = bytes;
++    if (depth != 4 && getenv("DS4_CUDA_WEIGHT_CACHE_VERBOSE")) {
++        fprintf(stderr, "ds4: CUDA streaming selected stage ring depth=%d\n", depth);
++    }
+     return 1;
+ }
+ 
+@@ -5041,10 +5077,11 @@
+     cudaError_t err = cudaSuccess;
+     uint64_t copied = 0;
+     uint64_t chunk_idx = 0;
++    const uint64_t stage_depth = (uint64_t)cuda_stream_selected_stage_depth();
+     while (copied < bytes) {
+         const uint64_t n = (bytes - copied < chunk) ? (bytes - copied) : chunk;
+-        const uint64_t bi = chunk_idx % 4u;
+-        if (chunk_idx >= 4u) {
++        const uint64_t bi = chunk_idx % stage_depth;
++        if (chunk_idx >= stage_depth) {
+             err = cudaEventSynchronize(g_stream_selected_stage_event[bi]);
+             if (err != cudaSuccess) {
+                 fprintf(stderr,
+@@ -5548,6 +5585,25 @@
+         }
+     }
+ 
++    /* PocketMoE incident class: cudaHostRegister on the ENTIRE file-backed
++     * mmap (81-96 GiB here) makes the whole mapping pinned+DMA-visible in one
++     * shot. Under memory pressure this has been observed (upstream, not on
++     * this box) to poison dirty-page accounting for the mapping and stall
++     * writeback, wedging system I/O until a reboot. DS4_CUDA_NO_WHOLE_MMAP_REGISTER
++     * skips this single call; weight access then falls through to the
++     * existing bounded paths (fd-backed pread -> pinned staging ring ->
++     * cudaMemcpyAsync in cuda_model_range_ptr_from_fd / the streamed
++     * selected-expert cache, or bounded per-range cudaHostRegister in
++     * cuda_model_range_register_mapped) which never pin more than a few
++     * hundred MiB at a time. */
++    if (getenv("DS4_CUDA_NO_WHOLE_MMAP_REGISTER") != NULL) {
++        fprintf(stderr,
++                "ds4: CUDA whole-mmap registration skipped "
++                "(DS4_CUDA_NO_WHOLE_MMAP_REGISTER=1); weight access will use "
++                "fd-backed chunked H2D staging / bounded per-range registration\n");
++        return 1;
++    }
++
+     unsigned int flags = cudaHostRegisterMapped | cudaHostRegisterReadOnly;
+     if (getenv("DS4_CUDA_HOST_REGISTER_PLAIN") != NULL) {
+         flags = cudaHostRegisterMapped;

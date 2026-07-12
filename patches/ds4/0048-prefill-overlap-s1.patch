@@ -1,0 +1,342 @@
+diff --git a/ds4.c b/ds4.c
+index 9a0fb99..a7cac1e 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -12940,12 +12940,29 @@ typedef struct { uint32_t layer; uint32_t expert; } ds4_reap_expert_id;
+ 
+ static volatile int g_reap_prefetch_delta_busy;
+ 
++/* prefill-overlap patch 0046: DS4_REAP_PREFILL_READAHEAD=1 host-side page-in
++ * gate for ds4_session_eval_layer_slice's ssd_streaming prefill loop (see
++ * below).  Kept separate from DS4_REAP_PREFETCH_DELTA so it can be toggled
++ * independently, but folded into ds4_reap_prefetch_delta_enabled() below so
++ * setting it alone is enough to arm ds4_reap_prefetch_batch() -- no second
++ * env var required.  Default 0 -> byte-identical, no readahead fired. */
++static bool ds4_reap_prefill_readahead_enabled(void) {
++    static int checked, enabled;
++    if (!checked) {
++        checked = 1;
++        const char *p = getenv("DS4_REAP_PREFILL_READAHEAD");
++        enabled = (p && *p && strcmp(p, "0") != 0) ? 1 : 0;
++    }
++    return enabled != 0;
++}
++
+ static bool ds4_reap_prefetch_delta_enabled(void) {
+     static int checked, enabled;
+     if (!checked) {
+         checked = 1;
+         const char *p = getenv("DS4_REAP_PREFETCH_DELTA");
+         enabled = (p && *p && strcmp(p, "0") != 0) ? 1 : 0;
++        if (!enabled && ds4_reap_prefill_readahead_enabled()) enabled = 1;
+     }
+     return enabled != 0;
+ }
+@@ -13102,6 +13119,32 @@ static void ds4_reap_prefetch_batch(const ds4_model          *model,
+     pthread_detach(th);
+ }
+ 
++/* prefill-overlap patch 0046: fire an async page-in of every expert of the
++ * NEXT layer of an ssd_streaming prefill batch, called from
++ * ds4_session_eval_layer_slice right before encoding layer `il` so the host
++ * page cache for layer `il+1` is warming in the background while `il`'s GPU
++ * work (and the loads it triggers) runs.  A prefill token batch's per-layer
++ * union already touches nearly every expert of the layer, so this is
++ * unconditional readahead of the whole next layer, not a routing guess.
++ * Reuses the existing 0043 REAP prefetch machinery unchanged (fire-and-
++ * forget, single-flight, page-cache warm only => output byte-identical).
++ * Gated by DS4_REAP_PREFILL_READAHEAD (folded into
++ * ds4_reap_prefetch_delta_enabled() above); a no-op call when unset. */
++static void ds4_reap_prefill_readahead_next_layer(const ds4_model   *model,
++                                                   const ds4_weights *weights,
++                                                   uint32_t           next_layer) {
++    if (!ds4_reap_prefill_readahead_enabled()) return;
++    if (!model || !weights || next_layer >= (uint32_t)DS4_N_LAYER) return;
++    const uint32_t n_expert = DS4_N_EXPERT;
++    if (n_expert == 0 || n_expert > (uint32_t)DS4_MAX_EXPERT) return;
++    ds4_reap_expert_id ids[DS4_MAX_EXPERT];
++    for (uint32_t e = 0; e < n_expert; e++) {
++        ids[e].layer  = next_layer;
++        ids[e].expert = e;
++    }
++    ds4_reap_prefetch_batch(model, weights, ids, n_expert);
++}
++
+ /* 0044: synchronous form used only for the provisional SPEX lane. All IDs in
+  * the lane are handed to one WRAP worker batch and the target mask is not
+  * exposed until every page-touch worker has joined. */
+@@ -24785,6 +24828,17 @@ static bool metal_graph_prefill_layer_major(
+ 
+     for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
+         double layer_elapsed = 0.0;
++        /* prefill-overlap patch 0046 (S2): the layer-major path is what a
++         * server prefill actually runs for chunks (the eval_layer_slice
++         * full-span branch lands here), so fire the same async next-layer
++         * host page-in as in the generic slice loop.  The pre-existing
++         * metal_graph_stream_readahead_layer below is a no-op on Linux
++         * (F_RDADVISE is Darwin-only and the madvise variant is env-gated
++         * off), which is why prefill reads were stuck at queue-depth 1.
++         * Fire-and-forget; no-op unless DS4_REAP_PREFILL_READAHEAD is set. */
++        if (g->ssd_streaming && n_tokens > 1 && il + 1u < (uint32_t)DS4_N_LAYER) {
++            ds4_reap_prefill_readahead_next_layer(model, weights, il + 1u);
++        }
+         if (layer_prepare &&
+             !metal_graph_stream_prepare_join_layer(g,
+                                                    model,
+@@ -30911,6 +30965,15 @@ int ds4_session_eval_layer_slice(ds4_session *s,
+          metal_graph_cuda_stream_prefill_batch_selected_addr_enabled(g, &e->weights, n_tokens));
+     if (g->ssd_streaming) {
+         for (uint32_t il = layer_start; ok && il <= layer_end; il++) {
++            /* prefill-overlap patch 0046 (S2): kick off host page-in of
++             * layer il+1's experts before doing any GPU work for layer il,
++             * so the SSD reads for the next layer's misses overlap with
++             * this layer's GEMM + upload.  Prefill only (n_tokens > 1);
++             * bounded to layers still inside this slice; fire-and-forget,
++             * no-op unless DS4_REAP_PREFILL_READAHEAD is set. */
++            if (n_tokens > 1 && il + 1u <= layer_end) {
++                ds4_reap_prefill_readahead_next_layer(&e->model, &e->weights, il + 1u);
++            }
+             g->streaming_static_decode_map_current = false;
+             ok = batch_selected_addr ?
+                  metal_graph_stream_map_layer_decode(&e->model, &e->weights, il) :
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index eaecf39..73383c9 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1137,6 +1137,32 @@ static cudaStream_t g_stream_selected_upload_stream;
+ static cudaEvent_t g_stream_selected_upload_done_event;
+ static int g_stream_selected_upload_done_recorded;
+ static int g_stream_selected_upload_event_enabled = -1;
++/* prefill-overlap patch 0046: DS4_CUDA_PREFILL_DEFER_UPLOAD_SYNC=1 lets the
++ * prompt-batch (prefill) compact-load path issue the H2D copy for a MISSED
++ * expert without blocking on cudaStreamSynchronize before starting the next
++ * expert's host read.  Default 0 -> byte-identical to pre-0046 behaviour. */
++static int g_prefill_defer_upload_sync_enabled = -1;
++/* 0046 stage WAR guard: pre-0046 every cuda_model_copy_to_device_streamed
++ * call ended with cudaStreamSynchronize, so on entry the 4 rotating host
++ * staging buffers were never the source of a still-in-flight H2D copy and
++ * the chunk loop could skip the per-buffer event wait for its first 4
++ * chunks.  A deferred return breaks that invariant: the NEXT call's pread
++ * into stage[bi] would race the previous call's async copy OUT of stage[bi]
++ * (host write vs device read -> silently corrupted expert weights).  This
++ * flag is set on every deferred return and cleared once a blocking stream
++ * sync drains the upload stream; while set, the chunk loop waits on the
++ * buffer's last recorded event before every reuse, including the first 4. */
++static int g_stream_selected_stage_defer_inflight;
++/* 0046 cross-call staging cursor.  Restarting the buffer index at 0 for
++ * every call would make the WAR guard above serialize call N+1's pread
++ * against call N's in-flight copy (both want stage[0]) -- the blocking wait
++ * would just move instead of disappearing, zero overlap.  In deferred mode
++ * the 4-buffer rotation must therefore CONTINUE across calls: call N uses
++ * stage[c], call N+1 stage[c+1], ..., so a wait is only ever taken against
++ * the copy issued 4 chunks earlier (normally long complete) and up to 4
++ * preads can run ahead of the H2D stream.  Only consulted when the 0046 env
++ * is on; the default path keeps the per-call index (byte-identical). */
++static uint64_t g_stream_selected_stage_cursor;
+ 
+ static int cuda_ok(cudaError_t err, const char *what);
+ static const char *cuda_model_range_ptr_from_fd(
+@@ -3610,12 +3636,38 @@ static int cuda_stream_selected_stage_pool_alloc(uint64_t bytes) {
+     return 1;
+ }
+ 
++/* prefill-overlap patch 0046: gate for the prefill-only compact-load defer.
++ * OFF by default (env unset) -> identical to pre-0046 behaviour everywhere. */
++static int cuda_prefill_defer_upload_sync_enabled(void) {
++    if (g_prefill_defer_upload_sync_enabled < 0) {
++        const char *v = getenv("DS4_CUDA_PREFILL_DEFER_UPLOAD_SYNC");
++        g_prefill_defer_upload_sync_enabled =
++            (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++    }
++    return g_prefill_defer_upload_sync_enabled;
++}
++
+ static int cuda_stream_selected_upload_event_enabled(void) {
+     if (g_stream_selected_upload_event_enabled < 0) {
+         const char *v = getenv("DS4_SELECTED_UPLOAD_EVENT");
+         if (!v) v = getenv("DS4_CUDA_SELECTED_UPLOAD_EVENT");
+-        g_stream_selected_upload_event_enabled =
+-            (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++        int on = (v && v[0] && strcmp(v, "0") != 0) ? 1 : 0;
++        /* 0046: the prefill-defer gate also needs the async-event upload
++         * path (otherwise defer_upload_sync=1 still falls through to the
++         * blocking cudaStreamSynchronize branch below and nothing changes).
++         * VERIFIED consumers of this gate in this tree (grep 2026-07-12):
++         * exactly two -- the defer branch in cuda_model_copy_to_device_
++         * streamed and the early-return in cuda_stream_selected_upload_
++         * wait_if_recorded.  Widening it therefore cannot relax any decode
++         * barrier (ds4_gpu_end_commands here is an unconditional
++         * cudaDeviceSynchronize).  Side effect when the new env is ON: the
++         * pre-existing always-defer callers (compact-loop direct loads,
++         * seed_experts_async) start genuinely deferring too; all of their
++         * consumers already wait via ds4_gpu_wait_selected_upload before
++         * the routed GEMM, and the stage-buffer WAR guard below closes the
++         * cross-call staging reuse hazard.  Env OFF: byte-identical. */
++        if (!on && cuda_prefill_defer_upload_sync_enabled()) on = 1;
++        g_stream_selected_upload_event_enabled = on;
+     }
+     return g_stream_selected_upload_event_enabled;
+ }
+@@ -4682,11 +4734,43 @@ static int cuda_stream_expert_cache_copy_to_compact(
+         uint32_t compact_slot,
+         char *compact_gate,
+         char *compact_up,
+-        char *compact_down) {
++        char *compact_down,
++        int defer_async) {
+     const uint64_t gate_src = (uint64_t)cache_slot * cache->gate_expert_bytes;
+     const uint64_t down_src = (uint64_t)cache_slot * cache->down_expert_bytes;
+     const uint64_t gate_dst = (uint64_t)compact_slot * cache->gate_expert_bytes;
+     const uint64_t down_dst = (uint64_t)compact_slot * cache->down_expert_bytes;
++    /* prefill-overlap patch 0046: when defer_async is set, issue this D2D
++     * readout on the SAME non-blocking stream used for the (possibly still
++     * in-flight) H2D expert upload above (g_stream_selected_upload_stream).
++     * CUDA stream ordering guarantees operations enqueued on one stream run
++     * in issue order, so this copy is correct-by-construction without an
++     * explicit wait: it can only start once every H2D chunk enqueued ahead
++     * of it on that same stream (for this cache slot, and any other slot
++     * loaded earlier in this call) has completed.  The host does not block
++     * here, unlike the default cudaMemcpy path below, which is what lets
++     * the caller's next pread() race ahead of this expert's GPU copies.
++     * defer_async=0 (default / decode / OFF) is byte-identical to before. */
++    if (defer_async) {
++        return cuda_ok(cudaMemcpyAsync(compact_gate + gate_dst,
++                                       cache->gate_ptr + gate_src,
++                                       (size_t)cache->gate_expert_bytes,
++                                       cudaMemcpyDeviceToDevice,
++                                       g_stream_selected_upload_stream),
++                       "streaming selected gate cache copy (async)") &&
++               cuda_ok(cudaMemcpyAsync(compact_up + gate_dst,
++                                       cache->up_ptr + gate_src,
++                                       (size_t)cache->gate_expert_bytes,
++                                       cudaMemcpyDeviceToDevice,
++                                       g_stream_selected_upload_stream),
++                       "streaming selected up cache copy (async)") &&
++               cuda_ok(cudaMemcpyAsync(compact_down + down_dst,
++                                       cache->down_ptr + down_src,
++                                       (size_t)cache->down_expert_bytes,
++                                       cudaMemcpyDeviceToDevice,
++                                       g_stream_selected_upload_stream),
++                       "streaming selected down cache copy (async)");
++    }
+     return cuda_ok(cudaMemcpy(compact_gate + gate_dst,
+                               cache->gate_ptr + gate_src,
+                               (size_t)cache->gate_expert_bytes,
+@@ -5041,10 +5125,25 @@ static int cuda_model_copy_to_device_streamed(
+     cudaError_t err = cudaSuccess;
+     uint64_t copied = 0;
+     uint64_t chunk_idx = 0;
++    /* 0046: in deferred mode rotate the staging buffers with a cursor that
++     * survives across calls (see g_stream_selected_stage_cursor above), so
++     * consecutive single-chunk expert loads use different buffers and the
++     * WAR wait below lands on a copy issued 4 chunks ago instead of the
++     * immediately preceding one.  Env off -> per-call index, unchanged. */
++    const int stage_cursor_global = cuda_prefill_defer_upload_sync_enabled();
+     while (copied < bytes) {
+         const uint64_t n = (bytes - copied < chunk) ? (bytes - copied) : chunk;
+-        const uint64_t bi = chunk_idx % 4u;
+-        if (chunk_idx >= 4u) {
++        const uint64_t bi = stage_cursor_global ?
++            (g_stream_selected_stage_cursor % 4u) : (chunk_idx % 4u);
++        /* 0046 stage WAR guard: when a previous call returned with deferred
++         * (still in-flight) uploads, stage[bi] may still be the source of an
++         * async H2D copy, so the first-4-chunks fast path is no longer safe;
++         * wait on the buffer's last recorded event before overwriting it.
++         * cudaEventSynchronize on an already-complete (or never recorded)
++         * event returns immediately, so the steady-state cost is ~0.  With
++         * the defer feature off the flag is never set and this condition is
++         * exactly the pre-0046 `chunk_idx >= 4u`. */
++        if (chunk_idx >= 4u || g_stream_selected_stage_defer_inflight) {
+             err = cudaEventSynchronize(g_stream_selected_stage_event[bi]);
+             if (err != cudaSuccess) {
+                 fprintf(stderr,
+@@ -5097,6 +5196,7 @@ static int cuda_model_copy_to_device_streamed(
+         cuda_model_discard_source_pages(model_map, model_size, offset + copied, n);
+         copied += n;
+         chunk_idx++;
++        if (stage_cursor_global) g_stream_selected_stage_cursor++;
+     }
+ 
+     if (defer_upload_sync && cuda_stream_selected_upload_event_enabled()) {
+@@ -5114,6 +5214,9 @@ static int cuda_model_copy_to_device_streamed(
+             return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+         g_stream_selected_upload_done_recorded = 1;
++        /* 0046 stage WAR guard: this call returns with copies (from the 4
++         * rotating staging buffers) potentially still in flight. */
++        g_stream_selected_stage_defer_inflight = 1;
+     } else {
+         const double spex_sync_t0 = spex_t0 > 0.0 ? cuda_spex_now_sec() : 0.0;
+         err = cudaStreamSynchronize(g_stream_selected_upload_stream);
+@@ -5132,6 +5235,9 @@ static int cuda_model_copy_to_device_streamed(
+             (void)cudaGetLastError();
+             return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
++        /* 0046 stage WAR guard: the blocking sync above drained the upload
++         * stream, so no staging buffer is a copy source any more. */
++        g_stream_selected_stage_defer_inflight = 0;
+     }
+     return cuda_spex_stats_finish_copy(1, bytes, spex_t0);
+ }
+@@ -6178,6 +6284,11 @@ static int cuda_stream_selected_cache_begin_compact_load(
+     uint32_t evictions = 0;
+     const int prompt_like_batch =
+         slot_count > DS4_CUDA_ROUTED_EXPERTS_PER_TOKEN;
++    /* prefill-overlap patch 0046: only the prompt-batch (prefill) path defers
++     * the per-expert upload sync; decode (prompt_like_batch==0) is untouched
++     * and keeps the pre-0046 blocking-per-expert behaviour unconditionally. */
++    const int prefill_defer_upload_sync =
++        prompt_like_batch && cuda_prefill_defer_upload_sync_enabled();
+     if (cuda_spex_stats_is_enabled()) {
+         g_spex_stats.selected_load_batches++;
+         g_spex_stats.selected_expert_requests += compact_count;
+@@ -6260,7 +6371,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                                                        down_offset,
+                                                        gate_expert_bytes,
+                                                        down_expert_bytes,
+-                                                       0,
++                                                       prefill_defer_upload_sync,
+                                                        prompt_like_batch)) {
+                     if (append && expert_cache->count < expert_cache->capacity) {
+                         expert_cache->count++;
+@@ -6300,7 +6411,8 @@ static int cuda_stream_selected_cache_begin_compact_load(
+                             i,
+                             g_stream_selected_cache.gate_ptr,
+                             g_stream_selected_cache.up_ptr,
+-                            g_stream_selected_cache.down_ptr);
++                            g_stream_selected_cache.down_ptr,
++                            prefill_defer_upload_sync);
+                 if (!copied_from_global_cache) {
+                     /* 0024 resident-hit fix: keep the cache resident on a
+                      * transient device-to-device copy failure; this expert
+@@ -6365,6 +6477,30 @@ static int cuda_stream_selected_cache_begin_compact_load(
+         }
+     }
+ 
++    /* prefill-overlap patch 0046: with defer active, the loop above may have
++     * left H2D expert uploads AND/OR the D2D compact-buffer readouts still
++     * in flight on g_stream_selected_upload_stream (no per-expert host wait
++     * was issued).  Record one fresh "done" event on that stream now, after
++     * every enqueue for this layer, so the existing single wait the caller
++     * already performs before the routed-MoE GEMM
++     * (ds4_gpu_wait_selected_upload -> cuda_stream_selected_upload_wait_if_recorded,
++     * called from metal_graph_cuda_stream_prefill_batch_selected_load) covers
++     * this batch's D2D copies too, not just the last H2D chunk.  No-op (and
++     * no behaviour change) when prefill_defer_upload_sync is 0. */
++    if (prefill_defer_upload_sync) {
++        if (!cuda_stream_selected_upload_done_event_ensure()) {
++            cuda_stream_selected_cache_invalidate();
++            return strict_failure ? 0 : 1;
++        }
++        if (!cuda_ok(cudaEventRecord(g_stream_selected_upload_done_event,
++                                     g_stream_selected_upload_stream),
++                     "streaming selected upload done event record (post-batch)")) {
++            cuda_stream_selected_cache_invalidate();
++            return strict_failure ? 0 : 1;
++        }
++        g_stream_selected_upload_done_recorded = 1;
++    }
++
+     if (!cuda_ok(cudaMemcpy(g_stream_selected_cache.slot_selected_ptr,
+                             slot_ids,
+                             (size_t)slot_count * sizeof(slot_ids[0]),
