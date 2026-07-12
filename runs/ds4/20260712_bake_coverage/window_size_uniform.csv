@@ -1,0 +1,5 @@
+keep_pct,keep_n_per_layer,n_layers,total_kept_expert_slots,gib,margin_vs_62gib,fits_62gib
+50,128,40,5120,47.05,14.95,True
+55,140,40,5600,50.21,11.79,True
+60,154,40,6160,53.91,8.09,True
+65,166,40,6640,57.07,4.93,True

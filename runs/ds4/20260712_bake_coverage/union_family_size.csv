@@ -1,0 +1,5 @@
+keep_pct,keep_n_per_layer_per_domain,avg_union_experts_per_layer,min_union_per_layer,max_union_per_layer,total_kept_expert_slots,gib,margin_vs_62gib,fits_62gib
+50,128,183.5,158,202,7339,61.68,0.32,True
+55,140,188.9,158,209,7557,63.11,-1.11,False
+60,154,192.6,158,213,7704,64.08,-2.08,False
+65,166,194.4,158,218,7775,64.55,-2.55,False
