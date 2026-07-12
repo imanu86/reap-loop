@@ -1,0 +1,219 @@
+diff --git a/ds4.c b/ds4.c
+--- a/ds4.c
++++ b/ds4.c
+@@ -12833,6 +12833,177 @@
+             (now_sec() - t0) * 1000.0);
+ }
+ 
++/* ---- FATTORINO delta (item 3): async RAM page-in of the newly-promoted
++ * experts on a ds4_pace_livemask_scan batch swap.  Same threaded mmap-touch
++ * machinery as ds4_reap_prefetch_main, but driven by an explicit (layer,expert)
++ * DELTA list instead of scanning the whole mask, so the cold SSD misses the
++ * promoted candidate would otherwise take on its first decode load are hidden.
++ * Pure page-cache warm => output byte-identical; perf only.  This item does NOT
++ * touch the frozen §7 seam (g_reap_pin_mass/g_reap_pin_epoch/DS4_REAP_PIN_BY_MASS
++ * -- those are the ds4_cuda.cu consumer).  Env: DS4_REAP_PREFETCH_DELTA=1 enable
++ * (default 0 => current 0037/0038 path, nothing fires); DS4_REAP_PREFETCH_THREADS
++ * reused for the worker count.  Separate flag from the working-set WRAP gate. */
++typedef struct { uint32_t layer; uint32_t expert; } ds4_reap_expert_id;
++
++static volatile int g_reap_prefetch_delta_busy;
++
++static bool ds4_reap_prefetch_delta_enabled(void) {
++    static int checked, enabled;
++    if (!checked) {
++        checked = 1;
++        const char *p = getenv("DS4_REAP_PREFETCH_DELTA");
++        enabled = (p && *p && strcmp(p, "0") != 0) ? 1 : 0;
++    }
++    return enabled != 0;
++}
++
++typedef struct {
++    const ds4_model    *model;
++    const ds4_weights  *weights;
++    ds4_reap_expert_id *ids;   /* owned; freed by the worker thread */
++    uint32_t            n;
++} ds4_reap_prefetch_batch_args;
++
++static void *ds4_reap_prefetch_batch_main(void *argp) {
++    ds4_reap_prefetch_batch_args args = *(ds4_reap_prefetch_batch_args *)argp;
++    free(argp);
++    const ds4_model    *model   = args.model;
++    const ds4_weights  *weights = args.weights;
++    ds4_reap_expert_id *ids     = args.ids;
++    const uint32_t      nid     = args.n;
++    const double t0 = now_sec();
++
++    uint32_t cap = nid * 3u + 3u, n = 0;
++    metal_graph_stream_pagein_range *ranges = xmalloc(cap * sizeof(*ranges));
++    for (uint32_t i = 0; i < nid; i++) {
++        const uint32_t il = ids[i].layer;
++        const uint32_t e  = ids[i].expert;
++        if (il >= DS4_N_LAYER || il >= DS4_MAX_LAYER) continue;
++        if (e  >= DS4_N_EXPERT || e  >= DS4_MAX_EXPERT) continue;
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_gate_exps || !layer->ffn_up_exps ||
++            !layer->ffn_down_exps) {
++            continue;
++        }
++        const uint64_t gate_eb = layer->ffn_gate_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_gate_exps);
++        const uint64_t up_eb = layer->ffn_up_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_up_exps);
++        const uint64_t down_eb = layer->ffn_down_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_down_exps);
++        if (gate_eb == 0 || up_eb == 0 || down_eb == 0) continue;
++        if (n + 3u > cap) {
++            cap *= 2u;
++            ranges = xrealloc(ranges, cap * sizeof(*ranges));
++        }
++        ranges[n].off  = layer->ffn_gate_exps->abs_offset + (uint64_t)e * gate_eb;
++        ranges[n].size = gate_eb; n++;
++        ranges[n].off  = layer->ffn_up_exps->abs_offset   + (uint64_t)e * up_eb;
++        ranges[n].size = up_eb;   n++;
++        ranges[n].off  = layer->ffn_down_exps->abs_offset + (uint64_t)e * down_eb;
++        ranges[n].size = down_eb; n++;
++    }
++    free(ids);
++    if (n == 0) {
++        free(ranges);
++        g_reap_prefetch_delta_busy = 0;
++        return NULL;
++    }
++    qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
++
++    metal_graph_stream_pagein_job job;
++    memset(&job, 0, sizeof(job));
++    job.model    = model;
++    job.ranges   = ranges;
++    job.n_ranges = n;
++    job.ok       = true;
++
++    uint32_t n_threads = 8;
++    {
++        const char *tv = getenv("DS4_REAP_PREFETCH_THREADS");
++        if (tv && *tv) {
++            char *end = NULL;
++            unsigned long v = strtoul(tv, &end, 10);
++            if (end != tv && *end == '\0' && v > 0) {
++                n_threads = v > 16 ? 16u : (uint32_t)v;
++            }
++        }
++    }
++    if (n_threads > n) n_threads = n;
++
++    metal_graph_stream_pagein_worker *workers =
++        xmalloc(n_threads * sizeof(*workers));
++    pthread_t *threads = xmalloc(n_threads * sizeof(*threads));
++    memset(workers, 0, n_threads * sizeof(*workers));
++    uint32_t started = 0;
++    for (uint32_t i = 0; i < n_threads; i++) {
++        workers[i].job    = &job;
++        workers[i].first  = i;
++        workers[i].stride = n_threads;
++        if (pthread_create(&threads[i], NULL,
++                           metal_graph_stream_pagein_worker_main,
++                           &workers[i]) != 0) {
++            workers[i].stride = 0;
++            break;
++        }
++        started++;
++    }
++    uint64_t touched = 0;
++    bool ok = started > 0;
++    for (uint32_t i = 0; i < started; i++) {
++        pthread_join(threads[i], NULL);
++        touched += workers[i].touched;
++        ok = ok && workers[i].ok;
++    }
++
++    fprintf(stderr,
++            "ds4: REAP prefetch (fattorino delta): %u expert, %u range, "
++            "%.1f MiB touched in %.0f ms (%u thread%s%s)\n",
++            nid, n,
++            (double)touched / (1024.0 * 1024.0),
++            (now_sec() - t0) * 1000.0,
++            started,
++            started == 1 ? "" : "s",
++            ok ? "" : ", ERRORI");
++
++    free(threads);
++    free(workers);
++    free(ranges);
++    g_reap_prefetch_delta_busy = 0;
++    return NULL;
++}
++
++/* Fire the delta page-in async.  Copies the id list into thread-owned args so
++ * the caller's buffer (and any later mask mutation) cannot race the worker.
++ * Bounds one delta in flight via g_reap_prefetch_delta_busy; a skipped batch is
++ * harmless because the next swap batch re-warms.  Fire-and-forget (detached);
++ * no join on the decode path => cannot stall decode. */
++static void ds4_reap_prefetch_batch(const ds4_model          *model,
++                                    const ds4_weights        *weights,
++                                    const ds4_reap_expert_id *ids,
++                                    uint32_t                  n) {
++    if (!ds4_reap_prefetch_delta_enabled()) return;
++    if (!model || !weights || !ids || n == 0) return;
++    if (__sync_lock_test_and_set(&g_reap_prefetch_delta_busy, 1)) {
++        return;                 /* a delta is already in flight */
++    }
++    ds4_reap_prefetch_batch_args *args = xmalloc(sizeof(*args));
++    args->model   = model;
++    args->weights = weights;
++    args->ids     = xmalloc((size_t)n * sizeof(*args->ids));
++    memcpy(args->ids, ids, (size_t)n * sizeof(*args->ids));
++    args->n       = n;
++    pthread_t th;
++    if (pthread_create(&th, NULL, ds4_reap_prefetch_batch_main, args) != 0) {
++        free(args->ids);
++        free(args);
++        g_reap_prefetch_delta_busy = 0;
++        fprintf(stderr, "ds4: REAP prefetch delta: pthread_create fallita\n");
++        return;
++    }
++    pthread_detach(th);
++}
++
+ 
+ /* ======================================================================== *
+  * PACE - Perceptive Adaptive Control Engine (patch 0014)
+@@ -13551,6 +13722,9 @@
+     int lm_x_eff         = g_pace.lm_pressure_active ? g_pace.lm_pressure_x         : g_pace.lm_x;
+     int lm_max_swaps_eff = g_pace.lm_pressure_active ? g_pace.lm_pressure_max_swaps : g_pace.lm_max_swaps;
+     int dirty = 0;
++    const int pf_on = ds4_reap_prefetch_delta_enabled();   /* fattorino delta */
++    ds4_reap_expert_id *promo = NULL;
++    uint32_t promo_n = 0, promo_cap = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
+         if ((g_pace.lm_tok - g_pace.lm_last_swap_tok[il]) <
+@@ -13609,6 +13783,15 @@
+             g_pace.lm_last_swap_tok[il]  = g_pace.lm_tok;
+             if (g_pace.lm_promo_rate_cap > 0) g_pace.lm_promo_win_count++;
+             dirty = 1;
++            if (pf_on) {                       /* fattorino delta: record promo */
++                if (promo_n == promo_cap) {
++                    promo_cap = promo_cap ? promo_cap * 2u : 32u;
++                    promo = xrealloc(promo, promo_cap * sizeof(*promo));
++                }
++                promo[promo_n].layer  = il;
++                promo[promo_n].expert = (uint32_t)cand;
++                promo_n++;
++            }
+             if (g_pace.lm_log) {
+                 fprintf(g_pace.lm_log,
+                     "{\"ev\":\"swap\",\"tok\":%u,\"layer\":%u,\"in\":%d,"
+@@ -13628,6 +13811,11 @@
+      * has settled (every token, not only on swaps - the windowed mass changes
+      * each token). No-op at the off default. */
+     ds4_pace_livemask_publish_pin_mass(weights);
++    /* patch 0043 (fattorino): async RAM page-in of the experts promoted THIS
++     * scan so their first decode load hits page cache, not a cold SSD read.
++     * OFF (DS4_REAP_PREFETCH_DELTA unset) => promo_n==0 path never taken. */
++    if (pf_on && promo_n) ds4_reap_prefetch_batch(model, weights, promo, promo_n);
++    free(promo);
+ }
+ 
+ /* Per-decode-token driver. EXACT ORDERING kills the off-by-one:
