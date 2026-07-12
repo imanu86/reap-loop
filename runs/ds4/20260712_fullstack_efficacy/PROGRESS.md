@@ -27,8 +27,18 @@ Landing page food-delivery con nav, hero+CTA, 3 feature, form con validazione JS
 ## Metriche
 close_html, chars, coerenza · slot usati (≤400?) · t/s warm · pin_admits/eviction · fattorino fires.
 
+## SCOPERTA (integrazione)
+Applicare i patch consumatore (0041/0042) su ds4-0039-work FALLISCE: 1 hunk ciascuno nella
+regione sticky-pin del cache-loader (basi cuda divergenti tra produttore e consumatore).
+SOLUZIONE PULITA (rispetta la divisione produttore=ds4.c / consumatore=cuda): **swap-file, non
+merge-hunk**. ds4_gpu.h + ds4.h + Makefile IDENTICI tra i due tree → si può prendere il cuda
+COMPLETO del consumatore e il ds4.c COMPLETO del produttore. Metodo di ricostruzione:
+  /root/ds4-fullstack = copia di ds4-0039-work (ds4.c produttore 0035-0040) + `patch 0043` (ds4.c)
+                        + `cp ds4-cachefix/ds4_cuda.cu` (consumatore 0034+0036+0041+0042).
+Build: `make cuda CUDA_ARCH=sm_86`. Binario **md5=0d97e5705d0d**, 0 errori 0 warning.
+
 ## STEP LOG
-- [ ] checkpoint 0: piano committato
-- [ ] checkpoint 1: build fullstack (apply 0041/0042/0043 su 0039-work + compile) → md5, esito
-- [ ] checkpoint 2: run efficacia (prompt esigente, full-ON) → risultati
+- [x] checkpoint 0: piano committato
+- [x] checkpoint 1: build fullstack OK (md5 0d97e5705d0d, /root/ds4-fullstack, sm_86, 0 err/warn)
+- [ ] checkpoint 2: run efficacia (prompt esigente food-delivery, full-ON) → risultati
 - [ ] checkpoint 3: analisi + verdetto
