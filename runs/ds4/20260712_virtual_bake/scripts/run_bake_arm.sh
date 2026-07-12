@@ -84,6 +84,7 @@ port=$PORT
 max_tokens=$MAX_TOKENS
 ctx=$CTX
 ram_floor_mb=$RAM_FLOOR_MB
+weight_arena_chunk_mb=256
 started_utc=$(date -u +%Y-%m-%dT%H:%M:%SZ)
 server_pid_file=$OUT/server.pid
 live_stream_file=$OUT/stream_live.txt
@@ -136,6 +137,9 @@ export DS4_CUDA_KEEP_MODEL_PAGES=1
 export DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=1
 export DS4_CUDA_NO_Q8_F16_CACHE=1
 export DS4_PACE=0
+# orchestrator addendum 2026-07-12 21:4x: reduces VRAM arena fragmentation,
+# matters on 12GB. Applied to every bake run from this point forward.
+export DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256
 if [[ "$MASK" != "NONE" ]]; then
   export DS4_REAP_MASK_FILE="$MASK"
 else

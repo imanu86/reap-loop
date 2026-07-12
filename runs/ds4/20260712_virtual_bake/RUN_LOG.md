@@ -86,12 +86,89 @@ Prompt = historical cyberpunk request (verbatim from
 HANDOFF lesson) so it survives the driving shell exiting. Kill discipline:
 only `kill $(cat <run>/server.pid)`, never `pkill`.
 
-## Run table (updated live)
+## Orchestrator addendum (2026-07-12 ~21:42)
 
-| run | arm | keep | esito | stop_reason | grade | chars | t/s | RAM peak |
+`DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256` added to `run_bake_arm.sh` baseline env
+(reduces VRAM arena fragmentation, matters on 12GB). Applied starting with
+`arm_self60b_run1` onward; NOT present in the aborted `arm_self60_run1`
+attempt (killed before it did any real work, see below).
+
+## Infra incident: WSL crash-loop (2026-07-12 ~21:25-21:33)
+
+`arm_self60_run1` (first launch attempt) was killed 22s after the server
+became ready — before the warmup request could return — by the WSL2 VM
+itself restarting. `last -x` showed ~8 reboot cycles between 21:25 and
+21:33, independent of this run (only ~1 GiB of tensors had been touched at
+kill time, nowhere near the keep-window size, so it was not caused by this
+run's memory usage). Root cause suspected: `.wslconfig` caps the WSL VM at
+`memory=62GB` on a host with only ~64 GiB physical RAM (`TotalVisibleMemorySize`
+~65.4 GiB), leaving only ~2 GiB of headroom for Windows itself — a
+pre-existing, previously-flagged risk (see `20260712_counterfactual/PROGRESS.md`:
+"WSL crashato ... durante/dopo la fine di run1c ... probabile pressione di
+memoria"). Marked `arm_self60_run1/INVALID.txt` (environmental, not a real
+generation attempt, does not count against fail-fast). Retried as
+`arm_self60b_run1`; WSL has been stable (single continuous uptime) since
+21:34 through at least 21:53. **This risk is out of this agent's authority
+to fix** (changing `.wslconfig` needs `wsl --shutdown` + user coordination
+and there's a dedicated cockpit control for it) — flagged for the
+user/orchestrator, mitigated for now by the existing RAM-floor monitor plus
+the fact the crash pattern seems host-level (Windows-side), not something
+the in-VM 7 GiB floor can observe directly.
+
+## Early empirical signal from `arm_self60b_run1` (in progress)
+
+Repeated access to the *same* prompt/expert-window inside one server
+lifetime got dramatically faster each time (prefill of the identical 78-token
+prompt, decode speed of the subsequent generation):
+
+| pass | prefill (78 tok) | decode t/s |
+|---|---:|---:|
+| 1 (cold, warmup) | 282.9s | 0.23 t/s |
+| 2 | 136.5s | 0.96 t/s |
+| 3 | 20.8s | 1.34 t/s (climbing, measured stream still running) |
+
+This is consistent with the virtual-bake hypothesis: as more of the keep60
+window lands in page cache / GPU expert cache, subsequent fetches get much
+cheaper. Not yet a clean measured-run t/s (still warm-up noise mixed in
+before `stream_stop_guard.py`'s single clean connection took over at
+21:50) — the real number is in the eventual `response.json` usage stats.
+
+## Run table (updated live, last refreshed 2026-07-12 21:58 local / 19:58 UTC)
+
+| run | arm | keep | esito | stop_reason | grade | chars | t/s | RAM |
 |---|---|---|---|---|---|---|---|---|
-| self60_run1 | self | 60% | IN CORSO | — | — | — | — | — |
+| self60_run1 | self | 60% | INVALID-ambientale (WSL crash-loop, killed 22s post-ready) | n/a | n/a | n/a | n/a | n/a |
+| self60b_run1 | self | 60% | **IN CORSO** (systemd unit `ds4bake-self60b-run1b`, PID tree alive, measured stream since 21:50) | — | — | ~1100 and growing (still inside the `<style>` block, has not reached `<body>` yet) | avg 0.60-0.70 t/s over gen 50-250 tokens, chunk range 0.46-1.34 t/s (not monotonic, no clean convergence to >3 t/s yet) | buff/cache pinned at ~59 GiB (full WSL budget), MemAvailable holding 58-59 GiB (floor is 7 GiB, safe), first trace swap seen (~300 KiB, negligible) |
 
-(filled in as runs complete; see `arm_<name>_run<n>/` for full artifacts:
-`RUN_META.txt`, `server.pid`, `stream_live.txt`, `response.json`,
-`STOP_REASON.txt`, `ram_log.txt`, `grade.json`.)
+**This run was left running in the background** (systemd transient unit,
+survives the driving shell) when this agent session wrapped up. To check on
+it or resume the V1 matrix:
+```
+wsl -d Ubuntu-24.04
+cd /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_virtual_bake
+bash scripts/check_run.sh arm_self60b_run1          # status snapshot
+tail -f arm_self60b_run1/stream_live.txt             # live generated text
+cat arm_self60b_run1/STOP_REASON.txt                 # set once it stops
+python3 scripts/summarize_runs.py                    # table once graded
+```
+Once it stops (html-close / repeat-guard / 4000-token budget / RAM floor),
+`run_bake_arm.sh` itself finishes grading (`grade.json`/`grade.txt`) and
+writes `content_stats.json` (chars, usage, elapsed_s) automatically — no
+manual follow-up needed beyond reading those files. If it degenerates on
+this run 1, per the fail-fast rule the `self60` arm stops here (no run2/3).
+If it holds, run 2 and 3 use the identical command:
+`bash scripts/run_bake_arm.sh self60b masks/mask60_self.txt <2|3> 4000 4096`
+(gate on GPU lock + `pgrep -x ds4-server` already enforced).
+
+**Not yet started** (queued, in priority order per orchestrator): keep65_self
+escalation (`masks/mask65_self.txt`, only if keep60 holds and
+MemAvailable/VRAM headroom allow), then `mask60_family.txt` as the
+control/prediction-check arm (expected to degrade per the coverage study).
+V2 (zero-copy pinned registration) not started — gated on a positive V1
+verdict per the mission brief; reference code for the per-range
+`cudaHostRegisterMapped` path reviewed at `ds4_cuda.cu:1192-1240`
+(`cuda_model_range_register_mapped`), reusable machinery confirmed present.
+
+(see `arm_<name>_run<n>/` for full artifacts: `RUN_META.txt`, `server.pid`,
+`stream_live.txt`, `response.json`, `STOP_REASON.txt`, `ram_log.txt`,
+`grade.json`. Aggregate with `scripts/summarize_runs.py`.)
