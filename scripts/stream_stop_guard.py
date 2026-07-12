@@ -72,6 +72,14 @@ def main():
     parser.add_argument("--repeat-ngram", type=int, default=3)
     parser.add_argument("--repeat-window", type=int, default=120)
     parser.add_argument("--repeat-count", type=int, default=3)
+    parser.add_argument(
+        "--live-text",
+        type=Path,
+        default=None,
+        help="optional path: generated text is appended here incrementally, "
+             "flushed after every SSE delta, so an external watchdog can tail "
+             "it without waiting for the run to finish.",
+    )
     args = parser.parse_args()
 
     body = args.request.read_bytes()
@@ -83,6 +91,9 @@ def main():
     )
     args.response.parent.mkdir(parents=True, exist_ok=True)
     args.events.parent.mkdir(parents=True, exist_ok=True)
+    if args.live_text is not None:
+        args.live_text.parent.mkdir(parents=True, exist_ok=True)
+        args.live_text.write_text("", encoding="utf-8")
 
     chunks = []
     usage = None
@@ -90,51 +101,83 @@ def main():
     stopped = None
     started = time.perf_counter()
     event_count = 0
+    stream_error = None
+    live_fh = args.live_text.open("a", encoding="utf-8") if args.live_text else None
 
-    with args.events.open("w", encoding="utf-8") as events:
-        with urllib.request.urlopen(request, timeout=args.timeout) as response:
-            for raw in response:
-                line = raw.decode("utf-8", errors="replace").strip()
-                if not line.startswith("data:"):
-                    continue
-                payload = line.removeprefix("data:").strip()
-                if payload == "[DONE]":
-                    break
-                try:
-                    obj = json.loads(payload)
-                except json.JSONDecodeError:
-                    continue
-                event_count += 1
-                choices = obj.get("choices") or []
-                delta = ""
-                if choices:
-                    finish_reason = choices[0].get("finish_reason") or finish_reason
-                    delta = (choices[0].get("delta") or {}).get("content") or ""
-                usage = obj.get("usage") or usage
-                if delta:
-                    chunks.append(delta)
-                    content = "".join(chunks)
-                    stopped = stop_reason(content, args)
-                    if stopped and stopped.get("trim_to_chars") is not None:
-                        chunks = [content[: int(stopped["trim_to_chars"])]]
+    try:
+        with args.events.open("w", encoding="utf-8") as events:
+            try:
+                with urllib.request.urlopen(request, timeout=args.timeout) as response:
+                    for raw in response:
+                        line = raw.decode("utf-8", errors="replace").strip()
+                        if not line.startswith("data:"):
+                            continue
+                        payload = line.removeprefix("data:").strip()
+                        if payload == "[DONE]":
+                            break
+                        try:
+                            obj = json.loads(payload)
+                        except json.JSONDecodeError:
+                            continue
+                        event_count += 1
+                        choices = obj.get("choices") or []
+                        delta = ""
+                        if choices:
+                            finish_reason = choices[0].get("finish_reason") or finish_reason
+                            delta = (choices[0].get("delta") or {}).get("content") or ""
+                        usage = obj.get("usage") or usage
+                        if delta:
+                            chunks.append(delta)
+                            if live_fh is not None:
+                                live_fh.write(delta)
+                                live_fh.flush()
+                            content = "".join(chunks)
+                            stopped = stop_reason(content, args)
+                            if stopped and stopped.get("trim_to_chars") is not None:
+                                chunks = [content[: int(stopped["trim_to_chars"])]]
+                        events.write(
+                            json.dumps(
+                                {
+                                    "event": event_count,
+                                    "t_s": round(time.perf_counter() - started, 6),
+                                    "delta": delta,
+                                    "content_chars": sum(map(len, chunks)),
+                                    "finish_reason": finish_reason,
+                                    "client_stop": stopped,
+                                },
+                                ensure_ascii=False,
+                            )
+                            + "\n"
+                        )
+                        events.flush()
+                        if stopped:
+                            finish_reason = stopped["reason"]
+                            break
+            except Exception as exc:  # noqa: BLE001 - a killed server must not lose partial output
+                # A watchdog or tripwire monitor may kill the server process
+                # mid-stream (connection reset / incomplete read). Record what
+                # was captured so far instead of crashing without a response
+                # file; the caller distinguishes this from a clean stop via
+                # client_stop being None and stream_error being set.
+                stream_error = f"{type(exc).__name__}: {exc}"
                 events.write(
                     json.dumps(
                         {
-                            "event": event_count,
+                            "event": event_count + 1,
                             "t_s": round(time.perf_counter() - started, 6),
-                            "delta": delta,
+                            "delta": "",
                             "content_chars": sum(map(len, chunks)),
                             "finish_reason": finish_reason,
-                            "client_stop": stopped,
+                            "client_stop": None,
+                            "stream_error": stream_error,
                         },
                         ensure_ascii=False,
                     )
                     + "\n"
                 )
-                events.flush()
-                if stopped:
-                    finish_reason = stopped["reason"]
-                    break
+    finally:
+        if live_fh is not None:
+            live_fh.close()
 
     result = {
         "stream": True,
@@ -142,6 +185,7 @@ def main():
         "elapsed_s": round(time.perf_counter() - started, 6),
         "usage": usage,
         "client_stop": stopped,
+        "stream_error": stream_error,
         "choices": [
             {"message": {"role": "assistant", "content": "".join(chunks)},
              "finish_reason": finish_reason}
@@ -150,7 +194,11 @@ def main():
     args.response.write_text(
         json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(json.dumps({"finish_reason": finish_reason, "client_stop": stopped}))
+    print(json.dumps({
+        "finish_reason": finish_reason,
+        "client_stop": stopped,
+        "stream_error": stream_error,
+    }))
 
 
 if __name__ == "__main__":
