@@ -1,0 +1,12 @@
+[2026-07-13T12:03:47Z] === POLL START ceiling=$0.9/hr deadline=2.5h image=runpod/pytorch:1.0.7-cu1281-torch280-ubuntu2404 ===
+[2026-07-13T12:03:48Z] candidates: NVIDIA GeForce RTX 3080 Ti NVIDIA GeForce RTX 4070 Ti (community then secure)
+[2026-07-13T12:03:50Z] baseline pod ids: { "costPerHr": "desiredStatus": "gpuCount": "id": "imageName": "name": "volumeInGb": } ] 
+[2026-07-13T12:03:50Z] --- attempt #1 (149min left) ---
+[2026-07-13T12:03:54Z] SUCCESS card='NVIDIA GeForce RTX 3080 Ti' cloud=community POD_ID=},
+[2026-07-13T12:03:55Z] anti-orphan reaper armed (removes }, in 9000s if not sooner)
+[2026-07-13T12:04:42Z] REAL POD confirmed=yaesjwcu84i68o (RTX 3080 Ti). Bogus reaper armed on '},' is harmless. Real reaper armed.
+[12:55:35Z] TERMINATED dead pod yaesjwcu84i68o (container never started, >1h no runtime)
+[12:56:25Z] NEW pod halprnoxs09rqi (RTX 3080 Ti, 120GB container disk). reaper armed. scheduled-task backstop repointed via POD_ID.txt.
+[13:22:00Z] TERMINATED node2 halprnoxs09rqi (CUDA context fails: host drv 580 vs container libcuda 565, broken nvidia-container inject; nvidia-smi ok but cuInit unknown-error; torch also fails)
+[13:23:01Z] NODE3 rbzp4q1mjflmby (RTX 3080 Ti), host=rbzp4q1mjflmby-64411752. reaper armed. Will CUDA-gate before model download.
+[13:33:17Z] TERMINATED node3 rbzp4q1mjflmby. cuInit=999 systemic on community 3080Ti fleet (NVIDIA_VISIBLE_DEVICES=void; nvidia-smi OK but no CUDA ctx); all in-container fixes failed; no 12GB in secure cloud. BLOCKER.

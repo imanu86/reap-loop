@@ -1,0 +1,11 @@
+Run: 20260713_linux12_coffee_promo
+Pod: halprnoxs09rqi (RTX 3080 Ti 12GB, community, $0.18/hr), driver 580.95.05
+PCIe: idle gen1x8, max gen4x16 (measure real H2D under load)
+Binary: /root/bin/ds4-server (local WSL build, git da0b3f6, sm_86, md5 3bc7c520...)
+Model: ds4-2bit.gguf from R2 (sha256 efc7ed60..., size 86720111488)
+Envelope: 12 GiB (DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=12), CACHE_PROFILE=1, cache-experts=400
+Masks: mask_coffee_k83/k65/k100 (PRUNING via DS4_REAP_MASK_FILE + static zerocopy window)
+PROMOTION (promo arms): DS4_REAP_PIN_BY_MASS=1 + DS4_PACE_LIVEMASK=1 + RATING_ONLY=1 + PRESSURE=1
+STATIC-PIN arm: coffee mask + static zerocopy window, promotion OFF
+Prompt: coffee artisan landing page single-file HTML/CSS/JS, temp0, warm=48 meas=1600
+Arms: coffee_k83_promo (primary), coffee_k83_staticpin (delta), coffee_k65_promo, coffee_k100_promo
