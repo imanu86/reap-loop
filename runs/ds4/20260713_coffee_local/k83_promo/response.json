@@ -1,0 +1,20 @@
+{
+  "stream": true,
+  "stream_events": 168,
+  "elapsed_s": 93.697387,
+  "usage": null,
+  "client_stop": {
+    "reason": "client_stop_html_close",
+    "trim_to_chars": 529
+  },
+  "stream_error": null,
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": "Ecco una pagina HTML5 valida e minima per la caffetteria \"Bean & Brew\":\n\n```html\n<!DOCTYPE html>\n<html lang=\"it\">\n<head>\n    <meta charset=\"UTF-8\">\n    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\n    <title>Bean & Brew - Caffetteria</title>\n</head>\n<body>\n    <nav>\n        <ul>\n            <li><a href=\"#\">Home</a></li>\n            <li><a href=\"#\">Menu</a></li>\n            <li><a href=\"#\">Contatti</a></li>\n        </ul>\n    </nav>\n    <h1>Bean & Brew</h1>\n    <button>Ordina</button>\n</body>\n</html>"
+      },
+      "finish_reason": "client_stop_html_close"
+    }
+  ]
+}

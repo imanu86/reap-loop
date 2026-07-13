@@ -1,0 +1,19 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "user",
+      "content": "Genera una pagina HTML5 minima e VALIDA per una caffetteria Bean & Brew: doctype, head con title, body con nav (Home, Menu, Contatti), un h1 e un bottone Ordina. Chiudi TUTTI i tag fino a </html>."
+    }
+  ],
+  "temperature": 0,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  },
+  "max_tokens": 1000,
+  "stream": true,
+  "stream_options": {
+    "include_usage": true
+  }
+}

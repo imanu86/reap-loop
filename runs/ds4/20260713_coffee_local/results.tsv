@@ -1,0 +1,3 @@
+arm	render	gib_pinned	budget_cap_hit	decode_tps_regime	server_decode_avg_tps	decode_ms_per_tok_regime	decode_tps_fastest	decode_ms_per_tok_fastest	ttft_s	overall_tps_incl_ttft	zc_coverage_final_pct	dma_failed
+k83_promo	PASS_complete_valid_html_all_elements	21.85	False	3.41	2.67	293.3	3.911	255.7	34.5	1.782	74.02	0
+k83_staticpin	PASS_complete_valid_html_all_elements	21.85	False	3.18	2.43	314.5	3.66	273.3	36.31	1.583	76.78	0

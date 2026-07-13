@@ -1,0 +1,19 @@
+{
+  "arm": "k83_staticpin",
+  "render": "PASS_complete_valid_html_all_elements",
+  "close_html": true,
+  "gib_pinned": 21.85,
+  "experts_kept": 3320,
+  "register_s": 25.855,
+  "budget_cap_hit": false,
+  "decode_tps_regime": 3.18,
+  "server_decode_avg_tps": 2.43,
+  "decode_ms_per_tok_regime": 314.5,
+  "decode_ms_per_tok_fastest": 273.3,
+  "decode_tps_fastest": 3.66,
+  "ttft_s": 36.31,
+  "overall_tps_incl_ttft": 1.583,
+  "zc_coverage_final_pct": 76.78,
+  "dma_failed": 0,
+  "promotion": "OFF (no livemask/pressure; plain streaming cache + zero-copy)"
+}
