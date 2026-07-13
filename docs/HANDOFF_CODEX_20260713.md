@@ -1,5 +1,10 @@
 # HANDOFF per Codex — 2026-07-13 (crediti Claude esauriti a metà V2)
 
+> **AGGIORNAMENTO THREAD 1:** la diagnosi iniziale della 0050 qui sotto e'
+> stata superata. Prima di agire leggere
+> `docs/PUNTO_V2_ZEROCOPY_DYNAMIC_ARENA_20260713.md`, che contiene causa
+> corretta, misure DMA, hardening gia' applicato e prossimo probe 50 GiB.
+
 Usa questo come prompt di ripresa. Lavora sul branch `spex-predictive-mask-study-2026-07-12`
 del repo `imanu86/reap-loop`. Prima `git pull`, poi leggi:
 - `docs/PUNTO_2026-07-12.md` (sintesi trasversale della giornata precedente)
