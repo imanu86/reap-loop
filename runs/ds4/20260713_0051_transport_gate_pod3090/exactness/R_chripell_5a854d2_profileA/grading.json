@@ -1,0 +1,27 @@
+{
+  "grader": "scripts/functional_grade.py frontpage",
+  "protocol_note": "The benchmark prompt asks for minimal valid HTML and does not request CSS, a form, or JavaScript; the standard frontpage rubric requires those features.",
+  "runs": [
+    {
+      "rep": 1,
+      "level": 1,
+      "requested_page_complete": true,
+      "html_close_count": 1,
+      "tag_mismatch": 0
+    },
+    {
+      "rep": 2,
+      "level": 1,
+      "requested_page_complete": true,
+      "html_close_count": 1,
+      "tag_mismatch": 0
+    },
+    {
+      "rep": 3,
+      "level": 1,
+      "requested_page_complete": true,
+      "html_close_count": 1,
+      "tag_mismatch": 0
+    }
+  ]
+}

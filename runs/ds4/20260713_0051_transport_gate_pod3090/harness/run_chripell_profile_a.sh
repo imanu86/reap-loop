@@ -15,6 +15,7 @@ MODEL=${MODEL:-/workspace/models/ds4-2bit.gguf}
 PORT=${PORT:-8096}
 MAX_TOKENS=${MAX_TOKENS:-256}
 WARMUP_TOKENS=${WARMUP_TOKENS:-256}
+REGISTER_CHUNK_MB=${REGISTER_CHUNK_MB:-256}
 GPU_LOCK=${GPU_LOCK:-/tmp/ds4-gpu.lock}
 RUN="$OUTROOT/R_chripell_5a854d2_profileA"
 mkdir -p "$RUN"
@@ -22,7 +23,10 @@ mkdir -p "$RUN"
 for required in "$BIN" "$MODEL"; do
     [[ -f "$required" ]] || { echo "missing required file: $required" >&2; exit 3; }
 done
-[[ "$REPEATS" =~ ^[1-9][0-9]*$ ]] || { echo "invalid repeats: $REPEATS" >&2; exit 3; }
+[[ "$REPEATS" =~ ^[0-9]+$ ]] && (( REPEATS >= 3 )) || {
+    echo "invalid repeats (n>=3 required): $REPEATS" >&2
+    exit 3
+}
 
 exec 9>"$GPU_LOCK"
 flock -w 60 9 || { echo "could not acquire $GPU_LOCK" >&2; exit 4; }
@@ -31,6 +35,7 @@ pgrep -x ds4-server >/dev/null 2>&1 && { echo "another ds4-server is active" >&2
 SERVER_ENV=(
     "CUDA_VISIBLE_DEVICES=0"
     "DS4_CUDA_STREAM_FROM_RAM=1"
+    "DS4_CUDA_STREAM_FROM_RAM_REGISTER_CHUNK_MB=$REGISTER_CHUNK_MB"
     "DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256"
     "DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=4"
     "HOME=/root"
@@ -44,18 +49,27 @@ SERVER_CLI=(
     -m "$MODEL" --cuda --ssd-streaming
     --ssd-streaming-cache-experts 8GB
     --prefill-chunk 1024
-    --ctx 32768 -n "$((MAX_TOKENS + 32))"
+    --ctx 32768 -n "$(((MAX_TOKENS > WARMUP_TOKENS ? MAX_TOKENS : WARMUP_TOKENS) + 32))"
     --host 127.0.0.1 --port "$PORT" --cors
 )
 
 printf '%s\n' "${SERVER_ENV[@]}" | LC_ALL=C sort > "$RUN/server_env.txt"
 printf '%q ' "$BIN" "${SERVER_CLI[@]}" > "$RUN/server_argv.txt"
 printf '\n' >> "$RUN/server_argv.txt"
-sha256sum "$BIN" > "$RUN/input.sha256"
+sha256sum "$BIN" "$0" > "$RUN/input.sha256"
 stat -c 'path=%n size=%s mtime=%y' "$MODEL" > "$RUN/model.stat"
+model_bytes=$(stat -c '%s' "$MODEL")
+[[ "$model_bytes" == 86720111488 ]] || {
+    echo "unexpected model size: $model_bytes" >&2
+    exit 3
+}
+printf '%s  %s\n' \
+    efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668 \
+    "$MODEL" > "$RUN/model.expected.sha256"
 nvidia-smi --query-gpu=name,memory.total,driver_version,pcie.link.gen.max,pcie.link.width.max \
     --format=csv,noheader > "$RUN/gpu.txt"
 cat /sys/fs/cgroup/memory.max > "$RUN/cgroup_memory_max.txt"
+cat /sys/fs/cgroup/memory.current > "$RUN/cgroup_memory_before.txt"
 
 python3 - "$RUN" "$WARMUP_TOKENS" "$MAX_TOKENS" <<'PY'
 import json
@@ -174,5 +188,10 @@ summary = {
 (run / "exactness_summary.json").write_text(json.dumps(summary, indent=2) + "\n")
 print(json.dumps(summary, indent=2))
 PY
+
+nvidia-smi --query-gpu=timestamp,memory.used,clocks.sm,clocks.mem,power.draw,temperature.gpu,pcie.link.gen.current,pcie.link.width.current \
+    --format=csv,noheader > "$RUN/gpu_after.txt"
+cat /sys/fs/cgroup/memory.current > "$RUN/cgroup_memory_after.txt"
+cat /sys/fs/cgroup/memory.peak > "$RUN/cgroup_memory_peak.txt" 2>/dev/null || true
 
 echo complete > "$RUN/STOP_REASON.txt"

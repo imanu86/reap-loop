@@ -1,0 +1,246 @@
+diff --git a/ds4.c b/ds4.c
+index 03d0354..6b8b317 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -26040,11 +26040,11 @@ void ds4_engine_close(ds4_engine *e) {
+     weights_free(&e->weights);
+     vocab_free(&e->vocab);
+     ds4_threads_shutdown();
+-    if (e->mtp_ready) model_close(&e->mtp_model);
+-    model_close(&e->model);
+ #ifndef DS4_NO_GPU
+     ds4_gpu_cleanup();
+ #endif
++    if (e->mtp_ready) model_close(&e->mtp_model);
++    model_close(&e->model);
+     ds4_ssd_memory_lock_release(&e->simulated_memory);
+     ds4_release_instance_lock();
+     free(e->directional_steering_dirs);
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index a351107..d62ce8b 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -77,6 +77,151 @@ static const char *g_model_device_base;
+ static uint64_t g_model_registered_size;
+ static int g_model_registered;
+ static int g_model_device_owned;
++struct cuda_model_stream_registration {
++    void *base;
++    uint64_t bytes;
++};
++static std::vector<cuda_model_stream_registration> g_model_stream_registrations;
++
++static void cuda_model_stream_registrations_release_all(void) {
++    g_model_registered = 0;
++    for (auto it = g_model_stream_registrations.rbegin();
++         it != g_model_stream_registrations.rend(); ++it) {
++        if (it->base) {
++            cudaError_t err = cudaHostUnregister(it->base);
++            if (err != cudaSuccess) {
++                fprintf(stderr,
++                        "ds4: CUDA chunked model unpin failed at %p/%.2f MiB: %s\n",
++                        it->base, (double)it->bytes / 1048576.0,
++                        cudaGetErrorString(err));
++                (void)cudaGetLastError();
++            }
++        }
++    }
++    g_model_stream_registrations.clear();
++}
++
++static int cuda_model_stream_register_chunked(const void *model_map,
++                                              uint64_t model_size) {
++    const long page_sz_l = sysconf(_SC_PAGESIZE);
++    const uint64_t page_sz = page_sz_l > 0 ? (uint64_t)page_sz_l : 4096u;
++    const uintptr_t base = (uintptr_t)model_map;
++    if ((base & (uintptr_t)(page_sz - 1u)) != 0) {
++        fprintf(stderr, "ds4: CUDA model mapping is not page aligned\n");
++        return 0;
++    }
++
++    uint64_t chunk_mb = 256;
++    const char *chunk_env = getenv("DS4_CUDA_STREAM_FROM_RAM_REGISTER_CHUNK_MB");
++    if (chunk_env && chunk_env[0]) {
++        char *end = NULL;
++        const unsigned long long parsed = strtoull(chunk_env, &end, 10);
++        if (end != chunk_env && *end == '\0' && parsed >= 1 && parsed <= 1024) {
++            chunk_mb = (uint64_t)parsed;
++        }
++    }
++    uint64_t chunk_bytes = chunk_mb * 1048576ull;
++    chunk_bytes &= ~(page_sz - 1u);
++    if (chunk_bytes == 0) chunk_bytes = page_sz;
++
++    cuda_model_stream_registrations_release_all();
++    g_model_stream_registrations.reserve(
++        (size_t)((model_size + chunk_bytes - 1u) / chunk_bytes));
++    for (uint64_t offset = 0; offset < model_size; offset += chunk_bytes) {
++        uint64_t bytes = model_size - offset;
++        if (bytes > chunk_bytes) bytes = chunk_bytes;
++        void *chunk_base = (void *)((char *)model_map + offset);
++        unsigned int flags = cudaHostRegisterMapped | cudaHostRegisterReadOnly;
++        cudaError_t err = cudaHostRegister(chunk_base, (size_t)bytes, flags);
++        if (err != cudaSuccess &&
++            (err == cudaErrorNotSupported || err == cudaErrorInvalidValue)) {
++            (void)cudaGetLastError();
++            err = cudaHostRegister(chunk_base, (size_t)bytes,
++                                   cudaHostRegisterMapped);
++        }
++        if (err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: CUDA chunked model pin failed at %.2f/%.2f GiB "
++                    "(chunk %.2f MiB): %s\n",
++                    (double)offset / 1073741824.0,
++                    (double)model_size / 1073741824.0,
++                    (double)bytes / 1048576.0,
++                    cudaGetErrorString(err));
++            (void)cudaGetLastError();
++            cuda_model_stream_registrations_release_all();
++            return 0;
++        }
++        g_model_stream_registrations.push_back({chunk_base, bytes});
++    }
++
++    fprintf(stderr,
++            "ds4: CUDA pinned %.2f GiB model mapping in %zu chunks "
++            "for direct RAM streaming\n",
++            (double)model_size / 1073741824.0,
++            g_model_stream_registrations.size());
++    return 1;
++}
++
++static int cuda_model_stream_copy_registered(char *dst,
++                                             const void *model_map,
++                                             uint64_t offset,
++                                             uint64_t bytes,
++                                             const char *what) {
++    if (!g_model_registered || g_model_stream_registrations.empty()) {
++        cudaError_t err = cudaMemcpy(dst, (const char *)model_map + offset,
++                                     (size_t)bytes, cudaMemcpyHostToDevice);
++        if (err == cudaSuccess) return 1;
++        fprintf(stderr, "ds4: CUDA model copy failed for %s: %s\n",
++                what ? what : "weights", cudaGetErrorString(err));
++        (void)cudaGetLastError();
++        return 0;
++    }
++
++    uint64_t copied = 0;
++    while (copied < bytes) {
++        const uintptr_t src =
++            (uintptr_t)((const char *)model_map + offset + copied);
++        size_t lo = 0;
++        size_t hi = g_model_stream_registrations.size();
++        while (lo < hi) {
++            const size_t mid = lo + (hi - lo) / 2u;
++            if ((uintptr_t)g_model_stream_registrations[mid].base <= src) {
++                lo = mid + 1u;
++            } else {
++                hi = mid;
++            }
++        }
++        if (lo == 0) {
++            fprintf(stderr, "ds4: CUDA registered model copy has no source chunk for %s\n",
++                    what ? what : "weights");
++            return 0;
++        }
++        const cuda_model_stream_registration &r =
++            g_model_stream_registrations[lo - 1u];
++        const uintptr_t r0 = (uintptr_t)r.base;
++        const uintptr_t r1 = r0 + (uintptr_t)r.bytes;
++        if (src < r0 || src >= r1) {
++            fprintf(stderr, "ds4: CUDA registered model copy crosses an unpinned gap for %s\n",
++                    what ? what : "weights");
++            return 0;
++        }
++        uint64_t n = (uint64_t)(r1 - src);
++        if (n > bytes - copied) n = bytes - copied;
++        cudaError_t err = cudaMemcpy(dst + copied, (const void *)src,
++                                     (size_t)n, cudaMemcpyHostToDevice);
++        if (err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: CUDA registered model copy failed for %s at %.2f MiB: %s\n",
++                    what ? what : "weights", (double)copied / 1048576.0,
++                    cudaGetErrorString(err));
++            (void)cudaGetLastError();
++            return 0;
++        }
++        copied += n;
++    }
++    return 1;
++}
++
+ static int g_model_range_mapping_supported = 1;
+ static int g_model_hmm_direct;
+ static int g_model_fd = -1;
+@@ -2162,11 +2307,9 @@ static int cuda_model_copy_to_device_streamed(
+     if (bytes == 0) return 1;
+     if (g_model_fd < 0 ||
+         (g_model_fd_host_base != NULL && model_map != g_model_fd_host_base)) {
+-        return cuda_ok(cudaMemcpy(dst,
+-                                  (const char *)model_map + offset,
+-                                  (size_t)bytes,
+-                                  cudaMemcpyHostToDevice),
+-                       what ? what : "stream selected expert copy");
++        return cuda_model_stream_copy_registered(
++            dst, model_map, offset, bytes,
++            what ? what : "stream selected expert copy");
+     }
+ 
+     const uint64_t chunk = cuda_model_copy_chunk_bytes();
+@@ -2317,9 +2460,12 @@ extern "C" void ds4_gpu_cleanup(void) {
+     if (g_model_device_owned && g_model_device_base) {
+         (void)cudaFree((void *)g_model_device_base);
+     }
+-    if (g_model_registered && g_model_host_base) {
++    if (!g_model_stream_registrations.empty()) {
++        cuda_model_stream_registrations_release_all();
++    } else if (g_model_registered && g_model_host_base) {
+         (void)cudaHostUnregister((void *)g_model_host_base);
+     }
++    g_model_stream_registrations.clear();
+     g_model_host_base = NULL;
+     g_model_device_base = NULL;
+     g_model_registered_size = 0;
+@@ -2527,7 +2673,10 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+             (void)cudaFree((void *)g_model_device_base);
+             g_model_device_owned = 0;
+         }
+-        if (g_model_registered && g_model_host_base) {
++        if (!g_model_stream_registrations.empty()) {
++            cuda_model_stream_registrations_release_all();
++            g_model_registered = 0;
++        } else if (g_model_registered && g_model_host_base) {
+             (void)cudaHostUnregister((void *)g_model_host_base);
+             g_model_registered = 0;
+         }
+@@ -2535,17 +2684,12 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+         g_model_device_base = (const char *)model_map;
+         g_model_registered_size = model_size;
+         if (getenv("DS4_CUDA_STREAM_FROM_RAM") != NULL) {
+-            unsigned int flags = cudaHostRegisterMapped;
+-            cudaError_t err = cudaHostRegister((void *)model_map, (size_t)model_size, flags);
+-            if (err == cudaSuccess) {
++            if (cuda_model_stream_register_chunked(model_map, model_size)) {
+                 g_model_registered = 1;
+-                fprintf(stderr, "ds4: CUDA pinned %.2f GiB model mapping for direct RAM streaming\n",
+-                        (double)model_size / 1073741824.0);
+             } else {
+-                fprintf(stderr, "ds4: WARNING: CUDA failed to pin model mapping: %s. "
+-                        "RAM streaming will use slower pageable copies. (Check 'ulimit -l')\n",
+-                        cudaGetErrorString(err));
+-                (void)cudaGetLastError();
++                fprintf(stderr, "ds4: WARNING: CUDA failed to pin model mapping in chunks; "
++                        "aborting RAM streaming initialization\n");
++                return 0;
+             }
+         }
+     } else if (!g_model_device_owned && !g_model_registered) {
+@@ -2564,6 +2708,8 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+ extern "C" int ds4_gpu_set_model_map(const void *model_map, uint64_t model_size) {
+     if (!cuda_model_set_host_map(model_map, model_size)) return 0;
+ 
++    if (getenv("DS4_CUDA_STREAM_FROM_RAM") != NULL && g_model_registered) return 1;
++
+     const char *copy_env = getenv("DS4_CUDA_COPY_MODEL");
+     if (copy_env && copy_env[0]) {
+         void *dev = NULL;

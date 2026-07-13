@@ -1,0 +1,11 @@
+CUDA_VISIBLE_DEVICES=0
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=4
+DS4_CUDA_STREAM_FROM_RAM=1
+DS4_CUDA_STREAM_FROM_RAM_REGISTER_CHUNK_MB=256
+DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256
+HOME=/root
+LANG=C.UTF-8
+LC_ALL=C.UTF-8
+LD_LIBRARY_PATH=/usr/local/cuda/targets/x86_64-linux/lib:/usr/local/cuda/lib64
+PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+TMPDIR=/tmp

@@ -1,0 +1,58 @@
+{
+  "repeats": 3,
+  "byte_identical": true,
+  "distinct_content_hashes": [
+    "63c82ee13aacdb78a1c600e8477aea0bb108974e8955e2fbc326704e4ff730b5"
+  ],
+  "runs": [
+    {
+      "rep": 1,
+      "wall_seconds": 139.619721812,
+      "content_bytes": 833,
+      "content_sha256": "63c82ee13aacdb78a1c600e8477aea0bb108974e8955e2fbc326704e4ff730b5",
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 256,
+        "total_tokens": 320,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "finish_reason": "length"
+    },
+    {
+      "rep": 2,
+      "wall_seconds": 139.700121176,
+      "content_bytes": 833,
+      "content_sha256": "63c82ee13aacdb78a1c600e8477aea0bb108974e8955e2fbc326704e4ff730b5",
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 256,
+        "total_tokens": 320,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "finish_reason": "length"
+    },
+    {
+      "rep": 3,
+      "wall_seconds": 139.626458095,
+      "content_bytes": 833,
+      "content_sha256": "63c82ee13aacdb78a1c600e8477aea0bb108974e8955e2fbc326704e4ff730b5",
+      "usage": {
+        "prompt_tokens": 64,
+        "completion_tokens": 256,
+        "total_tokens": 320,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 64
+        }
+      },
+      "finish_reason": "length"
+    }
+  ],
+  "scope": "same-node reproduction of published Profile A knobs; original benchmark prompt and model hash are unavailable"
+}
