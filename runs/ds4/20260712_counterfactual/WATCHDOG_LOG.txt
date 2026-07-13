@@ -1,0 +1,9 @@
+[2026-07-12 18:23] armA_run1 | ok | stream appena iniziato (prosa intro coerente); PID 7904 morto ~18:25 per stop esterno (tripwire), nessuna degenerazione osservata, kill non necessario
+[2026-07-12 19:05] armA_run1b | ok | intro + apertura ```html coerente
+[2026-07-12 19:08] armA_run1b | ok | <!DOCTYPE html><html lang="ita">... coerente; PID 18386 morto per stop esterno (tripwire churn), kill non necessario
+[2026-07-12 20:15] armA_run1c | ok | HTML head+CSS cyberpunk coerente
+[2026-07-12 20:18] armA_run1c | ok | CSS lungo ma COERENTE (regola progetto: non e' fallimento); typo isolati nei commenti (Navia/Grigle) non bloccanti — falso allarme evitato
+[2026-07-12 20:22] armA_run1c | ok | flusso CSS ancora strutturato; PID 423 morto per stop esterno, kill non necessario
+[2026-07-12 20:48] armB_run1 | dubbio | tail vuota subito dopo warmup, PID 453 vivo
+[2026-07-12 20:49] armB_run1 | degenerazione-postmortem | tag-salad osservato: <!HTML: pseudo-tag, <meta viewport=viewport>, <title>...</style> mismatch, <link href/style.css come da script>, outline word-salad (section hero / form contatti senza chiusure); PID gia' morto al check → kill non necessario/non possibile. Sarebbe stato KILL al check successivo se il run fosse proseguito.
+[2026-07-12 21:22] CAMPAGNA counterfactual conclusa (conferma coordinatore: armA FAIL churn, armB completato-scadente). Watchdog passa a 20260712_virtual_bake.

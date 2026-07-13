@@ -1,0 +1,21 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!HTML: Single-file landing page per negozio di programmazione AI in stile cyberpunk con modulo contatti e popup JS
+<!DOCTYPE html>
+<html>
+<head>
+<meta viewport=viewport>
+<title>AI Code Shop - Cyberpunk Landing</style>
+<link href/style.css come da script>
+</head>
+<body>
+<main>
+<section hero
+form contatti
+popup richiesta inviata
+</section>
+footer
+script
+</main>
+</body>
+</html>

@@ -1,0 +1,2 @@
+[cf_tripwire_monitor] watching run-dir=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_counterfactual/armB_run1
+[cf_tripwire_monitor] response.json present; run completed, stopping monitor
