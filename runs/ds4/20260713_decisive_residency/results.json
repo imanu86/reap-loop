@@ -1,0 +1,96 @@
+{
+"A_baseline_pread": {
+  "arm": "A_baseline_pread",
+  "measured_tokens": 240,
+  "warm_skip": 80,
+  "cache_cap": null,
+  "resident_cache_gib": 7.86,
+  "spex_wholerun": {
+    "cache_hits": 44960,
+    "cache_misses": 48720,
+    "hit_rate": 0.4799,
+    "miss_per_expert": 0.4662,
+    "copied_mib": 407301.75
+  },
+  "warm_window_gen": [
+    120,
+    240
+  ],
+  "warm_total_mib_per_token": 2146.18,
+  "warm_dma_mib_per_token": 0.0,
+  "warm_vram_miss_copies_per_token": 953.9,
+  "warm_zerocopy_cover_frac": 0.0,
+  "warm_decode_tps": 0.567,
+  "warm_chunk_tps_median": 2.21,
+  "warm_chunk_tps_list": [
+    1.86,
+    2.06,
+    2.21,
+    2.3
+  ],
+  "n_snaps_measured": 225
+}
+,
+"B_zerocopy_only": {
+  "arm": "B_zerocopy_only",
+  "measured_tokens": 240,
+  "warm_skip": 80,
+  "cache_cap": null,
+  "resident_cache_gib": 7.86,
+  "spex_wholerun": {
+    "cache_hits": 46164,
+    "cache_misses": 47516,
+    "hit_rate": 0.4928,
+    "miss_per_expert": 0.4547,
+    "copied_mib": 399120.75
+  },
+  "warm_window_gen": [
+    120,
+    240
+  ],
+  "warm_total_mib_per_token": 2078.01,
+  "warm_dma_mib_per_token": 987.19,
+  "warm_vram_miss_copies_per_token": 923.6,
+  "warm_zerocopy_cover_frac": 0.4751,
+  "warm_chunk_tps_median": 2.15,
+  "warm_chunk_tps_list": [
+    2.09,
+    2.23,
+    2.15,
+    2.13
+  ],
+  "n_snaps_measured": 218
+}
+,
+"C_zerocopy_pinmass_maxcache": {
+  "arm": "C_zerocopy_pinmass_maxcache",
+  "measured_tokens": 240,
+  "warm_skip": 80,
+  "cache_cap": null,
+  "resident_cache_gib": 7.86,
+  "spex_wholerun": {
+    "cache_hits": 63456,
+    "cache_misses": 31224,
+    "hit_rate": 0.6702,
+    "miss_per_expert": 0.2988,
+    "copied_mib": 289278.0
+  },
+  "warm_window_gen": [
+    120,
+    240
+  ],
+  "warm_total_mib_per_token": 1460.25,
+  "warm_dma_mib_per_token": 612.73,
+  "warm_vram_miss_copies_per_token": 649.0,
+  "warm_zerocopy_cover_frac": 0.4196,
+  "warm_decode_tps": 1.266,
+  "warm_chunk_tps_median": 1.27,
+  "warm_chunk_tps_list": [
+    1.2,
+    1.29,
+    1.27,
+    1.27
+  ],
+  "n_snaps_measured": 154
+}
+}

@@ -1,0 +1,20 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Sei uno scrittore. Rispondi in prosa continua, senza ragionamento visibile, senza elenchi."
+    },
+    {
+      "role": "user",
+      "content": "Scrivi un racconto cyberpunk ambientato nella Roma imperiale del 100 d.C., come se la tecnologia moderna (reti neurali, impianti cibernetici, megacorporazioni, droni, realta' aumentata) fosse gia' esistita accanto a senatori, legionari, gladiatori e schiavi. Segui un ingegnere-liberto che ripara innesti neurali nella Suburra e viene coinvolto in una cospirazione che attraversa il Senato, i Pretoriani e una corporazione che vende memoria. Descrivi luoghi, tecnologia, politica e personaggi in dettaglio ricco. Scrivi un testo lungo e continuo."
+    }
+  ],
+  "max_tokens": 120,
+  "temperature": 0,
+  "stream": false,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  }
+}
