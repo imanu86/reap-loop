@@ -1,0 +1,17 @@
+2026-07-12T20:35:31Z START arm=self60 run=1 temp=0
+2026-07-12T20:36:28Z END arm=self60 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:36:28Z START arm=self60 run=2 temp=0.7
+2026-07-12T20:37:01Z END arm=self60 run=2 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:01Z START arm=self60 run=3 temp=0.7
+2026-07-12T20:37:27Z END arm=self60 run=3 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:27Z START arm=self65 run=1 temp=0
+2026-07-12T20:37:52Z END arm=self65 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:52Z START arm=self65 run=2 temp=0.7
+2026-07-12T20:38:18Z END arm=self65 run=2 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:38:18Z START arm=self65 run=3 temp=0.7
+2026-07-12T20:38:44Z END arm=self65 run=3 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:38:44Z START arm=family60 run=1 temp=0
+2026-07-12T20:39:10Z END arm=family60 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:39:10Z START arm=k0 run=1 temp=0
+2026-07-12T20:39:35Z END arm=k0 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:39:35Z CAMPAIGN COMPLETE

@@ -1,0 +1,81 @@
+2026-07-12T20:35:31Z START arm=self60 run=1 temp=0
+[arm_self60_run1] waiting for GPU lock...
+[arm_self60_run1] GPU lock acquired 2026-07-12T20:35:31Z
+[arm_self60_run1] server ready 2026-07-12T20:35:33Z
+[arm_self60_run1] warmup done in 27.9s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self60_run1] STOP_REASON: finished_or_budget
+[arm_self60_run1] GRADE: LIVELLO L0
+[arm_self60_run1] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self60_run1
+2026-07-12T20:36:28Z END arm=self60 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:36:28Z START arm=self60 run=2 temp=0.7
+[arm_self60_run2] waiting for GPU lock...
+[arm_self60_run2] GPU lock acquired 2026-07-12T20:36:28Z
+[arm_self60_run2] server ready 2026-07-12T20:36:30Z
+[arm_self60_run2] warmup done in 17.5s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self60_run2] STOP_REASON: finished_or_budget
+[arm_self60_run2] GRADE: LIVELLO L0
+[arm_self60_run2] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self60_run2
+2026-07-12T20:37:01Z END arm=self60 run=2 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:01Z START arm=self60 run=3 temp=0.7
+[arm_self60_run3] waiting for GPU lock...
+[arm_self60_run3] GPU lock acquired 2026-07-12T20:37:01Z
+[arm_self60_run3] server ready 2026-07-12T20:37:03Z
+[arm_self60_run3] warmup done in 11.4s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self60_run3] STOP_REASON: finished_or_budget
+[arm_self60_run3] GRADE: LIVELLO L0
+[arm_self60_run3] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self60_run3
+2026-07-12T20:37:27Z END arm=self60 run=3 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:27Z START arm=self65 run=1 temp=0
+[arm_self65_run1] waiting for GPU lock...
+[arm_self65_run1] GPU lock acquired 2026-07-12T20:37:27Z
+[arm_self65_run1] server ready 2026-07-12T20:37:29Z
+[arm_self65_run1] warmup done in 11.4s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self65_run1] STOP_REASON: finished_or_budget
+[arm_self65_run1] GRADE: LIVELLO L0
+[arm_self65_run1] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self65_run1
+2026-07-12T20:37:52Z END arm=self65 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:37:52Z START arm=self65 run=2 temp=0.7
+[arm_self65_run2] waiting for GPU lock...
+[arm_self65_run2] GPU lock acquired 2026-07-12T20:37:52Z
+[arm_self65_run2] server ready 2026-07-12T20:37:54Z
+[arm_self65_run2] warmup done in 11.7s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self65_run2] STOP_REASON: finished_or_budget
+[arm_self65_run2] GRADE: LIVELLO L0
+[arm_self65_run2] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self65_run2
+2026-07-12T20:38:18Z END arm=self65 run=2 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:38:18Z START arm=self65 run=3 temp=0.7
+[arm_self65_run3] waiting for GPU lock...
+[arm_self65_run3] GPU lock acquired 2026-07-12T20:38:18Z
+[arm_self65_run3] server ready 2026-07-12T20:38:20Z
+[arm_self65_run3] warmup done in 11.4s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_self65_run3] STOP_REASON: finished_or_budget
+[arm_self65_run3] GRADE: LIVELLO L0
+[arm_self65_run3] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self65_run3
+2026-07-12T20:38:44Z END arm=self65 run=3 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:38:44Z START arm=family60 run=1 temp=0
+[arm_family60_run1] waiting for GPU lock...
+[arm_family60_run1] GPU lock acquired 2026-07-12T20:38:44Z
+[arm_family60_run1] server ready 2026-07-12T20:38:46Z
+[arm_family60_run1] warmup done in 11.3s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_family60_run1] STOP_REASON: finished_or_budget
+[arm_family60_run1] GRADE: LIVELLO L0
+[arm_family60_run1] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_family60_run1
+2026-07-12T20:39:10Z END arm=family60 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:39:10Z START arm=k0 run=1 temp=0
+[arm_k0_run1] waiting for GPU lock...
+[arm_k0_run1] GPU lock acquired 2026-07-12T20:39:10Z
+[arm_k0_run1] server ready 2026-07-12T20:39:12Z
+[arm_k0_run1] warmup done in 11.0s
+{"finish_reason": "error", "client_stop": null, "stream_error": null}
+[arm_k0_run1] STOP_REASON: finished_or_budget
+[arm_k0_run1] GRADE: LIVELLO L0
+[arm_k0_run1] run dir: /root/reap-loop/runs/ds4/20260712_pod12_bake/arm_k0_run1
+2026-07-12T20:39:35Z END arm=k0 run=1 rc=0 stop=finished_or_budget grade=LIVELLO L0
+2026-07-12T20:39:35Z CAMPAIGN COMPLETE

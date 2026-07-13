@@ -1,0 +1,19 @@
+run_id=arm_self65_run1
+arm=self65
+mask=/root/reap-loop/runs/ds4/20260712_virtual_bake/masks/mask65_self.txt
+binary=/root/ds4-fullstack/ds4-server
+model=/root/models/ds4-2bit.gguf
+port=18081
+max_tokens=4000
+ctx=4096
+temperature=0
+ram_floor_mb=7168
+weight_arena_chunk_mb=256
+started_utc=2026-07-12T20:37:27Z
+server_pid_file=/root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self65_run1/server.pid
+live_stream_file=/root/reap-loop/runs/ds4/20260712_pod12_bake/arm_self65_run1/stream_live.txt
+[arm_self65_run1] GPU lock acquired 2026-07-12T20:37:27Z
+warmup_started_utc=2026-07-12T20:37:29Z
+warmup_finished_utc=2026-07-12T20:37:40Z
+warmup_duration_s=11.4
+warmup_curl_rc=0

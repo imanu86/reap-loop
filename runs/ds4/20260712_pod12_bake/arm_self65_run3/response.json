@@ -1,0 +1,25 @@
+{
+  "stream": true,
+  "stream_events": 3,
+  "elapsed_s": 11.343606,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 0,
+    "total_tokens": 78,
+    "prompt_tokens_details": {
+      "cached_tokens": 78,
+      "cache_write_tokens": 0
+    }
+  },
+  "client_stop": null,
+  "stream_error": null,
+  "choices": [
+    {
+      "message": {
+        "role": "assistant",
+        "content": ""
+      },
+      "finish_reason": "error"
+    }
+  ]
+}

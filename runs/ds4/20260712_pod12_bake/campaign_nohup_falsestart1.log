@@ -1,0 +1,17 @@
+2026-07-12T20:34:20Z START arm=self60 run=1 temp=0
+2026-07-12T20:34:21Z END arm=self60 run=1 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:21Z START arm=self60 run=2 temp=0.7
+2026-07-12T20:34:22Z END arm=self60 run=2 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:22Z START arm=self60 run=3 temp=0.7
+2026-07-12T20:34:23Z END arm=self60 run=3 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:23Z START arm=self65 run=1 temp=0
+2026-07-12T20:34:24Z END arm=self65 run=1 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:24Z START arm=self65 run=2 temp=0.7
+2026-07-12T20:34:25Z END arm=self65 run=2 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:25Z START arm=self65 run=3 temp=0.7
+2026-07-12T20:34:27Z END arm=self65 run=3 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:27Z START arm=family60 run=1 temp=0
+2026-07-12T20:34:28Z END arm=family60 run=1 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:28Z START arm=k0 run=1 temp=0
+2026-07-12T20:34:29Z END arm=k0 run=1 rc=1 stop=warmup_failed_rc=22 grade=
+2026-07-12T20:34:29Z CAMPAIGN COMPLETE
