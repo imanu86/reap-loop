@@ -66,6 +66,15 @@ Tre assenze o distinzioni sono altrettanto importanti:
   soltanto nelle patch 0047/0048. Eventuali export nei runner correnti sono
   **inerti** finche' quelle patch non vengono applicate integralmente.
 
+Aggiunta di verifica indipendente (thread 3, censimento incrociato): esiste un
+sesto budget, mai isolato prima. Un pool di 8 thread prefill (`DS4_METAL_STREAMING_
+PREFILL_LAYER_PREPARE_THREADS`, §4) gira **gia' oggi per default** in ogni run
+`--ssd-streaming`, bake60 incluso, e per come sono costruiti gli span di layer
+(`ds4.c:4189-4224`) rischia di `pread`-are l'intero tensore esperti del layer —
+tutti e 256, non i 154 della mask — competendo con la residenza RAM bake60. E'
+INFERITO dal codice, non ancora misurato: vedi §4 per il dettaglio e il piano di
+verifica a costo zero (`..._PREAD_PROFILE`).
+
 ## 2. Perimetro, metodo e legenda
 
 Sono stati letti in sola lettura entrambi gli alberi completi,
@@ -133,6 +142,22 @@ di log o input e possono aggiungere I/O sincrono.
 | `DS4_CUDA_SELECTED_UPLOAD_EVENT` / `DS4_SELECTED_UPLOAD_EVENT` | bool, off | `ds4_cuda.cu:3615-3616` | Arma evento/wait del caricamento selected. | Fa parte dell'ordering S1; una barriera mancante corrompe pesi. | Usato internamente dalle patch overlap; non isolato nei run. |
 | `DS4_CUDA_PREFILL_DEFER_UPLOAD_SYNC` | bool, off | patch `0048-prefill-overlap-s1.patch:147` | In prefill differisce sync H2D/D2D e fa un wait prima della GEMM. | Richiede fix WAR, evento e cursore stage cross-call della stessa patch; decode non toccato. | PATCH-ONLY in F e V. Storicamente **MISURATO** bit-exact: TTFT -9.7/-15.1% cold, -20.6% warm; 2.15 vs 2.19 t/s decode. Un export corrente e' INERTE. |
 | `DS4_CUDA_WEIGHT_CACHE_VERBOSE` | bool, off | `ds4_cuda.cu:1249`; esteso da 0047 | Log hit/miss/cache e registrazione. | I/O di log; utile per attribuire il fast path, non per produzione. | NON RISULTA negli env catturati. |
+
+**Nota di censimento (thread 3, verifica indipendente):** `cuda_model_prefetch_range()`
+(`ds4_cuda.cu:2699-2776`, la funzione dietro `DS4_CUDA_NO_MODEL_PREFETCH` e
+`DS4_CUDA_MODEL_PREFETCH_SYNC`) chiama prima
+`cudaDeviceGetAttribute(&pageable, cudaDevAttrPageableMemoryAccess, device)` e
+ritorna 0 **senza errore e senza log** se l'attributo e' falso, prima di
+arrivare a `cudaMemAdvise`/`cudaMemPrefetchAsync`. Questo attributo e' vero
+solo su sistemi a memoria coerente stile Grace/GB10 (NVLink-C2C/ATS reale); un
+device Ampere PCIe consumer come la RTX 3060 sotto WSL2 quasi certamente lo
+riporta falso, il che renderebbe l'intero ramo ATS/HMM per i tensori modello
+(non gli esperti) un no-op silenzioso indipendentemente dal valore delle due
+env sopra. Non e' stato eseguito codice per confermarlo (mandato solo
+lettura): verifica a costo zero proposta e' cercare la riga
+`"ds4: CUDA ATS/HMM prefetch queued"` nei log server esistenti/futuri — la sua
+assenza conferma il gate. Riguarda solo i tensori fissi/dense (`model_map`),
+non la cache streaming esperti di §4.
 
 ### 0050 V2: registrazione privata masked e DMA diretto
 
@@ -219,6 +244,56 @@ token runtime inventariati. Il design richiede:
 | `DS4_CUDA_INPLACE_RESIDENT` / `VERIFY` | bool, off/off | `ds4_cuda.cu:3978-3979` | Riusa slot resident senza copia; verify controlla equivalenza. | Epoch/stale-slot corretti dalle patch 0034/0036a; errore qui corrompe output. | Testato bit-neutral in campagne T1-T3, non bake60. |
 | `DS4_CUDA_INPLACE_RESERVE_SLOTS` | count, `capacity/8+1` | `ds4_cuda.cu:4533-4542` | Slot riservati per miss/churn. | Troppo basso rischia deadlock/stale; troppo alto riduce resident. | NON RISULTA come override. |
 | `DS4_REAP_PIN_BY_MASS` | bool, off | `ds4.c:13310`, consumer `ds4_cuda.cu:4481` | Ordina il pin per massa, non cambia da solo la selezione. | Da non confondere con mask top-mass; usa publisher livemask. | CONFIGURATO nelle campagne pin-by-mass; bake60 usa mask statica. |
+
+### Prefill layer-pread: pool di thread gia' ON per default, mai censito
+
+Trovato in questo censimento (thread 3), assente dalla versione precedente del
+catalogo. E' distinto da `DS4_REAP_PREFETCH_THREADS` (§5, gia' testato e non
+utile su WSL QD8): questo e' un secondo pool di thread, per il solo **prefill**,
+che gira di default gia' oggi in ogni run `--ssd-streaming` (bake60 incluso),
+senza che nessun env qui sotto sia mai stato impostato esplicitamente.
+
+`metal_graph_stream_prefill_layer_pread_enabled()` (`ds4.c:11936-11939`) e'
+**vera per default** quando `g->ssd_streaming` e' attivo: richiede solo che
+`DS4_METAL_DISABLE_STREAMING_PREFILL_LAYER_PREAD` e
+`DS4_METAL_DISABLE_STREAMING_PREFILL_LAYER_PREPARE` siano *entrambe* unset,
+al contrario di `..._LAYER_PAGEIN` e `..._LAYER_READAHEAD` (`ds4.c:11919-11934`)
+che richiedono opt-in esplicito. Il chiamante e' `metal_graph_prefill_layer_major`
+(`ds4.c:24554` e dintorni), raggiunto dal graph comune: nello stesso blocco
+(`ds4.c:24709`) compare anche `metal_graph_cuda_stream_prefill_batch_selected_addr_enabled`,
+prova diretta che il ramo non e' Metal-only nonostante il nome storico.
+
+| Nome | Tipo / default | Source | Effetto | Interazioni e rischi | Stato / pertinenza 3060-WSL |
+|---|---|---|---|---|---|
+| `DS4_METAL_STREAMING_PREFILL_LAYER_PREPARE_THREADS` / `..._PAGEIN_THREADS` | int, **8**; clamp 1..16 | `ds4.c:12648-12658` | Numero di thread worker che preparano (pread di default) i range del layer in arrivo durante il prefill, prima dell'upload GPU. | Il pool e' gia' attivo con 8 thread ad ogni run `--ssd-streaming`, mai profilato ne' variato nei run catturati. Piu' thread possono aumentare la banda `pread` ma anche la contesa con il pool separato di `DS4_REAP_PREFETCH_THREADS`. | **INFERITO, MAI CONFIGURATO**: nessun `server_env.txt` letto imposta questa coppia; gira col default silenzioso. |
+| `DS4_METAL_STREAMING_PREFILL_LAYER_PREPARE_AHEAD` | int, **1**; clamp 1..4 (`DS4_STREAM_PREFILL_MAX_PREPARE_AHEAD`) | `ds4.c:12691-12703` | Profondita' della pipeline: quanti layer futuri vengono preparati in anticipo mentre il layer corrente e' in calcolo. | Solo attivo se l'overlap sotto non e' disattivato. Aumentarlo a 4 spinge piu' I/O in parallelo al calcolo, utile se il prefill e' I/O-bound su WSL2; consuma piu' RAM/pin per stage. | NON RISULTA; leva a basso rischio per uno smoke di solo prefill. |
+| `DS4_METAL_STREAMING_PREFILL_LAYER_PREPARE_NO_OVERLAP` / `..._PAGEIN_NO_OVERLAP` / `DS4_METAL_DISABLE_STREAMING_PREFILL_LAYER_PREPARE_OVERLAP` / `..._PAGEIN_OVERLAP` | bool, off (overlap **on** per default) | `ds4.c:12681-12689` | Quattro alias equivalenti per disattivare l'overlap prepare/calcolo. | Utile solo per isolare l'effetto del prepare-ahead in un A/B di attribuzione. | NON RISULTA. |
+| `DS4_METAL_STREAMING_PREFILL_SELECTED_PREPARE_THREADS` / `..._MADVISE_THREADS` | int, eredita il default layer (**8**) se madvise-only, altrimenti fisso **1** | `ds4.c:12659-12671` | Pool separato per la fase "selected" (esperti instradati). Il valore ha effetto solo quando la fase e' `madvise_only`; il vero `pread` selected resta a 1 thread indipendentemente da questa env. | Da non confondere con il pool layer sopra: non velocizza il `pread` selected, solo l'hint `madvise`. | NON RISULTA; basso valore atteso salvo combinarlo con madvise esplicito. |
+| `DS4_METAL_STREAMING_PREFILL_SELECTED_PREPARE_GAP` | int, 0; clamp 0..8 | `ds4.c:12673-12679` | Ritardo/gap tra la preparazione selected e il consumo. | Non testato; interagisce con `PREPARE_AHEAD`. | NON RISULTA. |
+| `DS4_METAL_STREAMING_PREFILL_LAYER_PAGEIN_PROFILE` / `..._PREAD_PROFILE` / `..._MADVISE_PROFILE` / `..._READAHEAD_PROFILE` | bool, off | `ds4.c:15042-15045` (gia' in tabella §11.4) | Logga bytes/tempo/thread del job di prepare per layer. | Solo osservabilita'; e' il modo a costo zero per misurare quanto pesa questo pool prima di cambiare thread/ahead. | Diagnostica esistente, mai usata per attribuire questo pool specifico. |
+
+**Perche' conta ora per il nostro scenario (bake60/mask, 3060-12GB):**
+`weights_model_map_spans(weights, il, il, false, &spans)` (`ds4.c:15065`,
+chiamata dal path sopra) costruisce gli span da `model_map_span_vec_include_layer`
+(`ds4.c:4189-4224`), che include **incondizionatamente** `l->ffn_gate_exps`,
+`l->ffn_up_exps`, `l->ffn_down_exps` — cioe' il tensore intero del layer con
+**tutti** gli esperti (instradati e bloccati dalla mask), non il sottoinsieme
+selezionato. `model_map_span_vec_include_one` (`ds4.c:4156-4184`) aggiunge lo
+span dell'intero tensore senza filtrare per mask; l'unica eccezione e' un
+isolamento anti-merge per tensori Q4_K 3D >=2 GiB (non un'esclusione dalla
+lettura). Il confronto diretto e' `model_map_span_vec_include_layer_decode_static`
+(`ds4.c:4227-4262`, usata in decode), che **si ferma** a `ffn_exp_probs_b` e
+salta esplicitamente `ffn_gate_exps/up_exps/down_exps`, delegando gli esperti
+instradati a un path selected separato. In prefill, quindi, il pool di 8 thread
+sopra rischia di `pread`-are l'intero blob esperti del layer (fino a 256/256),
+non i 154/256 della mask bake60, competendo per banda e page cache proprio con
+la residenza RAM che il bake60 cerca di proteggere. **Questo e' INFERITO dal
+codice, non misurato**: nessun log/profilo di questo pool e' stato catturato in
+questo censimento. Prima di toccare i thread, il passo a costo zero e' accendere
+`DS4_METAL_STREAMING_PREFILL_LAYER_PREAD_PROFILE=1` su un run bake60 esistente e
+leggere bytes/tempo del job; il passo successivo, ancora a basso rischio, e' un
+A/B `DS4_METAL_DISABLE_STREAMING_PREFILL_LAYER_PREPARE=1` per isolare quanto
+prefill-TTFT/decode-t/s cambiano quando questo pool e' spento del tutto.
 
 ### Tier cold/RAM
 
@@ -584,6 +659,15 @@ efficienti su PCIe/WSL.
 10. **Rating-only 0051**: implementare `DS4_PACE_LIVEMASK_MODE` e il guard di
     pubblicazione prima di usare la livemask come osservatore. Finche' manca,
     non esiste un test sicuro della policy live e mask60 resta solo fixture.
+11. **Prefill layer-pread gia' attivo, mai attribuito** (nuovo in questo
+    censimento, dettaglio in §4): profilare con
+    `DS4_METAL_STREAMING_PREFILL_LAYER_PREAD_PROFILE=1` un run bake60 esistente
+    per misurare bytes/tempo del pool di 8 thread prefill di default, poi A/B
+    `DS4_METAL_DISABLE_STREAMING_PREFILL_LAYER_PREPARE=1` per isolarne l'effetto
+    su TTFT/decode. Se lo span include davvero l'intero tensore esperti (256/256)
+    invece dei 154 mask-selected, e' un candidato a spiegare parte della
+    pressione I/O/page-cache osservata, non solo l'overhead di orchestrazione
+    decode gia' isolato.
 
 ## 11. Inventario sorgente verificabile
 
