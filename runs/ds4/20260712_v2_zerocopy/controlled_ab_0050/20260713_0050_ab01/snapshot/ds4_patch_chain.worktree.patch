@@ -1,0 +1,2241 @@
+diff --git a/ds4.c b/ds4.c
+index 2ca32a3..fd0a4ac 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -1824,7 +1824,9 @@ static void model_close(ds4_model *m) {
+     if (!m) return;
+     free(m->kv);
+     free(m->tensors);
+-    if (m->map) munmap((void *)m->map, (size_t)m->size);
++    if (m->map && munmap((void *)m->map, (size_t)m->size) != 0) {
++        fprintf(stderr, "ds4: model munmap failed: %s\n", strerror(errno));
++    }
+     if (m->fd >= 0) close(m->fd);
+     memset(m, 0, sizeof(*m));
+     m->fd = -1;
+@@ -7402,6 +7404,16 @@ static uint8_t g_reap_mask_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+  * every publish. Both sides gate on DS4_REAP_PIN_BY_MASS (default 0): when off
+  * these stay zeroed and are never read, so nothing changes. */
+ float            g_reap_pin_mass[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++/* patch 0044: one-token SPEX provisional lane. A set bit means that an expert
++ * pruned by the mass core is temporarily eligible in the router mask and gets
++ * first-class residency priority. The array is exported for ds4_cuda.cu. */
++uint8_t          g_reap_spex_pin[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++/* patch 0045: aggregate rank-weighted SPEX support between admission epochs.
++ * This is prediction support, not calibrated router gate mass. */
++static double    g_reap_spex_support[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++static uint32_t  g_reap_spex_support_samples[DS4_MAX_LAYER];
++static uint32_t  g_reap_spex_last_refresh[DS4_MAX_LAYER];
++static uint8_t   g_reap_spex_refreshed[DS4_MAX_LAYER];
+ volatile uint32_t g_reap_pin_epoch = 0;
+ static float g_reap_bias_masked[DS4_MAX_LAYER][DS4_MAX_EXPERT];
+ static const void *g_reap_bias_tensor[DS4_MAX_LAYER];
+@@ -7508,6 +7520,21 @@ static struct {
+     int      lm_bootstrap;       /* generated tokens at K0 before seed */
+     int      lm_window;          /* sliding window length (clamp 10..20, cap WIN_MAX) */
+     int      lm_k;               /* eligible experts/layer (floor DS4_N_EXPERT_USED) */
++    int      lm_adaptive_k;      /* 0045: strong-knock acceleration controls K */
++    int      lm_k_min;           /* 0045: adaptive lower bound */
++    int      lm_k_max;           /* 0045: adaptive upper bound */
++    double   lm_knock_threshold; /* 0045: selected-normalized weight floor */
++    double   lm_knock_gain;      /* 0045: delta-K per excess strong knock */
++    int      lm_knock_step_up;   /* 0045: max K growth per token */
++    int      lm_knock_step_down; /* 0045: max K shrink per token */
++    double   lm_knock_deadband;  /* 0045: ignore small count acceleration */
++    int      lm_knock_update_every; /* 0045: resize cadence in decode tokens */
++    int      lm_knock_prefetch;   /* 0045: page-touch all adaptive growth */
++    int      lm_knock_min_history; /* 0045: react before the 10-token ring fills */
++    uint32_t lm_knock_current;   /* 0045: strong blocked experts in prior token */
++    uint32_t lm_knock_ring[32];  /* 0045: previous token counts */
++    int      lm_knock_ring_pos;
++    int      lm_knock_ring_fill;
+     int      lm_observe_top;     /* unbiased top-N recorded per token/layer */
+     int      lm_x;               /* integer windowed-knock threshold */
+     int      lm_max_swaps;       /* per layer per scan */
+@@ -7598,6 +7625,10 @@ static const float *ds4_reap_mask_cpu_bias(const void *bias_tensor) {
+     return NULL;
+ }
+ 
++static inline int ds4_reap_mask_effectively_pruned(uint32_t il, uint32_t e) {
++    return g_reap_mask_pruned[il][e] && !g_reap_spex_pin[il][e];
++}
++
+ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weights) {
+     uint32_t slot = 0, ranges_updated = 0;
+     for (uint32_t il = 0; il < DS4_N_LAYER && slot < DS4_MAX_LAYER; il++) {
+@@ -7605,7 +7636,8 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+         if (!layer->ffn_exp_probs_b) continue;
+         const float *orig = (const float *)tensor_data(model, layer->ffn_exp_probs_b);
+         for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
+-            g_reap_bias_masked[slot][e] = orig[e] + (g_reap_mask_pruned[il][e] ? -1.0e9f : 0.0f);
++            g_reap_bias_masked[slot][e] = orig[e] +
++                (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
+         }
+         g_reap_bias_tensor[slot] = layer->ffn_exp_probs_b;
+         int upd = ds4_gpu_model_range_update(model->map,
+@@ -7621,6 +7653,68 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+             slot, ranges_updated);
+ }
+ 
++/* Update only one routed layer after its SPEX provisional lane changes. This
++ * avoids rebuilding all mask ranges up to forty times per decode token. */
++static int ds4_reap_mask_apply_layer(const ds4_model *model,
++                                     const ds4_weights *weights,
++                                     uint32_t target_il) {
++    if (!model || !weights || target_il >= DS4_N_LAYER) return 0;
++    uint32_t slot = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && slot < DS4_MAX_LAYER; il++) {
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_exp_probs_b) continue;
++        if (il != target_il) {
++            slot++;
++            continue;
++        }
++        const float *orig =
++            (const float *)tensor_data(model, layer->ffn_exp_probs_b);
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++            g_reap_bias_masked[slot][e] = orig[e] +
++                (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
++        }
++        g_reap_bias_tensor[slot] = layer->ffn_exp_probs_b;
++        if (slot >= g_reap_bias_n) g_reap_bias_n = slot + 1u;
++        return ds4_gpu_model_range_update(
++                   model->map,
++                   layer->ffn_exp_probs_b->abs_offset,
++                   g_reap_bias_masked[slot],
++                   (uint64_t)DS4_N_EXPERT * sizeof(float)) > 0;
++    }
++    return 0;
++}
++
++static int ds4_reap_mask_apply_layer_direct(
++        const ds4_model         *model,
++        const ds4_layer_weights *layer,
++        uint32_t                 il) {
++    if (!model || !layer || !layer->ffn_exp_probs_b || il >= DS4_MAX_LAYER)
++        return 0;
++    uint32_t slot = 0;
++    while (slot < g_reap_bias_n &&
++           g_reap_bias_tensor[slot] != layer->ffn_exp_probs_b) slot++;
++    if (slot >= g_reap_bias_n || slot >= DS4_MAX_LAYER) return 0;
++    const float *orig =
++        (const float *)tensor_data(model, layer->ffn_exp_probs_b);
++    for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++        g_reap_bias_masked[slot][e] = orig[e] +
++            (ds4_reap_mask_effectively_pruned(il, e) ? -1.0e9f : 0.0f);
++    }
++    return ds4_gpu_model_range_update(
++               model->map,
++               layer->ffn_exp_probs_b->abs_offset,
++               g_reap_bias_masked[slot],
++               (uint64_t)DS4_N_EXPERT * sizeof(float)) > 0;
++}
++
++static uint32_t ds4_spex_mask_add_cap(void);
++static void ds4_spex_mask_reset_state(void);
++
++static int ds4_spex_mask_core_ready(void) {
++    return (g_pace.lm_on && g_pace.lm_seeded) ||
++           (g_pace.enabled == 1 && g_pace.cur_keep > 0);
++}
++
+ static void ds4_reap_prefetch_working_set(const ds4_model *model,
+                                           const ds4_weights *weights);
+ 
+@@ -10775,6 +10869,7 @@ typedef struct {
+     bool spex_hidden_gpu_topk_valid;
+     uint32_t spex_hidden_gpu_topk_layer;
+     uint32_t spex_hidden_gpu_topk_count;
++    uint32_t spex_hidden_gpu_topk_pos; /* 0044: reject stale cross-token readback */
+     bool spex_trace_decode_active;
+     uint32_t spex_trace_pos;
+     bool mtp_enabled;
+@@ -12833,6 +12928,409 @@ static void ds4_reap_prefetch_wait(const char *why) {
+             (now_sec() - t0) * 1000.0);
+ }
+ 
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++/* ---- patch 0050: zero-copy masked-window streaming (DS4_CUDA_STREAM_FROM_RAM_MASKED)
++ * Eliminates the per-access pread+stage+H2D+sync toll for the RAM-resident REAP
++ * keep-window: instead of the CUDA path re-fetching each selected expert's
++ * bytes from the fd every decode step (chapters 0011/0013 above only warm the
++ * page cache -- ds4_gpu_stream_expert_cache_seed_experts* still does a real
++ * pread through that warm cache on every call), pre-register the whole
++ * keep-window as GPU-mapped pinned host memory ONCE at load time via
++ * cuda_model_range_register_mapped (chripell's approach, upstream
++ * DS4_CUDA_STREAM_FROM_RAM, adapted here to a bounded mask-defined window
++ * instead of the full ~81-96 GiB model -- see AGENT.md 0047: registering the
++ * whole model has an incident history under memory pressure and does not fit
++ * this box's WSL RAM budget anyway). After registration, ordinary
++ * cuda_model_range_ptr() lookups for any kept expert's gate/up/down bytes hit
++ * the registered-range branch directly and never touch the pread path.
++ *
++ * Independent of DS4_REAP_MASK_FILE/g_reap_mask_pruned by design (own env, own
++ * mask array, own file load): this is a static host-RAM residency decision
++ * made once at model load, not a live per-token routing mask, and the two are
++ * allowed to diverge (e.g. testing a registration window narrower than the
++ * live REAP mask). Mask file format is identical to DS4_REAP_MASK_FILE:
++ * one "<layer> <expert>" line per BLOCKED (not kept) expert; the keep set is
++ * the complement. Default (env unset): zero behavioral change, this whole
++ * path is inert. */
++static uint8_t g_stream_masked_pruned[DS4_MAX_LAYER][DS4_MAX_EXPERT];
++static int     g_stream_masked_checked;
++static int     g_stream_masked_loaded;
++
++/* Discovered empirically on the WSL2/RTX3060 dev box (2026-07-12 staged
++ * register test, patch 0050): cudaHostRegister range mapping degrades
++ * gracefully up to roughly 30-31 GiB total pinned, but registering all the
++ * way up to that wall leaves no headroom for the engine's OTHER pinned-host
++ * allocations made later in session setup (selected-stage ring buffers,
++ * ds4_gpu_async_read_alloc, ...): those then fail with a hard
++ * "failed to create cuda session" instead of degrading. Default budget stays
++ * a conservative margin under the observed wall; override for experimentation
++ * once a given box's true ceiling and other-allocation headroom are known. */
++#define DS4_STREAM_FROM_RAM_MASKED_DEFAULT_BUDGET_GB 24
++
++static uint64_t ds4_stream_from_ram_masked_budget_bytes(void) {
++    uint64_t gb = DS4_STREAM_FROM_RAM_MASKED_DEFAULT_BUDGET_GB;
++    const char *env = getenv("DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB");
++    if (env && *env) {
++        char *end = NULL;
++        unsigned long v = strtoul(env, &end, 10);
++        if (end != env && v > 0) gb = v;
++    }
++    return gb * 1073741824ull;
++}
++
++static void ds4_stream_from_ram_masked_load(void) {
++    if (g_stream_masked_checked) return;
++    g_stream_masked_checked = 1;
++    const char *p = getenv("DS4_CUDA_STREAM_FROM_RAM_MASKED");
++    if (!p || !*p) return;
++    FILE *f = fopen(p, "r");
++    if (!f) {
++        fprintf(stderr,
++                "ds4: DS4_CUDA_STREAM_FROM_RAM_MASKED: cannot open %s, "
++                "zero-copy masked window disabled\n", p);
++        return;
++    }
++    unsigned l, e, count = 0;
++    while (fscanf(f, "%u %u", &l, &e) == 2) {
++        if (l < DS4_MAX_LAYER && e < DS4_MAX_EXPERT) {
++            g_stream_masked_pruned[l][e] = 1;
++            count++;
++        }
++    }
++    fclose(f);
++    g_stream_masked_loaded = 1;
++    fprintf(stderr,
++            "ds4: CUDA stream-from-RAM masked window: mask %s (%u blocked entries)\n",
++            p, count);
++}
++
++/* Build coalesced (offset,size) ranges for the KEPT experts of every masked
++ * MoE layer (same contiguous-run coalescing as ds4_reap_prefetch_main above,
++ * duplicated rather than shared because that helper is prefetch/threading
++ * specific and this one feeds cudaHostRegister ranges instead of madvise
++ * touches) and register them as zero-copy GPU-mapped host RAM. Runs once at
++ * engine startup, after the model map/fd and weights are established. */
++static void ds4_stream_from_ram_masked_register(const ds4_model *model,
++                                                 const ds4_weights *weights) {
++    ds4_stream_from_ram_masked_load();
++    if (!g_stream_masked_loaded || !model || !weights) return;
++
++    uint32_t cap = 256, n = 0;
++    uint64_t *offs = xmalloc(cap * sizeof(*offs));
++    uint64_t *sizes = xmalloc(cap * sizeof(*sizes));
++    uint32_t n_layers = 0, n_experts_kept = 0;
++    const uint64_t budget_bytes = ds4_stream_from_ram_masked_budget_bytes();
++    uint64_t budgeted_bytes = 0;
++    uint32_t n_runs_skipped_budget = 0;
++
++    /* Pass 1: count masked MoE layers only, to size a PER-LAYER budget share.
++     * Decode walks every layer on the critical path every token, so spending
++     * the whole budget on the first N layers (in scan order) and leaving the
++     * rest at zero coverage barely helps decode even though it looks great
++     * in aggregate GiB registered -- measured on the 2026-07-12 dev box: a
++     * layer-order-first allocation cut prefill time ~3x but decode t/s only
++     * ~1.1x, because every token still pays full toll in the uncovered tail
++     * layers. Splitting the budget evenly across layers instead means every
++     * layer gets *some* zero-copy coverage, so every token's critical path is
++     * shortened, not just the layers that happened to be scanned first. */
++    uint32_t n_masked_layers = 0;
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_gate_exps || !layer->ffn_up_exps || !layer->ffn_down_exps) continue;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            if (g_stream_masked_pruned[il][e]) { n_masked_layers++; break; }
++        }
++    }
++    const uint64_t per_layer_budget =
++        n_masked_layers > 0 ? budget_bytes / n_masked_layers : 0;
++
++    for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_gate_exps || !layer->ffn_up_exps || !layer->ffn_down_exps) {
++            continue;
++        }
++        uint32_t blocked = 0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT && e < DS4_MAX_EXPERT; e++) {
++            blocked += g_stream_masked_pruned[il][e] ? 1u : 0u;
++        }
++        if (blocked == 0) continue;  /* layer absent from mask file: nothing to register */
++        const uint64_t gate_eb = layer->ffn_gate_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_gate_exps);
++        const uint64_t up_eb = layer->ffn_up_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_up_exps);
++        const uint64_t down_eb = layer->ffn_down_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_down_exps);
++        if (gate_eb == 0 || up_eb == 0 || down_eb == 0) continue;
++        n_layers++;
++        uint64_t layer_budgeted_bytes = 0;
++        uint32_t e = 0;
++        while (e < DS4_N_EXPERT && e < DS4_MAX_EXPERT) {
++            if (g_stream_masked_pruned[il][e]) { e++; continue; }
++            const uint32_t first = e;
++            while (e < DS4_N_EXPERT && e < DS4_MAX_EXPERT &&
++                   !g_stream_masked_pruned[il][e]) {
++                e++;
++            }
++            const uint64_t cnt = (uint64_t)(e - first);
++            const uint64_t run_bytes = cnt * (gate_eb + up_eb + down_eb);
++            /* A run is admitted whole or not at all (never split across the
++             * tensor triplet). Gated on BOTH the remaining per-layer share
++             * and the remaining global budget; skipping a run that doesn't
++             * fit does not stop the scan -- a smaller later run in the same
++             * layer, or the next layer entirely, may still fit. */
++            if (layer_budgeted_bytes + run_bytes > per_layer_budget ||
++                budgeted_bytes + run_bytes > budget_bytes) {
++                n_runs_skipped_budget++;
++                continue;  /* e already advanced past this run by the inner while */
++            }
++            n_experts_kept += (uint32_t)cnt;
++            layer_budgeted_bytes += run_bytes;
++            budgeted_bytes += run_bytes;
++            if (n + 3u > cap) {
++                cap *= 2u;
++                offs = xrealloc(offs, cap * sizeof(*offs));
++                sizes = xrealloc(sizes, cap * sizeof(*sizes));
++            }
++            offs[n] = layer->ffn_gate_exps->abs_offset + (uint64_t)first * gate_eb;
++            sizes[n] = cnt * gate_eb;
++            n++;
++            offs[n] = layer->ffn_up_exps->abs_offset + (uint64_t)first * up_eb;
++            sizes[n] = cnt * up_eb;
++            n++;
++            offs[n] = layer->ffn_down_exps->abs_offset + (uint64_t)first * down_eb;
++            sizes[n] = cnt * down_eb;
++            n++;
++        }
++    }
++
++    if (n_runs_skipped_budget > 0) {
++        fprintf(stderr,
++                "ds4: CUDA stream-from-RAM masked window: budget %.2f GiB total / "
++                "%.2f GiB per layer (%u masked layers, "
++                "DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB) reached for %u expert "
++                "run%s, left on the normal pread path\n",
++                (double)budget_bytes / 1073741824.0,
++                (double)per_layer_budget / 1073741824.0,
++                n_masked_layers,
++                n_runs_skipped_budget, n_runs_skipped_budget == 1 ? "" : "s");
++    }
++
++    if (n > 0) {
++        uint64_t reg_bytes = 0;
++        int reg_n = ds4_gpu_register_masked_ranges(model->map, model->size,
++                                                    offs, sizes, n, &reg_bytes);
++        fprintf(stderr,
++                "ds4: CUDA stream-from-RAM masked window: %u layer, %u expert kept, "
++                "%u/%u range%s registered, %.2f GiB zero-copy\n",
++                n_layers, n_experts_kept, reg_n, n, n == 1 ? "" : "s",
++                (double)reg_bytes / 1073741824.0);
++    } else {
++        fprintf(stderr,
++                "ds4: CUDA stream-from-RAM masked window: mask loaded but no "
++                "MoE layer matched (empty or non-overlapping mask?)\n");
++    }
++    free(offs);
++    free(sizes);
++}
++#endif /* !DS4_ROCM_BUILD && !DS4_NO_GPU && !__APPLE__ */
++
++/* ---- FATTORINO delta (item 3): async RAM page-in of the newly-promoted
++ * experts on a ds4_pace_livemask_scan batch swap.  Same threaded mmap-touch
++ * machinery as ds4_reap_prefetch_main, but driven by an explicit (layer,expert)
++ * DELTA list instead of scanning the whole mask, so the cold SSD misses the
++ * promoted candidate would otherwise take on its first decode load are hidden.
++ * Pure page-cache warm => output byte-identical; perf only.  This item does NOT
++ * touch the frozen §7 seam (g_reap_pin_mass/g_reap_pin_epoch/DS4_REAP_PIN_BY_MASS
++ * -- those are the ds4_cuda.cu consumer).  Env: DS4_REAP_PREFETCH_DELTA=1 enable
++ * (default 0 => current 0037/0038 path, nothing fires); DS4_REAP_PREFETCH_THREADS
++ * reused for the worker count.  Separate flag from the working-set WRAP gate. */
++typedef struct { uint32_t layer; uint32_t expert; } ds4_reap_expert_id;
++
++static volatile int g_reap_prefetch_delta_busy;
++
++static bool ds4_reap_prefetch_delta_enabled(void) {
++    static int checked, enabled;
++    if (!checked) {
++        checked = 1;
++        const char *p = getenv("DS4_REAP_PREFETCH_DELTA");
++        enabled = (p && *p && strcmp(p, "0") != 0) ? 1 : 0;
++    }
++    return enabled != 0;
++}
++
++typedef struct {
++    const ds4_model    *model;
++    const ds4_weights  *weights;
++    ds4_reap_expert_id *ids;   /* owned; freed by the worker thread */
++    uint32_t            n;
++    int                 log;
++} ds4_reap_prefetch_batch_args;
++
++static void *ds4_reap_prefetch_batch_main(void *argp) {
++    ds4_reap_prefetch_batch_args args = *(ds4_reap_prefetch_batch_args *)argp;
++    free(argp);
++    const ds4_model    *model   = args.model;
++    const ds4_weights  *weights = args.weights;
++    ds4_reap_expert_id *ids     = args.ids;
++    const uint32_t      nid     = args.n;
++    const int           log_it  = args.log;
++    const double t0 = now_sec();
++
++    uint32_t cap = nid * 3u + 3u, n = 0;
++    metal_graph_stream_pagein_range *ranges = xmalloc(cap * sizeof(*ranges));
++    for (uint32_t i = 0; i < nid; i++) {
++        const uint32_t il = ids[i].layer;
++        const uint32_t e  = ids[i].expert;
++        if (il >= DS4_N_LAYER || il >= DS4_MAX_LAYER) continue;
++        if (e  >= DS4_N_EXPERT || e  >= DS4_MAX_EXPERT) continue;
++        const ds4_layer_weights *layer = &weights->layer[il];
++        if (!layer->ffn_gate_exps || !layer->ffn_up_exps ||
++            !layer->ffn_down_exps) {
++            continue;
++        }
++        const uint64_t gate_eb = layer->ffn_gate_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_gate_exps);
++        const uint64_t up_eb = layer->ffn_up_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_up_exps);
++        const uint64_t down_eb = layer->ffn_down_exps->dim[1] *
++            routed_expert_row_bytes(layer->ffn_down_exps);
++        if (gate_eb == 0 || up_eb == 0 || down_eb == 0) continue;
++        if (n + 3u > cap) {
++            cap *= 2u;
++            ranges = xrealloc(ranges, cap * sizeof(*ranges));
++        }
++        ranges[n].off  = layer->ffn_gate_exps->abs_offset + (uint64_t)e * gate_eb;
++        ranges[n].size = gate_eb; n++;
++        ranges[n].off  = layer->ffn_up_exps->abs_offset   + (uint64_t)e * up_eb;
++        ranges[n].size = up_eb;   n++;
++        ranges[n].off  = layer->ffn_down_exps->abs_offset + (uint64_t)e * down_eb;
++        ranges[n].size = down_eb; n++;
++    }
++    free(ids);
++    if (n == 0) {
++        free(ranges);
++        g_reap_prefetch_delta_busy = 0;
++        return NULL;
++    }
++    qsort(ranges, n, sizeof(*ranges), ds4_reap_prefetch_range_cmp);
++
++    metal_graph_stream_pagein_job job;
++    memset(&job, 0, sizeof(job));
++    job.model    = model;
++    job.ranges   = ranges;
++    job.n_ranges = n;
++    job.ok       = true;
++
++    uint32_t n_threads = 8;
++    {
++        const char *tv = getenv("DS4_REAP_PREFETCH_THREADS");
++        if (tv && *tv) {
++            char *end = NULL;
++            unsigned long v = strtoul(tv, &end, 10);
++            if (end != tv && *end == '\0' && v > 0) {
++                n_threads = v > 16 ? 16u : (uint32_t)v;
++            }
++        }
++    }
++    if (n_threads > n) n_threads = n;
++
++    metal_graph_stream_pagein_worker *workers =
++        xmalloc(n_threads * sizeof(*workers));
++    pthread_t *threads = xmalloc(n_threads * sizeof(*threads));
++    memset(workers, 0, n_threads * sizeof(*workers));
++    uint32_t started = 0;
++    for (uint32_t i = 0; i < n_threads; i++) {
++        workers[i].job    = &job;
++        workers[i].first  = i;
++        workers[i].stride = n_threads;
++        if (pthread_create(&threads[i], NULL,
++                           metal_graph_stream_pagein_worker_main,
++                           &workers[i]) != 0) {
++            workers[i].stride = 0;
++            break;
++        }
++        started++;
++    }
++    uint64_t touched = 0;
++    bool ok = started > 0;
++    for (uint32_t i = 0; i < started; i++) {
++        pthread_join(threads[i], NULL);
++        touched += workers[i].touched;
++        ok = ok && workers[i].ok;
++    }
++
++    if (log_it) {
++        fprintf(stderr,
++                "ds4: REAP prefetch (fattorino delta): %u expert, %u range, "
++                "%.1f MiB touched in %.0f ms (%u thread%s%s)\n",
++                nid, n,
++                (double)touched / (1024.0 * 1024.0),
++                (now_sec() - t0) * 1000.0,
++                started,
++                started == 1 ? "" : "s",
++                ok ? "" : ", ERRORI");
++    }
++
++    free(threads);
++    free(workers);
++    free(ranges);
++    g_reap_prefetch_delta_busy = 0;
++    return NULL;
++}
++
++/* Fire the delta page-in async.  Copies the id list into thread-owned args so
++ * the caller's buffer (and any later mask mutation) cannot race the worker.
++ * Bounds one delta in flight via g_reap_prefetch_delta_busy; a skipped batch is
++ * harmless because the next swap batch re-warms.  Fire-and-forget (detached);
++ * no join on the decode path => cannot stall decode. */
++static void ds4_reap_prefetch_batch(const ds4_model          *model,
++                                    const ds4_weights        *weights,
++                                    const ds4_reap_expert_id *ids,
++                                    uint32_t                  n) {
++    if (!ds4_reap_prefetch_delta_enabled()) return;
++    if (!model || !weights || !ids || n == 0) return;
++    if (__sync_lock_test_and_set(&g_reap_prefetch_delta_busy, 1)) {
++        return;                 /* a delta is already in flight */
++    }
++    ds4_reap_prefetch_batch_args *args = xmalloc(sizeof(*args));
++    args->model   = model;
++    args->weights = weights;
++    args->ids     = xmalloc((size_t)n * sizeof(*args->ids));
++    memcpy(args->ids, ids, (size_t)n * sizeof(*args->ids));
++    args->n       = n;
++    args->log     = 1;
++    pthread_t th;
++    if (pthread_create(&th, NULL, ds4_reap_prefetch_batch_main, args) != 0) {
++        free(args->ids);
++        free(args);
++        g_reap_prefetch_delta_busy = 0;
++        fprintf(stderr, "ds4: REAP prefetch delta: pthread_create fallita\n");
++        return;
++    }
++    pthread_detach(th);
++}
++
++/* 0044: synchronous form used only for the provisional SPEX lane. All IDs in
++ * the lane are handed to one WRAP worker batch and the target mask is not
++ * exposed until every page-touch worker has joined. */
++static int ds4_reap_prefetch_batch_sync(const ds4_model          *model,
++                                        const ds4_weights        *weights,
++                                        const ds4_reap_expert_id *ids,
++                                        uint32_t                  n) {
++    if (!ds4_reap_prefetch_delta_enabled() || !model || !weights || !ids || n == 0)
++        return 0;
++    if (__sync_lock_test_and_set(&g_reap_prefetch_delta_busy, 1)) return 0;
++    ds4_reap_prefetch_batch_args *args = xmalloc(sizeof(*args));
++    args->model   = model;
++    args->weights = weights;
++    args->ids     = xmalloc((size_t)n * sizeof(*args->ids));
++    memcpy(args->ids, ids, (size_t)n * sizeof(*args->ids));
++    args->n       = n;
++    args->log     = 0;
++    (void)ds4_reap_prefetch_batch_main(args);
++    return 1;
++}
++
+ 
+ /* ======================================================================== *
+  * PACE - Perceptive Adaptive Control Engine (patch 0014)
+@@ -12890,12 +13388,59 @@ static void ds4_pace_init(void) {
+             g_pace.lm_bootstrap   = pace_env_i("DS4_PACE_LIVEMASK_BOOTSTRAP", 10);
+             if (g_pace.lm_bootstrap < 1) g_pace.lm_bootstrap = 1;
+             g_pace.lm_window      = pace_env_i("DS4_PACE_LIVEMASK_WINDOW", 16);
+-            if (g_pace.lm_window < 10) g_pace.lm_window = 10;   /* clamp 10..20 */
+-            if (g_pace.lm_window > 20) g_pace.lm_window = 20;
++            if (g_pace.lm_window < 3) g_pace.lm_window = 3;   /* clamp 10..20 */
++            if (g_pace.lm_window > 32) g_pace.lm_window = 32;
+             if (g_pace.lm_window > DS4_LM_WIN_MAX) g_pace.lm_window = DS4_LM_WIN_MAX;
+             g_pace.lm_k           = pace_env_i("DS4_PACE_LIVEMASK_K", 8);
+             if (g_pace.lm_k < (int)DS4_N_EXPERT_USED) g_pace.lm_k = (int)DS4_N_EXPERT_USED;
+             if (g_pace.lm_k > (int)DS4_N_EXPERT) g_pace.lm_k = (int)DS4_N_EXPERT;
++            /* patch 0045: adaptive width from acceleration in the count of
++             * strong full-router experts blocked by the effective mask. */
++            g_pace.lm_adaptive_k = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_ADAPTIVE", 0) ? 1 : 0;
++            g_pace.lm_k_min = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_MIN", g_pace.lm_k);
++            g_pace.lm_k_max = pace_env_i(
++                "DS4_PACE_LIVEMASK_K_MAX", g_pace.lm_k);
++            if (g_pace.lm_k_min < (int)DS4_N_EXPERT_USED)
++                g_pace.lm_k_min = (int)DS4_N_EXPERT_USED;
++            if (g_pace.lm_k_max > (int)DS4_N_EXPERT)
++                g_pace.lm_k_max = (int)DS4_N_EXPERT;
++            if (g_pace.lm_k_max < g_pace.lm_k_min)
++                g_pace.lm_k_max = g_pace.lm_k_min;
++            if (g_pace.lm_adaptive_k) g_pace.lm_k = g_pace.lm_k_min;
++            g_pace.lm_knock_threshold = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_THRESHOLD", 0.15);
++            if (g_pace.lm_knock_threshold < 0.0)
++                g_pace.lm_knock_threshold = 0.0;
++            if (g_pace.lm_knock_threshold > 1.0)
++                g_pace.lm_knock_threshold = 1.0;
++            g_pace.lm_knock_gain = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_GAIN", 0.5);
++            if (g_pace.lm_knock_gain < 0.0) g_pace.lm_knock_gain = 0.0;
++            g_pace.lm_knock_step_up = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_STEP_UP", 4);
++            if (g_pace.lm_knock_step_up < 1) g_pace.lm_knock_step_up = 1;
++            g_pace.lm_knock_step_down = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_STEP_DOWN", 1);
++            if (g_pace.lm_knock_step_down < 1)
++                g_pace.lm_knock_step_down = 1;
++            g_pace.lm_knock_deadband = pace_env_d(
++                "DS4_PACE_LIVEMASK_KNOCK_DEADBAND", 2.0);
++            if (g_pace.lm_knock_deadband < 0.0)
++                g_pace.lm_knock_deadband = 0.0;
++            g_pace.lm_knock_update_every = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_UPDATE_EVERY", 2);
++            if (g_pace.lm_knock_update_every < 1)
++                g_pace.lm_knock_update_every = 1;
++            g_pace.lm_knock_prefetch = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_PREFETCH", 0) ? 1 : 0;
++            g_pace.lm_knock_min_history = pace_env_i(
++                "DS4_PACE_LIVEMASK_KNOCK_MIN_HISTORY", 2);
++            if (g_pace.lm_knock_min_history < 1)
++                g_pace.lm_knock_min_history = 1;
++            if (g_pace.lm_knock_min_history > g_pace.lm_window)
++                g_pace.lm_knock_min_history = g_pace.lm_window;
+             g_pace.lm_observe_top = pace_env_i("DS4_PACE_LIVEMASK_OBSERVE_TOP", 16);
+             if (g_pace.lm_observe_top < 1) g_pace.lm_observe_top = 1;
+             if (g_pace.lm_observe_top > DS4_LM_OBS_MAX) g_pace.lm_observe_top = DS4_LM_OBS_MAX;
+@@ -12990,6 +13535,18 @@ static void ds4_pace_init(void) {
+                 g_pace.lm_bootstrap, g_pace.lm_window, g_pace.lm_k,
+                 g_pace.lm_observe_top, g_pace.lm_x, g_pace.lm_max_swaps,
+                 g_pace.lm_cooldown, g_pace.lm_hyst, g_pace.lm_weighted, g_pace.lm_pin);
++            if (g_pace.lm_adaptive_k)
++                fprintf(stderr,
++                    "ds4: PACE LIVEMASK adaptive-K ON - K=%d..%d "
++                    "strong_weight>=%.3f gain=%.3f step=+%d/-%d "
++                    "deadband=%.3f every=%d prefetch=%d history=%d..%d\n",
++                    g_pace.lm_k_min, g_pace.lm_k_max,
++                    g_pace.lm_knock_threshold, g_pace.lm_knock_gain,
++                    g_pace.lm_knock_step_up, g_pace.lm_knock_step_down,
++                    g_pace.lm_knock_deadband,
++                    g_pace.lm_knock_update_every,
++                    g_pace.lm_knock_prefetch,
++                    g_pace.lm_knock_min_history, g_pace.lm_window);
+             if (g_pace.lm_k <= 8)
+                 fprintf(stderr, "ds4: PACE LIVEMASK note: K=%d is the AGGRESSIVE stress config; "
+                     "wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.\n", g_pace.lm_k);
+@@ -13244,6 +13801,25 @@ static void ds4_pace_livemask_note_probs(uint32_t il, const float *probs) {
+     uint16_t *id = &g_pace.lm_cur_id[(size_t)il * DS4_LM_OBS_MAX];
+     float    *sh = &g_pace.lm_cur_share[(size_t)il * DS4_LM_OBS_MAX];
+     g_pace.lm_cur_n[il] = ds4_pace_livemask_topk(probs, id, sh, g_pace.lm_observe_top);
++
++    if (g_pace.lm_adaptive_k && g_pace.lm_seeded) {
++        uint16_t strong_id[DS4_MAX_EXPERT_USED];
++        float strong_share[DS4_MAX_EXPERT_USED];
++        int strong_n = ds4_pace_livemask_topk(
++            probs, strong_id, strong_share, DS4_N_EXPERT_USED);
++        double selected_sum = 0.0;
++        for (int i = 0; i < strong_n; i++) selected_sum += strong_share[i];
++        if (selected_sum > 0.0) {
++            for (int i = 0; i < strong_n; i++) {
++                const uint32_t e = strong_id[i];
++                const double selected_weight = strong_share[i] / selected_sum;
++                if (selected_weight >= g_pace.lm_knock_threshold &&
++                    ds4_reap_mask_effectively_pruned(il, e)) {
++                    g_pace.lm_knock_current++;
++                }
++            }
++        }
++    }
+ }
+ 
+ /* Roll the ring exactly one slot: evict the token leaving the window (subtract
+@@ -13489,6 +14065,117 @@ static void ds4_pace_livemask_pressure_eval(const ds4_weights *weights) {
+     }
+ }
+ 
++/* patch 0045: causal adaptive width. The prior token contributes one global
++ * count of strong full-router experts blocked by the effective mask. Compare
++ * it with the preceding window, integrate the acceleration into K, then grow
++ * or shrink each anchored layer without a wholesale re-rank. */
++static int ds4_pace_livemask_adapt_k(
++        const ds4_weights *weights,
++        ds4_reap_expert_id **promo,
++        uint32_t *promo_n,
++        uint32_t *promo_cap) {
++    if (!g_pace.lm_adaptive_k || !g_pace.lm_seeded) return 0;
++    const int window = g_pace.lm_window > 32 ? 32 : g_pace.lm_window;
++    double mean = 0.0;
++    for (int i = 0; i < g_pace.lm_knock_ring_fill; i++)
++        mean += g_pace.lm_knock_ring[i];
++    if (g_pace.lm_knock_ring_fill > 0)
++        mean /= g_pace.lm_knock_ring_fill;
++    const uint32_t current = g_pace.lm_knock_current;
++    const double acceleration = (double)current - mean;
++
++    if (window > 0) {
++        g_pace.lm_knock_ring[g_pace.lm_knock_ring_pos] = current;
++        g_pace.lm_knock_ring_pos = (g_pace.lm_knock_ring_pos + 1) % window;
++        if (g_pace.lm_knock_ring_fill < window)
++            g_pace.lm_knock_ring_fill++;
++    }
++    g_pace.lm_knock_current = 0;
++
++    const int old_k = g_pace.lm_k;
++    int new_k = old_k;
++    const uint32_t since_seed = g_pace.lm_tok - g_pace.lm_seed_tok;
++    const int update_due =
++        (since_seed % (uint32_t)g_pace.lm_knock_update_every) == 0;
++    if (update_due &&
++        g_pace.lm_knock_ring_fill >= g_pace.lm_knock_min_history) {
++        int delta_k = 0;
++        if (fabs(acceleration) > g_pace.lm_knock_deadband)
++            delta_k = (int)lround(g_pace.lm_knock_gain * acceleration);
++        if (delta_k > g_pace.lm_knock_step_up)
++            delta_k = g_pace.lm_knock_step_up;
++        if (delta_k < -g_pace.lm_knock_step_down)
++            delta_k = -g_pace.lm_knock_step_down;
++        new_k += delta_k;
++        if (new_k < g_pace.lm_k_min) new_k = g_pace.lm_k_min;
++        if (new_k > g_pace.lm_k_max) new_k = g_pace.lm_k_max;
++    }
++
++    int dirty = 0;
++    uint32_t ne = DS4_N_EXPERT;
++    if (ne > DS4_MAX_EXPERT) ne = DS4_MAX_EXPERT;
++    if (new_k != old_k) {
++        for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
++            if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
++            const double *ws =
++                &g_pace.lm_wshare[(size_t)il * DS4_MAX_EXPERT];
++            if (new_k > old_k) {
++                for (int slot = old_k; slot < new_k; slot++) {
++                    int best = -1;
++                    double best_mass = -1.0;
++                    for (uint32_t e = 0; e < ne; e++) {
++                        if (!g_reap_mask_pruned[il][e]) continue;
++                        if (ws[e] > best_mass) {
++                            best = (int)e;
++                            best_mass = ws[e];
++                        }
++                    }
++                    if (best < 0) break;
++                    g_reap_mask_pruned[il][best] = 0;
++                    if (promo && promo_n && promo_cap) {
++                        if (*promo_n == *promo_cap) {
++                            *promo_cap = *promo_cap ? *promo_cap * 2u : 64u;
++                            *promo = xrealloc(
++                                *promo, *promo_cap * sizeof(**promo));
++                        }
++                        (*promo)[*promo_n].layer = il;
++                        (*promo)[*promo_n].expert = (uint32_t)best;
++                        (*promo_n)++;
++                    }
++                    dirty = 1;
++                }
++            } else {
++                for (int slot = old_k; slot > new_k; slot--) {
++                    int victim = -1;
++                    double victim_mass = 1e300;
++                    for (uint32_t e = 0; e < ne; e++) {
++                        if (g_reap_mask_pruned[il][e]) continue;
++                        if (ws[e] < victim_mass) {
++                            victim = (int)e;
++                            victim_mass = ws[e];
++                        }
++                    }
++                    if (victim < 0) break;
++                    g_reap_mask_pruned[il][victim] = 1;
++                    dirty = 1;
++                }
++            }
++        }
++        g_pace.lm_k = new_k;
++    }
++
++    if (g_pace.lm_log) {
++        fprintf(g_pace.lm_log,
++                "{\"ev\":\"adaptive_k\",\"tok\":%u,\"strong\":%u,"
++                "\"mean10\":%.6g,\"accel\":%.6g,\"old_k\":%d,"
++                "\"new_k\":%d,\"history\":%d,\"update_due\":%d}\n",
++                g_pace.lm_tok, current, mean, acceleration, old_k, new_k,
++                g_pace.lm_knock_ring_fill, update_due);
++        fflush(g_pace.lm_log);
++    }
++    return dirty;
++}
++
+ /* Continuous loop: per eligible layer, cooldown-gated, up to max_swaps one-in/
+  * one-out swaps. Triple-gate: sustained knock (count>=X), candidate hotter by
+  * hyst, per-layer cooldown. K stays constant; window roll-off is the decay.
+@@ -13551,6 +14238,15 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+     int lm_x_eff         = g_pace.lm_pressure_active ? g_pace.lm_pressure_x         : g_pace.lm_x;
+     int lm_max_swaps_eff = g_pace.lm_pressure_active ? g_pace.lm_pressure_max_swaps : g_pace.lm_max_swaps;
+     int dirty = 0;
++    const int pf_on = ds4_reap_prefetch_delta_enabled();   /* fattorino delta */
++    const int adaptive_pf_on = pf_on && g_pace.lm_knock_prefetch;
++    ds4_reap_expert_id *promo = NULL;
++    uint32_t promo_n = 0, promo_cap = 0;
++    dirty |= ds4_pace_livemask_adapt_k(
++        weights,
++        adaptive_pf_on ? &promo : NULL,
++        adaptive_pf_on ? &promo_n : NULL,
++        adaptive_pf_on ? &promo_cap : NULL);
+     for (uint32_t il = 0; il < DS4_N_LAYER && il < DS4_MAX_LAYER; il++) {
+         if (!ds4_pace_livemask_layer_ok(weights, il)) continue;
+         if ((g_pace.lm_tok - g_pace.lm_last_swap_tok[il]) <
+@@ -13609,6 +14305,15 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+             g_pace.lm_last_swap_tok[il]  = g_pace.lm_tok;
+             if (g_pace.lm_promo_rate_cap > 0) g_pace.lm_promo_win_count++;
+             dirty = 1;
++            if (pf_on) {                       /* fattorino delta: record promo */
++                if (promo_n == promo_cap) {
++                    promo_cap = promo_cap ? promo_cap * 2u : 32u;
++                    promo = xrealloc(promo, promo_cap * sizeof(*promo));
++                }
++                promo[promo_n].layer  = il;
++                promo[promo_n].expert = (uint32_t)cand;
++                promo_n++;
++            }
+             if (g_pace.lm_log) {
+                 fprintf(g_pace.lm_log,
+                     "{\"ev\":\"swap\",\"tok\":%u,\"layer\":%u,\"in\":%d,"
+@@ -13628,6 +14333,11 @@ static void ds4_pace_livemask_scan(const ds4_model *model,
+      * has settled (every token, not only on swaps - the windowed mass changes
+      * each token). No-op at the off default. */
+     ds4_pace_livemask_publish_pin_mass(weights);
++    /* patch 0043 (fattorino): async RAM page-in of the experts promoted THIS
++     * scan so their first decode load hits page cache, not a cold SSD read.
++     * OFF (DS4_REAP_PREFETCH_DELTA unset) => promo_n==0 path never taken. */
++    if (pf_on && promo_n) ds4_reap_prefetch_batch(model, weights, promo, promo_n);
++    free(promo);
+ }
+ 
+ /* Per-decode-token driver. EXACT ORDERING kills the off-by-one:
+@@ -13686,6 +14396,19 @@ static void ds4_pace_livemask_reset(const ds4_model *model,
+     g_pace.lm_pressure_blocked_mass = 0.0;
+     g_pace.lm_pressure_resident_mass = 0.0;
+     g_pace.lm_pressure_eligible_cool = 0;
++    /* patch 0045: every prompt starts from the configured lower bound with a
++     * clean strong-knock history. */
++    if (g_pace.lm_adaptive_k) g_pace.lm_k = g_pace.lm_k_min;
++    g_pace.lm_knock_current = 0;
++    memset(g_pace.lm_knock_ring, 0, sizeof(g_pace.lm_knock_ring));
++    g_pace.lm_knock_ring_pos = 0;
++    g_pace.lm_knock_ring_fill = 0;
++    /* 0044: no provisional expert survives a prompt boundary. The full mask
++     * apply below then restores a true K0 bootstrap without stale overlays. */
++    if (ds4_spex_mask_add_cap() > 0) {
++        memset(g_reap_spex_pin, 0, sizeof(g_reap_spex_pin));
++        g_reap_pin_epoch++;
++    }
+     /* patch 0040: clear the published pin-mass on the prompt boundary so the
+      * consumer never reads stale cross-prompt mass; bump epoch to signal it. */
+     if (g_pace.lm_pin_by_mass) {
+@@ -13955,6 +14678,9 @@ static void ds4_pace_emit(const char *ev, double score, double hit);
+ static void ds4_pace_reset_for_prefill(const ds4_model *model,
+                                        const ds4_weights *weights,
+                                        const char *why) {
++    /* 0045: SPEX is independent of LIVEMASK and must never retain a lane or
++     * prediction history across requests when the PACE core owns the mask. */
++    ds4_spex_mask_reset_state();
+     /* patch 0035: LIVEMASK re-bootstraps at K0 on every new prompt. Runs before
+      * the DS4_PACE gate so it fires even when the full controller is off. */
+     ds4_pace_livemask_reset(model, weights);
+@@ -16543,6 +17269,7 @@ static bool metal_graph_spex_hidden_score_gpu(
+         uint32_t       il) {
+ #if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
+     if (!metal_graph_spex_hidden_gpu_score_enabled()) return true;
++    if (ds4_spex_mask_add_cap() > 0 && !ds4_spex_mask_core_ready()) return true;
+     if (!g || !g->ffn_norm || !g->spex_hidden_scores || !g->spex_hidden_topk) {
+         return false;
+     }
+@@ -16590,6 +17317,7 @@ static bool metal_graph_spex_hidden_score_gpu(
+             g_spex_hidden_gpu_prefetch_stats.scheduled++;
+             g->spex_hidden_gpu_topk_layer = il;
+             g->spex_hidden_gpu_topk_count = cap;
++            g->spex_hidden_gpu_topk_pos = g->spex_trace_pos;
+             g->spex_hidden_gpu_topk_valid = true;
+         } else {
+             metal_graph_spex_hidden_gpu_prefetch_stats_touch();
+@@ -16607,6 +17335,7 @@ static bool metal_graph_spex_hidden_score_gpu(
+     } else {
+         g->spex_hidden_gpu_topk_layer = il;
+         g->spex_hidden_gpu_topk_count = cap;
++        g->spex_hidden_gpu_topk_pos = g->spex_trace_pos;
+         g->spex_hidden_gpu_topk_valid = true;
+     }
+ 
+@@ -16639,6 +17368,7 @@ static uint32_t metal_graph_spex_hidden_gpu_topk_read(
+         !g->spex_hidden_topk_readback ||
+         !g->spex_hidden_gpu_topk_valid ||
+         g->spex_hidden_gpu_topk_layer != il ||
++        g->spex_hidden_gpu_topk_pos != g->spex_trace_pos ||
+         g->spex_hidden_gpu_topk_count == 0) {
+         return 0;
+     }
+@@ -17041,6 +17771,208 @@ static void metal_graph_spex_note_selected(
+     g->spex_prefetch_selected_valid = true;
+ }
+ 
++/* patch 0044: additive SPEX mask lane. The core remains K-by-mass in
++ * g_reap_mask_pruned; these are duplicate-free provisional experts on top. */
++static uint32_t ds4_spex_mask_add_cap(void) {
++    return metal_graph_spex_env_u32("DS4_PACE_LIVEMASK_SPEX_ADD", 0, 16);
++}
++
++static uint32_t ds4_spex_mask_cadence(void) {
++    return metal_graph_spex_env_u32(
++        "DS4_PACE_LIVEMASK_SPEX_CADENCE", 1, 64);
++}
++
++static void ds4_spex_mask_reset_state(void) {
++    int had_pin = 0;
++    for (uint32_t il = 0; il < DS4_MAX_LAYER && !had_pin; il++) {
++        for (uint32_t e = 0; e < DS4_MAX_EXPERT; e++) {
++            if (g_reap_spex_pin[il][e]) {
++                had_pin = 1;
++                break;
++            }
++        }
++    }
++    memset(g_reap_spex_pin, 0, sizeof(g_reap_spex_pin));
++    memset(g_reap_spex_support, 0, sizeof(g_reap_spex_support));
++    memset(g_reap_spex_support_samples, 0,
++           sizeof(g_reap_spex_support_samples));
++    memset(g_reap_spex_last_refresh, 0,
++           sizeof(g_reap_spex_last_refresh));
++    memset(g_reap_spex_refreshed, 0,
++           sizeof(g_reap_spex_refreshed));
++    if (had_pin) g_reap_pin_epoch++;
++}
++
++static uint32_t ds4_spex_mask_copy_active(uint32_t il,
++                                          int32_t *out,
++                                          uint32_t out_cap) {
++    if (il >= DS4_MAX_LAYER || !out || out_cap == 0) return 0;
++    uint32_t n = 0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && n < out_cap; e++) {
++        if (g_reap_spex_pin[il][e]) out[n++] = (int32_t)e;
++    }
++    return n;
++}
++
++static int ds4_spex_mask_wrap_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_PACE_LIVEMASK_SPEX_WRAP");
++        cached = v && v[0] && strcmp(v, "0") != 0;
++    }
++    return cached;
++}
++
++static FILE *ds4_spex_mask_log(void) {
++    static FILE *fh;
++    static int checked;
++    if (!checked) {
++        checked = 1;
++        const char *path = getenv("DS4_PACE_LIVEMASK_SPEX_LOG");
++        if (path && path[0]) fh = fopen(path, "w");
++    }
++    return fh;
++}
++
++static uint32_t ds4_spex_mask_update_layer(
++        const ds4_model   *model,
++        const ds4_weights *weights,
++        uint32_t           pos,
++        uint32_t           source_il,
++        uint32_t           target_il,
++        const int32_t     *ranked_ids,
++        uint32_t           ranked_n,
++        int32_t           *out_add,
++        uint32_t           out_cap) {
++    const uint32_t cap = ds4_spex_mask_add_cap();
++    if (cap == 0 || !ds4_spex_mask_core_ready() ||
++        target_il >= DS4_N_LAYER || target_il >= DS4_MAX_LAYER) {
++        return 0;
++    }
++    double *support = g_reap_spex_support[target_il];
++    for (uint32_t i = 0; ranked_ids && i < ranked_n; i++) {
++        const int32_t id = ranked_ids[i];
++        if (id < 0 || (uint32_t)id >= DS4_N_EXPERT) continue;
++        /* Borda-style rank support in (0,1]. It lets this cadence experiment
++         * aggregate prediction persistence without pretending SPX1 logits are
++         * calibrated gate probabilities. */
++        support[(uint32_t)id] +=
++            (double)(ranked_n - i) / (double)ranked_n;
++    }
++    if (ranked_n > 0) g_reap_spex_support_samples[target_il]++;
++
++    const uint32_t cadence = ds4_spex_mask_cadence();
++    const int refresh = !g_reap_spex_refreshed[target_il] ||
++        pos - g_reap_spex_last_refresh[target_il] >= cadence;
++    if (!refresh) {
++        return ds4_spex_mask_copy_active(target_il, out_add, out_cap);
++    }
++
++    uint8_t next[DS4_MAX_EXPERT];
++    memset(next, 0, sizeof(next));
++    uint32_t n = 0;
++    while (n < cap && n < out_cap) {
++        int32_t best = -1;
++        double best_support = 0.0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++            if (!g_reap_mask_pruned[target_il][e] || next[e]) continue;
++            if (support[e] > best_support ||
++                (support[e] == best_support && support[e] > 0.0 &&
++                 (best < 0 || e < (uint32_t)best))) {
++                best = (int32_t)e;
++                best_support = support[e];
++            }
++        }
++        if (best < 0 || best_support <= 0.0) break;
++        next[(uint32_t)best] = 1;
++        n++;
++    }
++
++    uint8_t *cur = g_reap_spex_pin[target_il];
++    /* No usable prediction means hold the current lane; never turn a transient
++     * readback miss into an eviction of all provisional experts. */
++    if (n == 0) memcpy(next, cur, DS4_N_EXPERT);
++
++    ds4_reap_expert_id batch[16];
++    uint32_t entrants = 0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT && entrants < 16; e++) {
++        if (next[e] && !cur[e]) {
++            batch[entrants].layer = target_il;
++            batch[entrants].expert = e;
++            entrants++;
++        }
++    }
++
++    int wrap_ready = 1;
++    double wrap_ms = 0.0;
++    if (entrants > 0 && ds4_spex_mask_wrap_enabled()) {
++        const double wrap_t0 = now_sec();
++        wrap_ready = ds4_reap_prefetch_batch_sync(
++            model, weights, batch, entrants);
++        wrap_ms = (now_sec() - wrap_t0) * 1000.0;
++    }
++
++    int changed = 0;
++    if (wrap_ready) {
++        changed = memcmp(cur, next, DS4_N_EXPERT) != 0;
++        if (changed) {
++            memcpy(cur, next, DS4_N_EXPERT);
++            g_reap_pin_epoch++;
++            (void)ds4_reap_mask_apply_layer(model, weights, target_il);
++        }
++        g_reap_spex_last_refresh[target_il] = pos;
++        g_reap_spex_refreshed[target_il] = 1;
++        memset(support, 0, DS4_MAX_EXPERT * sizeof(*support));
++        g_reap_spex_support_samples[target_il] = 0;
++    }
++    n = ds4_spex_mask_copy_active(target_il, out_add, out_cap);
++
++    FILE *fh = ds4_spex_mask_log();
++    if (fh) {
++        fprintf(fh,
++                "{\"ev\":\"spex_add\",\"pos\":%u,\"source_layer\":%u,"
++                "\"target_layer\":%u,\"ranked\":%u,\"active\":%u,"
++                "\"entrants\":%u,\"cadence\":%u,\"changed\":%d,"
++                "\"wrap_ready\":%d,\"wrap_ms\":%.3f,"
++                "\"ids\":[",
++                pos, source_il, target_il, ranked_n, n, entrants, cadence, changed,
++                wrap_ready, wrap_ms);
++        for (uint32_t i = 0; i < n; i++)
++            fprintf(fh, "%s%d", i ? "," : "", out_add[i]);
++        fprintf(fh, "]}\n");
++        fflush(fh);
++    }
++    return n;
++}
++
++/* End the one-layer lease after the target router has selected and its expert
++ * load has been submitted. The slot stays physically pinned until the next
++ * cache reconciliation, so an in-flight upload/compute cannot lose residency. */
++static void ds4_spex_mask_consume_layer(const ds4_model   *model,
++                                        const ds4_layer_weights *layer,
++                                        uint32_t           pos,
++                                        uint32_t           il) {
++    if (ds4_spex_mask_add_cap() == 0 || il >= DS4_MAX_LAYER) return;
++    /* Cadence > 1 is a multi-token lease. The lane is replaced atomically by
++     * the next admission epoch instead of being discarded after one use. */
++    if (ds4_spex_mask_cadence() > 1) return;
++    uint8_t *row = g_reap_spex_pin[il];
++    uint32_t released = 0;
++    for (uint32_t e = 0; e < DS4_N_EXPERT; e++) released += row[e] != 0;
++    if (released == 0) return;
++    memset(row, 0, DS4_N_EXPERT);
++    g_reap_pin_epoch++;
++    (void)ds4_reap_mask_apply_layer_direct(model, layer, il);
++    FILE *fh = ds4_spex_mask_log();
++    if (fh) {
++        fprintf(fh,
++                "{\"ev\":\"spex_consume\",\"pos\":%u,\"layer\":%u,"
++                "\"released\":%u}\n",
++                pos, il, released);
++        fflush(fh);
++    }
++}
++
+ static bool metal_graph_spex_prefetch_next_layer(
+         ds4_gpu_graph     *g,
+         const ds4_model   *model,
+@@ -17048,10 +17980,16 @@ static bool metal_graph_spex_prefetch_next_layer(
+         uint32_t           il) {
+ #if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
+     if (!metal_graph_spex_prefetch_next_layer_enabled(g)) return true;
+-    if (!model || !weights || !g->spex_prefetch_selected_valid ||
+-        g->spex_prefetch_selected_layer != il) {
+-        return true;
+-    }
++    if (!model || !weights) return true;
++    const char *spex_path = metal_graph_spex_file_path();
++    const bool hidden_file = spex_path &&
++        (g_spex_hidden_params.loaded ||
++         (!g_spex_markov_params.loaded &&
++          ds4_spex_path_magic_is(spex_path, "SPX1")));
++    /* Hidden SPX1 needs only the source hidden state, not a routed-MoE
++     * selection. This matters for dense source L2 -> first routed layer L3. */
++    if ((!g->spex_prefetch_selected_valid ||
++         g->spex_prefetch_selected_layer != il) && !hidden_file) return true;
+     g->spex_prefetch_selected_valid = false;
+     if (il + 1u >= DS4_N_LAYER) return true;
+ 
+@@ -17071,7 +18009,6 @@ static bool metal_graph_spex_prefetch_next_layer(
+     }
+ 
+     int32_t prefetch_ids[DS4_MAX_EXPERT];
+-    const char *spex_path = metal_graph_spex_file_path();
+     const bool hidden_path = spex_path &&
+         (g_spex_hidden_params.loaded ||
+          (!g_spex_markov_params.loaded &&
+@@ -17083,6 +18020,7 @@ static bool metal_graph_spex_prefetch_next_layer(
+     uint32_t prefetch_n = 0;
+     const char *profile_label = "stage1";
+     bool used_hidden_gpu_prefetch = false;
++    bool hidden_gpu_dry = false;
+     if (hidden_spex) {
+         const bool gpu_prefetch =
+             metal_graph_spex_hidden_gpu_prefetch_enabled();
+@@ -17109,14 +18047,14 @@ static bool metal_graph_spex_prefetch_next_layer(
+                         metal_graph_spex_hidden_gpu_prefetch_dry_run() ? 1 : 0);
+             }
+             profile_label = "hidden-gpu";
+-            if (metal_graph_spex_hidden_gpu_prefetch_dry_run()) {
++            hidden_gpu_dry = metal_graph_spex_hidden_gpu_prefetch_dry_run();
++            if (hidden_gpu_dry) {
+                 metal_graph_spex_hidden_gpu_prefetch_stats_touch();
+                 g_spex_hidden_gpu_prefetch_stats.dry_run++;
+                 if (prefetch_n == 0) {
+                     g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
+                 }
+                 metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
+-                return true;
+             }
+         } else {
+             if (!g->cpu_router_norm || !g->ffn_norm) return true;
+@@ -17159,7 +18097,13 @@ static bool metal_graph_spex_prefetch_next_layer(
+             prefetch_ids[i] = g->spex_prefetch_selected[i];
+         }
+     }
+-    if (prefetch_n == 0) {
++    int32_t spex_add_ids[16];
++    const uint32_t spex_add_n = ds4_spex_mask_update_layer(
++        model, weights, g->spex_trace_pos, il, next_il,
++        prefetch_ids, prefetch_n, spex_add_ids, 16);
++    const uint32_t spex_add_cap = ds4_spex_mask_add_cap();
++
++    if (prefetch_n == 0 || (spex_add_cap > 0 && spex_add_n == 0)) {
+         if (used_hidden_gpu_prefetch) {
+             metal_graph_spex_hidden_gpu_prefetch_stats_touch();
+             g_spex_hidden_gpu_prefetch_stats.zero_candidates++;
+@@ -17168,6 +18112,12 @@ static bool metal_graph_spex_prefetch_next_layer(
+         return true;
+     }
+ 
++    /* With the additive mask experiment, residency follows exactly the
++     * duplicate-free provisional lane, never the whole raw SPEX ranking. */
++    const int32_t *wanted_ids = spex_add_cap > 0 ? spex_add_ids : prefetch_ids;
++    const uint32_t wanted_n = spex_add_cap > 0 ? spex_add_n : prefetch_n;
++    if (hidden_gpu_dry) return true;
++
+     const ds4_gpu_stream_expert_table table =
+         graph_stream_expert_table_make(model,
+                                        next_layer,
+@@ -17176,23 +18126,27 @@ static bool metal_graph_spex_prefetch_next_layer(
+                                        down_expert_bytes);
+     uint32_t resident_before = 0;
+     int32_t seed_ids[DS4_MAX_EXPERT];
+-    const int32_t *seed_ids_ptr = prefetch_ids;
+-    uint32_t seed_n = prefetch_n;
+-    if (used_hidden_gpu_prefetch) {
++    const int32_t *seed_ids_ptr = wanted_ids;
++    uint32_t seed_n = wanted_n;
++    if (used_hidden_gpu_prefetch || spex_add_cap > 0) {
+         seed_n = ds4_gpu_stream_expert_cache_filter_missing(&table,
+-                                                            prefetch_ids,
+-                                                            prefetch_n,
++                                                            wanted_ids,
++                                                            wanted_n,
+                                                             seed_ids,
+                                                             DS4_MAX_EXPERT,
+                                                             &resident_before);
+         seed_ids_ptr = seed_ids;
+-        metal_graph_spex_hidden_gpu_prefetch_stats_touch();
+-        g_spex_hidden_gpu_prefetch_stats.candidate_experts += prefetch_n;
+-        g_spex_hidden_gpu_prefetch_stats.resident_before += resident_before;
+-        g_spex_hidden_gpu_prefetch_stats.seed_experts += seed_n;
++        if (used_hidden_gpu_prefetch) {
++            metal_graph_spex_hidden_gpu_prefetch_stats_touch();
++            g_spex_hidden_gpu_prefetch_stats.candidate_experts += wanted_n;
++            g_spex_hidden_gpu_prefetch_stats.resident_before += resident_before;
++            g_spex_hidden_gpu_prefetch_stats.seed_experts += seed_n;
++        }
+         if (seed_n == 0) {
+-            g_spex_hidden_gpu_prefetch_stats.seed_skipped_all_resident++;
+-            metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++            if (used_hidden_gpu_prefetch) {
++                g_spex_hidden_gpu_prefetch_stats.seed_skipped_all_resident++;
++                metal_graph_spex_hidden_gpu_prefetch_stats_maybe_print();
++            }
+             if (metal_graph_spex_prefetch_profile_enabled()) {
+                 fprintf(stderr,
+                         "ds4: SPEX %s prefetch L%u->L%u experts=%u "
+@@ -17200,7 +18154,7 @@ static bool metal_graph_spex_prefetch_next_layer(
+                         profile_label,
+                         il,
+                         next_il,
+-                        prefetch_n,
++                        wanted_n,
+                         seed_n,
+                         resident_before);
+             }
+@@ -17231,7 +18185,7 @@ static bool metal_graph_spex_prefetch_next_layer(
+                 profile_label,
+                 il,
+                 next_il,
+-                prefetch_n,
++                wanted_n,
+                 seed_n,
+                 resident_before,
+                 ok ? 1 : 0);
+@@ -17750,6 +18704,8 @@ static bool metal_graph_decode_cuda_selected_load(
+                     &table,
+                     selected_ids,
+                     DS4_N_EXPERT_USED) != 0;
++        if (ok) ds4_spex_mask_consume_layer(model, layer,
++                                             g->spex_trace_pos, il);
+     }
+     const double t_load = profile ? now_sec() : 0.0;
+ 
+@@ -19295,6 +20251,8 @@ static bool metal_graph_encode_decode_layer(
+                                                il,
+                                                async_load.selected_ids,
+                                                DS4_N_EXPERT_USED);
++                ds4_spex_mask_consume_layer(model, layer,
++                                             g->spex_trace_pos, il);
+             }
+         } else if (ok) {
+             ok = ds4_gpu_commit_and_wait_selected_readback(selected_event,
+@@ -19322,6 +20280,8 @@ static bool metal_graph_encode_decode_layer(
+                             &table,
+                             selected_ids,
+                             DS4_N_EXPERT_USED) != 0;
++                if (ok) ds4_spex_mask_consume_layer(model, layer,
++                                                     g->spex_trace_pos, il);
+             }
+         }
+         if (ok) ok = ds4_gpu_wait_selected_upload() != 0;
+@@ -29525,6 +30485,14 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+             }
+             (void)ds4_gpu_set_model_fd_for_map(e->model.fd, e->model.map);
+         }
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++        /* patch 0050: zero-copy masked window, main model only (not MTP).
++         * Register after the optional MTP setup has restored the main map;
++         * otherwise the temporary MTP map switch correctly releases these
++         * map-owned pins before the first request can use them. No-op unless
++         * DS4_CUDA_STREAM_FROM_RAM_MASKED is set. */
++        ds4_stream_from_ram_masked_register(&e->model, &e->weights);
++#endif
+         fprintf(stderr, "ds4: %s backend initialized for graph diagnostics\n",
+                 ds4_backend_name(e->backend));
+     }
+@@ -29592,11 +30560,14 @@ void ds4_engine_close(ds4_engine *e) {
+     weights_free(&e->weights);
+     vocab_free(&e->vocab);
+     ds4_threads_shutdown();
+-    if (e->mtp_ready) model_close(&e->mtp_model);
+-    model_close(&e->model);
+ #ifndef DS4_NO_GPU
++    /* GPU host registrations must be released while both model mmaps are
++     * still valid. In particular, patch 0050 owns bounded cudaHostRegister
++     * ranges inside e->model.map; munmap-before-unregister is invalid. */
+     ds4_gpu_cleanup();
+ #endif
++    if (e->mtp_ready) model_close(&e->mtp_model);
++    model_close(&e->model);
+     ds4_ssd_memory_lock_release(&e->simulated_memory);
+     ds4_release_instance_lock();
+     free(e->directional_steering_dirs);
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 5f59831..59c0ce8 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -15,6 +15,7 @@
+ #include <sys/stat.h>
+ #include <time.h>
+ #include <unistd.h>
++#include <algorithm>
+ #include <unordered_map>
+ #include <vector>
+ 
+@@ -123,6 +124,11 @@ static cuda_spex_stats g_spex_stats;
+ static uint64_t g_inplace_reuse_hits;
+ static uint64_t g_inplace_admissions;
+ static uint64_t g_inplace_slot_uploads;
++static uint64_t g_inplace_pin_admits;   /* experts pinned at full cap (~= resident working set) */
++static uint64_t g_inplace_pin_rejects;  /* admits that hit the pin-budget wall (residual churn) */
++static uint64_t g_spex_pin_promotions;  /* 0044: provisional SPEX residency priority */
++static uint64_t g_spex_pin_releases;
++static uint64_t g_spex_pin_displacements;
+ static int g_spex_stats_enabled = -1;
+ static int g_spex_stats_atexit_registered;
+ static int g_spex_stats_printed;
+@@ -959,10 +965,18 @@ static void cuda_spex_stats_print(void) {
+     if (g_inplace_reuse_hits || g_inplace_admissions || g_inplace_slot_uploads) {
+         fprintf(stderr,
+                 "ds4: SPEX inplace: reuse_hits=%llu admissions=%llu "
+-                "slot_uploads=%llu (compact re-gather bypassed)\n",
++                "slot_uploads=%llu pin_admits=%llu pin_rejects=%llu "
++                "spex_pin_promotions=%llu spex_pin_releases=%llu "
++                "spex_pin_displacements=%llu "
++                "(compact re-gather bypassed)\n",
+                 (unsigned long long)g_inplace_reuse_hits,
+                 (unsigned long long)g_inplace_admissions,
+-                (unsigned long long)g_inplace_slot_uploads);
++                (unsigned long long)g_inplace_slot_uploads,
++                (unsigned long long)g_inplace_pin_admits,
++                (unsigned long long)g_inplace_pin_rejects,
++                (unsigned long long)g_spex_pin_promotions,
++                (unsigned long long)g_spex_pin_releases,
++                (unsigned long long)g_spex_pin_displacements);
+     }
+ }
+ 
+@@ -1044,6 +1058,7 @@ struct cuda_stream_expert_cache_slot {
+     uint64_t down_expert_bytes;
+     uint64_t age;
+     int pinned;      /* 0031: eviction-immune residency flag (LRU skips it) */
++    int reap_spex_pinned; /* 0044: pin ownership by the provisional SPEX lane */
+     double demand;   /* 0031: EWMA request frequency (cache-local rmass) */
+     double cusum;    /* 0031: CUSUM accumulator for demand-driven rotation */
+     int tier;        /* 0033: residency tier 0=SSD-blocked 1=RAM 2=VRAM-pinned */
+@@ -1067,6 +1082,7 @@ struct cuda_stream_expert_cache {
+     int pin_frozen;
+     uint32_t pin_budget_slots;
+     uint32_t pinned_count;
++    uint32_t reap_pin_epoch_seen; /* 0044: producer overlay generation */
+     uint64_t pin_calls;
+     uint64_t pin_last_rotate;
+     uint64_t pin_rotations;
+@@ -1086,6 +1102,194 @@ struct cuda_stream_expert_cache {
+ static std::vector<cuda_model_range> g_model_ranges;
+ static std::vector<cuda_model_arena> g_model_arenas;
+ static std::unordered_map<uint64_t, size_t> g_model_range_by_offset;
++
++/* patch 0050: PRIVATE index of masked-window ranges pinned via cudaHostRegister
++ * (ds4_gpu_register_masked_ranges). Deliberately NOT stored in
++ * g_model_ranges/g_model_range_by_offset above: those serve
++ * cuda_model_range_ptr()'s "hand a UVA/device pointer straight to a compute
++ * kernel" contract, and a MoE GEMM kernel reading its expert matrix
++ * element-by-element from host RAM over PCIe is a ~25x decode collapse
++ * (measured 0.10 t/s on the 2026-07-12 dev box when these ranges were visible
++ * to cuda_model_range_ptr). This index instead answers a different, narrower
++ * question for cuda_model_copy_to_device_streamed's hot MoE-expert-load path:
++ * "is [offset,offset+bytes) already pinned host memory?" so that path can
++ * DMA-copy straight from the pinned mmap into the VRAM expert-cache slot
++ * (cudaMemcpyAsync at real PCIe bandwidth) instead of pread()-ing into a
++ * staging buffer first -- eliminating the pread+staging toll without changing
++ * the "compute reads VRAM" contract at all. reg_base/reg_bytes remember each
++ * page-aligned cudaHostRegister block for the matching cudaHostUnregister.
++ * Sorted by offset after the batch insert; binary search at lookup time so it
++ * stays cheap with several thousand coalesced ranges. */
++struct cuda_masked_pin_range {
++    uint64_t offset;      /* model-map byte offset of the payload */
++    uint64_t bytes;       /* payload length */
++    void    *reg_base;    /* page-aligned cudaHostRegister address */
++    uint64_t reg_bytes;   /* page-aligned registered length */
++};
++static std::vector<cuda_masked_pin_range> g_masked_pin_ranges;
++static const void *g_masked_pin_host_base;
++
++enum cuda_masked_pin_cover_result {
++    CUDA_MASKED_PIN_COVER_HIT = 0,
++    CUDA_MASKED_PIN_COVER_EMPTY,
++    CUDA_MASKED_PIN_COVER_BASE_MISMATCH,
++    CUDA_MASKED_PIN_COVER_BEFORE_FIRST,
++    CUDA_MASKED_PIN_COVER_RANGE_MISS,
++};
++
++struct cuda_masked_pin_diag_stats {
++    uint64_t queries;
++    uint64_t query_bytes;
++    uint64_t hits;
++    uint64_t hit_bytes;
++    uint64_t dma_ok;
++    uint64_t dma_ok_bytes;
++    uint64_t dma_failed;
++    uint64_t miss_empty;
++    uint64_t miss_base;
++    uint64_t miss_before_first;
++    uint64_t miss_range;
++    int first_miss_logged[5];
++};
++static cuda_masked_pin_diag_stats g_masked_pin_diag;
++
++static bool cuda_masked_pin_diag_enabled(void) {
++    static const bool enabled = []() {
++        const char *v = getenv("DS4_CUDA_STREAM_FROM_RAM_MASKED_DIAG");
++        return v && *v && strcmp(v, "0") != 0;
++    }();
++    return enabled;
++}
++
++static void cuda_masked_pin_diag_report(const char *why) {
++    if (!cuda_masked_pin_diag_enabled()) return;
++    fprintf(stderr,
++            "ds4: CUDA masked zero-copy diag %s: queries=%llu/%.2f MiB "
++            "covered=%llu/%.2f MiB dma_ok=%llu/%.2f MiB dma_failed=%llu "
++            "miss_empty=%llu miss_base=%llu miss_before=%llu miss_range=%llu\n",
++            why ? why : "snapshot",
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.queries, 0),
++            (double)__sync_fetch_and_add(&g_masked_pin_diag.query_bytes, 0) / 1048576.0,
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.hits, 0),
++            (double)__sync_fetch_and_add(&g_masked_pin_diag.hit_bytes, 0) / 1048576.0,
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok, 0),
++            (double)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok_bytes, 0) / 1048576.0,
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.dma_failed, 0),
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.miss_empty, 0),
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.miss_base, 0),
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.miss_before_first, 0),
++            (unsigned long long)__sync_fetch_and_add(&g_masked_pin_diag.miss_range, 0));
++}
++
++static void cuda_masked_pin_finalize(void) {
++    std::sort(g_masked_pin_ranges.begin(), g_masked_pin_ranges.end(),
++              [](const cuda_masked_pin_range &a, const cuda_masked_pin_range &b) {
++                  return a.offset < b.offset;
++              });
++}
++
++static void cuda_masked_pin_release_all(void) {
++    cuda_masked_pin_diag_report("final");
++    for (const cuda_masked_pin_range &r : g_masked_pin_ranges) {
++        if (r.reg_base) {
++            cudaError_t err = cudaHostUnregister(r.reg_base);
++            if (err != cudaSuccess) {
++                fprintf(stderr,
++                        "ds4: CUDA masked zero-copy unregister failed for %p "
++                        "(%.2f MiB): %s\n",
++                        r.reg_base, (double)r.reg_bytes / 1048576.0,
++                        cudaGetErrorString(err));
++                (void)cudaGetLastError();
++            }
++        }
++    }
++    g_masked_pin_ranges.clear();
++    g_masked_pin_host_base = NULL;
++    memset(&g_masked_pin_diag, 0, sizeof(g_masked_pin_diag));
++}
++
++/* Pin one [offset,bytes) span of the model map with page-aligned
++ * cudaHostRegister (ReadOnly first, plain retry on the same error class the
++ * per-range register above handles) and remember it in the private index.
++ * No cudaHostGetDevicePointer, no g_model_ranges entry: compute-kernel
++ * lookups must never see this memory. Returns 1 on success. */
++static int cuda_masked_pin_register(const void *model_map, uint64_t offset,
++                                    uint64_t bytes, int *unsupported) {
++    if (bytes == 0) return 0;
++    const long page_sz_l = sysconf(_SC_PAGESIZE);
++    const uint64_t page_sz = page_sz_l > 0 ? (uint64_t)page_sz_l : 4096u;
++    const uintptr_t host_addr = (uintptr_t)((const char *)model_map + offset);
++    const uintptr_t reg_addr = host_addr & ~(uintptr_t)(page_sz - 1u);
++    const uint64_t reg_delta = (uint64_t)(host_addr - reg_addr);
++    const uint64_t reg_bytes = (reg_delta + bytes + page_sz - 1u) & ~(page_sz - 1u);
++
++    /* Same flag combo the per-range mapped register uses (known-good on this
++     * WSL2 box for thousands of ranges over a PROT_READ mmap; ReadOnly is
++     * what makes registering a read-only mapping legal). We keep Mapped for
++     * flag parity but never call cudaHostGetDevicePointer -- pinning for DMA
++     * is all this path wants. */
++    unsigned int flags = cudaHostRegisterMapped | cudaHostRegisterReadOnly;
++    if (getenv("DS4_CUDA_HOST_REGISTER_PLAIN") != NULL) flags = cudaHostRegisterMapped;
++    cudaError_t err = cudaHostRegister((void *)reg_addr, (size_t)reg_bytes, flags);
++    if (err != cudaSuccess &&
++        (flags & cudaHostRegisterReadOnly) != 0 &&
++        (err == cudaErrorNotSupported || err == cudaErrorInvalidValue)) {
++        (void)cudaGetLastError();
++        err = cudaHostRegister((void *)reg_addr, (size_t)reg_bytes,
++                               cudaHostRegisterMapped);
++    }
++    if (err != cudaSuccess) {
++        if (unsupported &&
++            (err == cudaErrorNotSupported || err == cudaErrorInvalidValue)) {
++            *unsupported = 1;
++        }
++        (void)cudaGetLastError();
++        return 0;
++    }
++    g_masked_pin_host_base = model_map;
++    g_masked_pin_ranges.push_back({offset, bytes, (void *)reg_addr, reg_bytes});
++    return 1;
++}
++
++/* True iff the ENTIRE [offset, offset+bytes) span is covered by one pinned
++ * range (ranges are never adjacent-merged across separate cudaHostRegister
++ * calls, so a query spanning two ranges intentionally reports false -- the
++ * caller falls back to the normal pread path for that chunk, which is always
++ * correct, just not accelerated). */
++static bool cuda_masked_pin_covers(const void *model_map, uint64_t offset,
++                                   uint64_t bytes, int *out_reason,
++                                   uint64_t *out_range_start,
++                                   uint64_t *out_range_end) {
++    if (out_reason) *out_reason = CUDA_MASKED_PIN_COVER_RANGE_MISS;
++    if (out_range_start) *out_range_start = 0;
++    if (out_range_end) *out_range_end = 0;
++    if (g_masked_pin_ranges.empty()) {
++        if (out_reason) *out_reason = CUDA_MASKED_PIN_COVER_EMPTY;
++        return false;
++    }
++    if (model_map != g_masked_pin_host_base) {
++        if (out_reason) *out_reason = CUDA_MASKED_PIN_COVER_BASE_MISMATCH;
++        return false;
++    }
++    auto it = std::upper_bound(
++        g_masked_pin_ranges.begin(), g_masked_pin_ranges.end(), offset,
++        [](uint64_t val, const cuda_masked_pin_range &r) { return val < r.offset; });
++    if (it == g_masked_pin_ranges.begin()) {
++        if (out_reason) *out_reason = CUDA_MASKED_PIN_COVER_BEFORE_FIRST;
++        if (out_range_start) *out_range_start = it->offset;
++        if (out_range_end) *out_range_end = it->offset + it->bytes;
++        return false;
++    }
++    --it;
++    if (out_range_start) *out_range_start = it->offset;
++    if (out_range_end) *out_range_end = it->offset + it->bytes;
++    const uint64_t end = offset + bytes;
++    const bool covered = end >= offset && offset >= it->offset &&
++                         end <= it->offset + it->bytes;
++    if (out_reason) *out_reason = covered ? CUDA_MASKED_PIN_COVER_HIT
++                                          : CUDA_MASKED_PIN_COVER_RANGE_MISS;
++    return covered;
++}
+ static std::vector<cuda_q8_f16_range> g_q8_f16_ranges;
+ static std::unordered_map<uint64_t, size_t> g_q8_f16_by_offset;
+ static std::vector<cuda_q8_f32_range> g_q8_f32_ranges;
+@@ -3260,10 +3464,14 @@ static void cuda_stream_expert_cache_release_all(void) {
+ static void cuda_stream_expert_cache_invalidate(void) {
+     for (cuda_stream_expert_cache_slot &slot : g_stream_expert_cache.slots) {
+         slot.valid = 0;
++        slot.pinned = 0;
++        slot.reap_spex_pinned = 0;
+     }
+     g_stream_expert_cache.valid = 0;
+     g_stream_expert_cache.count = 0;
+     g_stream_expert_cache.tick = 0;
++    g_stream_expert_cache.pinned_count = 0;
++    g_stream_expert_cache.reap_pin_epoch_seen = 0;
+ }
+ 
+ static uint32_t cuda_stream_expert_cache_requested_budget(void) {
+@@ -3792,6 +4000,8 @@ static cuda_stream_expert_cache *cuda_stream_expert_cache_prepare(
+ 
+         g_stream_expert_cache.valid = 1;
+         g_stream_expert_cache.capacity = cap;
++        if (getenv("DS4_CACHEFIX_TRACE"))
++            fprintf(stderr, "ds4: cachefix cap=%u requested=%u\n", cap, requested_cap);
+         g_stream_expert_cache.count = 0;
+         g_stream_expert_cache.tick = 0;
+         g_stream_expert_cache.gate_expert_bytes = gate_expert_bytes;
+@@ -4310,7 +4520,15 @@ static void cuda_tier_begin_call(cuda_stream_expert_cache *cache, uint32_t layer
+             cuda_stream_expert_cache_slot &s = cache->slots[i];
+             if (s.valid && s.layer == layer) s.knock *= cfg->decay;
+         }
+-        if (cache->tier_calls >= cfg->warmup) cuda_tier_seed(cache);
++        /* Strategy 2 (seed-after-grow): defer the 0033 dynamic tier seed until
++         * the cache has fully grown to the configured budget, so tier==2/pinned
++         * classification (and the cuda_tier_note_resident promotions gated on
++         * tier_seeded) never fire on a tiny prefill-phase capacity and lock in
++         * prefill-transient experts.  Flag toggles only -> bit-exact. */
++        if (cache->tier_calls >= cfg->warmup &&
++            cache->capacity >= cuda_stream_expert_cache_configured_budget()) {
++            cuda_tier_seed(cache);
++        }
+         return;
+     }
+     const double vram_keep = (cfg->x + cfg->y) - cfg->hyst;
+@@ -4410,8 +4628,179 @@ static void cuda_tier_note_resident(cuda_stream_expert_cache *cache, uint32_t sl
+     }
+ }
+ 
++/* ===================================================================== *
++ * FROZEN §7 SEAM CONSUMER (DS4_REAP_PIN_BY_MASS) -- livemask pin-by-mass.
++ * Producer (ds4.c) publishes, once per decode token after the mask settles:
++ *   g_reap_pin_mass[L][e] = lm_wshare[L][e] if e eligible (mask non-pruned)
++ *                           else 0.0f ;   g_reap_pin_epoch++ on every change.
++ * Both are C-linkage globals OWNED by ds4.c per §7.  ds4.c has NOT defined
++ * them yet, so we provide WEAK zero definitions here: the consumer builds/
++ * links/runs standalone (gate OFF => all-zero mass, no behaviour change) and
++ * the producer's future STRONG ds4.c definition wins at link with no
++ * duplicate-symbol collision.  Do NOT redefine the seam name/semantics/env.
++ *
++ * DIMS: ds4.c declares [DS4_MAX_LAYER][DS4_MAX_EXPERT] with DS4_MAX_LAYER=61
++ * (ds4.c:111) / DS4_MAX_EXPERT=384 (ds4.c:122) living in an ANONYMOUS enum
++ * inside ds4.c -- absent from this TU (not exported via ds4_gpu.h; grep of
++ * this file for the token = 0 hits).  Cross-TU array externs match by NUMERIC
++ * extent, not macro name, so we mirror the literals and static_assert their
++ * product against this file's existing DS4_CUDA_STREAM_EXPERT_MAX (== 61u*384u,
++ * line 40) so any future dim drift on either side is a COMPILE error, never a
++ * silent mis-index. */
++enum {
++    DS4_REAP_PIN_MAX_LAYER  = 61,   /* == ds4.c DS4_MAX_LAYER  */
++    DS4_REAP_PIN_MAX_EXPERT = 384   /* == ds4.c DS4_MAX_EXPERT */
++};
++static_assert((unsigned)DS4_REAP_PIN_MAX_LAYER * (unsigned)DS4_REAP_PIN_MAX_EXPERT
++                  == (unsigned)DS4_CUDA_STREAM_EXPERT_MAX,
++              "g_reap_pin_mass dims must equal ds4.c DS4_MAX_LAYER*DS4_MAX_EXPERT");
++
++extern "C" {
++/* Weak zero defs -- ds4.c's future strong definition overrides at link. */
++__attribute__((weak)) float g_reap_pin_mass[DS4_REAP_PIN_MAX_LAYER]
++                                           [DS4_REAP_PIN_MAX_EXPERT];
++__attribute__((weak)) uint8_t g_reap_spex_pin[DS4_REAP_PIN_MAX_LAYER]
++                                             [DS4_REAP_PIN_MAX_EXPERT];
++__attribute__((weak)) volatile uint32_t g_reap_pin_epoch;
++}
++
++/* Gate: OFF (unset or "0") => every hook below is byte-for-byte 0040. */
++static int cuda_reap_pin_by_mass_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) cached = cuda_pin_env_flag("DS4_REAP_PIN_BY_MASS");
++    return cached;
++}
++
++/* Bounds-safe read: slot/param layer,expert are model-routed ids already
++ * < 61 / < n_total_expert(<=384), but clamp defensively so an out-of-range id
++ * can never index past the seam arrays. */
++static inline float cuda_reap_pin_mass_lookup(uint32_t layer, uint32_t expert) {
++    if (layer  >= (uint32_t)DS4_REAP_PIN_MAX_LAYER ||
++        expert >= (uint32_t)DS4_REAP_PIN_MAX_EXPERT) return 0.0f;
++    return g_reap_pin_mass[layer][expert];
++}
++
++static inline int cuda_reap_spex_pin_lookup(uint32_t layer, uint32_t expert) {
++    if (layer  >= (uint32_t)DS4_REAP_PIN_MAX_LAYER ||
++        expert >= (uint32_t)DS4_REAP_PIN_MAX_EXPERT) return 0;
++    return g_reap_spex_pin[layer][expert] != 0;
++}
++
++static int cuda_reap_spex_pin_enabled(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *v = getenv("DS4_PACE_LIVEMASK_SPEX_ADD");
++        cached = v && v[0] && strcmp(v, "0") != 0;
++    }
++    return cached;
++}
++
++static FILE *cuda_reap_spex_pin_log(void) {
++    static FILE *fh;
++    static int checked;
++    if (!checked) {
++        checked = 1;
++        const char *path = getenv("DS4_PACE_LIVEMASK_SPEX_PIN_LOG");
++        if (path && path[0]) fh = fopen(path, "w");
++    }
++    return fh;
++}
++
++static void cuda_reap_spex_log_event(const char *ev,
++                                     uint32_t layer,
++                                     uint32_t expert,
++                                     float mass) {
++    FILE *fh = cuda_reap_spex_pin_log();
++    if (!fh) return;
++    fprintf(fh,
++            "{\"ev\":\"%s\",\"epoch\":%u,\"layer\":%u,"
++            "\"expert\":%u,\"mass\":%.9g}\n",
++            ev, (uint32_t)g_reap_pin_epoch, layer, expert, mass);
++    fflush(fh);
++}
++
++static uint32_t cuda_reap_sticky_budget(const cuda_stream_expert_cache *cache) {
++    if (!cache || cache->capacity == 0) return 0;
++    uint32_t reserve = cache->capacity / 8u + 1u;
++    const char *rs = getenv("DS4_CUDA_INPLACE_RESERVE_SLOTS");
++    if (rs && rs[0]) {
++        char *end = NULL;
++        const unsigned long v = strtoul(rs, &end, 10);
++        if (end && *end == '\0' && v < cache->capacity) reserve = (uint32_t)v;
++    }
++    return cache->capacity > reserve ? cache->capacity - reserve : 0u;
++}
++
++/* Free one residency pin for a provisional SPEX expert. Prefer the lowest-mass
++ * non-SPEX pin; selection membership is untouched. */
++static int cuda_reap_spex_make_room(cuda_stream_expert_cache *cache,
++                                    uint32_t budget) {
++    if (cache->pinned_count < budget) return 1;
++    int victim = -1;
++    float victim_mass = 0.0f;
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        if (!s.valid || !s.pinned || s.reap_spex_pinned) continue;
++        const float mass = cuda_reap_pin_mass_lookup(s.layer, s.expert);
++        if (victim < 0 || mass < victim_mass) {
++            victim = (int)i;
++            victim_mass = mass;
++        }
++    }
++    if (victim < 0) return 0;
++    cuda_reap_spex_log_event(
++        "spex_pin_displace_core",
++        cache->slots[(uint32_t)victim].layer,
++        cache->slots[(uint32_t)victim].expert,
++        victim_mass);
++    cache->slots[(uint32_t)victim].pinned = 0;
++    if (cache->pinned_count > 0) cache->pinned_count--;
++    g_spex_pin_displacements++;
++    return 1;
++}
++
++/* Reconcile only SPEX-owned pins when the producer overlay changes. Core pins
++ * stay owned by pin-by-mass; an expired provisional pin graduates to core when
++ * its observed mass is positive, otherwise it is released. */
++static void cuda_reap_spex_refresh(cuda_stream_expert_cache *cache) {
++    if (!cuda_reap_spex_pin_enabled() || !cache || !cache->valid) return;
++    const uint32_t epoch = g_reap_pin_epoch;
++    if (cache->reap_pin_epoch_seen == epoch) return;
++    cache->reap_pin_epoch_seen = epoch;
++    const uint32_t budget = cuda_reap_sticky_budget(cache);
++
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        if (!s.valid || !s.reap_spex_pinned) continue;
++        if (cuda_reap_spex_pin_lookup(s.layer, s.expert)) continue;
++        s.reap_spex_pinned = 0;
++        if (s.pinned && cuda_reap_pin_mass_lookup(s.layer, s.expert) <= 0.0f) {
++            cuda_reap_spex_log_event("spex_pin_release", s.layer, s.expert, 0.0f);
++            s.pinned = 0;
++            if (cache->pinned_count > 0) cache->pinned_count--;
++            g_spex_pin_releases++;
++        }
++    }
++
++    for (uint32_t i = 0; i < cache->capacity; i++) {
++        cuda_stream_expert_cache_slot &s = cache->slots[i];
++        if (!s.valid || !cuda_reap_spex_pin_lookup(s.layer, s.expert)) continue;
++        if (!s.pinned) {
++            if (!cuda_reap_spex_make_room(cache, budget)) continue;
++            s.pinned = 1;
++            cache->pinned_count++;
++            g_spex_pin_promotions++;
++            cuda_reap_spex_log_event(
++                "spex_pin_promote_resident", s.layer, s.expert,
++                cuda_reap_pin_mass_lookup(s.layer, s.expert));
++        }
++        s.reap_spex_pinned = 1;
++    }
++}
++
+ static uint32_t cuda_stream_expert_cache_lru_slot(
+         cuda_stream_expert_cache *cache) {
++    cuda_reap_spex_refresh(cache);
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+         if (!cache->slots[i].valid) return i; /* empty slots are never pinned */
+     }
+@@ -4424,13 +4813,39 @@ static uint32_t cuda_stream_expert_cache_lru_slot(
+     uint32_t slot = 0;
+     int best_tier = 0;
+     uint64_t best_age = 0;
++    float best_mass = 0.0f;
++    /* §7 mass-weighted eviction: with DS4_REAP_PIN_BY_MASS, the victim is the
++     * non-pinned resident with the LOWEST producer pin-mass (ineligible / low
++     * share evicted before the marked working set); the 0033 (tier,age) order
++     * stays the tiebreak when masses are equal.  Gate OFF => by_mass==0, the
++     * per-slot lookup is NOT called (m is the literal 0.0f), the test takes the
++     * else-branch (t<best_tier || (t==best_tier && a<best_age)) which for
++     * !have|other reproduces the original expression exactly and best_mass is
++     * dead => byte-identical victim to 0040.  Reads cache->slots[i].layer/
++     * .expert = LIVE resident identity (correct at this point). */
++    const int by_mass = cuda_reap_pin_by_mass_enabled();
+     for (uint32_t i = 0; i < cache->capacity; i++) {
+         if (cache->slots[i].pinned) continue;
+         const int t = cache->slots[i].tier;
+         const uint64_t a = cache->slots[i].age;
+-        if (!have || t < best_tier || (t == best_tier && a < best_age)) {
++        const float m = by_mass
++            ? cuda_reap_pin_mass_lookup(cache->slots[i].layer,
++                                        cache->slots[i].expert)
++            : 0.0f;
++        int better;
++        if (!have) {
++            better = 1;
++        } else if (by_mass) {
++            better = (m < best_mass) ||
++                     (m == best_mass &&
++                      (t < best_tier || (t == best_tier && a < best_age)));
++        } else {
++            better = (t < best_tier || (t == best_tier && a < best_age));
++        }
++        if (better) {
+             best_tier = t;
+-            best_age = a;
++            best_age  = a;
++            best_mass = m;
+             slot = i;
+             have = 1;
+         }
+@@ -4512,6 +4927,7 @@ static int cuda_stream_expert_cache_load_slot(
+      * success this function re-sets valid=1 with the new expert's identity
+      * below. */
+     cache->slots[slot].valid = 0;
++    cache->slots[slot].reap_spex_pinned = 0;
+     const uint64_t gate_src =
+         gate_offset + (uint64_t)expert * gate_expert_bytes;
+     const uint64_t up_src =
+@@ -4560,6 +4976,8 @@ static int cuda_stream_expert_cache_load_slot(
+         return 0;
+     }
+     cuda_stream_expert_cache_slot &entry = cache->slots[slot];
++    const int spex_wanted = cuda_reap_spex_pin_enabled() &&
++        cuda_reap_spex_pin_lookup(layer, expert);
+     if (cuda_inplace_resident_enabled()) {
+         /* 0036: a (layer,expert)->slot rebinding invalidates the in-place fast
+          * path for BOTH the evicted victim's layer and the admitted expert's
+@@ -4579,26 +4997,98 @@ static int cuda_stream_expert_cache_load_slot(
+          * beyond the budget new admissions stay LRU-evictable (honest degrade
+          * to the per-token-copy behaviour, warned once). */
+         if (!entry.pinned) {
+-            const uint32_t reserve = cache->capacity / 8u + 1u;
+-            const uint32_t sticky_budget =
+-                cache->capacity > reserve ? cache->capacity - reserve : 0u;
+-            if (cache->pinned_count < sticky_budget) {
+-                entry.pinned = 1;
+-                cache->pinned_count++;
+-            } else {
+-                static int warned_capacity_wall = 0;
+-                if (!warned_capacity_wall) {
+-                    warned_capacity_wall = 1;
+-                    fprintf(stderr,
+-                            "ds4: DS4_CUDA_INPLACE_RESIDENT capacity wall: working "
+-                            "set exceeds pin budget (%u slots); new admissions stay "
+-                            "LRU-evictable and may re-copy per token. Raise "
+-                            "DS4_CUDA_STREAMING_EXPERT_CACHE_N.\n",
+-                            sticky_budget);
++            /* Strategy 2 (pin-after-grow): only pin once the cache has fully
++             * grown to the configured budget (decode-stable / post-prefill),
++             * mirroring 0031's freeze-after-warmup.  During the prefill growth
++             * climb (capacity 10 -> ... -> budget) the sticky budget derived
++             * from the TINY live capacity caps pins at ~8, and every subsequent
++             * release_all()+realloc on growth wipes them -> the working set is
++             * re-admitted (re-copied H2D) every token.  Pinning only at full
++             * capacity makes the pinned set the decode-routed working set, and
++             * sticky resolves to capacity-(capacity/8+1) against the true
++             * ceiling (400 -> 349).  This changes only WHEN a slot becomes
++             * eviction-immune, never which weights the GEMM reads -> bit-exact. */
++            const uint32_t full_cap =
++                cuda_stream_expert_cache_configured_budget();
++            if (full_cap != 0 && cache->capacity >= full_cap) {
++                /* Reserve slots kept LRU-evictable so the working set that
++                 * exceeds the pin budget still has victims.  Default cap/8+1
++                 * (12.5%); tune down via DS4_CUDA_INPLACE_RESERVE_SLOTS when the
++                 * routed working set is close to capacity (e.g. K8 ~= 350 vs
++                 * cap 400) so the whole set pins and admissions plateau. */
++                uint32_t reserve = cache->capacity / 8u + 1u;
++                { const char *rs = getenv("DS4_CUDA_INPLACE_RESERVE_SLOTS");
++                  if (rs && rs[0]) {
++                      char *e = NULL; unsigned long v = strtoul(rs, &e, 10);
++                      if (e && *e == '\0' && v < cache->capacity) reserve = (uint32_t)v;
++                  } }
++                const uint32_t sticky_budget =
++                    cache->capacity > reserve ? cache->capacity - reserve : 0u;
++                if (spex_wanted && cache->pinned_count >= sticky_budget)
++                    (void)cuda_reap_spex_make_room(cache, sticky_budget);
++                if (cache->pinned_count < sticky_budget) {
++                    /* §7 pin-by-mass: with DS4_REAP_PIN_BY_MASS, pin only the
++                     * eligible set (producer mass>0).  Ineligible admits stay
++                     * LRU-evictable and are NOT counted as a pin-budget wall
++                     * (that reject path is a distinct, capacity-driven event).
++                     * The 0040 full-cap+sticky gate still WINS as the outer
++                     * necessary condition; by-mass only filters WHICH budgeted
++                     * slots pin.  IDENTITY: key the lookup on the incoming
++                     * function params (layer,expert) -- the expert being
++                     * ADMITTED -- NOT entry.layer/entry.expert, which at this
++                     * point still hold the evicted victim's STALE ids (entry is
++                     * bound to cache->slots[slot] @4577; its identity is only
++                     * assigned below at ~4647-4649).  Gate OFF => pin_ok==1 =>
++                     * the three statements run exactly as in 0040 (byte-id). */
++                    int pin_ok = 1;
++                    if (cuda_reap_pin_by_mass_enabled()) {
++                        pin_ok = cuda_reap_pin_mass_lookup(layer, expert) > 0.0f ||
++                                 spex_wanted;
++                    }
++                    if (pin_ok) {
++                        entry.pinned = 1;
++                        entry.reap_spex_pinned = spex_wanted;
++                        cache->pinned_count++;
++                        g_inplace_pin_admits++;
++                        if (spex_wanted) {
++                            g_spex_pin_promotions++;
++                            cuda_reap_spex_log_event(
++                                "spex_pin_promote_admit", layer, expert,
++                                cuda_reap_pin_mass_lookup(layer, expert));
++                        }
++                    }
++                } else {
++                    g_inplace_pin_rejects++;
++                    static int warned_capacity_wall = 0;
++                    if (!warned_capacity_wall) {
++                        warned_capacity_wall = 1;
++                        fprintf(stderr,
++                                "ds4: DS4_CUDA_INPLACE_RESIDENT capacity wall: working "
++                                "set exceeds pin budget (%u slots); new admissions stay "
++                                "LRU-evictable and may re-copy per token. Raise "
++                                "DS4_CUDA_STREAMING_EXPERT_CACHE_N.\n",
++                                sticky_budget);
++                    }
+                 }
+             }
+         }
+     }
++    /* SPEX mask residency is independent of the no-copy in-place path: even
++     * when DS4_CUDA_INPLACE_RESIDENT=0, a provisional expert must survive until
++     * the target router consumes it. */
++    if (spex_wanted && !entry.pinned) {
++        const uint32_t sticky_budget = cuda_reap_sticky_budget(cache);
++        if (cuda_reap_spex_make_room(cache, sticky_budget) &&
++            cache->pinned_count < sticky_budget) {
++            entry.pinned = 1;
++            entry.reap_spex_pinned = 1;
++            cache->pinned_count++;
++            g_spex_pin_promotions++;
++            cuda_reap_spex_log_event(
++                "spex_pin_promote_admit", layer, expert,
++                cuda_reap_pin_mass_lookup(layer, expert));
++        }
++    }
+     entry.valid = 1;
+     entry.model_map = model_map;
+     entry.model_size = model_size;
+@@ -4719,6 +5209,113 @@ static int cuda_model_copy_to_device_streamed(
+     if (bytes == 0) return 1;
+     const double spex_t0 =
+         cuda_spex_stats_is_enabled() ? cuda_spex_now_sec() : 0.0;
++
++    /* patch 0050 fast path: this exact [offset,bytes) span is already pinned
++     * host memory (DS4_CUDA_STREAM_FROM_RAM_MASKED registration) -- DMA
++     * straight from the mmap into the VRAM destination `dst`, skipping
++     * pread()+staging-buffer-copy entirely. This is the toll elimination the
++     * patch is for; note it is a DIFFERENT consumer than cuda_model_range_ptr
++     * (which hands a UVA pointer straight to compute kernels -- fine for
++     * small non-expert tensors, a fine-grained-PCIe-access catastrophe for
++     * MoE expert GEMM inputs). On any failure here we fall through to the
++     * normal path below unconditionally, so correctness never depends on
++     * this branch succeeding. */
++    int masked_cover_reason = CUDA_MASKED_PIN_COVER_RANGE_MISS;
++    uint64_t masked_range_start = 0;
++    uint64_t masked_range_end = 0;
++    const bool masked_covered = cuda_masked_pin_covers(
++            model_map, offset, bytes, &masked_cover_reason,
++            &masked_range_start, &masked_range_end);
++    if (cuda_masked_pin_diag_enabled()) {
++        const uint64_t q = __sync_add_and_fetch(&g_masked_pin_diag.queries, 1);
++        (void)__sync_fetch_and_add(&g_masked_pin_diag.query_bytes, bytes);
++        if (masked_covered) {
++            (void)__sync_fetch_and_add(&g_masked_pin_diag.hits, 1);
++            (void)__sync_fetch_and_add(&g_masked_pin_diag.hit_bytes, bytes);
++        } else {
++            uint64_t *miss_counter = &g_masked_pin_diag.miss_range;
++            if (masked_cover_reason == CUDA_MASKED_PIN_COVER_EMPTY) {
++                miss_counter = &g_masked_pin_diag.miss_empty;
++            } else if (masked_cover_reason == CUDA_MASKED_PIN_COVER_BASE_MISMATCH) {
++                miss_counter = &g_masked_pin_diag.miss_base;
++            } else if (masked_cover_reason == CUDA_MASKED_PIN_COVER_BEFORE_FIRST) {
++                miss_counter = &g_masked_pin_diag.miss_before_first;
++            }
++            (void)__sync_fetch_and_add(miss_counter, 1);
++            if (masked_cover_reason >= CUDA_MASKED_PIN_COVER_EMPTY &&
++                masked_cover_reason <= CUDA_MASKED_PIN_COVER_RANGE_MISS &&
++                __sync_bool_compare_and_swap(
++                    &g_masked_pin_diag.first_miss_logged[masked_cover_reason], 0, 1)) {
++                fprintf(stderr,
++                        "ds4: CUDA masked zero-copy first miss: reason=%d "
++                        "registered_base=%p copy_base=%p query=[%llu,%llu) "
++                        "nearest=[%llu,%llu)\n",
++                        masked_cover_reason, g_masked_pin_host_base, model_map,
++                        (unsigned long long)offset,
++                        (unsigned long long)(offset + bytes),
++                        (unsigned long long)masked_range_start,
++                        (unsigned long long)masked_range_end);
++            }
++        }
++        if ((q & 511u) == 0) cuda_masked_pin_diag_report("periodic");
++    }
++    if (masked_covered) {
++        static int pin_path_logged;
++        if (__sync_bool_compare_and_swap(&pin_path_logged, 0, 1)) {
++            fprintf(stderr,
++                    "ds4: CUDA masked zero-copy DMA path ACTIVE (first hit: "
++                    "%s, %.2f MiB)\n",
++                    what ? what : "expert", (double)bytes / 1048576.0);
++        }
++        cudaError_t pin_err = cudaMemcpyAsync(dst,
++                                              (const char *)model_map + offset,
++                                              (size_t)bytes,
++                                              cudaMemcpyHostToDevice,
++                                              g_stream_selected_upload_stream);
++        const bool pin_copy_enqueued = pin_err == cudaSuccess;
++        if (pin_copy_enqueued) {
++            if (defer_upload_sync && cuda_stream_selected_upload_event_enabled()) {
++                if (cuda_stream_selected_upload_done_event_ensure()) {
++                    pin_err = cudaEventRecord(g_stream_selected_upload_done_event,
++                                              g_stream_selected_upload_stream);
++                    if (pin_err == cudaSuccess) {
++                        g_stream_selected_upload_done_recorded = 1;
++                        if (cuda_masked_pin_diag_enabled()) {
++                            (void)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok, 1);
++                            (void)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok_bytes, bytes);
++                        }
++                        return cuda_spex_stats_finish_copy(1, bytes, spex_t0);
++                    }
++                }
++                /* The copy is already queued. If event bookkeeping fails,
++                 * drain the stream and accept the completed copy; never start
++                 * a competing pread write into the same destination slot. */
++                pin_err = cudaStreamSynchronize(g_stream_selected_upload_stream);
++            } else {
++                pin_err = cudaStreamSynchronize(g_stream_selected_upload_stream);
++            }
++            if (pin_err == cudaSuccess) {
++                if (cuda_masked_pin_diag_enabled()) {
++                    (void)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok, 1);
++                    (void)__sync_fetch_and_add(&g_masked_pin_diag.dma_ok_bytes, bytes);
++                }
++                return cuda_spex_stats_finish_copy(1, bytes, spex_t0);
++            }
++        }
++        if (cuda_masked_pin_diag_enabled()) {
++            (void)__sync_fetch_and_add(&g_masked_pin_diag.dma_failed, 1);
++        }
++        fprintf(stderr,
++                "ds4: CUDA masked zero-copy DMA failed for %s%s: %s\n",
++                what ? what : "expert",
++                pin_copy_enqueued ? " after enqueue; refusing overlapping fallback"
++                                  : "; falling back to pread",
++                cudaGetErrorString(pin_err));
++        (void)cudaGetLastError();
++        if (pin_copy_enqueued) return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
++        /* fall through to the normal pread+staging path below */
++    }
++
+     if (g_model_fd < 0 ||
+         (g_model_fd_host_base != NULL && model_map != g_model_fd_host_base)) {
+         return cuda_spex_stats_finish_copy(
+@@ -4877,6 +5474,9 @@ extern "C" void ds4_gpu_cleanup(void) {
+     cuda_stream_expert_cache_release_all();
+     cuda_stream_selected_stage_release();
+     cuda_model_range_release_all();
++    /* patch 0050: unlike the ordinary tensor cache ranges, masked DMA pins
++     * survive same-map cache rebuilds. Cleanup is a true map-lifetime end. */
++    cuda_masked_pin_release_all();
+     cuda_model_load_progress_reset();
+     cuda_q8_f16_cache_release_all();
+     g_q8_f16_disabled_after_oom = 0;
+@@ -5177,9 +5777,30 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+     const int same_backing_model =
+         g_model_host_base == model_map &&
+         g_model_registered_size == model_size;
++    if (!same_backing_model && g_stream_selected_upload_stream) {
++        /* A true model-map switch invalidates the source addresses owned by
++         * patch 0050. Drain every queued H2D copy before unregistering those
++         * pages or publishing a different host base. */
++        cudaError_t drain_err = cudaStreamSynchronize(g_stream_selected_upload_stream);
++        if (drain_err != cudaSuccess) {
++            fprintf(stderr,
++                    "ds4: CUDA cannot switch model map: masked upload drain "
++                    "failed: %s\n",
++                    cudaGetErrorString(drain_err));
++            (void)cudaGetLastError();
++            return 0;
++        }
++        g_stream_selected_upload_done_recorded = 0;
++    }
+     cuda_stream_selected_cache_invalidate();
+     if (!same_backing_model) {
+         cuda_stream_expert_cache_release_all();
++        /* patch 0050: release private DMA pins only when their backing mmap
++         * identity really changes. cuda_model_set_host_map is also called for
++         * same-map tensor-cache rebuilds during session preparation; tying the
++         * pins to cuda_model_range_release_all made every registered range
++         * disappear before the first expert copy. */
++        cuda_masked_pin_release_all();
+     }
+     cuda_model_range_release_all();
+     if (!same_backing_model) {
+@@ -5337,6 +5958,86 @@ extern "C" int ds4_gpu_set_model_map_spans(
+     return 1;
+ }
+ 
++/* patch 0050: zero-copy masked-window streaming. See ds4_gpu.h. Each range is
++ * registered independently via the existing bounded cuda_model_range_register_mapped
++ * (same primitive the cold on-demand path in cuda_model_range_ptr falls back
++ * to for a single tensor slice) -- this call just does it eagerly, up front,
++ * for the whole REAP keep-window, so every subsequent expert fetch in that
++ * window is a UVA-mapped host-RAM read from the GPU instead of a pread +
++ * pinned-stage + cudaMemcpyAsync + sync round trip. Ranges are expected
++ * disjoint and already coalesced by the caller (adjacent kept experts merged
++ * into one range per gate/up/down tensor run); this function does not itself
++ * merge or sort them. If the driver reports range mapping unsupported
++ * (cudaErrorNotSupported/cudaErrorInvalidValue -- see
++ * cuda_model_range_register_mapped, which latches g_model_range_mapping_supported
++ * to 0 on that class of failure) further attempts in this call are skipped
++ * since they would fail identically; ranges already registered before that
++ * point remain registered and usable. A partial result (some ranges mapped,
++ * some not) is intentional degraded-mode behavior, not an error: unmapped
++ * bytes simply keep paying the normal pread toll. */
++extern "C" int ds4_gpu_register_masked_ranges(
++        const void *model_map,
++        uint64_t model_size,
++        const uint64_t *offsets,
++        const uint64_t *sizes,
++        uint32_t count,
++        uint64_t *out_bytes) {
++    if (out_bytes) *out_bytes = 0;
++    if (!model_map || model_size == 0 || !offsets || !sizes || count == 0) return 0;
++    for (uint32_t i = 0; i < count; i++) {
++        if (offsets[i] > model_size || sizes[i] == 0 || sizes[i] > model_size - offsets[i]) {
++            fprintf(stderr,
++                    "ds4: CUDA masked zero-copy register: range %u out of bounds "
++                    "(offset=%llu bytes=%llu model_size=%llu), aborting\n",
++                    i, (unsigned long long)offsets[i], (unsigned long long)sizes[i],
++                    (unsigned long long)model_size);
++            return 0;
++        }
++    }
++    /* The ordinary tensor/Q8 caches were prepared immediately before this
++     * call. Rebinding an already-current map through cuda_model_set_host_map
++     * would release all of them and force a lazy cold rebuild in the first
++     * request. Bind only when the backing map identity actually differs. */
++    if ((g_model_host_base != model_map ||
++         g_model_registered_size != model_size) &&
++        !cuda_model_set_host_map(model_map, model_size)) {
++        return 0;
++    }
++
++    const double t0 = clock() / (double)CLOCKS_PER_SEC;
++    int registered = 0;
++    uint64_t total_bytes = 0;
++    for (uint32_t i = 0; i < count; i++) {
++        /* PRIVATE pin (see cuda_masked_pin_register): pinned for DMA in
++         * cuda_model_copy_to_device_streamed only, intentionally invisible to
++         * cuda_model_range_ptr/g_model_ranges -- letting compute kernels see
++         * a UVA host pointer for expert tensors turns MoE GEMM into
++         * per-element PCIe reads (~0.10 t/s decode, measured). */
++        int unsupported = 0;
++        if (cuda_masked_pin_register(model_map, offsets[i], sizes[i], &unsupported)) {
++            registered++;
++            total_bytes += sizes[i];
++        } else if (unsupported) {
++            fprintf(stderr,
++                    "ds4: CUDA masked zero-copy register: driver reports host "
++                    "registration unsupported after %d/%u range%s (%.2f GiB); "
++                    "stopping, remaining ranges keep the normal pread path\n",
++                    registered, count, count == 1 ? "" : "s",
++                    (double)total_bytes / 1073741824.0);
++            break;
++        }
++    }
++    cuda_masked_pin_finalize();
++    const double t1 = clock() / (double)CLOCKS_PER_SEC;
++    fprintf(stderr,
++            "ds4: CUDA masked zero-copy register: %d/%u range%s mapped, "
++            "%.2f GiB pinned in %.3fs\n",
++            registered, count, count == 1 ? "" : "s",
++            (double)total_bytes / 1073741824.0, t1 - t0);
++    if (out_bytes) *out_bytes = total_bytes;
++    return registered;
++}
++
+ extern "C" int ds4_gpu_set_model_fd_for_map(int fd, const void *model_map) {
+     g_model_fd = fd;
+     g_model_fd_host_base = model_map;
+@@ -5540,6 +6241,7 @@ extern "C" uint32_t ds4_gpu_stream_expert_cache_filter_missing(
+         missing_cap == 0) {
+         return 0;
+     }
++    cuda_reap_spex_refresh(&g_stream_expert_cache);
+     const cuda_stream_expert_cache *cache = &g_stream_expert_cache;
+     uint32_t missing = 0;
+     uint32_t resident = 0;
+@@ -6139,6 +6841,7 @@ extern "C" int ds4_gpu_stream_expert_cache_begin_selected_load(
+         uint32_t                           n_selected) {
+     if (!g_ssd_streaming_mode) return 1;
+     if (!table || !selected_ids || n_selected == 0) return 0;
++    cuda_reap_spex_refresh(&g_stream_expert_cache);
+     const void *model_map = table->model_map;
+     const uint64_t model_size = table->model_size;
+     const uint32_t layer = table->layer;
+@@ -6297,6 +7000,7 @@ static int cuda_stream_expert_cache_seed_experts_impl(
+                                          down_expert_bytes,
+                                          n_experts);
+     if (!cache || cache->capacity == 0) return 1;
++    cuda_reap_spex_refresh(cache);
+ 
+     const uint32_t layer_seed_cap =
+         n_experts < cache->capacity ? n_experts : cache->capacity;
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 9bbd2d0..c2f791d 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -69,6 +69,19 @@ int ds4_gpu_set_model_fd(int fd);
+ int ds4_gpu_set_model_fd_for_map(int fd, const void *model_map);
+ int ds4_gpu_set_model_map_range(const void *model_map, uint64_t model_size, uint64_t map_offset, uint64_t map_size, uint64_t max_tensor_bytes);
+ int ds4_gpu_set_model_map_spans(const void *model_map, uint64_t model_size, const uint64_t *offsets, const uint64_t *sizes, uint32_t count, uint64_t max_tensor_bytes);
++#if !defined(DS4_ROCM_BUILD) && !defined(DS4_NO_GPU) && !defined(__APPLE__)
++/* patch 0050: zero-copy masked-window streaming. Registers each (offset,bytes)
++ * range of the RAM-resident REAP keep-window as a per-range cudaHostRegister
++ * mapping (reusing the existing bounded per-range machinery), so that
++ * cuda_model_range_ptr() returns a direct GPU-mapped pointer into host RAM for
++ * those bytes instead of paying the pread+stage+H2D+sync toll on every expert
++ * fetch. Caller should pass already-coalesced ranges (adjacent kept experts
++ * merged). Returns the number of ranges registered successfully; *out_bytes
++ * (if non-NULL) receives the total bytes registered. */
++int ds4_gpu_register_masked_ranges(const void *model_map, uint64_t model_size,
++                                   const uint64_t *offsets, const uint64_t *sizes,
++                                   uint32_t count, uint64_t *out_bytes);
++#endif
+ int ds4_gpu_cache_model_range(const void *model_map, uint64_t model_size, uint64_t offset, uint64_t bytes, const char *label);
+ int ds4_gpu_cache_q8_f16_range(const void *model_map, uint64_t model_size, uint64_t offset, uint64_t bytes, uint64_t in_dim, uint64_t out_dim, const char *label);
+ #ifdef DS4_ROCM_BUILD

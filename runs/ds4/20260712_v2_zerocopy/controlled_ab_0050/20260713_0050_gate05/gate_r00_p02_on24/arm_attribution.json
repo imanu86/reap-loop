@@ -1,0 +1,35 @@
+{
+  "arm": "on",
+  "active_line": true,
+  "registration": {
+    "registered": 4446,
+    "requested": 4446,
+    "gib": 23.99
+  },
+  "final_diag": {
+    "why": "final",
+    "queries": 53388,
+    "covered": 24810,
+    "dma_ok": 24810,
+    "dma_failed": 0,
+    "miss_empty": 0,
+    "miss_base": 0,
+    "miss_before": 5370,
+    "miss_range": 23208
+  },
+  "reported_budgets_gib": [
+    24.0
+  ],
+  "checks": {
+    "all_ranges_registered": true,
+    "registered_gib_in_24_budget": true,
+    "assigned_budget_reported": true,
+    "final_diag_present": true,
+    "dma_path_active": true,
+    "dma_ok_positive": true,
+    "dma_failed_zero": true,
+    "miss_empty_zero": true,
+    "miss_base_zero": true
+  },
+  "pass": true
+}

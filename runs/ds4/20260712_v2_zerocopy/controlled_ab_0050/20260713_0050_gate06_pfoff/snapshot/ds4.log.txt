@@ -1,0 +1,31 @@
+da0b3f6 (HEAD -> master) livemask: pin-by-mass PRODUCER + mass-ranked selection (0040)
+e1b288d livemask: pressure-adaptive promotion by demand MASS (0039)
+751207f feature tree: livemask(0035/0037/0038) on 0018 anchor + cuda stack(0024..0036a)
+364def7 feat: 0036a-cuda-inplace-epoch-fix
+32309ce feat: 0036-cuda-inplace-resident-nocopy
+bd19e51 feat: 0034-cuda-stale-slot-fix
+02c1393 feat: 0033-pace-tiered-hysteresis-residency
+ffcce43 feat: 0031-pace-pin-keep-residency-rotation
+b65ee8f feat: 0024-cuda-stream-expert-cache-resident-fix
+f942b5b canonical: 0026-pace-demand-admission.patch
+1eb6afc canonical: 0021-pace-rotate-delta-prefetch.patch
+bf7a584 canonical: 0020-pace-s1-slope-trigger.patch
+ec589eb canonical: 0018-pace-canonical.patch
+2a4108e canonical: 0016-pace-canonical.patch
+c0cc16f canonical: 0015-pace-canonical.patch
+40a1efd canonical: 0014g-canonical-siblings-cuda-impl.patch
+bcefcc6 canonical: 0014f-canonical-siblings-gpu-header.patch
+6d466e3 canonical: 0014e-pace-wrap-rename.patch
+415bd83 canonical: 0014-pace-controller.patch
+5a2668b canonical: 0013-reap-wrap.patch
+466a9f2 canonical: 0012-reap-sensor-s1.patch
+ac395fd canonical: 0011-reap-runtime-mask.patch
+8b06492 canonical: 0008-dspark-mtp-streaming-probe-unsafe.patch
+16d5d4c canonical: 0007-spex-trace-hidden.patch
+d6f82a1 canonical: 0006-spex-routing-trace-weights.patch
+65edfd6 canonical: 0005-spex-routing-trace-capture.patch
+22f379f canonical: 0004-spex-markov-loader-prefetch.patch
+a948f66 canonical: 0003-spex-stage1-next-layer-prefetch.patch
+e135ddb canonical: 0002-spex-selected-upload-event.patch
+b463a70 canonical: 0001-spex-stage0-cuda-stats.patch
+dde2021 base: antirez/ds4 @ 80ebbc3 (pristine upstream)

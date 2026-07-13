@@ -1,0 +1,4 @@
+@echo off
+setlocal
+"C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Tools\MSVC\14.44.35207\bin\Hostx64\x64\cl.exe" /nologo /std:c++17 /O2 /EHsc /W4 /permissive- /Zc:__cplusplus /utf-8 /Fo"C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260712_v2_zerocopy\arena_probe_win\probe_20260713_061235_win_blocks_0p25g.obj" /Fd"C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260712_v2_zerocopy\arena_probe_win\probe_20260713_061235_win_blocks_0p25g.compiler.pdb" /Fe"C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260712_v2_zerocopy\arena_probe_win\probe_20260713_061235_win_blocks_0p25g.exe" "C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260712_v2_zerocopy\tools\cuda_pinned_arena_probe_win.cpp" /link /INCREMENTAL:NO /PDB:"C:\Users\imanu\source\repos\reap-loop\runs\ds4\20260712_v2_zerocopy\arena_probe_win\probe_20260713_061235_win_blocks_0p25g.pdb"
+exit /b %errorlevel%

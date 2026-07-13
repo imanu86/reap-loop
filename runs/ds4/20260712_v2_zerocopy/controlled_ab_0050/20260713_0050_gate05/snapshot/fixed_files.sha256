@@ -1,0 +1,7 @@
+dc9171b1349453a982f1ed85e4904e08c820e31076a3304409e981d451ee5149  /root/ds4-v2-work/ds4-server
+d12b40ca84d677129feebc6988b31a14f3bcbb0224dd678b5dadb1192374176d  /root/ds4-v2-work/ds4.c
+dd48371b2b6d46cc956bb5c6f2ce2d22943334ddd7a7245bb4eea6265bc1b0bf  /root/ds4-v2-work/ds4_cuda.cu
+944ce6c50564f61eabb668719ad83f04006124bc9f8394a755f79eb0d7ab51a5  /root/ds4-v2-work/ds4_gpu.h
+e2545a05900bf086ef11160c1557cd8f461fe5d15aa24b4468f686095d71c112  /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_virtual_bake/masks/mask60_self.txt
+ea3d1c70795f6969f14c13cd42e8da81dca5494d48b8e23a5271d6e3a8175b4a  /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_v2_zerocopy/scripts/measure_stream.py
+98e7c3199873b4454226fdd6e7bcc2acb08fd7cc27fd7b9be2e1cc0d0f04dd82  /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_v2_zerocopy/controlled_ab_0050/20260713_0050_gate05/snapshot/harness.snapshot.sh

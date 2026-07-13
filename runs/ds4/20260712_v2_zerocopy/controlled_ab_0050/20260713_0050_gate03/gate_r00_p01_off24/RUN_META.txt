@@ -1,0 +1,15 @@
+run_id=gate_r00_p01_off24
+phase=gate
+round=0
+position=1
+treatment=off24
+arm=off
+budget_gib=24
+request_mode=nonstream
+started_utc=2026-07-13T07:49:27Z
+finished_utc=2026-07-13T07:50:14Z
+client_rc=143
+telemetry_rc=0
+arm_attribution_rc=0
+server_stop_mode=term
+server_wait_rc=130

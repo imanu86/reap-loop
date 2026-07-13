@@ -1,0 +1,2 @@
+Known SHA-256 was independently recomputed in campaigns 20260713_0050_ab01 and 20260713_0050_gate02.
+Per-campaign re-hashing is intentionally forbidden because reading 86.7 GB filled the WSL page cache and breached the Windows memory floor before measurement.

@@ -1,0 +1,4 @@
+2026-07-13T06:45:49Z campaign 20260713_0050_ab01 started; GPU lock held non-blocking
+2026-07-13T06:50:58Z snapshot and immutable execution plan captured
+2026-07-13T06:51:06Z gate_r00_p01_off24 request start
+2026-07-13T06:58:36Z gate_r00_p01_off24 request end rc=52

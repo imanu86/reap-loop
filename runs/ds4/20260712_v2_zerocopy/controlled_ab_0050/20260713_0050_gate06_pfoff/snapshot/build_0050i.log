@@ -1,0 +1,9 @@
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4_server.o ds4_server.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4_help.o ds4_help.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4_kvstore.o ds4_kvstore.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o rax.o rax.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4.o ds4.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4_distributed.o ds4_distributed.c
+cc -O3 -ffast-math -g -march=native -Wall -Wextra -std=c99 -D_GNU_SOURCE -fno-finite-math-only -c -o ds4_ssd.o ds4_ssd.c
+/usr/local/cuda/bin/nvcc -O3 -g -lineinfo --use_fast_math -arch=sm_86 -Xcompiler -march=native -Xcompiler -pthread -c -o ds4_cuda.o ds4_cuda.cu
+/usr/local/cuda/bin/nvcc -O3 -g -lineinfo --use_fast_math -arch=sm_86 -Xcompiler -march=native -Xcompiler -pthread -o ds4-server ds4_server.o ds4_help.o ds4_kvstore.o rax.o ds4.o ds4_distributed.o ds4_ssd.o ds4_cuda.o -lm -Xcompiler -pthread -L/usr/local/cuda/targets/sbsa-linux/lib -L/usr/local/cuda/lib64 -lcudart -lcublas

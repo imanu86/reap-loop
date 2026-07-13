@@ -1,0 +1,1 @@
+﻿x86_64-w64-mingw32-g++ -std=c++17 -O2 -Wall -Wextra -static -static-libgcc -static-libstdc++ -o '/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_v2_zerocopy/arena_probe_win/probe_20260713_061915_win_mingw.exe' '/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260712_v2_zerocopy/tools/cuda_pinned_arena_probe_win.cpp'

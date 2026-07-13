@@ -1,0 +1,5 @@
+2026-07-13T08:21:29Z campaign 20260713_0050_gate04 started; GPU lock held non-blocking
+2026-07-13T08:22:12Z snapshot and immutable execution plan captured
+2026-07-13T08:22:15Z gate_r00_p01_off24 request start
+2026-07-13T08:22:51Z gate_r00_p01_off24 request end rc=143
+2026-07-13T08:22:53Z cooldown 20s after lifecycle

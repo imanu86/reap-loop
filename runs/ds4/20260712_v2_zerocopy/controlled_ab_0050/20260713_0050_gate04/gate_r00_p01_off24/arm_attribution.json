@@ -1,0 +1,26 @@
+{
+  "arm": "off",
+  "active_line": false,
+  "registration": null,
+  "final_diag": {
+    "why": "final",
+    "queries": 0,
+    "covered": 0,
+    "dma_ok": 0,
+    "dma_failed": 0,
+    "miss_empty": 0,
+    "miss_base": 0,
+    "miss_before": 0,
+    "miss_range": 0
+  },
+  "reported_budgets_gib": [],
+  "checks": {
+    "no_ranges_registered": true,
+    "no_active_budget_report": true,
+    "final_diag_present": true,
+    "dma_path_inactive": true,
+    "covered_zero": true,
+    "dma_ok_zero": true
+  },
+  "pass": true
+}

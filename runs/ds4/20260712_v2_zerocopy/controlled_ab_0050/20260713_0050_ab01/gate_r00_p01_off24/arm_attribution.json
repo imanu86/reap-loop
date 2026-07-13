@@ -1,0 +1,23 @@
+{
+  "arm": "off",
+  "active_line": false,
+  "registration": null,
+  "final_diag": {
+    "why": "periodic",
+    "queries": 16384,
+    "covered": 0,
+    "dma_ok": 0,
+    "dma_failed": 0,
+    "miss_empty": 16384,
+    "miss_base": 0,
+    "miss_before": 0,
+    "miss_range": 0
+  },
+  "checks": {
+    "no_ranges_registered": true,
+    "dma_path_inactive": true,
+    "covered_zero": true,
+    "dma_ok_zero": true
+  },
+  "pass": true
+}

@@ -1,0 +1,13 @@
+campaign_id=20260713_0050_gate02
+rounds=4
+port=8096
+ctx=2048
+server_max_tokens=706
+cache_experts=400
+prefill_chunk=512
+wsl_ram_floor_mb=8192
+windows_ram_floor_gib=8
+telemetry_interval_seconds=2
+cooldown_seconds=20
+gate_only=1
+windows_monitor_available=1

@@ -1,0 +1,3 @@
+telemetry_rc=0
+wsl_lines=70
+windows_lines=64
