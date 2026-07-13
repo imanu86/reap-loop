@@ -1,0 +1,7 @@
+=== h2d_bandwidth_probe_win: native Windows CUDA Driver API ===
+iterations_per_condition=12 warmup_discarded=1
+alloc     size_gib  mean_gib_s  median_gib_smin_gib_s   max_gib_s   stddev      
+pinned    1         24.411      24.435      24.180      24.452      0.074       
+pageable  1.000     11.564      11.412      11.147      12.130      0.356       
+pinned    2.000     24.106      24.431      22.079      24.450      0.720       
+pageable  2.000     11.281      11.332      10.166      12.009      0.550       

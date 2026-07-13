@@ -1,0 +1,5 @@
+torch=2.6.0+cu124 cuda=12.4 device=NVIDIA GeForce RTX 3060
+pinned        1 GiB  mean= 24.146  median= 24.316  min= 23.472  max= 24.413 GiB/s
+pageable      1 GiB  mean= 10.727  median= 11.126  min=  8.503  max= 11.886 GiB/s
+pinned        2 GiB  mean= 24.237  median= 24.386  min= 22.823  max= 24.442 GiB/s
+pageable      2 GiB  mean= 10.446  median= 10.275  min=  9.581  max= 11.744 GiB/s
