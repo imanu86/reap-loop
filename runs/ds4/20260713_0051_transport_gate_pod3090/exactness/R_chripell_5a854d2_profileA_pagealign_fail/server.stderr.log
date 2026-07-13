@@ -1,0 +1,15 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: cuda SSD streaming cache budget 8.00 GiB / 6.75 MiB per expert = 1213 experts
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: WARNING: CUDA failed to pin model mapping: invalid argument. RAM streaming will use slower pageable copies. (Check 'ulimit -l')
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 2.046s
+ds4: cuda backend initialized for graph diagnostics
+0713 16:57:08 ds4-server: context buffers 602.20 MiB (ctx=32768, backend=cuda, prefill_chunk=1024, raw_kv_rows=1280, compressed_kv_rows=8194)
+0713 16:57:08 ds4-server: listening on http://127.0.0.1:8096
+0713 16:57:08 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA model range copy failed for q8_0 at 0.00/34.00 MiB: invalid argument
+ds4: gpu layer 0 attention batch encode failed
+ds4: gpu layer-major prefill layer 0 encode failed
+0713 16:57:09 ds4-server: shutdown requested, draining requests

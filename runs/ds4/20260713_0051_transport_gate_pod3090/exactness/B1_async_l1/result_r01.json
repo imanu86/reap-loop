@@ -1,0 +1,16 @@
+{
+  "rep": 1,
+  "wall_seconds": 200.846482284,
+  "content_bytes": 217,
+  "content_sha256": "4605c1d7500de0e2c70754f28530da5a49a04596505ae9d13d0dcb9419a8e8a6",
+  "usage": {
+    "prompt_tokens": 64,
+    "completion_tokens": 60,
+    "total_tokens": 124,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 64
+    }
+  },
+  "finish_reason": "length"
+}

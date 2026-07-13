@@ -1,0 +1,168 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA masked zero-copy diag final: queries=0/0.00 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=0 miss_range=0
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 2.221s
+ds4: CUDA stream-from-RAM masked window: mask /workspace/reap-loop/runs/ds4/20260712_virtual_bake/masks/mask60_self.txt (4080 blocked entries)
+ds4: CUDA stream-from-RAM masked window: budget 24.00 GiB total / 0.60 GiB per layer (40 masked layers, DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB) reached for 955 expert runs, left on the normal pread path
+ds4: CUDA masked zero-copy register: 4446/4446 ranges mapped, 23.99 GiB pinned in 23.841s
+ds4: CUDA stream-from-RAM masked window: 40 layer, 3640 expert kept, 4446/4446 ranges registered, 23.99 GiB zero-copy
+ds4: cuda backend initialized for graph diagnostics
+0713 16:34:48 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0713 16:34:48 ds4-server: listening on http://127.0.0.1:8096
+0713 16:34:49 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA masked zero-copy first miss: reason=3 registered_base=0x71f23ac00000 copy_base=0x71f23ac00000 query=[18967360,21130048) nearest=[5450459968,5454785344)
+ds4: CUDA masked zero-copy diag periodic: queries=512/1151.62 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=512 miss_range=0
+ds4: CUDA loading model tensors 0.12 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=1024/2303.81 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1024 miss_range=0
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=1536/3456.00 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1536 miss_range=0
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA masked zero-copy DMA path ACTIVE (first hit: selected moe_gate, 2.06 MiB)
+ds4: CUDA masked zero-copy first miss: reason=4 registered_base=0x71f23ac00000 copy_base=0x71f23ac00000 query=[5489388352,5491551040) nearest=[5482900288,5487225664)
+ds4: CUDA masked zero-copy diag periodic: queries=2048/4607.62 MiB covered=170/382.12 MiB dma_ok=169/380.06 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=201
+ds4: CUDA masked zero-copy diag periodic: queries=2560/5759.81 MiB covered=390/877.50 MiB dma_ok=390/877.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=493
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=3072/6912.00 MiB covered=615/1383.75 MiB dma_ok=615/1383.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=780
+ds4: CUDA masked zero-copy diag periodic: queries=3584/8063.62 MiB covered=840/1890.00 MiB dma_ok=840/1890.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=1067
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=4096/9215.81 MiB covered=1111/2499.56 MiB dma_ok=1110/2497.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=1308
+ds4: CUDA masked zero-copy diag periodic: queries=4608/10368.00 MiB covered=1332/2997.00 MiB dma_ok=1332/2997.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=1599
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=5120/11519.62 MiB covered=1574/3541.12 MiB dma_ok=1573/3539.06 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=1869
+ds4: CUDA masked zero-copy diag periodic: queries=5632/12671.81 MiB covered=1824/4104.00 MiB dma_ok=1824/4104.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=2131
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=6144/13824.00 MiB covered=2043/4596.75 MiB dma_ok=2043/4596.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=2424
+ds4: CUDA masked zero-copy diag periodic: queries=6656/14975.62 MiB covered=2274/5116.50 MiB dma_ok=2274/5116.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=2705
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=7168/16127.81 MiB covered=2512/5651.81 MiB dma_ok=2511/5649.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=2979
+ds4: CUDA masked zero-copy diag periodic: queries=7680/17280.00 MiB covered=2736/6156.00 MiB dma_ok=2736/6156.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=3267
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=8192/18431.62 MiB covered=2970/6682.50 MiB dma_ok=2970/6682.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=3545
+ds4: CUDA masked zero-copy diag periodic: queries=8704/19583.81 MiB covered=3216/7236.00 MiB dma_ok=3216/7236.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=3811
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=9216/20736.00 MiB covered=3390/7627.50 MiB dma_ok=3390/7627.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=4149
+ds4: CUDA masked zero-copy diag periodic: queries=9728/21887.62 MiB covered=3606/8113.50 MiB dma_ok=3606/8113.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=4445
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=10240/23039.81 MiB covered=3822/8599.50 MiB dma_ok=3822/8599.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=4741
+ds4: CUDA masked zero-copy diag periodic: queries=10752/24192.00 MiB covered=4041/9092.25 MiB dma_ok=4040/9089.62 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=5034
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=11264/25343.62 MiB covered=4289/9649.88 MiB dma_ok=4288/9647.81 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=5298
+ds4: CUDA masked zero-copy diag periodic: queries=11776/26495.81 MiB covered=4449/10010.25 MiB dma_ok=4449/10010.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=5650
+ds4: CUDA masked zero-copy diag periodic: queries=12288/27648.00 MiB covered=4590/10327.50 MiB dma_ok=4590/10327.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1677 miss_range=6021
+ds4: CUDA loading model tensors 0.00 GiB cached
+0713 16:37:27 ds4-server: chat ctx=0..64:64 prompt done 157.601s
+ds4: REAP mask reload da /workspace/reap-loop/runs/ds4/20260712_virtual_bake/masks/mask60_self.txt: 4080 entry potate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA masked zero-copy diag periodic: queries=12800/28799.62 MiB covered=4754/10696.12 MiB dma_ok=4753/10694.06 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1731 miss_range=6315
+ds4: CUDA masked zero-copy diag periodic: queries=13312/29951.81 MiB covered=5037/11333.25 MiB dma_ok=5037/11333.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1731 miss_range=6544
+ds4: CUDA masked zero-copy diag periodic: queries=13824/31104.00 MiB covered=5286/11893.50 MiB dma_ok=5286/11893.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1824 miss_range=6714
+ds4: CUDA masked zero-copy diag periodic: queries=14336/32255.62 MiB covered=5550/12487.50 MiB dma_ok=5550/12487.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1875 miss_range=6911
+ds4: CUDA masked zero-copy diag periodic: queries=14848/33407.81 MiB covered=5794/13036.31 MiB dma_ok=5793/13034.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1968 miss_range=7086
+ds4: CUDA masked zero-copy diag periodic: queries=15360/34560.00 MiB covered=6036/13581.00 MiB dma_ok=6036/13581.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2052 miss_range=7272
+ds4: CUDA masked zero-copy diag periodic: queries=15872/35711.62 MiB covered=6281/14131.88 MiB dma_ok=6280/14129.81 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2124 miss_range=7467
+ds4: CUDA masked zero-copy diag periodic: queries=16384/36863.81 MiB covered=6529/14690.06 MiB dma_ok=6528/14688.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2175 miss_range=7680
+ds4: CUDA masked zero-copy diag periodic: queries=16896/38016.00 MiB covered=6783/15261.75 MiB dma_ok=6783/15261.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2229 miss_range=7884
+ds4: CUDA masked zero-copy diag periodic: queries=17408/39167.62 MiB covered=7038/15835.50 MiB dma_ok=7038/15835.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2327 miss_range=8043
+ds4: CUDA masked zero-copy diag periodic: queries=17920/40319.81 MiB covered=7300/16424.81 MiB dma_ok=7299/16422.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2388 miss_range=8232
+ds4: CUDA masked zero-copy diag periodic: queries=18432/41472.00 MiB covered=7563/17016.75 MiB dma_ok=7563/17016.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2439 miss_range=8430
+ds4: CUDA masked zero-copy diag periodic: queries=18944/42623.62 MiB covered=7836/17631.00 MiB dma_ok=7836/17631.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2490 miss_range=8618
+0713 16:37:41 ds4-server: chat ctx=64..80:16 gen=16 decoding chunk=1.14 t/s avg=1.14 t/s 14.050s
+0713 16:37:41 ds4-server: chat ctx=0..64:64 gen=16 finish=length 171.652s
+0713 16:37:41 ds4-server: live kv cache miss live=80 prompt=64 common=64 reason=token-mismatch
+0713 16:37:41 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.01 GiB cached
+ds4: CUDA masked zero-copy diag periodic: queries=19456/43775.81 MiB covered=7857/17678.25 MiB dma_ok=7857/17678.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=2944 miss_range=8655
+ds4: CUDA masked zero-copy diag periodic: queries=19968/44928.00 MiB covered=7857/17678.25 MiB dma_ok=7857/17678.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=3456 miss_range=8655
+ds4: CUDA masked zero-copy diag periodic: queries=20480/46079.62 MiB covered=7857/17678.25 MiB dma_ok=7857/17678.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=3968 miss_range=8655
+ds4: CUDA masked zero-copy diag periodic: queries=20992/47231.81 MiB covered=7983/17961.75 MiB dma_ok=7983/17961.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=8842
+ds4: CUDA masked zero-copy diag periodic: queries=21504/48384.00 MiB covered=8208/18468.00 MiB dma_ok=8207/18465.38 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=9129
+ds4: CUDA masked zero-copy diag periodic: queries=22016/49535.62 MiB covered=8430/18967.50 MiB dma_ok=8430/18967.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=9419
+ds4: CUDA masked zero-copy diag periodic: queries=22528/50687.81 MiB covered=8653/19469.06 MiB dma_ok=8652/19467.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=9708
+ds4: CUDA masked zero-copy diag periodic: queries=23040/51840.00 MiB covered=8916/20061.00 MiB dma_ok=8915/20058.38 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=9957
+ds4: CUDA masked zero-copy diag periodic: queries=23552/52991.62 MiB covered=9189/20675.25 MiB dma_ok=9189/20675.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=10196
+ds4: CUDA masked zero-copy diag periodic: queries=24064/54143.81 MiB covered=9426/21208.50 MiB dma_ok=9426/21208.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=10471
+ds4: CUDA masked zero-copy diag periodic: queries=24576/55296.00 MiB covered=9654/21721.50 MiB dma_ok=9654/21721.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=10755
+ds4: CUDA masked zero-copy diag periodic: queries=25088/56447.62 MiB covered=9900/22275.00 MiB dma_ok=9900/22275.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=11021
+ds4: CUDA masked zero-copy diag periodic: queries=25600/57599.81 MiB covered=10126/22783.31 MiB dma_ok=10125/22781.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=11307
+ds4: CUDA masked zero-copy diag periodic: queries=26112/58752.00 MiB covered=10320/23220.00 MiB dma_ok=10319/23217.38 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=11625
+ds4: CUDA masked zero-copy diag periodic: queries=26624/59903.62 MiB covered=10553/23743.88 MiB dma_ok=10552/23741.81 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=11904
+ds4: CUDA masked zero-copy diag periodic: queries=27136/61055.81 MiB covered=10810/24322.31 MiB dma_ok=10809/24320.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=12159
+ds4: CUDA masked zero-copy diag periodic: queries=27648/62208.00 MiB covered=11055/24873.75 MiB dma_ok=11054/24871.12 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=12426
+ds4: CUDA masked zero-copy diag periodic: queries=28160/63359.62 MiB covered=11246/25303.12 MiB dma_ok=11245/25301.06 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=12747
+ds4: CUDA masked zero-copy diag periodic: queries=28672/64511.81 MiB covered=11463/25791.75 MiB dma_ok=11463/25791.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=13042
+ds4: CUDA masked zero-copy diag periodic: queries=29184/65664.00 MiB covered=11679/26277.75 MiB dma_ok=11678/26275.12 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=13338
+ds4: CUDA masked zero-copy diag periodic: queries=29696/66815.62 MiB covered=11895/26763.75 MiB dma_ok=11895/26763.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=13634
+ds4: CUDA masked zero-copy diag periodic: queries=30208/67967.81 MiB covered=12099/27222.75 MiB dma_ok=12099/27222.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=13942
+ds4: CUDA masked zero-copy diag periodic: queries=30720/69120.00 MiB covered=12288/27648.00 MiB dma_ok=12288/27648.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=14265
+ds4: CUDA masked zero-copy diag periodic: queries=31232/70271.62 MiB covered=12435/27978.75 MiB dma_ok=12435/27978.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4167 miss_range=14630
+0713 16:37:45 ds4-server: chat ctx=0..64:64 prompt done 4.801s
+ds4: CUDA masked zero-copy diag periodic: queries=31744/71423.81 MiB covered=12580/28304.81 MiB dma_ok=12579/28302.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4221 miss_range=14943
+ds4: CUDA masked zero-copy diag periodic: queries=32256/72576.00 MiB covered=12837/28883.25 MiB dma_ok=12836/28880.62 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4221 miss_range=15198
+ds4: CUDA masked zero-copy diag periodic: queries=32768/73727.62 MiB covered=13035/29328.75 MiB dma_ok=13035/29328.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4283 miss_range=15450
+ds4: CUDA masked zero-copy diag periodic: queries=33280/74879.81 MiB covered=13227/29760.75 MiB dma_ok=13227/29760.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4365 miss_range=15688
+ds4: CUDA masked zero-copy diag periodic: queries=33792/76032.00 MiB covered=13452/30267.00 MiB dma_ok=13452/30267.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4428 miss_range=15912
+ds4: CUDA masked zero-copy diag periodic: queries=34304/77183.62 MiB covered=13641/30692.25 MiB dma_ok=13641/30692.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4509 miss_range=16154
+ds4: CUDA masked zero-copy diag periodic: queries=34816/78335.81 MiB covered=13807/31065.56 MiB dma_ok=13806/31063.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4614 miss_range=16395
+ds4: CUDA masked zero-copy diag periodic: queries=35328/79488.00 MiB covered=13980/31455.00 MiB dma_ok=13980/31455.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4665 miss_range=16683
+ds4: CUDA masked zero-copy diag periodic: queries=35840/80639.62 MiB covered=14159/31857.38 MiB dma_ok=14158/31855.31 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4719 miss_range=16962
+ds4: CUDA masked zero-copy diag periodic: queries=36352/81791.81 MiB covered=14376/32346.00 MiB dma_ok=14376/32346.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4773 miss_range=17203
+ds4: CUDA masked zero-copy diag periodic: queries=36864/82944.00 MiB covered=14598/32845.50 MiB dma_ok=14598/32845.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4827 miss_range=17439
+ds4: CUDA masked zero-copy diag periodic: queries=37376/84095.62 MiB covered=14829/33365.25 MiB dma_ok=14829/33365.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4878 miss_range=17669
+ds4: CUDA masked zero-copy diag periodic: queries=37888/85247.81 MiB covered=15013/33779.06 MiB dma_ok=15012/33777.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4929 miss_range=17946
+ds4: CUDA masked zero-copy diag periodic: queries=38400/86400.00 MiB covered=15243/34296.75 MiB dma_ok=15242/34294.12 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=4980 miss_range=18177
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA masked zero-copy diag periodic: queries=38912/87551.62 MiB covered=15527/34935.38 MiB dma_ok=15526/34933.31 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5031 miss_range=18354
+ds4: CUDA masked zero-copy diag periodic: queries=39424/88703.81 MiB covered=15780/35505.00 MiB dma_ok=15780/35505.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5085 miss_range=18559
+ds4: CUDA masked zero-copy diag periodic: queries=39936/89856.00 MiB covered=16029/36065.25 MiB dma_ok=16029/36065.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5139 miss_range=18768
+ds4: CUDA masked zero-copy diag periodic: queries=40448/91007.62 MiB covered=16316/36710.62 MiB dma_ok=16315/36708.56 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5193 miss_range=18939
+ds4: CUDA masked zero-copy diag periodic: queries=40960/92159.81 MiB covered=16597/37343.06 MiB dma_ok=16596/37341.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5244 miss_range=19119
+ds4: CUDA masked zero-copy diag periodic: queries=41472/93312.00 MiB covered=16854/37921.50 MiB dma_ok=16854/37921.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5328 miss_range=19290
+ds4: CUDA masked zero-copy diag periodic: queries=41984/94463.62 MiB covered=17067/38400.75 MiB dma_ok=17067/38400.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5403 miss_range=19514
+ds4: CUDA masked zero-copy diag periodic: queries=42496/95615.81 MiB covered=17277/38873.25 MiB dma_ok=17277/38873.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5511 miss_range=19708
+ds4: CUDA masked zero-copy diag periodic: queries=43008/96768.00 MiB covered=17580/39555.00 MiB dma_ok=17580/39555.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5559 miss_range=19869
+ds4: CUDA masked zero-copy diag periodic: queries=43520/97919.62 MiB covered=17853/40169.25 MiB dma_ok=17853/40169.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5607 miss_range=20060
+ds4: CUDA masked zero-copy diag periodic: queries=44032/99071.81 MiB covered=18114/40756.50 MiB dma_ok=18114/40756.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5661 miss_range=20257
+ds4: CUDA masked zero-copy diag periodic: queries=44544/100224.00 MiB covered=18381/41357.25 MiB dma_ok=18380/41354.62 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5715 miss_range=20448
+ds4: CUDA masked zero-copy diag periodic: queries=45056/101375.62 MiB covered=18636/41931.00 MiB dma_ok=18636/41931.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5766 miss_range=20654
+ds4: CUDA masked zero-copy diag periodic: queries=45568/102527.81 MiB covered=18916/42560.81 MiB dma_ok=18915/42558.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5820 miss_range=20832
+ds4: CUDA masked zero-copy diag periodic: queries=46080/103680.00 MiB covered=19179/43152.75 MiB dma_ok=19179/43152.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5868 miss_range=21033
+ds4: CUDA masked zero-copy diag periodic: queries=46592/104831.62 MiB covered=19397/43642.88 MiB dma_ok=19396/43640.81 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=5976 miss_range=21219
+ds4: CUDA masked zero-copy diag periodic: queries=47104/105983.81 MiB covered=19701/44327.25 MiB dma_ok=19701/44327.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6030 miss_range=21373
+ds4: CUDA masked zero-copy diag periodic: queries=47616/107136.00 MiB covered=19998/44995.50 MiB dma_ok=19997/44992.88 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6084 miss_range=21534
+ds4: CUDA masked zero-copy diag periodic: queries=48128/108287.62 MiB covered=20261/45586.88 MiB dma_ok=20260/45584.81 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6132 miss_range=21735
+ds4: CUDA masked zero-copy diag periodic: queries=48640/109439.81 MiB covered=20523/46176.75 MiB dma_ok=20523/46176.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6196 miss_range=21921
+ds4: CUDA masked zero-copy diag periodic: queries=49152/110592.00 MiB covered=20793/46784.25 MiB dma_ok=20792/46781.62 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6240 miss_range=22119
+ds4: CUDA masked zero-copy diag periodic: queries=49664/111743.62 MiB covered=21072/47412.00 MiB dma_ok=21072/47412.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6291 miss_range=22301
+ds4: CUDA masked zero-copy diag periodic: queries=50176/112895.81 MiB covered=21336/48006.00 MiB dma_ok=21336/48006.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6342 miss_range=22498
+ds4: CUDA masked zero-copy diag periodic: queries=50688/114048.00 MiB covered=21621/48647.25 MiB dma_ok=21620/48644.62 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6396 miss_range=22671
+ds4: CUDA masked zero-copy diag periodic: queries=51200/115199.62 MiB covered=21896/49265.62 MiB dma_ok=21895/49263.56 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6447 miss_range=22857
+ds4: CUDA masked zero-copy diag periodic: queries=51712/116351.81 MiB covered=22132/49796.81 MiB dma_ok=22131/49794.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6501 miss_range=23079
+ds4: CUDA masked zero-copy diag periodic: queries=52224/117504.00 MiB covered=22422/50449.50 MiB dma_ok=22422/50449.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6540 miss_range=23262
+ds4: CUDA masked zero-copy diag periodic: queries=52736/118655.62 MiB covered=22683/51036.75 MiB dma_ok=22683/51036.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6590 miss_range=23463
+ds4: CUDA masked zero-copy diag periodic: queries=53248/119807.81 MiB covered=22992/51732.00 MiB dma_ok=22992/51732.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6603 miss_range=23653
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA masked zero-copy diag periodic: queries=53760/120960.00 MiB covered=23205/52211.25 MiB dma_ok=23205/52211.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6711 miss_range=23844
+ds4: CUDA masked zero-copy diag periodic: queries=54272/122111.62 MiB covered=23493/52859.25 MiB dma_ok=23493/52859.25 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6719 miss_range=24060
+ds4: CUDA masked zero-copy diag periodic: queries=54784/123263.81 MiB covered=23788/53522.81 MiB dma_ok=23787/53520.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6759 miss_range=24237
+0713 16:38:30 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=1.13 t/s avg=1.13 t/s 44.168s
+ds4: CUDA masked zero-copy diag periodic: queries=55296/124416.00 MiB covered=24054/54121.50 MiB dma_ok=24053/54118.88 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6810 miss_range=24432
+ds4: CUDA masked zero-copy diag periodic: queries=55808/125567.62 MiB covered=24330/54742.50 MiB dma_ok=24330/54742.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6864 miss_range=24614
+ds4: CUDA masked zero-copy diag periodic: queries=56320/126719.81 MiB covered=24618/55390.50 MiB dma_ok=24618/55390.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6918 miss_range=24784
+ds4: CUDA masked zero-copy diag periodic: queries=56832/127872.00 MiB covered=24879/55977.75 MiB dma_ok=24878/55975.12 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6972 miss_range=24981
+ds4: CUDA masked zero-copy diag periodic: queries=57344/129023.62 MiB covered=25187/56670.38 MiB dma_ok=25186/56668.31 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=6972 miss_range=25185
+ds4: CUDA masked zero-copy diag periodic: queries=57856/130175.81 MiB covered=25432/57221.81 MiB dma_ok=25431/57219.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7023 miss_range=25401
+ds4: CUDA masked zero-copy diag periodic: queries=58368/131328.00 MiB covered=25710/57847.50 MiB dma_ok=25709/57844.88 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7077 miss_range=25581
+ds4: CUDA masked zero-copy diag periodic: queries=58880/132479.62 MiB covered=25979/58452.38 MiB dma_ok=25978/58450.31 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7131 miss_range=25770
+ds4: CUDA masked zero-copy diag periodic: queries=59392/133631.81 MiB covered=26214/58981.50 MiB dma_ok=26214/58981.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7185 miss_range=25993
+ds4: CUDA masked zero-copy diag periodic: queries=59904/134784.00 MiB covered=26550/59737.50 MiB dma_ok=26549/59734.88 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7185 miss_range=26169
+ds4: CUDA masked zero-copy diag periodic: queries=60416/135935.62 MiB covered=26838/60385.50 MiB dma_ok=26838/60385.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7239 miss_range=26339
+ds4: CUDA masked zero-copy diag periodic: queries=60928/137087.81 MiB covered=27100/60974.81 MiB dma_ok=27099/60972.75 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7293 miss_range=26535
+0713 16:38:37 ds4-server: chat ctx=114..124:10 gen=60 decoding chunk=1.27 t/s avg=1.15 t/s 52.043s
+0713 16:38:37 ds4-server: chat ctx=0..64:64 gen=60 finish=length 56.846s
+0713 16:38:38 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=3354 selected_experts=27208 cache_hits=7624 cache_misses=12784 hit_rate=0.3736 miss_per_expert=0.4699 direct_loads=7600 copy_calls=61152 copied=137592.00 MiB copy_ms=216022.522 copy_ms_per_batch=64.407 sync_calls=19782 sync_ms=2197.486 sync_ms_per_batch=0.655
+ds4: CUDA masked zero-copy diag final: queries=61152/137592.00 MiB covered=27222/61249.50 MiB dma_ok=27222/61249.50 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=7293 miss_range=26637

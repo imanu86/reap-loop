@@ -1,0 +1,1 @@
+/workspace/reap-loop/runs/ds4/20260713_0051_transport_gate_pod3090/provenance/chripell-5a854d2/ds4-server -m /workspace/models/ds4-2bit.gguf --cuda --ssd-streaming --ssd-streaming-cache-experts 8GB --prefill-chunk 1024 --ctx 32768 -n 288 --host 127.0.0.1 --port 8096 --cors

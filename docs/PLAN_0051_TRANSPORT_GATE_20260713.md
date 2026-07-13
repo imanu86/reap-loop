@@ -311,6 +311,30 @@ If the best B0/B1 arm closes nearly all of the gap, stop 0051 and keep the
 simpler asynchronous staging architecture. Complexity is not accepted for a
 negligible residual gain.
 
+### 6.1 Measured checkpoint, 2026-07-13
+
+The first native-Linux RTX 3090 mechanism campaign is preserved under
+`runs/ds4/20260713_0051_transport_gate_pod3090/` and summarized in its
+`RESULTS.md`.
+
+- A and B0 were byte-exact at `n=3` and both reached about 2.6-2.7 decode t/s
+  after warming; B0 reduced synchronization calls but did not improve this
+  short decode materially.
+- B1's L-to-L+1 speculative prediction was a hard regression and was rejected
+  as a mechanism screen, not promoted as an `n>=3` performance verdict.
+- C2's causal mass-ranked 24 GiB pin plan was byte-exact at `n=3`, reached a
+  4.13 t/s measured median and 5.03 t/s on the last warming repetition, and
+  cut cumulative copy time by 53.1% versus B0.
+- The exact chripell `5a854d2` Profile A binary could not execute its fast path
+  on this pod: its monolithic whole-model `cudaHostRegister()` failed with
+  `invalid argument`, followed by a broken fallback. Page-aligning the final
+  registration length did not change the failure.
+
+These are mechanism results, not Phase 3 closure. The next control must use
+chunked whole-model registration with the otherwise unchanged reference path,
+then compare it with 0050k under the same published cache/reserve/chunk/context
+profile.
+
 ## 7. Conditional 0051 architecture
 
 If the gate passes, implement 0051 incrementally rather than as one large

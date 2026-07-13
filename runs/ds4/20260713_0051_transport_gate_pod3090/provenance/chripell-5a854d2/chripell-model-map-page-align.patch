@@ -1,0 +1,18 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 75288bc..753e212 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -2534,9 +2534,12 @@ static int cuda_model_set_host_map(const void *model_map, uint64_t model_size) {
+         g_model_host_base = model_map;
+         g_model_device_base = (const char *)model_map;
+         g_model_registered_size = model_size;
+         if (getenv("DS4_CUDA_STREAM_FROM_RAM") != NULL) {
+             unsigned int flags = cudaHostRegisterMapped;
+-            cudaError_t err = cudaHostRegister((void *)model_map, (size_t)model_size, flags);
++            const size_t page_size = 4096;
++            const size_t register_size =
++                ((size_t)model_size + page_size - 1) & ~(page_size - 1);
++            cudaError_t err = cudaHostRegister((void *)model_map, register_size, flags);
+             if (err == cudaSuccess) {
+                 g_model_registered = 1;
+                 fprintf(stderr, "ds4: CUDA pinned %.2f GiB model mapping for direct RAM streaming\n",

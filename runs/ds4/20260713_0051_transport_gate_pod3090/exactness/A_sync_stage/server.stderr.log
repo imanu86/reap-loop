@@ -1,0 +1,66 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3090 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 2.141s
+ds4: cuda backend initialized for graph diagnostics
+0713 15:54:10 ds4-server: context buffers 93.82 MiB (ctx=2048, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=514)
+0713 15:54:10 ds4-server: listening on http://127.0.0.1:8096
+0713 15:54:10 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.12 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.14 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.16 GiB cached
+ds4: CUDA loading model tensors 0.13 GiB cached
+ds4: CUDA loading model tensors 0.15 GiB cached
+ds4: CUDA loading model tensors 0.00 GiB cached
+0713 15:58:12 ds4-server: chat ctx=0..64:64 prompt done 242.139s
+ds4: REAP mask reload da /workspace/reap-loop/runs/ds4/20260712_virtual_bake/masks/mask60_self.txt: 4080 entry potate
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: CUDA loading model tensors 7.86 GiB cached
+0713 15:58:38 ds4-server: chat ctx=64..80:16 gen=16 decoding chunk=0.61 t/s avg=0.61 t/s 26.159s
+0713 15:58:38 ds4-server: chat ctx=0..64:64 gen=16 finish=length 268.299s
+0713 15:58:38 ds4-server: live kv cache miss live=80 prompt=64 common=64 reason=token-mismatch
+0713 15:58:38 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+0713 15:58:47 ds4-server: chat ctx=0..64:64 prompt done 8.091s
+ds4: CUDA loading model tensors 5.91 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0713 16:00:09 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=0.61 t/s avg=0.61 t/s 82.357s
+0713 16:00:26 ds4-server: chat ctx=114..124:10 gen=60 decoding chunk=0.60 t/s avg=0.61 t/s 99.133s
+0713 16:00:26 ds4-server: chat ctx=0..64:64 gen=60 finish=length 107.226s
+0713 16:00:26 ds4-server: live kv cache miss live=124 prompt=64 common=64 reason=token-mismatch
+0713 16:00:26 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+0713 16:00:34 ds4-server: chat ctx=0..64:64 prompt done 8.149s
+ds4: CUDA loading model tensors 7.45 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0713 16:00:52 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=2.70 t/s avg=2.70 t/s 18.523s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0713 16:00:57 ds4-server: chat ctx=114..124:10 gen=60 decoding chunk=2.19 t/s avg=2.60 t/s 23.084s
+0713 16:00:57 ds4-server: chat ctx=0..64:64 gen=60 finish=length 31.235s
+0713 16:00:57 ds4-server: live kv cache miss live=124 prompt=64 common=64 reason=token-mismatch
+0713 16:00:57 ds4-server: chat ctx=0..64:64 prompt start
+ds4: CUDA loading model tensors 0.00 GiB cached
+0713 16:01:05 ds4-server: chat ctx=0..64:64 prompt done 8.099s
+ds4: CUDA loading model tensors 7.68 GiB cached
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0713 16:01:23 ds4-server: chat ctx=64..114:50 gen=50 decoding chunk=2.85 t/s avg=2.85 t/s 17.538s
+ds4: REAP mask applied: 40 layer, 40 device range aggiornati/creati
+0713 16:01:27 ds4-server: chat ctx=114..124:10 gen=60 decoding chunk=2.23 t/s avg=2.72 t/s 22.022s
+0713 16:01:27 ds4-server: chat ctx=0..64:64 gen=60 finish=length 30.122s
+0713 16:01:27 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=8600 selected_experts=65768 cache_hits=18759 cache_misses=33409 hit_rate=0.3596 miss_per_expert=0.5080 direct_loads=15200 copy_calls=145827 copied=328110.75 MiB copy_ms=411127.812 copy_ms_per_batch=47.806 sync_calls=145827 sync_ms=16584.822 sync_ms_per_batch=1.928
