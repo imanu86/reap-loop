@@ -148,7 +148,7 @@ quality.
 - Async pipeline OFF.
 - Existing `pread -> pinned stage -> H2D -> sync` behavior.
 
-### Arm B: asynchronous staged pipeline
+### Arm B0: asynchronous staged transport, reactive predictor disabled
 
 - Arm A plus the compatible portions of 0032, 0047, and 0048.
 - Persistent staging cursor and write-after-read event protection are
@@ -156,11 +156,26 @@ quality.
 - Decode upload/compute overlap ON.
 - Prefill overlap S1 ON.
 - Speculative readahead S2 OFF.
+- `DS4_SPEX_DISABLE_PREFETCH_NEXT_LAYER=1`, so the reactive L-to-L+1 expert
+  predictor cannot change residency traffic in this arm.
 - Direct selected mmap pinning OFF.
+
+This arm isolates event/barrier/staging behavior from prediction quality.
+
+### Arm B1: full 0032 asynchronous pipeline
+
+- Same binary and transport settings as B0.
+- Reactive L-to-L+1 expert prefetch enabled.
+- Direct selected mmap pinning OFF.
+
+The B1/B0 comparison measures the incremental value or cost of the reactive
+predictor. `DS4_ASYNC_PIPELINE=0` must behave exactly like unset; the integrated
+patch must not treat the mere presence of a zero-valued environment variable
+as enabled.
 
 ### Arm C1: asynchronous direct pin, legacy allocation order
 
-- Arm B plus patch 0050 selected mmap pinning.
+- The better valid B0/B1 transport base plus patch 0050 selected mmap pinning.
 - Reproduce the existing contiguous expert-ID admission policy.
 - This arm isolates the cost of direct pinned sources while preserving the
   known suboptimal coverage.
@@ -176,8 +191,8 @@ quality.
   bound. It cannot support a production or quality claim.
 
 The C1/C2 comparison determines how much of the 0050 result was lost to the
-expert-ID allocation policy. The B/C2 comparison determines whether direct
-pinning still matters after correct overlap.
+expert-ID allocation policy. The selected B*/C2 comparison determines whether
+direct pinning still matters after correct overlap.
 
 ## 5. Test sequence
 
@@ -186,7 +201,7 @@ pinning still matters after correct overlap.
 1. Freeze the pod source and binary hashes before editing.
 2. Reconstruct the ordered patch chain from source, not from filenames or
    memory.
-3. Build distinct, named binaries for A, B, and C from the same DS4 base.
+3. Build distinct, named binaries for A and B*/C from the same DS4 base.
 4. Run `git apply --check` and a clean compile for the combined 0032/0047/0048
    stack.
 5. Confirm no DS4 server is active before each arm and stop only the recorded
@@ -206,7 +221,8 @@ pinning still matters after correct overlap.
 
 Use a short deterministic coffee request at `temp=0`, 60 generated tokens:
 
-1. A/A/A, B/B/B, C1/C1/C1, and C2/C2/C2 repeatability;
+1. A/A/A, B0/B0/B0, B1/B1/B1, C1/C1/C1, and C2/C2/C2
+   repeatability;
 2. balanced cross-arm order rather than one sequential OFF/ON pair;
 3. byte hashes and first differing token/byte for every mismatch;
 4. no causal attribution when within-arm nondeterminism is as large as
@@ -220,10 +236,12 @@ arm and report median, range, and each raw run.
 
 Primary comparisons:
 
-- B versus A: value of asynchronous staging and reduced synchronization;
-- C1 versus B: direct pinning with the old allocation policy;
+- B0 versus A: value of asynchronous staging and reduced synchronization;
+- B1 versus B0: incremental value of reactive L-to-L+1 prefetch;
+- C1 versus the selected B*: direct pinning with the old allocation policy;
 - C2 versus C1: value of mass-ranked pinned coverage;
-- C2 versus B: residual value that could justify a dynamic arena.
+- C2 versus the selected B*: residual value that could justify a dynamic
+  arena.
 
 The physical H2D microbenchmark is repeated once on the node but is never used
 as a substitute for effective DS4 copy bandwidth.
@@ -245,8 +263,8 @@ preferably context 8192, maximum output 4000, and a stop condition at a valid
 
 ### Phase 5: 12 GiB envelope
 
-Repeat the promoted A/B/C2 subset with the second 3090 configured to expose the
-same DS4 VRAM budget and cache pressure as the local 12 GiB setup.
+Repeat the promoted A/B*/C2 subset with the second 3090 configured to expose
+the same DS4 VRAM budget and cache pressure as the local 12 GiB setup.
 
 This is a memory-envelope test, not a 3060 speed proxy: the 3090 retains its
 larger compute throughput and memory/PCIe characteristics. Record the exact
@@ -280,7 +298,8 @@ Correctness gates are absolute:
 Proceed to a dynamic pinned arena only when all of the following are measured:
 
 1. C2 reaches at least 80 percent direct-pin routing-mass coverage causally;
-2. C2 improves median decode throughput over B by at least 10 percent, or
+2. C2 improves median decode throughput over the selected B* by at least 10
+   percent, or
    reduces measured copy/synchronization stall by at least 20 percent with a
    credible path to end-to-end gain;
 3. the benefit repeats on both the full 3090 and the 12 GiB envelope, or the
@@ -288,9 +307,9 @@ Proceed to a dynamic pinned arena only when all of the following are measured:
 4. estimated arena refill cost is amortized within the measured useful turn
    length rather than inferred from bandwidth alone.
 
-If B closes nearly all of the gap, stop 0051 and keep the simpler asynchronous
-staging architecture. Complexity is not accepted for a negligible residual
-gain.
+If the best B0/B1 arm closes nearly all of the gap, stop 0051 and keep the
+simpler asynchronous staging architecture. Complexity is not accepted for a
+negligible residual gain.
 
 ## 7. Conditional 0051 architecture
 
@@ -323,7 +342,7 @@ must be chosen from measured retain, refill bytes, and useful-turn latency.
 
 ## 8. Pod execution and cost discipline
 
-- Full 3090 pod: build, safety, exactness, and complete A/B/C matrix.
+- Full 3090 pod: build, safety, exactness, and complete A/B0/B1/C1/C2 matrix.
 - 12 GiB-envelope pod: acceptance under local memory pressure.
 - Do not stop a pod while a model download or irreplaceable artifact upload is
   in progress.
@@ -337,11 +356,11 @@ must be chosen from measured retain, refill bytes, and useful-turn latency.
 1. Let the active full-3090 pod finish its R2 model transfer.
 2. Audit and snapshot the pod source/binary state without modifying the active
    download.
-3. Prepare A and B builds first; do not start 0051 implementation.
+3. Prepare A and the integrated B*/C build first; do not start 0051
+   implementation.
 4. Close Phase 1 staging/event safety.
 5. Run the repeated exactness matrix.
-6. Run full-3090 throughput A/B/C1/C2.
+6. Run full-3090 throughput A/B0/B1/C1/C2.
 7. In parallel, ingest the native Windows port and map its memory/copy APIs to
    the same counters and invariants.
 8. Update this document with artifact paths and a measured go/no-go verdict.
-
