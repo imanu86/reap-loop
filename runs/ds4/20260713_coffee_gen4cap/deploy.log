@@ -1,0 +1,32 @@
+=== GPU / CUDA / PCIe ===
+NVIDIA RTX A5000, 24564 MiB, 570.211.01
+--- PCIe link ---
+            PCIe Generation
+1, 16, 4, 16
+--- CUDA runtime ---
+/usr/local/cuda
+/usr/local/cuda-12
+/usr/local/cuda-12.8
+--- RAM ---
+               total        used        free      shared  buff/cache   available
+Mem:             503          51         270           2         186         451
+--- disk /workspace ---
+overlay         120G   28M  120G   1% /
+=== rclone install/version (prefer latest via official installer for fast multi-thread) ===
+rclone v1.74.4
+=== configure R2 (no secret echo) ===
+rclone R2 configured: OK
+--- R2 listing ---
+ds4-2bit.gguf
+ds4-2bit.gguf.sha256
+ds4-pace-sm86.sha
+ds4-src_livetree-771a39a8.tgz.sha256
+=== pull model (86GB) if absent ===
+downloading model from R2...
+
+real	2m17.450s
+user	1m54.866s
+sys	7m12.640s
+model size: 86720111488 (want 86720111488)
+=== binary quick check (linkage) ===
+=== deploy done ===

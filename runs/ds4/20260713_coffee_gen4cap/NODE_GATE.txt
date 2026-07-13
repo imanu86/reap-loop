@@ -1,0 +1,8 @@
+NODE GATE — 2026-07-13
+GPU: NVIDIA RTX A5000 (GA102, sm_86), 24564 MiB, driver 570.211.01
+Cloud: RunPod SECURE, pod 32qbfbamo634hp, $0.270/hr
+PCIe (nvidia-smi gen.current,width.current,gen.max,width.max): 1, 16, 4, 16  => MAX gen4 x16 VERIFIED
+CUDA gate: cuInit rc=0; torch micro-alloc OK
+H2D pinned bandwidth (torch, 1 GiB uint8, best of 10 after 3 warmup): 23.63 GiB/s  => native gen4
+Reference: WSL/3060 was 2.81 GiB/s. Ratio ~8.4x.
+Reaper: detached remove@7200s armed at provision; pod terminated at end of run.
