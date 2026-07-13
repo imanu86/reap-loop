@@ -1,0 +1,12 @@
+{
+  "source": "runs/ds4/20260711_k0_fullmodel_baseline/route_k0_coffee.csv.gz",
+  "source_positions": 790,
+  "source_pos_min": 218,
+  "source_pos_max": 1007,
+  "split": "first floor(N_unique_positions/2), ordered by pos",
+  "kept_positions": 395,
+  "kept_pos_min": 218,
+  "kept_pos_max": 612,
+  "kept_rows": 15800,
+  "purpose": "causal prior-only pin plan for 0051 transport gate C2; not a compute mask"
+}

@@ -1,0 +1,22 @@
+{
+  "evaluation": "second half of same K0 coffee trace, disjoint positions from plan builder",
+  "positions": 395,
+  "pos_min": 613,
+  "pos_max": 1007,
+  "selected_events": 94800,
+  "frequency_coverage": 0.8245147679324895,
+  "total_gate_mass": 23700.0001044419,
+  "mass_coverage": 0.8566282965976424,
+  "per_layer_frequency_min_median_max": [
+    0.7341772151898734,
+    0.8276371308016877,
+    0.9054852320675105
+  ],
+  "per_layer_mass_min_median_max": [
+    0.7590184992035492,
+    0.8564051952529901,
+    0.9297126542025484
+  ],
+  "pinplan_sha256": "6869d28a57ddbfe41dd361ea9e27e8347788bc8a6967619928acec0533c02b2a",
+  "caveat": "n=1 trace transport prior; not a quality verdict"
+}
