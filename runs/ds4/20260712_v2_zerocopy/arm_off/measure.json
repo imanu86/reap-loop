@@ -1,0 +1,17 @@
+{
+  "n_deltas": 450,
+  "ttft_s": 145.83007426200004,
+  "usage": {
+    "prompt_tokens": 78,
+    "completion_tokens": 450,
+    "total_tokens": 528,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 78
+    }
+  },
+  "steady_decode_tps": 1.1659676841591078,
+  "steady_tokens": 409,
+  "steady_window_s": 350.781591597,
+  "full_decode_tps": 1.18980112080333
+}
