@@ -690,29 +690,56 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
         raise RuntimeError(
             f"Windows G7 import lost artifacts: parsed {len(rows)} of {len(result_paths)}"
         )
-    return rows + aggregate_windows_g7_campaigns(rows)
+    return rows + aggregate_windows_g7_campaigns(root, rows)
 
 
-def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+def aggregate_windows_g7_campaigns(
+    root: Path, rows: list[dict[str, str]]
+) -> list[dict[str, str]]:
     campaigns = [
-        (
-            "g19a_observed_residency",
-            re.compile(r"^g7_g19a_ab_arena12_[1-6]_(off|on)_n1$"),
-            "independent new processes; no shared warmup",
-        ),
-        (
-            "g19b_first_fetch_preload",
-            re.compile(r"^g7_g19b_ab128_arena12_[1-6]_(off|on)_n1$"),
-            "independent new processes; no shared warmup",
-        ),
-        (
-            "g20_grow8",
-            re.compile(r"^g7_g20_grow_ab_20260714_085148_[1-6]_(off|on)_n1$"),
-            "independent new processes; warm unpurged standby state",
-        ),
+        {
+            "name": "g19a_observed_residency",
+            "pattern": re.compile(r"^g7_g19a_ab_arena12_[1-6]_(off|on)_n1$"),
+            "arms": ("off", "on"),
+            "cache_note": "independent new processes; no shared warmup",
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+        },
+        {
+            "name": "g19b_first_fetch_preload",
+            "pattern": re.compile(r"^g7_g19b_ab128_arena12_[1-6]_(off|on)_n1$"),
+            "arms": ("off", "on"),
+            "cache_note": "independent new processes; no shared warmup",
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+        },
+        {
+            "name": "g20_grow8",
+            "pattern": re.compile(r"^g7_g20_grow_ab_20260714_085148_[1-6]_(off|on)_n1$"),
+            "arms": ("off", "on"),
+            "cache_note": "independent new processes; warm unpurged standby state",
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+        },
+        {
+            "name": "g22_arena_carry",
+            "pattern": re.compile(r"^g7_g22_carry_ab_20260714_[1-6]_(drop|keep)_n1$"),
+            "arms": ("drop", "keep"),
+            "cache_note": (
+                "independent processes; request 1 primes the arena; request 2 measured"
+            ),
+            "cache_state": "independent_processes_same_process_primed_request2",
+            "warmup": "true",
+            "aggregate_file": "g7_g22_carry_ab_20260714_aggregate.json",
+            "aggregate_schema": "g7_dynamic_arena_carry_ab_v1",
+        },
     ]
     aggregates: list[dict[str, str]] = []
-    for campaign, pattern, cache_note in campaigns:
+    for spec in campaigns:
+        campaign = str(spec["name"])
+        pattern = spec["pattern"]
+        arms = tuple(spec["arms"])
+        cache_note = str(spec["cache_note"])
         matched: list[tuple[dict[str, str], str]] = []
         for row in rows:
             match = pattern.match(row["run_id"])
@@ -721,7 +748,32 @@ def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str,
         if len(matched) != 6:
             raise RuntimeError(f"Campaign {campaign} expected 6 runs, found {len(matched)}")
 
-        for arm in ("off", "on"):
+        campaign_artifact = ""
+        aggregate_name = spec.get("aggregate_file")
+        if aggregate_name:
+            aggregate_path = root / str(aggregate_name)
+            aggregate_src = read_json(aggregate_path)
+            if not aggregate_src:
+                raise RuntimeError(f"Campaign {campaign} aggregate missing: {aggregate_path}")
+            if aggregate_src.get("schema") != spec.get("aggregate_schema"):
+                raise RuntimeError(f"Campaign {campaign} aggregate schema mismatch")
+            aggregate_runs = aggregate_src.get("runs")
+            if not isinstance(aggregate_runs, list) or len(aggregate_runs) != 6:
+                raise RuntimeError(f"Campaign {campaign} aggregate expected 6 runs")
+            aggregate_ids = {
+                f"g7_{clean(item.get('tag'))}"
+                for item in aggregate_runs
+                if isinstance(item, dict) and item.get("tag")
+            }
+            matched_ids = {row["run_id"] for row, _ in matched}
+            if aggregate_ids != matched_ids:
+                raise RuntimeError(f"Campaign {campaign} aggregate/result run mismatch")
+            promotion = as_dict(aggregate_src.get("promotion_gate"))
+            if promotion.get("all_hashes_exact") is not True:
+                raise RuntimeError(f"Campaign {campaign} aggregate exactness gate failed")
+            campaign_artifact = rel(aggregate_path)
+
+        for arm in arms:
             arm_rows = [row for row, observed_arm in matched if observed_arm == arm]
             if len(arm_rows) != 3:
                 raise RuntimeError(
@@ -756,6 +808,19 @@ def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str,
             else:
                 expected_status = "not_requested"
             outputs_identical = len(hashes) == 1
+            if aggregate_name:
+                sample_key = f"{arm}_decode_tps_samples"
+                aggregate_samples = [
+                    float(value)
+                    for value in aggregate_src.get(sample_key, [])
+                    if number(value) is not None
+                ]
+                if sorted(round(value, 6) for value in aggregate_samples) != sorted(
+                    round(value, 6) for value in server_values
+                ):
+                    raise RuntimeError(
+                        f"Campaign {campaign}/{arm} aggregate sample mismatch"
+                    )
             base = base_row()
             common_fields = [
                 "date",
@@ -830,8 +895,8 @@ def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str,
                     "profile": f"{campaign} arm={arm}; {cache_note}",
                     "repeats": "3",
                     "replication_scope": "independent_server_processes",
-                    "warmup": "false",
-                    "cache_state": "independent_new_processes_uncontrolled",
+                    "warmup": str(spec["warmup"]),
+                    "cache_state": str(spec["cache_state"]),
                     "avg_tps": decimal(mean(client_values)),
                     "wall_s": decimal(mean(wall_values)),
                     "prompt_s": decimal(mean(ttft_values)),
@@ -859,7 +924,10 @@ def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str,
                         f"median={decimal(median(server_values))}; expected_hash={expected_status}; "
                         f"outputs_identical={str(outputs_identical).lower()}"
                     ),
-                    "source_artifacts": ";".join(row["source_artifacts"] for row in arm_rows),
+                    "source_artifacts": ";".join(
+                        [row["source_artifacts"] for row in arm_rows]
+                        + ([campaign_artifact] if campaign_artifact else [])
+                    ),
                 }
             )
             aggregates.append(base)

@@ -23,17 +23,18 @@ Markdown view.
 
 | Evidence | Result | Status |
 |---|---:|---|
-| Highest whole measured response, G22 KEEP | 4.32 server / 3.852 client t/s | mechanism-only, n=1 |
+| G22 KEEP independent replication | 4.55 median server t/s; samples 4.55, 4.42, 4.60 | promoted transport baseline, independent n=3, exact |
+| G22 DROP independent control | 1.56 median server t/s; samples 1.42, 1.56, 1.57 | independent n=3, exact |
 | Supporting previous-executable G22 response | 4.29 / 3.819 t/s | continuity only, not a third replica |
 | Historical G19B2 final chunks | 4.34 / 4.26 t/s | window/tail records, n=1 |
 | Highest short same-process n=3 server mean in imported G7 JSON | 2.98 t/s | speed-only, `Hi`, not independent processes |
 | G19B W16/min-hits3 controlled independent A/B | 2.313 ON vs 2.083 OFF t/s | positive, +11.0%, identical complete SHA |
 | G20 grow8 controlled independent A/B | median 2.02 ON vs 1.97 OFF t/s | residency positive; speed inconclusive (+2.5%) |
 
-The correct summary is therefore: local whole-response record observed at
-4.32 t/s server-side, historical local tail record 4.34 t/s, and no independent
-n>=3 confirmation yet that the W64/min-hits1 retained arena sustains greater
-than 4 t/s.
+The correct summary is therefore: W64/min-hits1 retained arena residency now
+sustains greater than 4 t/s in three independent local processes. The median is
+4.55 t/s server-side, every KEEP sample is at least 4.42 t/s, and the exact
+DROP control median is 1.56 t/s.
 
 ## Lever classification
 
@@ -55,13 +56,12 @@ than 4 t/s.
 | Parallel boundary verification | G19B2 2.37 vs inline 1.85 t/s adjacent n=1 | retained; attribution not fully causal |
 | Grow-only residency | G20 2.89->8.51 useful GiB, +16.28 hit points, +2.5% median speed | keep candidate, longer gate pending |
 | Q8-to-F16 fixed cache 256/1280 | G21 0.38 t/s, 614 GiB Win32 reads, hash mismatch | rejected exact configuration |
-| Cross-request learned-arena reuse | G22 KEEP 4.32 vs DROP 1.42 t/s, exact | highest-priority replication |
+| Cross-request learned-arena reuse | G22 KEEP median 4.55 vs DROP 1.56 t/s, ratio 2.92x, independent n=3, exact | promoted Windows transport baseline |
 
-## Highest-value missing measurement
+## G22 replication verdict
 
-Replicate G22 before combining another lever. It directly tests whether the
-large W64/min-hits1 resident set, rather than generic Windows warming, explains
-the greater-than-4 whole-response result.
+G22 directly tested whether the large W64/min-hits1 resident set, rather than
+generic Windows warming, explains the greater-than-4 whole-response result.
 
 Pre-registered order across six independent server processes:
 
@@ -95,10 +95,24 @@ Promotion requires all of:
 3. KEEP/DROP median server-decode ratio at least 2.0;
 4. all expected output hashes exact.
 
-If the gate passes, retained learned residency becomes the Windows transport
-baseline for subsequent isolated tests. If it fails, the greater-than-4 value
-remains an observed record and the next work targets cache-state control rather
-than composing another runtime lever.
+Measured server decode samples were DROP 1.42/1.56/1.57 and KEEP
+4.55/4.42/4.60 t/s. The medians are 1.56 and 4.55 t/s, respectively, for a
+2.92x ratio. Every expected output hash matched. The gate passed and retained
+learned residency is now the Windows transport baseline.
+
+## Next highest-value measurement
+
+Measure transfer before adding another optimization. Use the promoted G22
+configuration but make request 2 a distinct deterministic domain from request
+1. Compare KEEP with DROP in an order-balanced safety gate, then replicate only
+if exactness and a useful speed separation survive. This is the missing proof
+that the arena acts as a reusable transport cache rather than a residency set
+specialized to one repeated prompt.
+
+If cross-domain reuse is weak, add exactly one adaptation mechanism: re-arm the
+already measured grow-only residency policy while retaining the existing set.
+Rotation, SPEX and mask-width changes remain off until that isolated comparison
+is measured.
 
 ## Process rule
 

@@ -6,10 +6,10 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 549
+- Rows total: 557
 - Runner-measured rows: 213
-- Windows-native G7 result rows: 142
-- Windows-native independent campaign aggregates: 6
+- Windows-native G7 result rows: 148
+- Windows-native independent campaign aggregates: 8
 - Windows-native failed safety rows: 1
 - Legacy / Claude / claim rows: 187
 
@@ -63,6 +63,10 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 
 | run_id | date | cache_state | repeats | replication_scope | server_decode_mean_tps | client_completion_mean_tps | server_prefill_ttft_s | dynamic_arena_gib | dynamic_arena_window | dynamic_arena_min_hits | dynamic_arena_carry | dynamic_arena_resident | resident_expert_cache | spex_stage | expected_hash_match | benchmark_usable |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| g7_g22_carry_ab_20260714_6_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.6 | 4.09256 | 5.774 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
+| g7_g22_carry_ab_20260714_2_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.55 | 4.062977 | 5.646 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
+| campaign_g22_arena_carry_keep_n3 | 20260714 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 4.523333 | 4.036758 | 5.687667 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | speed_only |
+| g7_g22_carry_ab_20260714_3_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.42 | 3.954737 | 5.643 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.32 | 3.852063 | 6.034 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.29 | 3.819231 | 6.099 | 30.0 | 64 | 1 |  | 3576 | 0 | off | true | mechanism_only |
 | g7_g14_ordered_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.98 | 2.107655 | 1.245667 |  |  |  |  |  | 0 | off | not_requested | speed_only |
@@ -79,15 +83,19 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g16_final2_k1_prefetch_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.85 | 2.053437 | 1.222333 |  |  |  |  |  | 0 | full | true | speed_only |
 | g7_g17_allocator_1g_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.85 | 2.029399 | 1.278333 |  |  |  |  |  | 0 | off | not_requested | speed_only |
 | g7_g13_stage_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.846667 | 2.038865 | 1.254667 |  |  |  |  |  | 0 | off | not_requested | speed_only |
-| g7_g14_gate_ring1_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.84 | 2.028581 | 1.265667 |  |  |  |  |  | 0 | full | true | speed_only |
-| g7_g14_ring1_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.84 | 2.023789 | 1.274333 |  |  |  |  |  | 0 | full | not_requested | speed_only |
-| g7_g14_gate_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.836667 | 2.025979 | 1.27 |  |  |  |  |  | 0 | off | true | speed_only |
-| g7_g16_final_k1_prefetch_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.836667 | 2.023161 | 1.274 |  |  |  |  |  | 0 | full | true | speed_only |
 
 ## Windows Native G22 Causal Rows
 
 | run_id | source_head | executable_sha256 | cache_state | repeats | server_decode_mean_tps | client_completion_mean_tps | server_prefill_ttft_s | dynamic_arena_carry | dynamic_arena_resident | dynamic_arena_hit_rate | standby_before_gib | process_read_gib | expected_hash_match | evidence_level |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| campaign_g22_arena_carry_drop_n3 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | independent_processes_same_process_primed_request2 | 3 | 1.516667 | 1.356221 | 16.557 | drop | 3576 | 0.7258484280657922 |  |  | true | measured_independent_n3 |
+| campaign_g22_arena_carry_keep_n3 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | independent_processes_same_process_primed_request2 | 3 | 4.523333 | 4.036758 | 5.687667 | keep | 3576 | 0.756722575829826 |  |  | true | measured_independent_n3 |
+| g7_g22_carry_ab_20260714_1_drop_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 1.42 | 1.270688 | 17.541 | drop | 3576 | 0.7258484280657922 | 20.139584 | 601.163296 | true | measured_safety_n1 |
+| g7_g22_carry_ab_20260714_2_keep_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 4.55 | 4.062977 | 5.646 | keep | 3576 | 0.756722575829826 | 18.284382 | 301.417800 | true | measured_safety_n1 |
+| g7_g22_carry_ab_20260714_3_keep_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 4.42 | 3.954737 | 5.643 | keep | 3576 | 0.756722575829826 | 18.798279 | 302.604951 | true | measured_safety_n1 |
+| g7_g22_carry_ab_20260714_4_drop_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 1.56 | 1.395966 | 16.142 | drop | 3576 | 0.7258484280657922 | 19.254772 | 599.838920 | true | measured_safety_n1 |
+| g7_g22_carry_ab_20260714_5_drop_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 1.57 | 1.402008 | 15.988 | drop | 3576 | 0.7258484280657922 | 19.199249 | 598.450775 | true | measured_safety_n1 |
+| g7_g22_carry_ab_20260714_6_keep_n1 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 4.6 | 4.09256 | 5.774 | keep | 3576 | 0.756722575829826 | 19.151634 | 301.778615 | true | measured_safety_n1 |
 | g7_g22_carry_drop_w64_m1_arena30_cyber256_safety_n1 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 1.42 | 1.269029 | 18.148 | drop | 3576 | 0.7258484280657922 | 22.052296 | 602.899762 | true | measured_safety_n1 |
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 4.32 | 3.852063 | 6.034 | keep | 3576 | 0.756722575829826 | 18.029606 | 302.620570 | true | measured_safety_n1 |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | db610b50b6d4652b392c002e73849ff10b279e159425e94a325c11e365ca5180 | same_process_primed | 1 | 4.29 | 3.819231 | 6.099 |  | 3576 | 0.756722575829826 | 37.850914 | 301.598863 | true | measured_safety_n1 |
@@ -102,6 +110,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | campaign_g19b_first_fetch_preload_on_n3 | on | 3 | independent_server_processes | 2.313333 | 2.3 | 2.33 | 1.832023 | 14.205667 | 439 | not_requested | speed_only | independent n=3 arm=on; server mean=2.313333 t/s; median=2.31; expected_hash=not_requested; outputs_identical=true |
 | campaign_g20_grow8_off_n3 | off | 3 | independent_server_processes | 1.976667 | 1.87 | 2.09 | 1.341453 | 14.956 | 439 | true | speed_only | independent n=3 arm=off; server mean=1.976667 t/s; median=1.97; expected_hash=true; outputs_identical=true |
 | campaign_g20_grow8_on_n3 | on | 3 | independent_server_processes | 2.056667 | 2.01 | 2.14 | 1.370601 | 15.149 | 1291 | true | speed_only | independent n=3 arm=on; server mean=2.056667 t/s; median=2.02; expected_hash=true; outputs_identical=true |
+| campaign_g22_arena_carry_drop_n3 | drop | 3 | independent_server_processes | 1.516667 | 1.42 | 1.57 | 1.356221 | 16.557 | 3576 | true | speed_only | independent n=3 arm=drop; server mean=1.516667 t/s; median=1.56; expected_hash=true; outputs_identical=true |
+| campaign_g22_arena_carry_keep_n3 | keep | 3 | independent_server_processes | 4.523333 | 4.42 | 4.6 | 4.036758 | 5.687667 | 3576 | true | speed_only | independent n=3 arm=keep; server mean=4.523333 t/s; median=4.55; expected_hash=true; outputs_identical=true |
 
 ## Windows Native Failed Safety Gates
 
@@ -119,6 +129,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | campaign_g19b_first_fetch_preload_on_n3 | 20260714 | 480cda75e7ca798cd658061d5250e1beb2c3b8bd | cyber_html | 128 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 2.313333 | 1.832023 | 14.205667 | 12.0 | 16 | 3 |  |  | 439 | 0 | 1 | off | 0 |  | true | not_requested | speed_only |
 | campaign_g20_grow8_off_n3 | 20260714 | 3aef01666fff2634e9ce155f3ca928993bdf5720 | cyber_html | 64 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 1.976667 | 1.341453 | 14.956 | 12.0 | 16 | 3 | 0 |  | 439 | 0 | 1 | off | 0 |  | true | true | speed_only |
 | campaign_g20_grow8_on_n3 | 20260714 | 3aef01666fff2634e9ce155f3ca928993bdf5720 | cyber_html | 64 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 2.056667 | 1.370601 | 15.149 | 12.0 | 16 | 3 | 8 |  | 1291 | 0 | 1 | off | 0 |  | true | true | speed_only |
+| campaign_g22_arena_carry_drop_n3 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 1.516667 | 1.356221 | 16.557 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
+| campaign_g22_arena_carry_keep_n3 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 4.523333 | 4.036758 | 5.687667 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
 | g7_baseline_7f647e0_clean_n3 | 20260714 | 7f647e05f070ffbfcaad49b2c8f9217ac152ec64 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 2.042211 |  |  |  |  |  |  |  |  |  |  |  |  | true | not_requested | speed_only |
 | g7_baseline_7f647e0_diag_n3 | 20260714 | 7f647e05f070ffbfcaad49b2c8f9217ac152ec64 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 0.705695 |  |  |  |  |  |  |  |  |  |  |  |  | true | not_requested | speed_only |
 | g7_cache32_safety_n1 | 20260714 | c96ffad5b05398d740c9fee5938533da83ee4d6f | windows_g7 | 12 | same_process_primed | 1 | single_server_process |  | 1.999994 |  |  |  |  |  |  |  | 32 | 1 |  |  |  | true | not_requested | mechanism_only |
@@ -236,6 +248,12 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g21_currentbuild_defaultreserve4096_single_control_n1 | 20260714 | 5ed1e46f8f27e01afe8a1065824bfe690a9aa795 | cyber_html | 64 | new_process_uncontrolled | 1 | single_server_process | 0.41 | 0.374918 | 12.714 | 12.0 | 16 | 3 | 0 |  | 439 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g21_q8_cap256_reserve1280_postprime_safety_n1 | 20260714 | 5ed1e46f8f27e01afe8a1065824bfe690a9aa795 | windows_g7 | 64 | new_process_uncontrolled | 1 | single_server_process | 0.38 |  | 15.563 | 12 | 16 | 3 | 0 |  | 446 |  |  |  |  | 256 | not_applicable | false | rejected_safety_configuration |
 | g7_g21_q8_reserve1280_safety_n1 | 20260714 | 5ed1e46f8f27e01afe8a1065824bfe690a9aa795 | cyber_html | 64 | same_process_primed | 1 | single_server_process | 0.43 | 0.402009 | 9.512 | 12.0 | 16 | 3 | 0 |  | 442 | 0 | 1 | off | 0 | 256 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_1_drop_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 1.42 | 1.270688 | 17.541 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_2_keep_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.55 | 4.062977 | 5.646 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_3_keep_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.42 | 3.954737 | 5.643 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_4_drop_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 1.56 | 1.395966 | 16.142 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_5_drop_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 1.57 | 1.402008 | 15.988 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g22_carry_ab_20260714_6_keep_n1 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.6 | 4.09256 | 5.774 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g22_carry_drop_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 1.42 | 1.269029 | 18.148 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.32 | 3.852063 | 6.034 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.29 | 3.819231 | 6.099 | 30.0 | 64 | 1 | 0 |  | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
