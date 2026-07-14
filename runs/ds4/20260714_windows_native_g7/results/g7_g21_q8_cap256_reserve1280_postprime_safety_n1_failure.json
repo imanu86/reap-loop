@@ -1,0 +1,58 @@
+{
+  "schema": "g7_failed_measurement_v1",
+  "tag": "g21_q8_cap256_reserve1280_postprime_safety_n1",
+  "status": "failed_safety_gate",
+  "head": "5ed1e46f8f27e01afe8a1065824bfe690a9aa795",
+  "executable_sha256": "db610b50b6d4652b392c002e73849ff10b279e159425e94a325c11e365ca5180",
+  "ds4_cuda_sha256": "d222b3d46259d3984d5b12b3b9fac2c04fb223eef2030d10f50e6519a98cb4db",
+  "model": "C:\\ds4-models\\ds4-2bit.gguf",
+  "model_bytes": 86720111488,
+  "prompt_sha256": "38f6ec5ee5403f59dd2418eb5d9a5a94a0f0da19df015060383bb1ae46003bb6",
+  "expected_content_sha256": "fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510",
+  "actual_content_sha256": null,
+  "actual_output_retained": false,
+  "failure_reasons": [
+    "output_hash_mismatch",
+    "severe_decode_regression"
+  ],
+  "parameters": {
+    "max_tokens": 64,
+    "context": 256,
+    "budget_gb": 2,
+    "reserve_mb": 1024,
+    "dynamic_arena_gib": 12,
+    "dynamic_arena_observed_window": 16,
+    "dynamic_arena_observed_min_hits": 3,
+    "dynamic_arena_grow_interval": 0,
+    "reap_prefetch_threads": 8,
+    "q8_f16_cache_mb": 256,
+    "q8_f16_cache_reserve_mb": 1280
+  },
+  "measured": {
+    "server_decode_tokens_per_second": 0.38,
+    "server_prefill_ttft_seconds": 15.563,
+    "server_total_seconds": 184.326,
+    "runtime_telemetry_samples": 191,
+    "runtime_telemetry_elapsed_seconds": 193.439,
+    "win32_process_read_transfer_delta_gib": 614.023,
+    "gpu_process_shared_peak_gib": 12.328,
+    "gpu_process_dedicated_peak_gib": 9.654,
+    "nvidia_vram_used_peak_mib": 10520,
+    "gpu_utilization_median_percent": 33,
+    "windows_available_min_gib": 31.4,
+    "process_working_set_peak_gib": 12.757,
+    "process_private_peak_gib": 23.097,
+    "page_fault_delta": 3267636,
+    "dynamic_arena_resident_experts": 446,
+    "dynamic_arena_hits": 4631,
+    "dynamic_arena_misses": 7735,
+    "dynamic_arena_h2d_uploaded_gib": 30.53
+  },
+  "artifacts": {
+    "memory_preflight": "g7_runs/g7_g21_q8_cap256_reserve1280_postprime_safety_n1_memory_preflight.json",
+    "runtime_telemetry": "g7_runs/g7_g21_q8_cap256_reserve1280_postprime_safety_n1_runtime_telemetry.jsonl",
+    "stderr": "g7_runs/g7_g21_q8_cap256_reserve1280_postprime_safety_n1_stderr.log",
+    "stdout": "g7_runs/g7_g21_q8_cap256_reserve1280_postprime_safety_n1_stdout.log"
+  },
+  "note": "The pre-G21 harness threw before persisting the response body and actual hash. The mismatch is observed; its value is not inferred."
+}

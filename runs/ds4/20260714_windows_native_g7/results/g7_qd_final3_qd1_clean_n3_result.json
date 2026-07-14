@@ -1,0 +1,53 @@
+﻿{
+    "tag":  "qd_final3_qd1_clean_n3",
+    "head":  "99a1caccde055e62c9123f8879bcb32a6111ce7b",
+    "worktree_dirty":  true,
+    "ds4_cuda_sha256":  "1808dcdda5294f2a8a23d4f2d41f9089d8b7c1b682c332a3ba9627aa476a318f",
+    "executable_sha256":  "6cec0d9a7c6fee81dd2af86b326914e2974b8e219a060e25fd34ffe894ed74eb",
+    "harness_sha256":  "979324b577a3a67232d4ecb245069cbf7961a292a75b42307a2dbe572821356e",
+    "executable":  "C:\\Users\\imanu\\AppData\\Local\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Local\\ds4-win-work\\build\\Release\\ds4_server.exe",
+    "model":  "C:\\ds4-models\\ds4-2bit.gguf",
+    "requested_max_tokens":  12,
+    "repeats":  3,
+    "warmup":  true,
+    "budget_gb":  2,
+    "reserve_mb":  1024,
+    "no_selected_load":  false,
+    "diagnostics":  false,
+    "moe_io_queue_depth":  1,
+    "moe_io_queue_depth_observed":  1,
+    "moe_overlapped_io_observed":  false,
+    "moe_overlapped_io_fallbacks":  0,
+    "load_seconds":  3.568572,
+    "warmup_seconds":  6.438669,
+    "mean_tokens_per_second":  2.240241,
+    "min_tokens_per_second":  2.207151,
+    "max_tokens_per_second":  2.263915,
+    "outputs_identical":  true,
+    "results":  [
+                    {
+                        "repeat":  1,
+                        "seconds":  3.975414,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.263915,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    },
+                    {
+                        "repeat":  2,
+                        "seconds":  4.000611,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.249656,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    },
+                    {
+                        "repeat":  3,
+                        "seconds":  4.077656,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.207151,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    }
+                ]
+}

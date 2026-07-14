@@ -19,6 +19,7 @@ from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
+WINDOWS_G7_SNAPSHOT_DATE = "20260714"
 
 FIELDS = [
     "row_id",
@@ -112,6 +113,46 @@ FIELDS = [
     "setup_text",
     "env_effective_json",
     "request_settings_json",
+    "runtime_platform",
+    "cache_state",
+    "source_head",
+    "executable_sha256",
+    "harness_sha256",
+    "repeats",
+    "replication_scope",
+    "warmup",
+    "server_decode_mean_tps",
+    "server_decode_min_tps",
+    "server_decode_max_tps",
+    "client_completion_mean_tps",
+    "client_completion_min_tps",
+    "client_completion_max_tps",
+    "server_prefill_ttft_s",
+    "outputs_identical",
+    "expected_hash_match",
+    "output_sha256",
+    "dynamic_arena_gib",
+    "dynamic_arena_window",
+    "dynamic_arena_min_hits",
+    "dynamic_arena_grow_interval",
+    "dynamic_arena_carry",
+    "dynamic_arena_resident",
+    "dynamic_arena_resident_gib",
+    "dynamic_arena_hit_rate",
+    "dynamic_arena_fatal",
+    "q8_f16_cache_mib",
+    "q8_f16_reserve_mib",
+    "moe_io_qd",
+    "resident_expert_cache",
+    "spex_stage",
+    "spex_cap",
+    "spex_recall",
+    "standby_before_gib",
+    "wddm_shared_peak_gib",
+    "wddm_dedicated_peak_gib",
+    "process_read_gib",
+    "gpu_util_median",
+    "vram_peak_mib",
     "result_text",
     "verdict",
     "source_artifacts",
@@ -122,7 +163,7 @@ def read_json(path: Path) -> dict[str, Any]:
     if not path.exists():
         return {}
     try:
-        return json.loads(path.read_text(encoding="utf-8", errors="replace"))
+        return json.loads(path.read_text(encoding="utf-8-sig", errors="replace"))
     except Exception:
         return {}
 
@@ -392,6 +433,550 @@ def parse_summary_rows(repo: Path) -> list[dict[str, str]]:
     return rows
 
 
+def number(value: Any) -> float | None:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def mean(values: list[float]) -> float | None:
+    return sum(values) / len(values) if values else None
+
+
+def median(values: list[float]) -> float | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    middle = len(ordered) // 2
+    if len(ordered) % 2:
+        return ordered[middle]
+    return (ordered[middle - 1] + ordered[middle]) / 2
+
+
+def decimal(value: float | None, digits: int = 6) -> str:
+    if value is None:
+        return ""
+    return f"{value:.{digits}f}".rstrip("0").rstrip(".")
+
+
+def gib(value: Any) -> str:
+    numeric = number(value)
+    return f"{numeric / (1024 ** 3):.6f}" if numeric is not None else ""
+
+
+def windows_prompt_name(tag: str, prompt: str) -> str:
+    lower = f"{tag} {prompt}".lower()
+    if "cyber" in lower or "landing page" in lower:
+        return "cyber_html"
+    if "hi9" in lower or "hi12" in lower or prompt.strip().lower().startswith("hi"):
+        return "hi"
+    return "windows_g7"
+
+
+def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
+    root = repo / "runs/ds4/20260714_windows_native_g7/results"
+    rows: list[dict[str, str]] = []
+    result_paths = sorted(root.glob("*_result.json"))
+    for path in result_paths:
+        src = read_json(path)
+        if not src or not src.get("tag"):
+            continue
+
+        tag = clean(src.get("tag"))
+        artifact_id = path.stem.removesuffix("_result")
+        results = src.get("results") if isinstance(src.get("results"), list) else []
+        server_runs = src.get("server_runs") if isinstance(src.get("server_runs"), list) else []
+        repeats = int(number(src.get("repeats")) or len(results) or 0)
+        warmup = bool(src.get("warmup"))
+        output_hashes = sorted(
+            {
+                clean(item.get("content_sha256"))
+                for item in results
+                if isinstance(item, dict) and item.get("content_sha256")
+            }
+        )
+        expected_hash = clean(src.get("expected_content_sha256")).lower()
+        expected_match = bool(expected_hash and output_hashes) and all(
+            value.lower() == expected_hash for value in output_hashes
+        )
+        outputs_identical = len(output_hashes) == 1
+        worktree_dirty = bool(src.get("worktree_dirty"))
+        arena_fatal_value = number(src.get("dynamic_arena_final_fatal"))
+        arena_fatal = int(arena_fatal_value) if arena_fatal_value is not None else None
+
+        if repeats >= 3:
+            evidence = "measured_same_process_n3"
+            benchmark_usable = (
+                "speed_only"
+                if outputs_identical and arena_fatal in (None, 0)
+                else "diagnostic_only"
+            )
+            replication_scope = "same_server_process"
+        else:
+            evidence = f"measured_safety_n{max(repeats, 1)}"
+            benchmark_usable = "mechanism_only"
+            replication_scope = "single_server_process"
+
+        preflight = as_dict(src.get("memory_preflight"))
+        preflight_before = as_dict(preflight.get("before"))
+        purge = as_dict(preflight.get("standby_purge"))
+        if warmup:
+            cache_state = "same_process_primed"
+        elif purge.get("status") == "completed":
+            cache_state = "new_process_standby_purged"
+        else:
+            cache_state = "new_process_uncontrolled"
+
+        started = clean(preflight.get("started_utc"))
+        date = (
+            started[:10].replace("-", "")
+            if started
+            else WINDOWS_G7_SNAPSHOT_DATE
+        )
+        prompt = clean(src.get("prompt"))
+        prompt_hash = clean(src.get("prompt_sha256")) or short_hash(prompt)
+        gpu = as_dict(src.get("gpu_identity"))
+        runtime = as_dict(src.get("runtime_telemetry"))
+        env = as_dict(src.get("effective_ds4_environment"))
+        result_tps = [
+            float(value)
+            for value in (number(item.get("tokens_per_second")) for item in results if isinstance(item, dict))
+            if value is not None
+        ]
+        result_seconds = [
+            float(value)
+            for value in (number(item.get("seconds")) for item in results if isinstance(item, dict))
+            if value is not None
+        ]
+        completion_tokens = [
+            int(value)
+            for value in (number(item.get("completion_tokens")) for item in results if isinstance(item, dict))
+            if value is not None
+        ]
+        first_content = clean(results[0].get("content")) if results and isinstance(results[0], dict) else ""
+        server_mean = number(src.get("server_decode_mean_tokens_per_second"))
+        client_mean = number(src.get("mean_tokens_per_second"))
+        arena_resident_bytes = number(src.get("dynamic_arena_observer_resident_bytes"))
+        arena_resident_gib = (
+            f"{arena_resident_bytes / (1024 ** 3):.6f}" if arena_resident_bytes is not None else ""
+        )
+        arena_gib = number(src.get("dynamic_arena_gib_requested"))
+        arena_window_value = number(src.get("dynamic_arena_observed_window_requested"))
+        arena_window = int(arena_window_value) if arena_window_value is not None else None
+        arena_min_hits_value = number(src.get("dynamic_arena_observed_min_hits_requested"))
+        arena_min_hits = int(arena_min_hits_value) if arena_min_hits_value is not None else None
+        profile_parts: list[str] = []
+        if arena_gib is not None:
+            profile_parts.append(f"arena={arena_gib:g}GiB")
+        if arena_window is not None:
+            profile_parts.append(f"W={arena_window}")
+        if arena_min_hits is not None:
+            profile_parts.append(f"min_hits={arena_min_hits}")
+        carry = clean(src.get("dynamic_arena_carry_requested"))
+        if carry:
+            profile_parts.append(f"carry={carry}")
+        expert_cache = number(src.get("expert_cache_requested"))
+        if expert_cache is not None:
+            profile_parts.append(f"expert_cache={int(expert_cache)}")
+        spex_stage = clean(src.get("spex_stage_requested"))
+        if spex_stage:
+            profile_parts.append(f"spex={spex_stage}")
+        profile = "; ".join(profile_parts)
+        exact_text = "true" if expected_match else ("false" if expected_hash else "not_requested")
+
+        row = base_row()
+        row.update(
+            {
+                "row_id": f"WIN-G7-{artifact_id}",
+                "source_kind": "windows_g7_result",
+                "evidence_level": evidence,
+                "benchmark_usable": benchmark_usable,
+                "date": date,
+                "suite": "20260714_windows_native_g7",
+                "run_id": artifact_id,
+                "category": "windows_native_performance",
+                "experiment": tag,
+                "variant": tag,
+                "profile": profile,
+                "prompt_name": windows_prompt_name(tag, prompt),
+                "prompt_sha16": prompt_hash[:16],
+                "prompt_chars": str(len(prompt)),
+                "prompt_excerpt": prompt[:160],
+                "hardware": "native Windows / WDDM",
+                "gpu": clean(gpu.get("name")),
+                "model": Path(clean(src.get("model"))).name if src.get("model") else "",
+                "model_bytes": clean(src.get("model_bytes")),
+                "ds4_base": "hawkli-1994/ds4-win",
+                "ds4_build": clean(src.get("head")),
+                "runner_commit": clean(src.get("head")),
+                "ctx": clean(src.get("context_observed") or src.get("context_requested")),
+                "prefill_chunk": clean(src.get("prefill_chunk_observed")),
+                "server_cache_experts": clean(src.get("expert_cache_requested")),
+                "request_max_tokens": clean(src.get("requested_max_tokens")),
+                "server_max_tokens": clean(src.get("requested_max_tokens")),
+                "temperature": "0",
+                "stream": "0",
+                "think": "0",
+                "hidden_spex": clean(src.get("spex_dry_run_requested")),
+                "completion_tokens": clean(completion_tokens[0] if completion_tokens and len(set(completion_tokens)) == 1 else mean([float(v) for v in completion_tokens])),
+                "wall_s": clean(mean(result_seconds)),
+                "prompt_s": clean(src.get("server_prefill_ttft_mean_seconds")),
+                "avg_tps": clean(client_mean),
+                "content_chars": str(len(first_content)) if first_content else "",
+                "doctype": str(first_content.lower().count("<!doctype")) if first_content else "",
+                "html_balance": clean(first_content.lower().count("<html") - first_content.lower().count("</html>")) if first_content else "",
+                "has_form": str("<form" in first_content.lower()) if first_content else "",
+                "has_script": str("<script" in first_content.lower()) if first_content else "",
+                "has_popup": str("popup" in first_content.lower()) if first_content else "",
+                "quality_signal": f"exact_hash={exact_text}; outputs_identical={str(outputs_identical).lower()}; L0-L3=not_graded",
+                "metrics_text": f"server={clean(server_mean)} t/s; client={clean(client_mean)} t/s; TTFT={clean(src.get('server_prefill_ttft_mean_seconds'))}s",
+                "setup_text": profile,
+                "env_effective_json": clean(env),
+                "request_settings_json": clean({
+                    "context": src.get("context_requested"),
+                    "max_tokens": src.get("requested_max_tokens"),
+                    "temperature": 0,
+                    "think": False,
+                    "warmup": warmup,
+                    "repeats": repeats,
+                }),
+                "runtime_platform": "windows_native_wddm",
+                "cache_state": cache_state,
+                "source_head": clean(src.get("head")),
+                "executable_sha256": clean(src.get("executable_sha256")),
+                "harness_sha256": clean(src.get("harness_sha256")),
+                "repeats": str(repeats),
+                "replication_scope": replication_scope,
+                "warmup": str(warmup).lower(),
+                "server_decode_mean_tps": clean(server_mean),
+                "server_decode_min_tps": clean(src.get("server_decode_min_tokens_per_second")),
+                "server_decode_max_tps": clean(src.get("server_decode_max_tokens_per_second")),
+                "client_completion_mean_tps": clean(client_mean),
+                "client_completion_min_tps": clean(src.get("min_tokens_per_second")),
+                "client_completion_max_tps": clean(src.get("max_tokens_per_second")),
+                "server_prefill_ttft_s": clean(src.get("server_prefill_ttft_mean_seconds")),
+                "outputs_identical": str(outputs_identical).lower(),
+                "expected_hash_match": exact_text,
+                "output_sha256": ";".join(output_hashes),
+                "dynamic_arena_gib": clean(arena_gib),
+                "dynamic_arena_window": clean(arena_window),
+                "dynamic_arena_min_hits": clean(arena_min_hits),
+                "dynamic_arena_grow_interval": clean(src.get("dynamic_arena_grow_interval_requested")),
+                "dynamic_arena_carry": carry,
+                "dynamic_arena_resident": clean(src.get("dynamic_arena_observer_resident")),
+                "dynamic_arena_resident_gib": arena_resident_gib,
+                "dynamic_arena_hit_rate": clean(src.get("dynamic_arena_hit_rate")),
+                "dynamic_arena_fatal": clean(arena_fatal),
+                "q8_f16_cache_mib": clean(src.get("q8_f16_cache_mb_requested")),
+                "q8_f16_reserve_mib": clean(src.get("q8_f16_cache_reserve_mb_requested")),
+                "moe_io_qd": clean(src.get("moe_io_queue_depth_observed") or src.get("moe_io_queue_depth")),
+                "resident_expert_cache": clean(src.get("expert_cache_requested")),
+                "spex_stage": clean(src.get("spex_stage_observed") or src.get("spex_stage_requested")),
+                "spex_cap": clean(src.get("spex_cap_observed") or src.get("spex_cap_requested")),
+                "spex_recall": clean(src.get("spex_recall")),
+                "standby_before_gib": gib(preflight_before.get("standby_bytes")),
+                "wddm_shared_peak_gib": gib(runtime.get("gpu_process_shared_peak_bytes")),
+                "wddm_dedicated_peak_gib": gib(runtime.get("gpu_process_dedicated_peak_bytes")),
+                "process_read_gib": gib(runtime.get("win32_process_read_transfer_delta_bytes")),
+                "gpu_util_median": clean(runtime.get("gpu_utilization_median_percent")),
+                "vram_peak_mib": clean(runtime.get("vram_used_peak_mib")),
+                "result_text": f"server={clean(server_mean)} t/s; client={clean(client_mean)} t/s; repeats={repeats}; exact={exact_text}; dirty={str(worktree_dirty).lower()}",
+                "source_artifacts": rel(path),
+            }
+        )
+        rows.append(row)
+    if len(rows) != len(result_paths):
+        raise RuntimeError(
+            f"Windows G7 import lost artifacts: parsed {len(rows)} of {len(result_paths)}"
+        )
+    return rows + aggregate_windows_g7_campaigns(rows)
+
+
+def aggregate_windows_g7_campaigns(rows: list[dict[str, str]]) -> list[dict[str, str]]:
+    campaigns = [
+        (
+            "g19a_observed_residency",
+            re.compile(r"^g7_g19a_ab_arena12_[1-6]_(off|on)_n1$"),
+            "independent new processes; no shared warmup",
+        ),
+        (
+            "g19b_first_fetch_preload",
+            re.compile(r"^g7_g19b_ab128_arena12_[1-6]_(off|on)_n1$"),
+            "independent new processes; no shared warmup",
+        ),
+        (
+            "g20_grow8",
+            re.compile(r"^g7_g20_grow_ab_20260714_085148_[1-6]_(off|on)_n1$"),
+            "independent new processes; warm unpurged standby state",
+        ),
+    ]
+    aggregates: list[dict[str, str]] = []
+    for campaign, pattern, cache_note in campaigns:
+        matched: list[tuple[dict[str, str], str]] = []
+        for row in rows:
+            match = pattern.match(row["run_id"])
+            if match:
+                matched.append((row, match.group(1)))
+        if len(matched) != 6:
+            raise RuntimeError(f"Campaign {campaign} expected 6 runs, found {len(matched)}")
+
+        for arm in ("off", "on"):
+            arm_rows = [row for row, observed_arm in matched if observed_arm == arm]
+            if len(arm_rows) != 3:
+                raise RuntimeError(
+                    f"Campaign {campaign}/{arm} expected 3 runs, found {len(arm_rows)}"
+                )
+            server_values = [
+                value
+                for value in (number(row["server_decode_mean_tps"]) for row in arm_rows)
+                if value is not None
+            ]
+            client_values = [
+                value
+                for value in (number(row["client_completion_mean_tps"]) for row in arm_rows)
+                if value is not None
+            ]
+            ttft_values = [
+                value
+                for value in (number(row["server_prefill_ttft_s"]) for row in arm_rows)
+                if value is not None
+            ]
+            wall_values = [
+                value
+                for value in (number(row["wall_s"]) for row in arm_rows)
+                if value is not None
+            ]
+            hashes = sorted({row["output_sha256"] for row in arm_rows if row["output_sha256"]})
+            expected_statuses = {row["expected_hash_match"] for row in arm_rows}
+            if expected_statuses == {"true"}:
+                expected_status = "true"
+            elif "false" in expected_statuses:
+                expected_status = "false"
+            else:
+                expected_status = "not_requested"
+            outputs_identical = len(hashes) == 1
+            base = base_row()
+            common_fields = [
+                "date",
+                "suite",
+                "prompt_name",
+                "prompt_sha16",
+                "prompt_chars",
+                "prompt_excerpt",
+                "system_prompt",
+                "hardware",
+                "gpu",
+                "model",
+                "model_bytes",
+                "ds4_base",
+                "ds4_build",
+                "patches",
+                "reap_loop_commit",
+                "runner_commit",
+                "ctx",
+                "prefill_chunk",
+                "server_cache_experts",
+                "request_max_tokens",
+                "server_max_tokens",
+                "temperature",
+                "stream",
+                "think",
+                "hidden_spex",
+                "completion_tokens",
+                "content_chars",
+                "doctype",
+                "html_balance",
+                "has_form",
+                "has_script",
+                "has_popup",
+                "env_effective_json",
+                "request_settings_json",
+                "runtime_platform",
+                "source_head",
+                "executable_sha256",
+                "harness_sha256",
+                "dynamic_arena_gib",
+                "dynamic_arena_window",
+                "dynamic_arena_min_hits",
+                "dynamic_arena_grow_interval",
+                "dynamic_arena_carry",
+                "dynamic_arena_resident",
+                "dynamic_arena_resident_gib",
+                "dynamic_arena_hit_rate",
+                "dynamic_arena_fatal",
+                "q8_f16_cache_mib",
+                "q8_f16_reserve_mib",
+                "moe_io_qd",
+                "resident_expert_cache",
+                "spex_stage",
+                "spex_cap",
+                "spex_recall",
+            ]
+            for field in common_fields:
+                values = {row[field] for row in arm_rows}
+                if len(values) == 1:
+                    base[field] = values.pop()
+            base.update(
+                {
+                    "row_id": f"WIN-G7-CAMPAIGN-{campaign}-{arm}",
+                    "source_kind": "windows_g7_campaign_aggregate",
+                    "evidence_level": "measured_independent_n3",
+                    "benchmark_usable": "speed_only",
+                    "run_id": f"campaign_{campaign}_{arm}_n3",
+                    "category": "windows_native_campaign",
+                    "experiment": campaign,
+                    "variant": arm,
+                    "profile": f"{campaign} arm={arm}; {cache_note}",
+                    "repeats": "3",
+                    "replication_scope": "independent_server_processes",
+                    "warmup": "false",
+                    "cache_state": "independent_new_processes_uncontrolled",
+                    "avg_tps": decimal(mean(client_values)),
+                    "wall_s": decimal(mean(wall_values)),
+                    "prompt_s": decimal(mean(ttft_values)),
+                    "server_decode_mean_tps": decimal(mean(server_values)),
+                    "server_decode_min_tps": decimal(min(server_values) if server_values else None),
+                    "server_decode_max_tps": decimal(max(server_values) if server_values else None),
+                    "client_completion_mean_tps": decimal(mean(client_values)),
+                    "client_completion_min_tps": decimal(min(client_values) if client_values else None),
+                    "client_completion_max_tps": decimal(max(client_values) if client_values else None),
+                    "server_prefill_ttft_s": decimal(mean(ttft_values)),
+                    "outputs_identical": str(outputs_identical).lower(),
+                    "expected_hash_match": expected_status,
+                    "output_sha256": ";".join(hashes),
+                    "quality_signal": (
+                        f"expected_hash={expected_status}; outputs_identical={str(outputs_identical).lower()}; "
+                        "independent_processes=3; L0-L3=not_graded"
+                    ),
+                    "metrics_text": (
+                        f"server mean/median={decimal(mean(server_values))}/{decimal(median(server_values))} t/s; "
+                        f"client mean={decimal(mean(client_values))} t/s"
+                    ),
+                    "setup_text": cache_note,
+                    "result_text": (
+                        f"independent n=3 arm={arm}; server mean={decimal(mean(server_values))} t/s; "
+                        f"median={decimal(median(server_values))}; expected_hash={expected_status}; "
+                        f"outputs_identical={str(outputs_identical).lower()}"
+                    ),
+                    "source_artifacts": ";".join(row["source_artifacts"] for row in arm_rows),
+                }
+            )
+            aggregates.append(base)
+    return aggregates
+
+
+def parse_windows_g7_failure_rows(repo: Path) -> list[dict[str, str]]:
+    root = repo / "runs/ds4/20260714_windows_native_g7/results"
+    paths = sorted(root.glob("*_failure.json"))
+    rows: list[dict[str, str]] = []
+    for path in paths:
+        src = read_json(path)
+        if not src or not src.get("tag"):
+            continue
+        tag = clean(src.get("tag"))
+        parameters = as_dict(src.get("parameters"))
+        measured = as_dict(src.get("measured"))
+        reasons = src.get("failure_reasons") if isinstance(src.get("failure_reasons"), list) else []
+        reason_set = {clean(reason) for reason in reasons}
+        expected_hash = clean(src.get("expected_content_sha256"))
+        actual_hash = clean(src.get("actual_content_sha256"))
+        if "output_hash_mismatch" in reason_set:
+            expected_status = "false"
+        elif expected_hash and actual_hash:
+            expected_status = str(expected_hash.lower() == actual_hash.lower()).lower()
+        elif expected_hash:
+            expected_status = "unknown"
+        else:
+            expected_status = "not_requested"
+        arena_hits = number(measured.get("dynamic_arena_hits"))
+        arena_misses = number(measured.get("dynamic_arena_misses"))
+        arena_hit_rate = ""
+        if arena_hits is not None and arena_misses is not None and arena_hits + arena_misses > 0:
+            arena_hit_rate = decimal(arena_hits / (arena_hits + arena_misses))
+        verdict_target = "safety configuration"
+        if parameters.get("q8_f16_cache_mb") is not None:
+            verdict_target = (
+                f"Q8-F16 {clean(parameters.get('q8_f16_cache_mb'))}/"
+                f"{clean(parameters.get('q8_f16_cache_reserve_mb'))} configuration"
+            )
+        row = base_row()
+        row.update(
+            {
+                "row_id": f"WIN-G7-FAILURE-{path.stem.removesuffix('_failure')}",
+                "source_kind": "windows_g7_failure",
+                "evidence_level": "measured_failed_safety_n1",
+                "benchmark_usable": "rejected_safety_configuration",
+                "date": WINDOWS_G7_SNAPSHOT_DATE,
+                "suite": "20260714_windows_native_g7",
+                "run_id": path.stem.removesuffix("_failure"),
+                "category": "windows_native_failure",
+                "experiment": tag,
+                "variant": tag,
+                "profile": clean(parameters),
+                "prompt_name": windows_prompt_name(tag, ""),
+                "prompt_sha16": clean(src.get("prompt_sha256"))[:16],
+                "hardware": "native Windows / WDDM",
+                "model": Path(clean(src.get("model"))).name if src.get("model") else "",
+                "model_bytes": clean(src.get("model_bytes")),
+                "ds4_base": "hawkli-1994/ds4-win",
+                "ds4_build": clean(src.get("head")),
+                "runner_commit": clean(src.get("head")),
+                "ctx": clean(parameters.get("context")),
+                "request_max_tokens": clean(parameters.get("max_tokens")),
+                "server_max_tokens": clean(parameters.get("max_tokens")),
+                "temperature": "0",
+                "stream": "0",
+                "think": "0",
+                "prompt_s": clean(measured.get("server_prefill_ttft_seconds")),
+                "quality_signal": (
+                    f"failure_reasons={clean(reasons)}; expected_hash={expected_status}; "
+                    "failed_safety_gate; L0-L3=not_graded"
+                ),
+                "metrics_text": clean(measured),
+                "setup_text": clean(parameters),
+                "runtime_platform": "windows_native_wddm",
+                "cache_state": "new_process_uncontrolled",
+                "source_head": clean(src.get("head")),
+                "executable_sha256": clean(src.get("executable_sha256")),
+                "repeats": "1",
+                "replication_scope": "single_server_process",
+                "warmup": "false",
+                "server_decode_mean_tps": clean(measured.get("server_decode_tokens_per_second")),
+                "server_prefill_ttft_s": clean(measured.get("server_prefill_ttft_seconds")),
+                "outputs_identical": "not_applicable",
+                "expected_hash_match": expected_status,
+                "output_sha256": actual_hash,
+                "dynamic_arena_gib": clean(parameters.get("dynamic_arena_gib")),
+                "dynamic_arena_window": clean(parameters.get("dynamic_arena_observed_window")),
+                "dynamic_arena_min_hits": clean(parameters.get("dynamic_arena_observed_min_hits")),
+                "dynamic_arena_grow_interval": clean(parameters.get("dynamic_arena_grow_interval")),
+                "dynamic_arena_resident": clean(measured.get("dynamic_arena_resident_experts")),
+                "dynamic_arena_hit_rate": arena_hit_rate,
+                "q8_f16_cache_mib": clean(parameters.get("q8_f16_cache_mb")),
+                "q8_f16_reserve_mib": clean(parameters.get("q8_f16_cache_reserve_mb")),
+                "wddm_shared_peak_gib": clean(measured.get("gpu_process_shared_peak_gib")),
+                "wddm_dedicated_peak_gib": clean(measured.get("gpu_process_dedicated_peak_gib")),
+                "process_read_gib": clean(measured.get("win32_process_read_transfer_delta_gib")),
+                "gpu_util_median": clean(measured.get("gpu_utilization_median_percent")),
+                "vram_peak_mib": clean(measured.get("nvidia_vram_used_peak_mib")),
+                "result_text": (
+                    f"status={clean(src.get('status'))}; reasons={clean(reasons)}; "
+                    f"server={clean(measured.get('server_decode_tokens_per_second'))} t/s; "
+                    f"expected={expected_hash}; actual={actual_hash or 'not_retained'}"
+                ),
+                "verdict": f"rejected {verdict_target}",
+                "source_artifacts": rel(path),
+            }
+        )
+        rows.append(row)
+    if len(rows) != len(paths):
+        raise RuntimeError(
+            f"Windows G7 failure import lost artifacts: parsed {len(rows)} of {len(paths)}"
+        )
+    return rows
+
+
 def parse_stage0_rows(repo: Path) -> list[dict[str, str]]:
     rows: list[dict[str, str]] = []
     for summary in sorted((repo / "runs/ds4_stage0_baseline").rglob("summary.csv")):
@@ -639,26 +1224,30 @@ def md_table(rows: list[dict[str, str]], columns: list[str]) -> list[str]:
 
 
 def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
-    measured = [r for r in rows if r["source_kind"] == "runner_summary"]
-    legacy = [r for r in rows if r["source_kind"] != "runner_summary"]
+    runner_measured = [r for r in rows if r["source_kind"] == "runner_summary"]
+    windows = [r for r in rows if r["source_kind"].startswith("windows_g7_")]
+    windows_results = [r for r in windows if r["source_kind"] == "windows_g7_result"]
+    windows_campaigns = [r for r in windows if r["source_kind"] == "windows_g7_campaign_aggregate"]
+    windows_failures = [r for r in windows if r["source_kind"] == "windows_g7_failure"]
+    legacy = [r for r in rows if r["source_kind"] != "runner_summary" and not r["source_kind"].startswith("windows_g7_")]
     best_rotation = [
         r
-        for r in measured
+        for r in runner_measured
         if "requested4" in r["suite"] and "rotate32" in r["variant"]
     ]
     direct_pod = [
         r
-        for r in measured
+        for r in runner_measured
         if r["suite"] == "20260710_pod_cache1024_html800"
     ]
     pace_advanced = [
         r
-        for r in measured
+        for r in runner_measured
         if r["suite"] in ("20260710_pace_advanced_ab_html400", "20260710_pace_advanced_ab_html800")
     ]
     warmup_ab = [
         r
-        for r in measured
+        for r in runner_measured
         if r["suite"] in (
             "20260710_w100_direct_k23_cache256_html2000",
             "20260710_w100_rotate32_k23_cache256_html2000",
@@ -673,7 +1262,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
     ]
     cache_sweep = [
         r
-        for r in measured
+        for r in runner_measured
         if "local_cache_sweep" in r["suite"] and r["prompt_name"] in ("html", "code_mini")
     ]
     claude_recovery = [
@@ -682,17 +1271,29 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         if r["row_id"].startswith("LEDGER-HIST") or r["row_id"].startswith("CLAIM")
     ]
 
+    windows_ranked = sorted(
+        [r for r in windows if number(r.get("server_decode_mean_tps")) is not None],
+        key=lambda r: number(r.get("server_decode_mean_tps")) or 0,
+        reverse=True,
+    )
+    windows_all = sorted(windows, key=lambda r: (r["date"], r["run_id"]))
+    windows_top = windows_ranked[:20]
+    g22 = [r for r in windows if "g22_" in r["run_id"]]
+
     lines: list[str] = [
-        "# DS4 / REAP Experiment Ledger - 2026-07-10",
+        "# DS4 / REAP Experiment Ledger - updated 2026-07-14",
         "",
         "This file is generated by `scripts/build_ds4_experiment_ledger.py`.",
-        "Numbers are copied from artifacts when `source_kind=runner_summary`; older Claude/research rows are preserved as legacy evidence and must not be mixed into benchmark plots unless re-run or explicitly marked comparable.",
+        "Numbers are copied from artifacts when `source_kind=runner_summary` or `source_kind=windows_g7_result`; older Claude/research rows are preserved as legacy evidence and must not be mixed into benchmark plots unless re-run or explicitly marked comparable.",
         "",
         "## Output Files",
         "",
         f"- Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`",
         f"- Rows total: {len(rows)}",
-        f"- Runner-measured rows: {len(measured)}",
+        f"- Runner-measured rows: {len(runner_measured)}",
+        f"- Windows-native G7 result rows: {len(windows_results)}",
+        f"- Windows-native independent campaign aggregates: {len(windows_campaigns)}",
+        f"- Windows-native failed safety rows: {len(windows_failures)}",
         f"- Legacy / Claude / claim rows: {len(legacy)}",
         "",
         "## Current Readout",
@@ -709,6 +1310,8 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- Cache1024 pod runs restore high throughput, but cache size alone did not restore quality on the cyberpunk HTML prompt. The old W50 session-learning result is real enough to keep as historical evidence, but freeze-point/prompt sensitivity is now explicit.",
         "- Tighten-time relearn and rotation plumbing are useful actuator milestones. Blind step-down and frequent periodic rotate are too expensive; next tests should be trigger/delta based.",
         "- Dynamic compression is not yet a speed win. Lossless cold RAM is too large, CQ1 works mechanically but synchronous selected-miss use is far too slow. The useful target is effective cap512-cap1024 behavior with background promotion/demotion.",
+        "- Windows-native results must be read with `cache_state`, `replication_scope`, `repeats`, exact hash and L0-L3 status together. A high n=1 safety result is retained as mechanism evidence; it is not silently discarded and is not promoted to a sustained verdict.",
+        "- G22 isolates same-process arena reuse: KEEP measured 4.32 server decode t/s and DROP 1.42 t/s with the same expected hash. This is a paired n=1 causal safety result, pending order-balanced independent n>=3 replication.",
         "",
         "## High-Signal Runtime Rows",
         "",
@@ -735,6 +1338,126 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
                 "repeat_flag",
                 "coherent_until_token_est",
                 "quality_signal",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native G7 - Highest Observed Server Decode", ""])
+    lines.extend(
+        md_table(
+            windows_top,
+            [
+                "run_id",
+                "date",
+                "cache_state",
+                "repeats",
+                "replication_scope",
+                "server_decode_mean_tps",
+                "client_completion_mean_tps",
+                "server_prefill_ttft_s",
+                "dynamic_arena_gib",
+                "dynamic_arena_window",
+                "dynamic_arena_min_hits",
+                "dynamic_arena_carry",
+                "dynamic_arena_resident",
+                "resident_expert_cache",
+                "spex_stage",
+                "expected_hash_match",
+                "benchmark_usable",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native G22 Causal Rows", ""])
+    lines.extend(
+        md_table(
+            g22,
+            [
+                "run_id",
+                "source_head",
+                "executable_sha256",
+                "cache_state",
+                "repeats",
+                "server_decode_mean_tps",
+                "client_completion_mean_tps",
+                "server_prefill_ttft_s",
+                "dynamic_arena_carry",
+                "dynamic_arena_resident",
+                "dynamic_arena_hit_rate",
+                "standby_before_gib",
+                "process_read_gib",
+                "expected_hash_match",
+                "evidence_level",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native Independent Campaign Aggregates", ""])
+    lines.extend(
+        md_table(
+            windows_campaigns,
+            [
+                "run_id",
+                "variant",
+                "repeats",
+                "replication_scope",
+                "server_decode_mean_tps",
+                "server_decode_min_tps",
+                "server_decode_max_tps",
+                "client_completion_mean_tps",
+                "server_prefill_ttft_s",
+                "dynamic_arena_resident",
+                "expected_hash_match",
+                "benchmark_usable",
+                "result_text",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native Failed Safety Gates", ""])
+    lines.extend(
+        md_table(
+            windows_failures,
+            [
+                "run_id",
+                "source_head",
+                "server_decode_mean_tps",
+                "server_prefill_ttft_s",
+                "q8_f16_cache_mib",
+                "q8_f16_reserve_mib",
+                "process_read_gib",
+                "expected_hash_match",
+                "verdict",
+                "result_text",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native G7 - Complete Result Matrix", ""])
+    lines.extend(
+        md_table(
+            windows_all,
+            [
+                "run_id",
+                "date",
+                "source_head",
+                "prompt_name",
+                "request_max_tokens",
+                "cache_state",
+                "repeats",
+                "replication_scope",
+                "server_decode_mean_tps",
+                "client_completion_mean_tps",
+                "server_prefill_ttft_s",
+                "dynamic_arena_gib",
+                "dynamic_arena_window",
+                "dynamic_arena_min_hits",
+                "dynamic_arena_grow_interval",
+                "dynamic_arena_carry",
+                "dynamic_arena_resident",
+                "resident_expert_cache",
+                "moe_io_qd",
+                "spex_stage",
+                "spex_cap",
+                "q8_f16_cache_mib",
+                "outputs_identical",
+                "expected_hash_match",
+                "benchmark_usable",
             ],
         )
     )
@@ -795,11 +1518,23 @@ def main() -> int:
 
     rows: list[dict[str, str]] = []
     rows.extend(parse_summary_rows(repo))
+    rows.extend(parse_windows_g7_rows(repo))
+    rows.extend(parse_windows_g7_failure_rows(repo))
     rows.extend(parse_stage0_rows(repo))
     rows.extend(parse_k91_rows(repo))
     rows.extend(parse_reap_biasmask_rows(repo))
     rows.extend(parse_legacy_experiment_table(repo))
     rows.extend(parse_claim_rows(repo))
+
+    seen_ids: set[str] = set()
+    duplicate_ids: set[str] = set()
+    for row in rows:
+        row_id = row["row_id"]
+        if row_id in seen_ids:
+            duplicate_ids.add(row_id)
+        seen_ids.add(row_id)
+    if duplicate_ids:
+        raise RuntimeError(f"Duplicate ledger row IDs: {', '.join(sorted(duplicate_ids)[:20])}")
 
     rows.sort(key=lambda r: (r["source_kind"], r["date"], r["suite"], r["run_id"], r["variant"]))
     csv_path = out_dir / "all_evidence_ledger.csv"

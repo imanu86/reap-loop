@@ -1,0 +1,46 @@
+﻿{
+    "tag":  "qd_patch_qd2_clean_n3",
+    "head":  "99a1caccde055e62c9123f8879bcb32a6111ce7b",
+    "executable":  "C:\\Users\\imanu\\AppData\\Local\\Packages\\Claude_pzs8sxrjxfjjc\\LocalCache\\Local\\ds4-win-work\\build\\Release\\ds4_server.exe",
+    "model":  "C:\\ds4-models\\ds4-2bit.gguf",
+    "requested_max_tokens":  12,
+    "repeats":  3,
+    "warmup":  true,
+    "budget_gb":  2,
+    "reserve_mb":  1024,
+    "no_selected_load":  false,
+    "diagnostics":  false,
+    "moe_io_queue_depth":  2,
+    "load_seconds":  3.54481,
+    "warmup_seconds":  6.522997,
+    "mean_tokens_per_second":  2.143856,
+    "min_tokens_per_second":  2.12302,
+    "max_tokens_per_second":  2.16715,
+    "outputs_identical":  true,
+    "results":  [
+                    {
+                        "repeat":  1,
+                        "seconds":  4.202865,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.141397,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    },
+                    {
+                        "repeat":  2,
+                        "seconds":  4.15292,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.16715,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    },
+                    {
+                        "repeat":  3,
+                        "seconds":  4.239245,
+                        "completion_tokens":  9,
+                        "tokens_per_second":  2.12302,
+                        "content_sha256":  "fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5",
+                        "content":  "Hello! How can I help you today?"
+                    }
+                ]
+}
