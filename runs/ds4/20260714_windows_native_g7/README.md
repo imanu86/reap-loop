@@ -9,11 +9,11 @@ runs without depending on a user-local AppData checkout.
 
 - Source repository: `https://github.com/imanu86/ds4-win`
 - Source branch: `port/windows-dynamic-arena-0051`
-- Latest source commit represented at snapshot time: `8f76b81`
+- Latest source commit represented at snapshot time: `20b0519`
 - Snapshot date: 2026-07-14
-- Imported files: 155 `g7_runs/*_result.json` artifacts, one campaign
+- Imported files: 167 `g7_runs/*_result.json` artifacts, one campaign
   aggregate and one failed-safety JSON
-- Imported structured bytes: 1,956,834
+- Imported structured bytes: 2,329,463
 
 Each JSON retains its own source HEAD, executable hash, harness hash, prompt,
 effective `DS4_*` environment, GPU identity, memory preflight and runtime
@@ -22,12 +22,14 @@ blank fields rather than inferred values.
 
 Structured result/failure JSON is mirrored here. Raw response bodies, stdout
 and high-frequency telemetry remain in the source repository or local run
-directory. G25 is the narrow exception: the seven committed stderr logs and
-`reports/G25_PREFILL_MASS_BULK_WRAP_RESULTS.md` are imported byte-for-byte from
-ds4-win commit `8f76b81`, alongside the seven result JSONs. G22's selected
-complete evidence bundle is committed in the source repository. The G22
-implementation and preregistered orchestrator are committed through `7d34a2c`;
-the six independent result JSONs and aggregate are mirrored in this snapshot.
+directory. G25, G26 and G26b are the narrow stderr/report exceptions:
+`reports/G25_PREFILL_MASS_BULK_WRAP_RESULTS.md`,
+`reports/G26_REAP_MASS_OBSERVE_RESULTS.md` and
+`reports/G26B_REAP_PACKED_TRACE_RESULTS.md` are imported byte-for-byte,
+alongside their selected result JSONs and stderr logs. G22's selected complete
+evidence bundle is committed in the source repository. The G22 implementation
+and preregistered orchestrator are committed through `7d34a2c`; the six
+independent result JSONs and aggregate are mirrored in this snapshot.
 
 ## Evidence rules
 
@@ -47,6 +49,11 @@ the six independent result JSONs and aggregate are mirrored in this snapshot.
 - The G25 2 GiB `n=1` run is correctness/mechanism evidence only. Long-decode
   `n=1` artifacts are not part of commit `8f76b81`, are not imported here and
   are not used as a verdict.
+- G26 REAP mass observe-only is exact but performance-negative: ON averaged
+  2.353 server t/s versus 2.577 OFF, a -8.7% mean decode delta.
+- G26b packed-router D2H is accepted as the REAP mass transport: packed ON
+  averaged 2.590 server t/s versus 2.663 OFF, reducing the observer penalty to
+  -2.8% while preserving exact output.
 - Speed rows without L0-L3 grading remain `speed_only`.
 - Expected hash, cache state and replication scope must accompany every t/s
   comparison.

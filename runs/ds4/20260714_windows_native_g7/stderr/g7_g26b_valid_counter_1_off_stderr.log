@@ -1,0 +1,15 @@
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup cache deferred 71.28 GiB of tensor spans to on-demand streaming
+ds4: CUDA startup model cache prepared 9.48 GiB of tensor spans in 2.197s
+ds4: cuda backend initialized for graph diagnostics
+0714 18:43:53 ds4-server: context buffers 25.17 MiB (ctx=256, backend=cuda, prefill_chunk=256, raw_kv_rows=256, compressed_kv_rows=66)
+ds4: CUDA dynamic arena ready 2.00 GiB, 303 slots, 6.75 MiB/slot, available_ram=44.59 GiB bytes=2144600064 slot_bytes=7077888
+0714 18:43:54 ds4-server: listening on http://127.0.0.1:8000
+0714 18:43:54 ds4-server: chat ctx=0..17:17 prompt start
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB free=1.30 GiB reserve=4.00 GiB total=12.00 GiB)
+0714 18:43:59 ds4-server: chat ctx=0..17:17 prompt done 4.700s
+0714 18:44:05 ds4-server: chat ctx=0..17:17 gen=16 decoding chunk=2.65 t/s avg=2.65 t/s 6.048s
+0714 18:44:05 ds4-server: chat ctx=0..17:17 gen=16 finish=length 10.821s
+0714 18:44:05 ds4-server: benchmark request target reached; shutting down cleanly
+0714 18:44:05 ds4-server: shutdown requested, draining requests

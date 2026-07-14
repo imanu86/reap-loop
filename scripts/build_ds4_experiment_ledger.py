@@ -761,6 +761,40 @@ def aggregate_windows_g7_campaigns(
             "source_artifact": "reports/G25_PREFILL_MASS_BULK_WRAP_RESULTS.md",
         },
         {
+            "name": "g26_reap_mass_observer",
+            "pattern": re.compile(
+                r"^(g7_g26_reap_mass_observe_prefillfix_safety_n1|"
+                r"g7_g26_reap_mass_ab_(?:on_n[23]|off_n[123]))$"
+            ),
+            "arms": ("on", "off"),
+            "arm_by_run_id": {
+                "g7_g26_reap_mass_observe_prefillfix_safety_n1": "on",
+                "g7_g26_reap_mass_ab_on_n2": "on",
+                "g7_g26_reap_mass_ab_on_n3": "on",
+                "g7_g26_reap_mass_ab_off_n1": "off",
+                "g7_g26_reap_mass_ab_off_n2": "off",
+                "g7_g26_reap_mass_ab_off_n3": "off",
+            },
+            "cache_note": (
+                "independent processes; REAP mass observe-only CPU readback A/B; "
+                "prefill-fixed safety run is ON sample 1"
+            ),
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+            "source_artifact": "reports/G26_REAP_MASS_OBSERVE_RESULTS.md",
+        },
+        {
+            "name": "g26b_packed_router_trace",
+            "pattern": re.compile(r"^g7_g26b_valid_counter_[1-3]_(on|off)$"),
+            "arms": ("on", "off"),
+            "cache_note": (
+                "independent counterbalanced processes; packed router D2H trace A/B"
+            ),
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+            "source_artifact": "reports/G26B_REAP_PACKED_TRACE_RESULTS.md",
+        },
+        {
             "name": "g22_arena_carry",
             "pattern": re.compile(r"^g7_g22_carry_ab_20260714_[1-6]_(drop|keep)_n1$"),
             "arms": ("drop", "keep"),
@@ -783,7 +817,16 @@ def aggregate_windows_g7_campaigns(
         for row in rows:
             match = pattern.match(row["run_id"])
             if match:
-                matched.append((row, match.group(1)))
+                arm_by_run_id = spec.get("arm_by_run_id")
+                if isinstance(arm_by_run_id, dict):
+                    arm = arm_by_run_id.get(row["run_id"])
+                else:
+                    arm = match.group(1)
+                if arm not in arms:
+                    raise RuntimeError(
+                        f"Campaign {campaign} could not classify arm for {row['run_id']}"
+                    )
+                matched.append((row, str(arm)))
         if len(matched) != 6:
             raise RuntimeError(f"Campaign {campaign} expected 6 runs, found {len(matched)}")
 
@@ -1425,6 +1468,14 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
     windows_top = windows_ranked[:20]
     g22 = [r for r in windows if "g22_" in r["run_id"]]
     g25 = [r for r in windows if "g25_" in r["run_id"] or "g25_" in r["experiment"]]
+    g26 = [
+        r
+        for r in windows
+        if "g26_" in r["run_id"]
+        or "g26b_" in r["run_id"]
+        or "g26_" in r["experiment"]
+        or "g26b_" in r["experiment"]
+    ]
 
     lines: list[str] = [
         "# DS4 / REAP Experiment Ledger - updated 2026-07-14",
@@ -1560,6 +1611,25 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
                 "dynamic_arena_final_misses",
                 "ds4_cuda_sha256",
                 "benchmark_usable",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native G26/G26b REAP Evidence", ""])
+    lines.extend(
+        md_table(
+            g26,
+            [
+                "run_id",
+                "source_head",
+                "server_decode_mean_tps",
+                "server_prefill_ttft_s",
+                "expected_hash_match",
+                "repeats",
+                "replication_scope",
+                "cache_state",
+                "ds4_cuda_sha256",
+                "benchmark_usable",
+                "result_text",
             ],
         )
     )

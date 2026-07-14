@@ -23,6 +23,8 @@ Markdown view.
 
 | Evidence | Result | Status |
 |---|---:|---|
+| G26b packed REAP transport | 2.590 packed ON mean server t/s vs 2.663 OFF; exact | accepted REAP mass transport, independent n=3 |
+| G26 REAP mass observe-only | 2.353 ON mean server t/s vs 2.577 OFF; exact | negative CPU readback result, independent n=3 |
 | G25 prefill-mass WRAP, short decode | 4.37 mean server t/s vs 2.30 control; 15.439 s mean WRAP | decode-positive independent n=3, exact; cost not amortized |
 | G22 KEEP independent replication | 4.55 median server t/s; samples 4.55, 4.42, 4.60 | promoted transport baseline, independent n=3, exact |
 | G22 DROP independent control | 1.56 median server t/s; samples 1.42, 1.56, 1.57 | independent n=3, exact |
@@ -41,6 +43,12 @@ G25 separately establishes a positive short-decode transport result: bulk
 prefill-ranked publication raised the 14 GiB arm from 2.30 to 4.37 mean server
 t/s with exact output. The 15.439 s mean publication cost dominates this
 16-token request, so this is not yet an amortization or break-even result.
+
+G26/G26b establish the REAP mass signal transport boundary. Plain CPU-side
+per-layer selected-weight readback was exact but regressed mean decode by 8.7%.
+The packed router trace kept exactness and reduced the residual penalty to
+2.8%, so `packed-router-d2h` is the accepted transport for the next REAP
+residency policy gate.
 
 ## Lever classification
 
@@ -64,6 +72,8 @@ t/s with exact output. The 15.439 s mean publication cost dominates this
 | Q8-to-F16 fixed cache 256/1280 | G21 0.38 t/s, 614 GiB Win32 reads, hash mismatch | rejected exact configuration |
 | Cross-request learned-arena reuse | G22 KEEP median 4.55 vs DROP 1.56 t/s, ratio 2.92x, independent n=3, exact | promoted Windows transport baseline |
 | Prefill-mass bulk WRAP | G25 4.37 vs 2.30 mean server t/s, independent n=3, exact; 15.439 s mean WRAP | short-decode positive; retain as candidate, long-decode amortization unmeasured |
+| REAP mass CPU observer | G26 2.353 vs 2.577 mean server t/s, independent n=3, exact | rejected as final runtime path |
+| Packed router trace | G26b 2.590 vs 2.663 mean server t/s, independent n=3, exact | accepted REAP mass transport |
 
 ## G22 replication verdict
 
@@ -120,6 +130,21 @@ The positive finding is limited to short decode. WRAP publication averaged
 claimed. The 2 GiB `n=1` safety run proves correctness/mechanism only. No
 long-decode `n=1` artifact is part of ds4-win commit `8f76b81` or this import,
 and no such run is used as a verdict.
+
+## G26/G26b REAP transport verdict
+
+G26 tested observe-only REAP mass collection using selected expert IDs and
+selected gate weights copied from GPU to CPU as separate per-layer commands.
+The final independent A/B used ON samples 2.48, 2.38 and 2.20 server t/s and
+OFF samples 2.42, 2.69 and 2.62 server t/s. All six outputs matched the
+expected hash. The ON mean was 2.353 t/s versus 2.577 OFF, so the CPU readback
+observer is not acceptable as a final runtime path.
+
+G26b kept the same signal but used the packed router trace transport. Its
+counterbalanced independent gate measured packed ON 2.59, 2.58 and 2.60
+server t/s, versus OFF 2.65, 2.67 and 2.67 server t/s. All six outputs matched
+the expected hash. This keeps the signal exact and reduces the residual mean
+penalty to 2.8%, so `packed-router-d2h` is accepted as the REAP mass transport.
 
 ## Next highest-value measurement
 
