@@ -156,6 +156,20 @@ FIELDS = [
     "result_text",
     "verdict",
     "source_artifacts",
+    "dynamic_arena_final_hits",
+    "dynamic_arena_final_misses",
+    "prefill_mass_wrap_result",
+    "prefill_mass_wrap_reason",
+    "prefill_mass_wrap_candidate_entries",
+    "prefill_mass_wrap_loads",
+    "prefill_mass_wrap_workers",
+    "prefill_mass_wrap_seconds",
+    "prefill_mass_wrap_snapshot_before",
+    "prefill_mass_wrap_snapshot_after",
+    "prefill_mass_wrap_resident_before",
+    "prefill_mass_wrap_resident_after",
+    "prefill_mass_decode_candidate_hits",
+    "ds4_cuda_sha256",
 ]
 
 
@@ -646,6 +660,7 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
                 "source_head": clean(src.get("head")),
                 "executable_sha256": clean(src.get("executable_sha256")),
                 "harness_sha256": clean(src.get("harness_sha256")),
+                "ds4_cuda_sha256": clean(src.get("ds4_cuda_sha256")),
                 "repeats": str(repeats),
                 "replication_scope": replication_scope,
                 "warmup": str(warmup).lower(),
@@ -667,7 +682,20 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
                 "dynamic_arena_resident": clean(src.get("dynamic_arena_observer_resident")),
                 "dynamic_arena_resident_gib": arena_resident_gib,
                 "dynamic_arena_hit_rate": clean(src.get("dynamic_arena_hit_rate")),
+                "dynamic_arena_final_hits": clean(src.get("dynamic_arena_final_hits")),
+                "dynamic_arena_final_misses": clean(src.get("dynamic_arena_final_misses")),
                 "dynamic_arena_fatal": clean(arena_fatal),
+                "prefill_mass_wrap_result": clean(src.get("prefill_mass_wrap_result")),
+                "prefill_mass_wrap_reason": clean(src.get("prefill_mass_wrap_reason")),
+                "prefill_mass_wrap_candidate_entries": clean(src.get("prefill_mass_wrap_candidate_entries")),
+                "prefill_mass_wrap_loads": clean(src.get("prefill_mass_wrap_loads")),
+                "prefill_mass_wrap_workers": clean(src.get("prefill_mass_wrap_workers")),
+                "prefill_mass_wrap_seconds": clean(src.get("prefill_mass_wrap_seconds")),
+                "prefill_mass_wrap_snapshot_before": clean(src.get("prefill_mass_wrap_snapshot_before")),
+                "prefill_mass_wrap_snapshot_after": clean(src.get("prefill_mass_wrap_snapshot_after")),
+                "prefill_mass_wrap_resident_before": clean(src.get("prefill_mass_wrap_resident_before")),
+                "prefill_mass_wrap_resident_after": clean(src.get("prefill_mass_wrap_resident_after")),
+                "prefill_mass_decode_candidate_hits": clean(src.get("prefill_mass_decode_candidate_hits")),
                 "q8_f16_cache_mib": clean(src.get("q8_f16_cache_mb_requested")),
                 "q8_f16_reserve_mib": clean(src.get("q8_f16_cache_reserve_mb_requested")),
                 "moe_io_qd": clean(src.get("moe_io_queue_depth_observed") or src.get("moe_io_queue_depth")),
@@ -722,6 +750,17 @@ def aggregate_windows_g7_campaigns(
             "warmup": "false",
         },
         {
+            "name": "g25_prefill_mass_bulk_wrap",
+            "pattern": re.compile(r"^g7_g25_prefill_mass_(observe14_control|wrap14)(?:_safety)?_n[123]$"),
+            "arms": ("observe14_control", "wrap14"),
+            "cache_note": (
+                "independent processes; 14 GiB prefill-mass A/B; 2 GiB safety run excluded"
+            ),
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+            "source_artifact": "reports/G25_PREFILL_MASS_BULK_WRAP_RESULTS.md",
+        },
+        {
             "name": "g22_arena_carry",
             "pattern": re.compile(r"^g7_g22_carry_ab_20260714_[1-6]_(drop|keep)_n1$"),
             "arms": ("drop", "keep"),
@@ -749,6 +788,14 @@ def aggregate_windows_g7_campaigns(
             raise RuntimeError(f"Campaign {campaign} expected 6 runs, found {len(matched)}")
 
         campaign_artifact = ""
+        source_artifact = spec.get("source_artifact")
+        if source_artifact:
+            source_artifact_path = root.parent / str(source_artifact)
+            if not source_artifact_path.exists():
+                raise RuntimeError(
+                    f"Campaign {campaign} source artifact missing: {source_artifact_path}"
+                )
+            campaign_artifact = rel(source_artifact_path)
         aggregate_name = spec.get("aggregate_file")
         if aggregate_name:
             aggregate_path = root / str(aggregate_name)
@@ -797,6 +844,13 @@ def aggregate_windows_g7_campaigns(
             wall_values = [
                 value
                 for value in (number(row["wall_s"]) for row in arm_rows)
+                if value is not None
+            ]
+            wrap_seconds_values = [
+                value
+                for value in (
+                    number(row["prefill_mass_wrap_seconds"]) for row in arm_rows
+                )
                 if value is not None
             ]
             hashes = sorted({row["output_sha256"] for row in arm_rows if row["output_sha256"]})
@@ -861,6 +915,7 @@ def aggregate_windows_g7_campaigns(
                 "source_head",
                 "executable_sha256",
                 "harness_sha256",
+                "ds4_cuda_sha256",
                 "dynamic_arena_gib",
                 "dynamic_arena_window",
                 "dynamic_arena_min_hits",
@@ -869,7 +924,20 @@ def aggregate_windows_g7_campaigns(
                 "dynamic_arena_resident",
                 "dynamic_arena_resident_gib",
                 "dynamic_arena_hit_rate",
+                "dynamic_arena_final_hits",
+                "dynamic_arena_final_misses",
                 "dynamic_arena_fatal",
+                "prefill_mass_wrap_result",
+                "prefill_mass_wrap_reason",
+                "prefill_mass_wrap_candidate_entries",
+                "prefill_mass_wrap_loads",
+                "prefill_mass_wrap_workers",
+                "prefill_mass_wrap_seconds",
+                "prefill_mass_wrap_snapshot_before",
+                "prefill_mass_wrap_snapshot_after",
+                "prefill_mass_wrap_resident_before",
+                "prefill_mass_wrap_resident_after",
+                "prefill_mass_decode_candidate_hits",
                 "q8_f16_cache_mib",
                 "q8_f16_reserve_mib",
                 "moe_io_qd",
@@ -930,6 +998,15 @@ def aggregate_windows_g7_campaigns(
                     ),
                 }
             )
+            if campaign == "g25_prefill_mass_bulk_wrap":
+                wrap_seconds_mean = decimal(mean(wrap_seconds_values))
+                base["prefill_mass_wrap_seconds"] = wrap_seconds_mean
+                base["metrics_text"] += (
+                    f"; prefill-mass WRAP mean={wrap_seconds_mean}s"
+                )
+                base["result_text"] += (
+                    f"; prefill-mass WRAP mean={wrap_seconds_mean}s"
+                )
             aggregates.append(base)
     return aggregates
 
@@ -1347,6 +1424,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
     windows_all = sorted(windows, key=lambda r: (r["date"], r["run_id"]))
     windows_top = windows_ranked[:20]
     g22 = [r for r in windows if "g22_" in r["run_id"]]
+    g25 = [r for r in windows if "g25_" in r["run_id"] or "g25_" in r["experiment"]]
 
     lines: list[str] = [
         "# DS4 / REAP Experiment Ledger - updated 2026-07-14",
@@ -1380,6 +1458,8 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- Dynamic compression is not yet a speed win. Lossless cold RAM is too large, CQ1 works mechanically but synchronous selected-miss use is far too slow. The useful target is effective cap512-cap1024 behavior with background promotion/demotion.",
         "- Windows-native results must be read with `cache_state`, `replication_scope`, `repeats`, exact hash and L0-L3 status together. A high n=1 safety result is retained as mechanism evidence; it is not silently discarded and is not promoted to a sustained verdict.",
         "- G22 isolates same-process arena reuse: KEEP measured 4.32 server decode t/s and DROP 1.42 t/s with the same expected hash. This is a paired n=1 causal safety result, pending order-balanced independent n>=3 replication.",
+        "- G25 prefill-mass bulk WRAP is decode-positive on the short Caesar prompt: 14 GiB WRAP independent n=3 averaged 4.37 server t/s versus 2.30 control with exact output, but the mean WRAP publication cost was 15.44 s and is not amortized by a 16-token request.",
+        "- The 2 GiB G25 safety run is correctness/mechanism evidence only. No long-decode n=1 artifact is present in ds4-win commit `8f76b81`, imported in this G25 snapshot or used as a verdict.",
         "",
         "## High-Signal Runtime Rows",
         "",
@@ -1457,6 +1537,32 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
             ],
         )
     )
+    lines.extend(["", "## Windows Native G25 Prefill-Mass Bulk WRAP", ""])
+    lines.extend(
+        md_table(
+            g25,
+            [
+                "run_id",
+                "source_head",
+                "request_max_tokens",
+                "dynamic_arena_gib",
+                "server_decode_mean_tps",
+                "server_prefill_ttft_s",
+                "prefill_mass_wrap_result",
+                "prefill_mass_wrap_reason",
+                "prefill_mass_wrap_candidate_entries",
+                "prefill_mass_wrap_loads",
+                "prefill_mass_wrap_workers",
+                "prefill_mass_wrap_seconds",
+                "prefill_mass_wrap_snapshot_after",
+                "prefill_mass_wrap_resident_after",
+                "dynamic_arena_final_hits",
+                "dynamic_arena_final_misses",
+                "ds4_cuda_sha256",
+                "benchmark_usable",
+            ],
+        )
+    )
     lines.extend(["", "## Windows Native Independent Campaign Aggregates", ""])
     lines.extend(
         md_table(
@@ -1472,6 +1578,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
                 "client_completion_mean_tps",
                 "server_prefill_ttft_s",
                 "dynamic_arena_resident",
+                "prefill_mass_wrap_seconds",
                 "expected_hash_match",
                 "benchmark_usable",
                 "result_text",

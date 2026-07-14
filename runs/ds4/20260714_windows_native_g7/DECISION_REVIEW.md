@@ -23,6 +23,7 @@ Markdown view.
 
 | Evidence | Result | Status |
 |---|---:|---|
+| G25 prefill-mass WRAP, short decode | 4.37 mean server t/s vs 2.30 control; 15.439 s mean WRAP | decode-positive independent n=3, exact; cost not amortized |
 | G22 KEEP independent replication | 4.55 median server t/s; samples 4.55, 4.42, 4.60 | promoted transport baseline, independent n=3, exact |
 | G22 DROP independent control | 1.56 median server t/s; samples 1.42, 1.56, 1.57 | independent n=3, exact |
 | Supporting previous-executable G22 response | 4.29 / 3.819 t/s | continuity only, not a third replica |
@@ -35,6 +36,11 @@ The correct summary is therefore: W64/min-hits1 retained arena residency now
 sustains greater than 4 t/s in three independent local processes. The median is
 4.55 t/s server-side, every KEEP sample is at least 4.42 t/s, and the exact
 DROP control median is 1.56 t/s.
+
+G25 separately establishes a positive short-decode transport result: bulk
+prefill-ranked publication raised the 14 GiB arm from 2.30 to 4.37 mean server
+t/s with exact output. The 15.439 s mean publication cost dominates this
+16-token request, so this is not yet an amortization or break-even result.
 
 ## Lever classification
 
@@ -57,6 +63,7 @@ DROP control median is 1.56 t/s.
 | Grow-only residency | G20 2.89->8.51 useful GiB, +16.28 hit points, +2.5% median speed | keep candidate, longer gate pending |
 | Q8-to-F16 fixed cache 256/1280 | G21 0.38 t/s, 614 GiB Win32 reads, hash mismatch | rejected exact configuration |
 | Cross-request learned-arena reuse | G22 KEEP median 4.55 vs DROP 1.56 t/s, ratio 2.92x, independent n=3, exact | promoted Windows transport baseline |
+| Prefill-mass bulk WRAP | G25 4.37 vs 2.30 mean server t/s, independent n=3, exact; 15.439 s mean WRAP | short-decode positive; retain as candidate, long-decode amortization unmeasured |
 
 ## G22 replication verdict
 
@@ -99,6 +106,20 @@ Measured server decode samples were DROP 1.42/1.56/1.57 and KEEP
 4.55/4.42/4.60 t/s. The medians are 1.56 and 4.55 t/s, respectively, for a
 2.92x ratio. Every expected output hash matched. The gate passed and retained
 learned residency is now the Windows transport baseline.
+
+## G25 prefill-mass bulk WRAP verdict
+
+G25 used six independent 14 GiB processes in WRAP/OFF/OFF/WRAP/WRAP/OFF
+order. All outputs matched the expected hash. WRAP decoded at 4.25, 4.35 and
+4.52 t/s (4.37 mean); observe-only control decoded at 2.44, 1.75 and 2.72 t/s
+(2.30 mean). The WRAP arm published all 1,980 candidates and recorded raw arena
+counts of 2,619 hits and 1,509 misses.
+
+The positive finding is limited to short decode. WRAP publication averaged
+15.439 s and was not amortized by 16 generated tokens; no break-even point is
+claimed. The 2 GiB `n=1` safety run proves correctness/mechanism only. No
+long-decode `n=1` artifact is part of ds4-win commit `8f76b81` or this import,
+and no such run is used as a verdict.
 
 ## Next highest-value measurement
 

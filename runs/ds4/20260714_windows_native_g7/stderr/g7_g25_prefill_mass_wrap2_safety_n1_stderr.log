@@ -1,0 +1,27 @@
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup cache deferred 71.28 GiB of tensor spans to on-demand streaming
+ds4: CUDA startup model cache prepared 9.48 GiB of tensor spans in 5.192s
+ds4: cuda backend initialized for graph diagnostics
+0714 16:45:52 ds4-server: context buffers 25.17 MiB (ctx=256, backend=cuda, prefill_chunk=256, raw_kv_rows=256, compressed_kv_rows=66)
+ds4: CUDA dynamic arena ready 2.00 GiB, 303 slots, 6.75 MiB/slot, available_ram=46.73 GiB bytes=2144600064 slot_bytes=7077888
+0714 16:45:53 ds4-server: listening on http://127.0.0.1:8029
+0714 16:45:53 ds4-server: chat ctx=0..17:17 prompt start
+ds4: [prefill-mass] armed slots=303 layers=3..42 router=unbiased residency=prefill-ranked policy=bulk-wrap
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB free=1.36 GiB reserve=4.00 GiB total=12.00 GiB)
+ds4: CUDA loading model tensors 8.23 GiB cached
+ds4: [prefill-mass] finalize layers=40 rows_min=17 rows_max=17 routed_slots=4080 unique=1980 candidate=303 capacity=303 mass_total=1020.000002 mass_candidate=510.292727 mass_coverage=0.5003 cutoff=0.909008 router=unbiased residency=prefill-ranked policy=bulk-wrap
+ds4: [arena] begin base=0 target=1 resident=303 loads=303 slots=303
+ds4: [arena] publish generation=1 loads=303
+ds4: [prefill-mass-wrap] result=published reason=ok candidate=303 loads=303 workers=8 seconds=2.200 snapshot_before=0 snapshot_after=1 resident_before=0 resident_after=303 generation=1 preloaded=0 router=unbiased mask=off
+0714 16:46:05 ds4-server: chat ctx=0..17:17 prompt done 12.038s
+ds4: [prefill-mass] decode reason=checkpoint tokens=1 slots=240 candidate_hits=90 hit_rate=0.3750 policy=bulk-wrap
+ds4: [prefill-mass] decode reason=checkpoint tokens=2 slots=480 candidate_hits=170 hit_rate=0.3542 policy=bulk-wrap
+ds4: [prefill-mass] decode reason=checkpoint tokens=4 slots=960 candidate_hits=297 hit_rate=0.3094 policy=bulk-wrap
+ds4: [prefill-mass] decode reason=checkpoint tokens=8 slots=1920 candidate_hits=572 hit_rate=0.2979 policy=bulk-wrap
+0714 16:46:11 ds4-server: chat ctx=0..17:17 gen=16 decoding chunk=2.82 t/s avg=2.82 t/s 5.674s
+0714 16:46:11 ds4-server: chat ctx=0..17:17 gen=16 finish=length 17.729s
+0714 16:46:11 ds4-server: benchmark request target reached; shutting down cleanly
+0714 16:46:11 ds4-server: shutdown requested, draining requests
+ds4: [arena] final hits=990 misses=3138 fatal=0 uploaded=6.53 GiB
+ds4: [prefill-mass] decode reason=request-end tokens=16 slots=3840 candidate_hits=990 hit_rate=0.2578 policy=bulk-wrap

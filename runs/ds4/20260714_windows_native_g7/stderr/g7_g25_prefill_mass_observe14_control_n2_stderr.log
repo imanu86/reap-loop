@@ -1,0 +1,23 @@
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup cache deferred 71.80 GiB of tensor spans to on-demand streaming
+ds4: CUDA startup model cache prepared 8.96 GiB of tensor spans in 2.130s
+ds4: cuda backend initialized for graph diagnostics
+0714 16:52:59 ds4-server: context buffers 25.17 MiB (ctx=256, backend=cuda, prefill_chunk=256, raw_kv_rows=256, compressed_kv_rows=66)
+ds4: CUDA dynamic arena ready 13.99 GiB, 2123 slots, 6.75 MiB/slot, available_ram=34.57 GiB bytes=15026356224 slot_bytes=7077888
+0714 16:53:01 ds4-server: listening on http://127.0.0.1:8032
+0714 16:53:01 ds4-server: chat ctx=0..17:17 prompt start
+ds4: [prefill-mass] armed slots=2123 layers=3..42 router=unbiased residency=unchanged policy=observe-only
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB free=1.08 GiB reserve=4.00 GiB total=12.00 GiB)
+ds4: CUDA loading model tensors 7.95 GiB cached
+ds4: [prefill-mass] finalize layers=40 rows_min=17 rows_max=17 routed_slots=4080 unique=1980 candidate=1980 capacity=2123 mass_total=1020.000002 mass_candidate=1020.000002 mass_coverage=1.0000 cutoff=0.000002 router=unbiased residency=unchanged policy=observe-only
+0714 16:53:11 ds4-server: chat ctx=0..17:17 prompt done 10.042s
+ds4: [prefill-mass] decode reason=checkpoint tokens=1 slots=240 candidate_hits=201 hit_rate=0.8375 policy=observe-only
+ds4: [prefill-mass] decode reason=checkpoint tokens=2 slots=480 candidate_hits=389 hit_rate=0.8104 policy=observe-only
+ds4: [prefill-mass] decode reason=checkpoint tokens=4 slots=960 candidate_hits=762 hit_rate=0.7937 policy=observe-only
+ds4: [prefill-mass] decode reason=checkpoint tokens=8 slots=1920 candidate_hits=1485 hit_rate=0.7734 policy=observe-only
+0714 16:53:20 ds4-server: chat ctx=0..17:17 gen=16 decoding chunk=1.75 t/s avg=1.75 t/s 9.139s
+0714 16:53:20 ds4-server: chat ctx=0..17:17 gen=16 finish=length 19.196s
+0714 16:53:20 ds4-server: benchmark request target reached; shutting down cleanly
+0714 16:53:20 ds4-server: shutdown requested, draining requests
+ds4: [prefill-mass] decode reason=request-end tokens=16 slots=3840 candidate_hits=2619 hit_rate=0.6820 policy=observe-only

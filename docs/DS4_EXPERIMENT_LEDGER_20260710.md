@@ -6,10 +6,10 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 557
+- Rows total: 566
 - Runner-measured rows: 213
-- Windows-native G7 result rows: 148
-- Windows-native independent campaign aggregates: 8
+- Windows-native G7 result rows: 155
+- Windows-native independent campaign aggregates: 10
 - Windows-native failed safety rows: 1
 - Legacy / Claude / claim rows: 187
 
@@ -29,6 +29,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 - Dynamic compression is not yet a speed win. Lossless cold RAM is too large, CQ1 works mechanically but synchronous selected-miss use is far too slow. The useful target is effective cap512-cap1024 behavior with background promotion/demotion.
 - Windows-native results must be read with `cache_state`, `replication_scope`, `repeats`, exact hash and L0-L3 status together. A high n=1 safety result is retained as mechanism evidence; it is not silently discarded and is not promoted to a sustained verdict.
 - G22 isolates same-process arena reuse: KEEP measured 4.32 server decode t/s and DROP 1.42 t/s with the same expected hash. This is a paired n=1 causal safety result, pending order-balanced independent n>=3 replication.
+- G25 prefill-mass bulk WRAP is decode-positive on the short Caesar prompt: 14 GiB WRAP independent n=3 averaged 4.37 server t/s versus 2.30 control with exact output, but the mean WRAP publication cost was 15.44 s and is not amortized by a 16-token request.
+- The 2 GiB G25 safety run is correctness/mechanism evidence only. No long-decode n=1 artifact is present in ds4-win commit `8f76b81`, imported in this G25 snapshot or used as a verdict.
 
 ## High-Signal Runtime Rows
 
@@ -66,9 +68,13 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g22_carry_ab_20260714_6_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.6 | 4.09256 | 5.774 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
 | g7_g22_carry_ab_20260714_2_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.55 | 4.062977 | 5.646 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
 | campaign_g22_arena_carry_keep_n3 | 20260714 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 4.523333 | 4.036758 | 5.687667 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | speed_only |
+| g7_g25_prefill_mass_wrap14_n3 | 20260714 | new_process_uncontrolled | 1 | single_server_process | 4.52 | 0.668305 | 20.026 | 14.0 | 0 | 1 | default | 0 | 0 | off | true | mechanism_only |
 | g7_g22_carry_ab_20260714_3_keep_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.42 | 3.954737 | 5.643 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
+| campaign_g25_prefill_mass_bulk_wrap_wrap14_n3 | 20260714 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 4.373333 | 0.659481 | 20.226 | 14.0 | 0 | 1 | default | 0 | 0 | off | true | speed_only |
+| g7_g25_prefill_mass_wrap14_n2 | 20260714 | new_process_uncontrolled | 1 | single_server_process | 4.35 | 0.660739 | 20.161 | 14.0 | 0 | 1 | default | 0 | 0 | off | true | mechanism_only |
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.32 | 3.852063 | 6.034 | 30.0 | 64 | 1 | keep | 3576 | 0 | off | true | mechanism_only |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | 20260714 | same_process_primed | 1 | single_server_process | 4.29 | 3.819231 | 6.099 | 30.0 | 64 | 1 |  | 3576 | 0 | off | true | mechanism_only |
+| g7_g25_prefill_mass_wrap14_safety_n1 | 20260714 | new_process_uncontrolled | 1 | single_server_process | 4.25 | 0.6494 | 20.491 | 14.0 | 0 | 1 | default | 0 | 0 | off | true | mechanism_only |
 | g7_g14_ordered_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.98 | 2.107655 | 1.245667 |  |  |  |  |  | 0 | off | not_requested | speed_only |
 | g7_g18_final_keep1_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.913333 | 2.078066 | 1.241 |  |  |  |  |  | 0 | off | not_requested | speed_only |
 | g7_g16_postreview_k1_safety_n1 | 20260714 | same_process_primed | 1 | single_server_process | 2.91 | 2.032706 | 1.332 |  |  |  |  |  | 0 | full | true | mechanism_only |
@@ -79,10 +85,6 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g14_final_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.876667 | 2.030541 | 1.299333 |  |  |  |  |  | 0 | off | not_requested | speed_only |
 | g7_g13_stage_score_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.866667 | 2.059842 | 1.229667 |  |  |  |  |  | 0 | score | not_requested | speed_only |
 | g7_g15_recall_k2_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.866667 | 2.040091 | 1.267333 |  |  |  |  |  | 0 | full | true | speed_only |
-| g7_g16_final_k1_predictor_only_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.856667 | 2.0346 | 1.268667 |  |  |  |  |  | 0 | full | true | speed_only |
-| g7_g16_final2_k1_prefetch_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.85 | 2.053437 | 1.222333 |  |  |  |  |  | 0 | full | true | speed_only |
-| g7_g17_allocator_1g_hi12_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.85 | 2.029399 | 1.278333 |  |  |  |  |  | 0 | off | not_requested | speed_only |
-| g7_g13_stage_off_hi12_clean_n3 | 20260714 | same_process_primed | 3 | same_server_process | 2.846667 | 2.038865 | 1.254667 |  |  |  |  |  | 0 | off | not_requested | speed_only |
 
 ## Windows Native G22 Causal Rows
 
@@ -100,18 +102,34 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | b040abe8828878b7e44d762d205c49b0eb536b0d13890842e80381281825f878 | same_process_primed | 1 | 4.32 | 3.852063 | 6.034 | keep | 3576 | 0.756722575829826 | 18.029606 | 302.620570 | true | measured_safety_n1 |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | db610b50b6d4652b392c002e73849ff10b279e159425e94a325c11e365ca5180 | same_process_primed | 1 | 4.29 | 3.819231 | 6.099 |  | 3576 | 0.756722575829826 | 37.850914 | 301.598863 | true | measured_safety_n1 |
 
+## Windows Native G25 Prefill-Mass Bulk WRAP
+
+| run_id | source_head | request_max_tokens | dynamic_arena_gib | server_decode_mean_tps | server_prefill_ttft_s | prefill_mass_wrap_result | prefill_mass_wrap_reason | prefill_mass_wrap_candidate_entries | prefill_mass_wrap_loads | prefill_mass_wrap_workers | prefill_mass_wrap_seconds | prefill_mass_wrap_snapshot_after | prefill_mass_wrap_resident_after | dynamic_arena_final_hits | dynamic_arena_final_misses | ds4_cuda_sha256 | benchmark_usable |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| campaign_g25_prefill_mass_bulk_wrap_observe14_control_n3 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 2.303333 | 6.578667 | not_observed | not_observed | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | speed_only |
+| campaign_g25_prefill_mass_bulk_wrap_wrap14_n3 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 4.373333 | 20.226 | published | ok | 1980 | 1980 | 8 | 15.439333 | 1 | 1980 | 2619 | 1509 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | speed_only |
+| g7_g25_prefill_mass_observe14_control_n1 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 2.44 | 4.938 | not_observed | not_observed | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_observe14_control_n2 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 1.75 | 10.057 | not_observed | not_observed | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_observe14_control_n3 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 2.72 | 4.741 | not_observed | not_observed | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 0 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_wrap14_n2 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 4.35 | 20.161 | published | ok | 1980 | 1980 | 8 | 15.369 | 1 | 1980 | 2619 | 1509 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_wrap14_n3 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 4.52 | 20.026 | published | ok | 1980 | 1980 | 8 | 15.408 | 1 | 1980 | 2619 | 1509 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_wrap14_safety_n1 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 14.0 | 4.25 | 20.491 | published | ok | 1980 | 1980 | 8 | 15.541 | 1 | 1980 | 2619 | 1509 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+| g7_g25_prefill_mass_wrap2_safety_n1 | 334b92d3287d90d71834d3d1369850d9d764952b | 16 | 2.0 | 2.82 | 12.055 | published | ok | 303 | 303 | 8 | 2.2 | 1 | 303 | 990 | 3138 | 93a684fc0211ade68aeb23c58b81a0f4cf5b05105f6f5cdddb0964f3d1b1f758 | mechanism_only |
+
 ## Windows Native Independent Campaign Aggregates
 
-| run_id | variant | repeats | replication_scope | server_decode_mean_tps | server_decode_min_tps | server_decode_max_tps | client_completion_mean_tps | server_prefill_ttft_s | dynamic_arena_resident | expected_hash_match | benchmark_usable | result_text |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| campaign_g19a_observed_residency_off_n3 | off | 3 | independent_server_processes | 2.276667 | 2.21 | 2.38 | 1.55254 | 12.66 | 0 | true | speed_only | independent n=3 arm=off; server mean=2.276667 t/s; median=2.24; expected_hash=true; outputs_identical=true |
-| campaign_g19a_observed_residency_on_n3 | on | 3 | independent_server_processes | 1.896667 | 1.87 | 1.95 | 1.394668 | 11.767 | 1435 | true | speed_only | independent n=3 arm=on; server mean=1.896667 t/s; median=1.87; expected_hash=true; outputs_identical=true |
-| campaign_g19b_first_fetch_preload_off_n3 | off | 3 | independent_server_processes | 2.083333 | 2.04 | 2.16 | 1.69509 | 13.722 | 0 | not_requested | speed_only | independent n=3 arm=off; server mean=2.083333 t/s; median=2.05; expected_hash=not_requested; outputs_identical=true |
-| campaign_g19b_first_fetch_preload_on_n3 | on | 3 | independent_server_processes | 2.313333 | 2.3 | 2.33 | 1.832023 | 14.205667 | 439 | not_requested | speed_only | independent n=3 arm=on; server mean=2.313333 t/s; median=2.31; expected_hash=not_requested; outputs_identical=true |
-| campaign_g20_grow8_off_n3 | off | 3 | independent_server_processes | 1.976667 | 1.87 | 2.09 | 1.341453 | 14.956 | 439 | true | speed_only | independent n=3 arm=off; server mean=1.976667 t/s; median=1.97; expected_hash=true; outputs_identical=true |
-| campaign_g20_grow8_on_n3 | on | 3 | independent_server_processes | 2.056667 | 2.01 | 2.14 | 1.370601 | 15.149 | 1291 | true | speed_only | independent n=3 arm=on; server mean=2.056667 t/s; median=2.02; expected_hash=true; outputs_identical=true |
-| campaign_g22_arena_carry_drop_n3 | drop | 3 | independent_server_processes | 1.516667 | 1.42 | 1.57 | 1.356221 | 16.557 | 3576 | true | speed_only | independent n=3 arm=drop; server mean=1.516667 t/s; median=1.56; expected_hash=true; outputs_identical=true |
-| campaign_g22_arena_carry_keep_n3 | keep | 3 | independent_server_processes | 4.523333 | 4.42 | 4.6 | 4.036758 | 5.687667 | 3576 | true | speed_only | independent n=3 arm=keep; server mean=4.523333 t/s; median=4.55; expected_hash=true; outputs_identical=true |
+| run_id | variant | repeats | replication_scope | server_decode_mean_tps | server_decode_min_tps | server_decode_max_tps | client_completion_mean_tps | server_prefill_ttft_s | dynamic_arena_resident | prefill_mass_wrap_seconds | expected_hash_match | benchmark_usable | result_text |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| campaign_g19a_observed_residency_off_n3 | off | 3 | independent_server_processes | 2.276667 | 2.21 | 2.38 | 1.55254 | 12.66 | 0 |  | true | speed_only | independent n=3 arm=off; server mean=2.276667 t/s; median=2.24; expected_hash=true; outputs_identical=true |
+| campaign_g19a_observed_residency_on_n3 | on | 3 | independent_server_processes | 1.896667 | 1.87 | 1.95 | 1.394668 | 11.767 | 1435 |  | true | speed_only | independent n=3 arm=on; server mean=1.896667 t/s; median=1.87; expected_hash=true; outputs_identical=true |
+| campaign_g19b_first_fetch_preload_off_n3 | off | 3 | independent_server_processes | 2.083333 | 2.04 | 2.16 | 1.69509 | 13.722 | 0 |  | not_requested | speed_only | independent n=3 arm=off; server mean=2.083333 t/s; median=2.05; expected_hash=not_requested; outputs_identical=true |
+| campaign_g19b_first_fetch_preload_on_n3 | on | 3 | independent_server_processes | 2.313333 | 2.3 | 2.33 | 1.832023 | 14.205667 | 439 |  | not_requested | speed_only | independent n=3 arm=on; server mean=2.313333 t/s; median=2.31; expected_hash=not_requested; outputs_identical=true |
+| campaign_g20_grow8_off_n3 | off | 3 | independent_server_processes | 1.976667 | 1.87 | 2.09 | 1.341453 | 14.956 | 439 |  | true | speed_only | independent n=3 arm=off; server mean=1.976667 t/s; median=1.97; expected_hash=true; outputs_identical=true |
+| campaign_g20_grow8_on_n3 | on | 3 | independent_server_processes | 2.056667 | 2.01 | 2.14 | 1.370601 | 15.149 | 1291 |  | true | speed_only | independent n=3 arm=on; server mean=2.056667 t/s; median=2.02; expected_hash=true; outputs_identical=true |
+| campaign_g22_arena_carry_drop_n3 | drop | 3 | independent_server_processes | 1.516667 | 1.42 | 1.57 | 1.356221 | 16.557 | 3576 |  | true | speed_only | independent n=3 arm=drop; server mean=1.516667 t/s; median=1.56; expected_hash=true; outputs_identical=true |
+| campaign_g22_arena_carry_keep_n3 | keep | 3 | independent_server_processes | 4.523333 | 4.42 | 4.6 | 4.036758 | 5.687667 | 3576 |  | true | speed_only | independent n=3 arm=keep; server mean=4.523333 t/s; median=4.55; expected_hash=true; outputs_identical=true |
+| campaign_g25_prefill_mass_bulk_wrap_observe14_control_n3 | observe14_control | 3 | independent_server_processes | 2.303333 | 1.75 | 2.72 | 1.207322 | 6.578667 | 0 | 0 | true | speed_only | independent n=3 arm=observe14_control; server mean=2.303333 t/s; median=2.44; expected_hash=true; outputs_identical=true; prefill-mass WRAP mean=0s |
+| campaign_g25_prefill_mass_bulk_wrap_wrap14_n3 | wrap14 | 3 | independent_server_processes | 4.373333 | 4.25 | 4.52 | 0.659481 | 20.226 | 0 | 15.439333 | true | speed_only | independent n=3 arm=wrap14; server mean=4.373333 t/s; median=4.35; expected_hash=true; outputs_identical=true; prefill-mass WRAP mean=15.439333s |
 
 ## Windows Native Failed Safety Gates
 
@@ -131,6 +149,8 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | campaign_g20_grow8_on_n3 | 20260714 | 3aef01666fff2634e9ce155f3ca928993bdf5720 | cyber_html | 64 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 2.056667 | 1.370601 | 15.149 | 12.0 | 16 | 3 | 8 |  | 1291 | 0 | 1 | off | 0 |  | true | true | speed_only |
 | campaign_g22_arena_carry_drop_n3 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 1.516667 | 1.356221 | 16.557 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
 | campaign_g22_arena_carry_keep_n3 | 20260714 | 7d34a2cab20b290b13807c2c912dbb893fbafcd2 | cyber_html | 256 | independent_processes_same_process_primed_request2 | 3 | independent_server_processes | 4.523333 | 4.036758 | 5.687667 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
+| campaign_g25_prefill_mass_bulk_wrap_observe14_control_n3 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 2.303333 | 1.207322 | 6.578667 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
+| campaign_g25_prefill_mass_bulk_wrap_wrap14_n3 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | independent_new_processes_uncontrolled | 3 | independent_server_processes | 4.373333 | 0.659481 | 20.226 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | speed_only |
 | g7_baseline_7f647e0_clean_n3 | 20260714 | 7f647e05f070ffbfcaad49b2c8f9217ac152ec64 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 2.042211 |  |  |  |  |  |  |  |  |  |  |  |  | true | not_requested | speed_only |
 | g7_baseline_7f647e0_diag_n3 | 20260714 | 7f647e05f070ffbfcaad49b2c8f9217ac152ec64 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 0.705695 |  |  |  |  |  |  |  |  |  |  |  |  | true | not_requested | speed_only |
 | g7_cache32_safety_n1 | 20260714 | c96ffad5b05398d740c9fee5938533da83ee4d6f | windows_g7 | 12 | same_process_primed | 1 | single_server_process |  | 1.999994 |  |  |  |  |  |  |  | 32 | 1 |  |  |  | true | not_requested | mechanism_only |
@@ -257,6 +277,13 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 | g7_g22_carry_drop_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 1.42 | 1.269029 | 18.148 | 30.0 | 64 | 1 | 0 | drop | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g22_carry_keep_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.32 | 3.852063 | 6.034 | 30.0 | 64 | 1 | 0 | keep | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_g22_sameproc_reuse_w64_m1_arena30_cyber256_safety_n1 | 20260714 | e6963617d51ded2c965a8a3b6de57b6d292c2b83 | cyber_html | 256 | same_process_primed | 1 | single_server_process | 4.29 | 3.819231 | 6.099 | 30.0 | 64 | 1 | 0 |  | 3576 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_observe14_control_n1 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 2.44 | 1.349779 | 4.938 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_observe14_control_n2 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 1.75 | 0.817365 | 10.057 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_observe14_control_n3 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 2.72 | 1.454821 | 4.741 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_wrap14_n2 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 4.35 | 0.660739 | 20.161 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_wrap14_n3 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 4.52 | 0.668305 | 20.026 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_wrap14_safety_n1 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 4.25 | 0.6494 | 20.491 | 14.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
+| g7_g25_prefill_mass_wrap2_safety_n1 | 20260714 | 334b92d3287d90d71834d3d1369850d9d764952b | windows_g7 | 16 | new_process_uncontrolled | 1 | single_server_process | 2.82 | 0.883719 | 12.055 | 2.0 | 0 | 1 | 0 | default | 0 | 0 | 1 | off | 0 | 0 | true | true | mechanism_only |
 | g7_layer_top1_baseline_cap0_clean_n3 | 20260714 | 285bf00072a5808fab4340d1bc95c4e955432440 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 2.249212 |  |  |  |  |  |  |  | 0 | 1 |  |  |  | true | not_requested | speed_only |
 | g7_layer_top1_cap32_clean_n3 | 20260714 | 285bf00072a5808fab4340d1bc95c4e955432440 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 2.281454 |  |  |  |  |  |  |  | 32 | 1 |  |  |  | true | not_requested | speed_only |
 | g7_layer_top1_cap48_clean_n3 | 20260714 | 285bf00072a5808fab4340d1bc95c4e955432440 | windows_g7 | 12 | same_process_primed | 3 | same_server_process |  | 2.365615 |  |  |  |  |  |  |  | 48 | 1 |  |  |  | true | not_requested | speed_only |
