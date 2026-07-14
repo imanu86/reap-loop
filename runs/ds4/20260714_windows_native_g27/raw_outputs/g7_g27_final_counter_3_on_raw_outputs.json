@@ -1,0 +1,26 @@
+﻿{
+    "schema":  "g7_raw_outputs_v1",
+    "tag":  "g27_final_counter_3_on",
+    "head":  "20b05194b631b56c7033d2211339e2d837e7d42d",
+    "executable_sha256":  "9e5a49558a93ff1b397623981969af81d87fc5688166fdabc7c9ad8363d701d5",
+    "ds4_cuda_sha256":  "efc20cd0a84f3b138404a8f9d53bc9e352a48cc919e74bd33e81e586669a2c57",
+    "prompt_sha256":  "5f15d0d89e17beba40908970d1d82067bf825b23bf9453aa1fb563dbdd44d8bd",
+    "warmup_prompt_sha256":  "",
+    "expected_content_sha256":  "b037ce25fab7393eeb9fc5b7bf7f5b8ef70768aea476cd1c09b0ffa348323b30",
+    "expected_warmup_content_sha256":  "",
+    "warmup_result":  null,
+    "output_hashes":  [
+                          "b037ce25fab7393eeb9fc5b7bf7f5b8ef70768aea476cd1c09b0ffa348323b30"
+                      ],
+    "outputs_identical":  true,
+    "results":  [
+                    {
+                        "repeat":  1,
+                        "seconds":  12.870346,
+                        "completion_tokens":  16,
+                        "tokens_per_second":  1.243168,
+                        "content_sha256":  "b037ce25fab7393eeb9fc5b7bf7f5b8ef70768aea476cd1c09b0ffa348323b30",
+                        "content":  "Julius Caesar crossed the Rubicon River in 49 BCE because he faced an"
+                    }
+                ]
+}

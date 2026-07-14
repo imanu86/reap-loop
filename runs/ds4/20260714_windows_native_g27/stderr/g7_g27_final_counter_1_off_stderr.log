@@ -1,0 +1,22 @@
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup cache deferred 71.14 GiB of tensor spans to on-demand streaming
+ds4: CUDA startup model cache prepared 9.62 GiB of tensor spans in 2.167s
+ds4: cuda backend initialized for graph diagnostics
+0714 19:07:52 ds4-server: context buffers 25.17 MiB (ctx=256, backend=cuda, prefill_chunk=256, raw_kv_rows=256, compressed_kv_rows=66)
+ds4: CUDA dynamic arena ready 2.00 GiB, 303 slots, 6.75 MiB/slot, available_ram=44.71 GiB bytes=2144600064 slot_bytes=7077888
+0714 19:07:53 ds4-server: listening on http://127.0.0.1:8000
+0714 19:07:54 ds4-server: chat ctx=0..17:17 prompt start
+ds4: CUDA q8 fp16 cache budget exhausted; using q8 kernels (request=8.00 MiB cached=0.00 GiB free=1.36 GiB reserve=4.00 GiB total=12.00 GiB)
+0714 19:07:58 ds4-server: chat ctx=0..17:17 prompt done 4.838s
+ds4: [reap-mass] armed window=16 top=6 layers=3..42 semantics=selected_weight_normalized_per_token sliding_ring_observe_only transport=packed-router-d2h
+ds4: [reap-mass] checkpoint tokens=1 observed_slots=240 unique=240 top_mass=0.471112 touched=240
+ds4: [reap-mass] checkpoint tokens=2 observed_slots=480 unique=402 top_mass=0.638314 touched=240
+ds4: [reap-mass] checkpoint tokens=4 observed_slots=960 unique=656 top_mass=1.431000 touched=240
+ds4: [reap-mass] checkpoint tokens=8 observed_slots=1920 unique=967 top_mass=2.644051 touched=240
+0714 19:08:05 ds4-server: chat ctx=0..17:17 gen=16 decoding chunk=2.44 t/s avg=2.44 t/s 6.551s
+0714 19:08:05 ds4-server: chat ctx=0..17:17 gen=16 finish=length 11.409s
+0714 19:08:05 ds4-server: benchmark request target reached; shutting down cleanly
+0714 19:08:05 ds4-server: shutdown requested, draining requests
+ds4: [reap-mass] checkpoint tokens=16 observed_slots=3840 unique=1538 top_mass=5.595660 touched=240
+ds4: [reap-mass] request-end tokens=16 observed_slots=3840 unique=1538 top_mass=5.595660 touched=240

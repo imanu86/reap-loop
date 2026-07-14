@@ -169,6 +169,15 @@ FIELDS = [
     "prefill_mass_wrap_resident_before",
     "prefill_mass_wrap_resident_after",
     "prefill_mass_decode_candidate_hits",
+    "reap_mass_wrap_publications",
+    "reap_mass_wrap_failures",
+    "reap_mass_wrap_entrants",
+    "reap_mass_wrap_victims",
+    "reap_mass_wrap_seconds",
+    "reap_mass_wrap_capacity_entries",
+    "reap_mass_wrap_last_result",
+    "reap_mass_wrap_last_reason",
+    "reap_mass_wrap_last_snapshot_after",
     "ds4_cuda_sha256",
 ]
 
@@ -490,8 +499,12 @@ def windows_prompt_name(tag: str, prompt: str) -> str:
 
 def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
     root = repo / "runs/ds4/20260714_windows_native_g7/results"
+    extra_roots = [repo / "runs/ds4/20260714_windows_native_g27/results"]
     rows: list[dict[str, str]] = []
     result_paths = sorted(root.glob("*_result.json"))
+    for extra_root in extra_roots:
+        if extra_root.exists():
+            result_paths.extend(sorted(extra_root.glob("*_result.json")))
     for path in result_paths:
         src = read_json(path)
         if not src or not src.get("tag"):
@@ -607,7 +620,7 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
                 "evidence_level": evidence,
                 "benchmark_usable": benchmark_usable,
                 "date": date,
-                "suite": "20260714_windows_native_g7",
+                "suite": path.parent.parent.name,
                 "run_id": artifact_id,
                 "category": "windows_native_performance",
                 "experiment": tag,
@@ -696,6 +709,15 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
                 "prefill_mass_wrap_resident_before": clean(src.get("prefill_mass_wrap_resident_before")),
                 "prefill_mass_wrap_resident_after": clean(src.get("prefill_mass_wrap_resident_after")),
                 "prefill_mass_decode_candidate_hits": clean(src.get("prefill_mass_decode_candidate_hits")),
+                "reap_mass_wrap_publications": clean(src.get("reap_mass_wrap_publication_count")),
+                "reap_mass_wrap_failures": clean(src.get("reap_mass_wrap_failure_count")),
+                "reap_mass_wrap_entrants": clean(src.get("reap_mass_wrap_sum_entrants")),
+                "reap_mass_wrap_victims": clean(src.get("reap_mass_wrap_sum_victims")),
+                "reap_mass_wrap_seconds": clean(src.get("reap_mass_wrap_sum_seconds")),
+                "reap_mass_wrap_capacity_entries": clean(src.get("reap_mass_wrap_capacity_entries")),
+                "reap_mass_wrap_last_result": clean(src.get("reap_mass_wrap_last_result")),
+                "reap_mass_wrap_last_reason": clean(src.get("reap_mass_wrap_last_reason")),
+                "reap_mass_wrap_last_snapshot_after": clean(src.get("reap_mass_wrap_last_snapshot_after")),
                 "q8_f16_cache_mib": clean(src.get("q8_f16_cache_mb_requested")),
                 "q8_f16_reserve_mib": clean(src.get("q8_f16_cache_reserve_mb_requested")),
                 "moe_io_qd": clean(src.get("moe_io_queue_depth_observed") or src.get("moe_io_queue_depth")),
@@ -713,6 +735,16 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
                 "source_artifacts": rel(path),
             }
         )
+        if "g7_g27_" in artifact_id:
+            row["patches"] = (
+                "ds4-win evidence commit "
+                "c4bb45de31d122a5f1e7b7e11bfbf18ec242dffe; "
+                f"base_commit={row['source_head']}"
+            )
+            row["result_text"] += (
+                "; mechanism correct; 16-token run pays bootstrap; "
+                "no long-run amortization verdict"
+            )
         rows.append(row)
     if len(rows) != len(result_paths):
         raise RuntimeError(
@@ -793,6 +825,19 @@ def aggregate_windows_g7_campaigns(
             "cache_state": "independent_new_processes_uncontrolled",
             "warmup": "false",
             "source_artifact": "reports/G26B_REAP_PACKED_TRACE_RESULTS.md",
+        },
+        {
+            "name": "g27_reap_mass_wrap",
+            "pattern": re.compile(r"^g7_g27_final_counter_[1-3]_(on|off)$"),
+            "arms": ("on", "off"),
+            "cache_note": (
+                "independent counterbalanced processes; G27 REAP mass WRAP actuator "
+                "versus packed observe-only; 16-token gate pays bootstrap and is not "
+                "a long-run verdict"
+            ),
+            "cache_state": "independent_new_processes_uncontrolled",
+            "warmup": "false",
+            "source_artifact": "../20260714_windows_native_g27/reports/G27_REAP_MASS_WRAP_RESULTS.md",
         },
         {
             "name": "g22_arena_carry",
@@ -981,6 +1026,15 @@ def aggregate_windows_g7_campaigns(
                 "prefill_mass_wrap_resident_before",
                 "prefill_mass_wrap_resident_after",
                 "prefill_mass_decode_candidate_hits",
+                "reap_mass_wrap_publications",
+                "reap_mass_wrap_failures",
+                "reap_mass_wrap_entrants",
+                "reap_mass_wrap_victims",
+                "reap_mass_wrap_seconds",
+                "reap_mass_wrap_capacity_entries",
+                "reap_mass_wrap_last_result",
+                "reap_mass_wrap_last_reason",
+                "reap_mass_wrap_last_snapshot_after",
                 "q8_f16_cache_mib",
                 "q8_f16_reserve_mib",
                 "moe_io_qd",
@@ -1049,6 +1103,20 @@ def aggregate_windows_g7_campaigns(
                 )
                 base["result_text"] += (
                     f"; prefill-mass WRAP mean={wrap_seconds_mean}s"
+                )
+            if campaign == "g27_reap_mass_wrap":
+                reap_wrap_seconds_values = [
+                    value
+                    for value in (
+                        number(row["reap_mass_wrap_seconds"]) for row in arm_rows
+                    )
+                    if value is not None
+                ]
+                reap_wrap_seconds_mean = decimal(mean(reap_wrap_seconds_values))
+                base["reap_mass_wrap_seconds"] = reap_wrap_seconds_mean
+                base["result_text"] += (
+                    f"; REAP mass WRAP mean={reap_wrap_seconds_mean}s; "
+                    "mechanism correct; 16-token run pays bootstrap; no long-run verdict"
                 )
             aggregates.append(base)
     return aggregates
@@ -1476,6 +1544,11 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         or "g26_" in r["experiment"]
         or "g26b_" in r["experiment"]
     ]
+    g27 = [
+        r
+        for r in windows
+        if "g27_" in r["run_id"] or "g27_" in r["experiment"]
+    ]
 
     lines: list[str] = [
         "# DS4 / REAP Experiment Ledger - updated 2026-07-14",
@@ -1511,6 +1584,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- G22 isolates same-process arena reuse: KEEP measured 4.32 server decode t/s and DROP 1.42 t/s with the same expected hash. This is a paired n=1 causal safety result, pending order-balanced independent n>=3 replication.",
         "- G25 prefill-mass bulk WRAP is decode-positive on the short Caesar prompt: 14 GiB WRAP independent n=3 averaged 4.37 server t/s versus 2.30 control with exact output, but the mean WRAP publication cost was 15.44 s and is not amortized by a 16-token request.",
         "- The 2 GiB G25 safety run is correctness/mechanism evidence only. No long-decode n=1 artifact is present in ds4-win commit `8f76b81`, imported in this G25 snapshot or used as a verdict.",
+        "- G27 turns the packed G26b REAP mass signal into transactional pinned-RAM residency with an eight-slot swap ring. The mechanism is correct and exact, but the final counterbalanced 16-token n=3 gate is negative on speed: ON averaged 2.073 server t/s versus 2.513 OFF, because it pays about 2.36 s of WRAP bootstrap/rotation inside a very short decode. This is not a long-run amortization verdict.",
         "",
         "## High-Signal Runtime Rows",
         "",
@@ -1627,6 +1701,32 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
                 "repeats",
                 "replication_scope",
                 "cache_state",
+                "ds4_cuda_sha256",
+                "benchmark_usable",
+                "result_text",
+            ],
+        )
+    )
+    lines.extend(["", "## Windows Native G27 REAP Mass WRAP", ""])
+    lines.extend(
+        md_table(
+            g27,
+            [
+                "run_id",
+                "source_head",
+                "server_decode_mean_tps",
+                "server_prefill_ttft_s",
+                "expected_hash_match",
+                "repeats",
+                "replication_scope",
+                "cache_state",
+                "reap_mass_wrap_publications",
+                "reap_mass_wrap_entrants",
+                "reap_mass_wrap_victims",
+                "reap_mass_wrap_seconds",
+                "reap_mass_wrap_failures",
+                "dynamic_arena_final_hits",
+                "dynamic_arena_final_misses",
                 "ds4_cuda_sha256",
                 "benchmark_usable",
                 "result_text",
