@@ -1986,6 +1986,12 @@ Release` passed 1/1 without launching DS4 or using the GPU. Build input
 fingerprint: `9821365dc16fb02291101b9b9ef436336b446f90797a8aecb21e526f3d5b06aa`;
 executable SHA-256:
 `18b8e53627690d950ad37329fb32354a2b278a30b30df012df56b99d374419e1`.
+Commit
+[`2184ee9`](https://github.com/imanu86/ds4-win/commit/2184ee9)
+adds measured n=3 arm deltas to the G51 summary: route H2D saved, explicit
+one-time seed H2D, net H2D after the seed, whether the seed amortized within
+the observed 64-token window, RAM/VRAM route deltas, and decode t/s delta.
+The safety-only path leaves this effect object null.
 
 Decision order after the external `GPU/DISCO LIBERI` gate:
 

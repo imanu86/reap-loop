@@ -1077,8 +1077,9 @@ commit `63ba10d`.
     one request-scoped upload of the top eight prefill-mass experts per routed
     layer, then measures whether it reduces the 10,859 RAM routes and 71.58
     GiB decode-route H2D. Commit `7a79265` fingerprints the complete candidate
-    bitset and the matrix rejects any mask mismatch. Judge route H2D separately
-    from the one-time seed upload; run n=3 only after the transport gate.
+    bitset and the matrix rejects any mask mismatch. Commit `2184ee9` reports
+    route savings, seed cost and observed net amortization separately. Run n=3
+    only after the transport gate.
 23. **G52-G54 transport path done:** direct sequential-file WRAP removed mmap
     source duplication; workers4 was rejected; G54 retained workers1
     sequential-file after an exact counterbalanced n=3 source-hint A/B.
