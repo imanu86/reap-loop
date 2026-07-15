@@ -1894,10 +1894,20 @@ WRAP time, TTFT, decode t/s, disk rate, and every other timed value from this
 run are invalid and excluded from SOTA/A-B comparisons. G55 still requires a
 quiescent counterbalanced QD1-versus-QD8 n>=3 matrix.
 
+Pre-run hardening commit
+[`d7e1e99`](https://github.com/imanu86/ds4-win/commit/d7e1e99)
+makes the clean matrix require the same request-scoped candidate-mask
+fingerprint across all six processes. It also requires zero async
+submit/completion/failure counters for the QD1 legacy arm, while QD>1 must
+submit and complete exactly one operation per source part with zero failures.
+This prevents a transport verdict from silently comparing different masks or
+different queue semantics.
+
 Native commits:
 [`438dcd6`](https://github.com/imanu86/ds4-win/commit/438dcd6),
 [`fbaeca0`](https://github.com/imanu86/ds4-win/commit/fbaeca0),
-[`975097a`](https://github.com/imanu86/ds4-win/commit/975097a).
+[`975097a`](https://github.com/imanu86/ds4-win/commit/975097a),
+[`d7e1e99`](https://github.com/imanu86/ds4-win/commit/d7e1e99).
 
 ## 2026-07-15 Native Windows G56 WRAP Layout Profiler
 

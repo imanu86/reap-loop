@@ -1085,7 +1085,8 @@ commit `63ba10d`.
     sequential-file after an exact counterbalanced n=3 source-hint A/B.
 24. **G55 transport gate next when quiescent:** the contaminated QD8 run proves
     only functional correctness. Complete clean QD1/QD8 n=3 before G51 and
-    freeze the winning queue depth for both arms.
+    freeze the winning queue depth for both arms. Commit `d7e1e99` also makes
+    the matrix reject mask-fingerprint or QD1/QD>1 counter-contract mismatch.
 25. **G56 layout profile next when quiescent:** one metadata-only profile will
     determine whether bounded range coalescing has structural headroom. It is
     not a throughput run and cannot authorize a performance claim.
