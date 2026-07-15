@@ -1,0 +1,293 @@
+{
+  "trace": "runs\\ds4\\20260712_pod12_bake\\coding_mass_full_decode_eval_combined_20260715\\eval_route.csv",
+  "mask": "runs\\ds4\\20260712_pod12_bake\\coding_mass_full_decode_learn_combined_20260715\\masks\\k80_coding.txt",
+  "rows": 334320,
+  "selected_calls": 2005920,
+  "misses": 35720,
+  "call_coverage": 0.9821927095796442,
+  "mass_coverage": 0.9853660059651099,
+  "all_selected_row_rate": 0.8997517348648002,
+  "minimum_layer_mass_coverage": 0.9128117832057566,
+  "layers": [
+    {
+      "layer": 3,
+      "calls": 50148,
+      "misses": 1035,
+      "call_coverage": 0.9793610911701364,
+      "mass_coverage": 0.9829110427314636
+    },
+    {
+      "layer": 4,
+      "calls": 50148,
+      "misses": 440,
+      "call_coverage": 0.9912259711254686,
+      "mass_coverage": 0.993612965692325
+    },
+    {
+      "layer": 5,
+      "calls": 50148,
+      "misses": 958,
+      "call_coverage": 0.9808965462231793,
+      "mass_coverage": 0.9859788949133795
+    },
+    {
+      "layer": 6,
+      "calls": 50148,
+      "misses": 728,
+      "call_coverage": 0.9854829704075935,
+      "mass_coverage": 0.9888725880324685
+    },
+    {
+      "layer": 7,
+      "calls": 50148,
+      "misses": 864,
+      "call_coverage": 0.9827709978463748,
+      "mass_coverage": 0.9868573255310003
+    },
+    {
+      "layer": 8,
+      "calls": 50148,
+      "misses": 868,
+      "call_coverage": 0.9826912339475153,
+      "mass_coverage": 0.9886995596625479
+    },
+    {
+      "layer": 9,
+      "calls": 50148,
+      "misses": 1347,
+      "call_coverage": 0.973139507059105,
+      "mass_coverage": 0.9773272977903836
+    },
+    {
+      "layer": 10,
+      "calls": 50148,
+      "misses": 1102,
+      "call_coverage": 0.9780250458642419,
+      "mass_coverage": 0.9835095214118547
+    },
+    {
+      "layer": 11,
+      "calls": 50148,
+      "misses": 983,
+      "call_coverage": 0.9803980218553083,
+      "mass_coverage": 0.9847670535796416
+    },
+    {
+      "layer": 12,
+      "calls": 50148,
+      "misses": 679,
+      "call_coverage": 0.9864600781686209,
+      "mass_coverage": 0.9900502852226233
+    },
+    {
+      "layer": 13,
+      "calls": 50148,
+      "misses": 595,
+      "call_coverage": 0.9881351200446677,
+      "mass_coverage": 0.9916067195011238
+    },
+    {
+      "layer": 14,
+      "calls": 50148,
+      "misses": 767,
+      "call_coverage": 0.9847052723937146,
+      "mass_coverage": 0.9893927317153598
+    },
+    {
+      "layer": 15,
+      "calls": 50148,
+      "misses": 508,
+      "call_coverage": 0.9898699848448592,
+      "mass_coverage": 0.9923663745750052
+    },
+    {
+      "layer": 16,
+      "calls": 50148,
+      "misses": 479,
+      "call_coverage": 0.9904482731115897,
+      "mass_coverage": 0.9927120868804156
+    },
+    {
+      "layer": 17,
+      "calls": 50148,
+      "misses": 894,
+      "call_coverage": 0.9821727686049294,
+      "mass_coverage": 0.9848043215404838
+    },
+    {
+      "layer": 18,
+      "calls": 50148,
+      "misses": 695,
+      "call_coverage": 0.9861410225731834,
+      "mass_coverage": 0.9898165421077239
+    },
+    {
+      "layer": 19,
+      "calls": 50148,
+      "misses": 1351,
+      "call_coverage": 0.9730597431602457,
+      "mass_coverage": 0.9823077853310863
+    },
+    {
+      "layer": 20,
+      "calls": 50148,
+      "misses": 726,
+      "call_coverage": 0.9855228523570232,
+      "mass_coverage": 0.9894939664236566
+    },
+    {
+      "layer": 21,
+      "calls": 50148,
+      "misses": 753,
+      "call_coverage": 0.9849844460397225,
+      "mass_coverage": 0.9883722970407488
+    },
+    {
+      "layer": 22,
+      "calls": 50148,
+      "misses": 850,
+      "call_coverage": 0.9830501714923825,
+      "mass_coverage": 0.986541284980788
+    },
+    {
+      "layer": 23,
+      "calls": 50148,
+      "misses": 1229,
+      "call_coverage": 0.9754925420754567,
+      "mass_coverage": 0.9811315446956126
+    },
+    {
+      "layer": 24,
+      "calls": 50148,
+      "misses": 530,
+      "call_coverage": 0.9894312834011326,
+      "mass_coverage": 0.992216973730981
+    },
+    {
+      "layer": 25,
+      "calls": 50148,
+      "misses": 658,
+      "call_coverage": 0.9868788386376326,
+      "mass_coverage": 0.9904554666710356
+    },
+    {
+      "layer": 26,
+      "calls": 50148,
+      "misses": 713,
+      "call_coverage": 0.9857820850283162,
+      "mass_coverage": 0.9898416733541269
+    },
+    {
+      "layer": 27,
+      "calls": 50148,
+      "misses": 2562,
+      "call_coverage": 0.9489112227805695,
+      "mass_coverage": 0.9262667112048638
+    },
+    {
+      "layer": 28,
+      "calls": 50148,
+      "misses": 580,
+      "call_coverage": 0.9884342346653905,
+      "mass_coverage": 0.992723491462501
+    },
+    {
+      "layer": 29,
+      "calls": 50148,
+      "misses": 870,
+      "call_coverage": 0.9826513519980856,
+      "mass_coverage": 0.9880494064503224
+    },
+    {
+      "layer": 30,
+      "calls": 50148,
+      "misses": 876,
+      "call_coverage": 0.9825317061497966,
+      "mass_coverage": 0.9859898676211986
+    },
+    {
+      "layer": 31,
+      "calls": 50148,
+      "misses": 1201,
+      "call_coverage": 0.9760508893674723,
+      "mass_coverage": 0.9830703399390402
+    },
+    {
+      "layer": 32,
+      "calls": 50148,
+      "misses": 4240,
+      "call_coverage": 0.9154502672090612,
+      "mass_coverage": 0.9128117832057566
+    },
+    {
+      "layer": 33,
+      "calls": 50148,
+      "misses": 620,
+      "call_coverage": 0.9876365956767967,
+      "mass_coverage": 0.9911438222312332
+    },
+    {
+      "layer": 34,
+      "calls": 50148,
+      "misses": 902,
+      "call_coverage": 0.9820132408072106,
+      "mass_coverage": 0.9879824945768534
+    },
+    {
+      "layer": 35,
+      "calls": 50148,
+      "misses": 738,
+      "call_coverage": 0.9852835606604451,
+      "mass_coverage": 0.9891769544407351
+    },
+    {
+      "layer": 36,
+      "calls": 50148,
+      "misses": 726,
+      "call_coverage": 0.9855228523570232,
+      "mass_coverage": 0.9912579909198422
+    },
+    {
+      "layer": 37,
+      "calls": 50148,
+      "misses": 1194,
+      "call_coverage": 0.9761904761904762,
+      "mass_coverage": 0.9821644601886103
+    },
+    {
+      "layer": 38,
+      "calls": 50148,
+      "misses": 502,
+      "call_coverage": 0.9899896306931483,
+      "mass_coverage": 0.9934991644576184
+    },
+    {
+      "layer": 39,
+      "calls": 50148,
+      "misses": 419,
+      "call_coverage": 0.9916447315944803,
+      "mass_coverage": 0.9935764941165725
+    },
+    {
+      "layer": 40,
+      "calls": 50148,
+      "misses": 158,
+      "call_coverage": 0.9968493259950546,
+      "mass_coverage": 0.9979793352017992
+    },
+    {
+      "layer": 41,
+      "calls": 50148,
+      "misses": 224,
+      "call_coverage": 0.9955332216638749,
+      "mass_coverage": 0.9971383703269748
+    },
+    {
+      "layer": 42,
+      "calls": 50148,
+      "misses": 156,
+      "call_coverage": 0.9968892079444843,
+      "mass_coverage": 0.9981632492123473
+    }
+  ]
+}

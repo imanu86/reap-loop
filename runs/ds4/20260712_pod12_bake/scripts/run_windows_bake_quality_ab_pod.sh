@@ -15,9 +15,8 @@ ARMS=${ARMS:-"k0 k60 k65"}
 
 test -x "$BIN"
 test -s "$MODEL"
-test -f "$LEARN/masks/k60_coding.txt"
-test -f "$LEARN/masks/k65_coding.txt"
 mkdir -p "$OUT"
+sha256sum "$0" > "$OUT/runner.sha256"
 
 exec 9>"$GPU_LOCK"
 flock -w 60 9 || { echo "could not acquire GPU lock" >&2; exit 4; }
@@ -56,7 +55,15 @@ run_arm() {
         export DS4_REAP_MASK_FILE="$mask"
     fi
 
-    env | LC_ALL=C sort > "$dir/server_env.txt"
+    {
+        for name in BIN LEARN MAX_TOKENS MODEL OUT PORT REPO \
+            DS4_CUDA_KEEP_MODEL_PAGES DS4_CUDA_NO_DIRECT_IO \
+            DS4_CUDA_NO_Q8_F16_CACHE \
+            DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB \
+            DS4_CUDA_WEIGHT_ARENA_CHUNK_MB DS4_PACE DS4_REAP_MASK_FILE; do
+            printf '%s=%s\n' "$name" "${!name-}"
+        done
+    } > "$dir/server_env.txt"
     {
         date -u +%FT%TZ
         uname -a
@@ -130,12 +137,13 @@ PY
 }
 
 for arm in $ARMS; do
-    case "$arm" in
-        k0) run_arm k0 NONE ;;
-        k60) run_arm k60 "$LEARN/masks/k60_coding.txt" ;;
-        k65) run_arm k65 "$LEARN/masks/k65_coding.txt" ;;
-        *) echo "unknown arm: $arm" >&2; exit 2 ;;
-    esac
+    if [[ "$arm" == k0 ]]; then
+        run_arm k0 NONE
+        continue
+    fi
+    mask="$LEARN/masks/${arm}_coding.txt"
+    test -f "$mask" || { echo "missing mask for arm $arm: $mask" >&2; exit 2; }
+    run_arm "$arm" "$mask"
 done
 
 python3 - "$OUT" $ARMS <<'PY'

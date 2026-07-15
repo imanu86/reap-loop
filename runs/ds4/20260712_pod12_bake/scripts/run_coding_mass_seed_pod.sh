@@ -73,8 +73,19 @@ export DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256
 export DS4_PACE=0
 unset DS4_REAP_MASK_FILE
 
-env | LC_ALL=C sort > "$OUT/server_env.txt"
 {
+    for name in BIN BUILD_MASKS CONTEXT MAX_TOKENS MODEL OUT PORT PROMPT_IDS \
+        PROMPT_SPLIT REAP_COMMIT REPO DS4_CUDA_KEEP_MODEL_PAGES \
+        DS4_CUDA_NO_DIRECT_IO DS4_CUDA_NO_Q8_F16_CACHE \
+        DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB \
+        DS4_CUDA_WEIGHT_ARENA_CHUNK_MB DS4_PACE \
+        DS4_SPEX_TRACE_PREFILL_ROUTING DS4_SPEX_TRACE_ROUTING \
+        DS4_SPEX_TRACE_ROUTING_WEIGHTS; do
+        printf '%s=%s\n' "$name" "${!name-}"
+    done
+} > "$OUT/server_env.txt"
+{
+    printf 'runner_sha256='; sha256sum "$0" | awk '{print $1}'
     printf 'binary_sha256='; sha256sum "$BIN" | awk '{print $1}'
     printf 'model_size='; stat -c %s "$MODEL"
     printf 'prompt_split=%s\n' "$PROMPT_SPLIT"
@@ -115,14 +126,14 @@ if [[ "$ready" != 1 ]]; then
     exit 1
 fi
 
-python3 - "$OUT/prompts.json" "$OUT/$PROMPT_SPLIT" "$PORT" "$PROMPT_SPLIT" "$PROMPT_IDS" "$MAX_TOKENS" <<'PY'
+python3 - "$OUT/prompts.json" "$OUT/$PROMPT_SPLIT" "$PORT" "$PROMPT_SPLIT" "$PROMPT_IDS" "$MAX_TOKENS" "$ROUTE_CSV" <<'PY'
 import json
 import pathlib
 import sys
 import time
 import urllib.request
 
-prompts_path, out_dir, port, split, prompt_ids, max_tokens = sys.argv[1], pathlib.Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], int(sys.argv[6])
+prompts_path, out_dir, port, split, prompt_ids, max_tokens, route_csv = sys.argv[1], pathlib.Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], int(sys.argv[6]), pathlib.Path(sys.argv[7])
 items = json.load(open(prompts_path, encoding="utf-8"))[split]
 if prompt_ids:
     selected = set(prompt_ids.split(","))
@@ -131,7 +142,9 @@ if prompt_ids:
     if missing:
         raise SystemExit(f"unknown prompt ids: {sorted(missing)}")
 url = f"http://127.0.0.1:{port}/v1/chat/completions"
-for item in items:
+trace_index = out_dir.parent / f"{split}_trace_requests.jsonl"
+trace_index.write_text("", encoding="utf-8")
+for request_index, item in enumerate(items):
     payload = {
         "model": "deepseek-v4-flash",
         "messages": [
@@ -150,12 +163,32 @@ for item in items:
         headers={"Content-Type": "application/json"},
         method="POST",
     )
+    route_size_before = route_csv.stat().st_size if route_csv.exists() else 0
     t0 = time.monotonic()
     with urllib.request.urlopen(request, timeout=1800) as response:
         body = response.read()
     elapsed = time.monotonic() - t0
+    result = json.loads(body)
     (out_dir / f"{item['id']}.json").write_bytes(body)
     (out_dir / f"{item['id']}.elapsed_s").write_text(f"{elapsed:.6f}\n")
+    route_size_after = route_csv.stat().st_size
+    choice = result.get("choices", [{}])[0]
+    usage = result.get("usage", {})
+    trace_record = {
+        "request_index": request_index,
+        "prompt_id": item["id"],
+        "route_file_size_observed_before": route_size_before,
+        "route_file_size_observed_after": route_size_after,
+        "route_file_size_observed_delta": route_size_after - route_size_before,
+        "route_boundary_precision": "stdio_buffered_observation_not_exact_row_boundary",
+        "elapsed_s": elapsed,
+        "finish_reason": choice.get("finish_reason"),
+        "prompt_tokens": usage.get("prompt_tokens"),
+        "completion_tokens": usage.get("completion_tokens"),
+        "total_tokens": usage.get("total_tokens"),
+    }
+    with trace_index.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(trace_record, ensure_ascii=False, sort_keys=True) + "\n")
     print(f"{split} {item['id']}: {elapsed:.3f}s", flush=True)
 PY
 

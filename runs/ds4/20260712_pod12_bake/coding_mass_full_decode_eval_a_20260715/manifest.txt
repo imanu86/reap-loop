@@ -1,0 +1,10 @@
+runner_sha256=7b5ab756daaad1b5fb5a23fd0d86ee5d9dd430a5d9fcee95556508fb6b92b05c
+binary_sha256=4bb29874a7028cc06c7a1d1f6696528a854694e6f7d8de626f875abc3ecf2f76
+model_size=86720111488
+prompt_split=eval
+prompt_ids=go_workers,container_stack
+max_tokens=3200
+context=4096
+build_masks=0
+started_utc=2026-07-15T14:54:56Z
+reap_commit=df4d5c1

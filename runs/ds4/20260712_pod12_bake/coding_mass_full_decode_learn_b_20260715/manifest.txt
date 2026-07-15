@@ -1,0 +1,9 @@
+binary_sha256=4bb29874a7028cc06c7a1d1f6696528a854694e6f7d8de626f875abc3ecf2f76
+model_size=86720111488
+prompt_split=learn
+prompt_ids=cpp_pool,javascript_ui,sql_events
+max_tokens=3200
+context=4096
+build_masks=0
+started_utc=2026-07-15T14:34:15Z
+reap_commit=df4d5c133c462b57a5af177814fc90aa2796b686

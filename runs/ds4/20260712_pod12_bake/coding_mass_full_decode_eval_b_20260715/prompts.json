@@ -1,0 +1,46 @@
+{
+  "learn": [
+    {
+      "id": "c_ring",
+      "prompt": "Implementa in C11 un ring buffer bounded thread-safe con API init, push, pop e destroy. Usa pthread mutex e condition variable, gestisci shutdown e commenta solo le invarianti non ovvie. Restituisci un file C completo."
+    },
+    {
+      "id": "cpp_pool",
+      "prompt": "Scrivi in C++20 un piccolo thread pool RAII con coda bounded, submit che restituisce std::future, stop ordinato e gestione eccezioni. Restituisci header e demo compilabile."
+    },
+    {
+      "id": "python_async",
+      "prompt": "Scrivi un modulo Python 3.12 che scarica URL concorrenti con asyncio, limite di concorrenza, timeout, retry esponenziale e risultati tipizzati. Includi test essenziali senza dipendenze esterne."
+    },
+    {
+      "id": "javascript_ui",
+      "prompt": "Crea un modulo JavaScript ES2022 per un form dinamico: validazione accessibile, submit fetch abortibile, retry, stato loading e rendering sicuro degli errori. Fornisci anche il markup minimo necessario."
+    },
+    {
+      "id": "html_cyberpunk",
+      "prompt": "Crea una landing page HTML CSS JS single-file per un negozio di programmazione AI in stile cyberpunk. Deve avere nav, hero, servizi, modulo contatti e popup JavaScript di conferma. Restituisci solo HTML completo e valido."
+    },
+    {
+      "id": "sql_events",
+      "prompt": "Progetta in PostgreSQL uno schema per eventi append-only multi-tenant. Includi DDL, indici, query keyset pagination, deduplicazione idempotente e una strategia di retention partizionata."
+    }
+  ],
+  "eval": [
+    {
+      "id": "powershell_logs",
+      "prompt": "Scrivi uno script PowerShell robusto che ruota log per dimensione e data, comprime gli archivi, conserva 14 giorni e supporta -WhatIf."
+    },
+    {
+      "id": "rust_channel",
+      "prompt": "Implementa in Rust stabile un canale bounded MPMC con chiusura pulita e test concorrenti, senza crate esterni."
+    },
+    {
+      "id": "go_workers",
+      "prompt": "Scrivi in Go un servizio HTTP con worker pool bounded, context cancellation, graceful shutdown, metriche base e test httptest."
+    },
+    {
+      "id": "container_stack",
+      "prompt": "Fornisci Dockerfile multi-stage e compose per una API Python con PostgreSQL, healthcheck, utente non-root, migrazioni e configurazione tramite secret."
+    }
+  ]
+}
