@@ -1115,6 +1115,57 @@ Native report: `G40_MASS_LFRU_CYBERPUNK_RESULTS.md`; native commit `6298b66`;
 runner SHA-256 `e579a0e86d4376b67d368d22cb1d8056ff98f7e8f54d08af33b603f669cfaee0`;
 matrix SHA-256 `a9553908ee9ad7798b8a9fd65ac9ca0acaf77154b503c8c55c1e6daee8137024`.
 
+## 2026-07-15 Native Windows G41 Cyberpunk Prefill Bulk Seed
+
+Question: can one request-scoped prefill-mass WRAP into a large pinned-RAM
+arena reduce decode misses and improve decode when every publication cost is
+charged?
+
+Protocol: native Windows RTX 3060 12 GiB, 64 GiB RAM, same 43-token cyberpunk
+prompt and exact 12-token output as G39/G40, context 256, production full-chunk
+prefill, 30 GiB dynamic arena, Q8-F16 off, embedding-row staging on, 2 GiB
+stream budget, 1024 MiB load reserve, 128 MiB runtime reserve, I/O QD 1 and
+eight WRAP workers. Expert cache, tiering, REAP mask and SPEX were off. Arms
+were observe-only and bulk WRAP. Counter-order was observe A, WRAP A, WRAP B,
+observe B, observe C, WRAP C. Because first-snapshot WRAP forbids warmup and
+within-process repeats, `n=3` consists of three independent processes per arm.
+
+All six outputs matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Router was `unbiased`, mask was `off`, and every WRAP published exactly one
+snapshot before decode with zero fatal errors.
+
+| Metric | Observe | Bulk WRAP | Delta |
+|---|---:|---:|---:|
+| TTFT | 20.489 s | 44.710 s | +24.220 s |
+| Publication | 0 s | 24.657 s | +24.657 s |
+| Server decode | 1.48 t/s | 2.31 t/s | +56.08% |
+| Client throughput | 0.4139 t/s | 0.2386 t/s | -42.36% |
+| Process reads | 51.433 GiB | 36.943 GiB | -28.17% |
+| Shared-memory peak | 30.332 GiB | 30.332 GiB | flat |
+
+The prefill selected 2,657 unique entries; all fit in the 4,551-slot arena and
+covered 100% of observed prefill mass. Candidate decode coverage was 84.83%.
+Runtime measured 2,443 hits and 653 misses (78.91%) plus 16.10 GiB RAM-to-GPU
+traffic. The isolated pay-once transport mechanism passes, but the 12-token
+end-to-end gate fails because publication dominates TTFT. Arithmetic from the
+mean rates projects a break-even near 100 tokens; this is not a measured result.
+
+A 31 GiB process-level attempt failed closed before measurement after the model
+had prepared its CUDA startup cache. G17's earlier bare allocator success at
+31 GiB left only about 5 MiB available and did not represent complete-runtime
+headroom. The measured matrix therefore uses the previously stable 30 GiB.
+
+Next gate: measure long-run amortization and implement explicit co-ownership so
+the prefill snapshot remains immutable RAM backing while a 336-slot cache plus
+mass/LFRU protects only the VRAM subset. Preserve zero cold SSD-to-VRAM rather
+than deleting the current incompatibility guardrails.
+
+Native report: `G41_PREFILL_BULK_SEED_CYBERPUNK_RESULTS.md`; native commit
+`97fae74`; runner SHA-256
+`408d945173fe6598f1bf391e2500f35ed95b54e4b16f68eb2a1046cc84245084`;
+matrix SHA-256 `7c389f9f73ea442bc9a5020b6b977e71919b2f6e2f4e5a68d257c3aaa5eeefad`.
+
 ## Planned: Request-Scoped Prompt-Intent Closed Arena
 
 Hypothesis, not a result: on a transport-bound host, a request such as an HTML
@@ -1135,12 +1186,10 @@ pinned-arena publication, mass/LFRU VRAM protection and a static REAP bias-mask
 actuator. Missing code is the request-scoped closed-set owner, an in-memory
 per-request bias API and a true router-only/early-exit semantic probe.
 
-G40 establishes the ordering constraint: first test bulk publication from the
-ordinary original-prompt prefill, with no semantic shards and no closed-set
-mask. That G41 gate isolates transport and the pay-once hypothesis. Current
-runtime ownership intentionally forbids a published prefill snapshot and
-enforce-mode mass/LFRU from co-owning the arena; patch that ownership only if
-the isolated seed gate succeeds.
+G41 establishes that ordinary-prompt bulk publication improves isolated decode
+transport but has not yet amortized its 24.66-second publication. Before adding
+semantic shards or a closed-set mask, preserve the published snapshot as RAM
+backing, compose it with VRAM-only mass/LFRU ownership and measure a long decode.
 
 Required A/B:
 

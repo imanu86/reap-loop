@@ -20,10 +20,11 @@ Current DS4 worktree:
 
 - repository: `C:/Users/imanu/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/ds4-win-work`
 - branch: `port/windows-dynamic-arena-0051`
-- HEAD: `6298b66`
+- HEAD: `97fae74`
 - G39 was measured from base `78f50cb` plus the reviewed hardening committed as
   `5633856`; source, executable, manifest and matrix hashes pin that state.
 - G40 is the exact cyberpunk composition checkpoint at native commit `6298b66`.
+- G41 is the exact 30 GiB prefill bulk-seed checkpoint at native commit `97fae74`.
 
 External snapshots audited:
 
@@ -630,6 +631,28 @@ ordinary unbiased prefill, with all seed cost included in TTFT, before tuning
 mass/LFRU thresholds or adding semantic shard probes. Full report:
 `G40_MASS_LFRU_CYBERPUNK_RESULTS.md`, native commit `6298b66`.
 
+### Rank 4/6 transport checkpoint: G41 bulk seed passes, amortization pending
+
+G41 isolated one ordinary-prompt prefill-mass publication from cache and
+mass/LFRU. It compared observe-only with bulk WRAP using the same 30 GiB pinned
+arena, three independent one-request processes per arm and balanced order. All
+six outputs matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+
+The cyberpunk prefill identified 2,657 unique entries; all fit the 4,551-slot
+arena and covered 100% of observed prefill mass. Candidate membership covered
+84.83% of selected decode IDs; runtime measured 2,443 arena hits and 653 misses
+(78.91%). WRAP raised decode from 1.48 to 2.31 t/s (+56.08%) and reduced process
+reads from 51.43 to 36.94 GiB (-28.17%). It cost 24.66 seconds to publish,
+raising TTFT from 20.49 to 44.71 seconds, so the 12-token end-to-end result is
+negative even though the isolated transport mechanism is positive.
+
+At the measured mean rates, arithmetic projects a break-even near 100 generated
+tokens; this is not a measured break-even. Next measure a long decode and patch
+explicit co-ownership: immutable pinned-RAM snapshot plus a mass/LFRU-protected
+VRAM subset, never cold SSD directly to VRAM. Full report:
+`G41_PREFILL_BULK_SEED_CYBERPUNK_RESULTS.md`, native commit `97fae74`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -700,21 +723,21 @@ commit `63ba10d`.
 11. **Composed SOTA gate (done, G40; exact, transport negative):** mass/LFRU
     reduced missing experts 17.32%, but incremental admissions raised reads
     148.00% and reduced decode 76.72% versus the matched arena control.
-12. **Prefill bulk-seed gate next:** use ordinary unbiased prefill mass plus one
-    bounded WRAP transaction to populate pinned RAM before decode; include all
-    publication cost in TTFT. Current runtime ownership intentionally forbids
-    composing the published snapshot with mass/LFRU, so measure seed transport
-    first and patch ownership only if it passes.
-13. **P4-D next:** restore tile-capable wave kernels without changing G39's
+12. **Prefill bulk-seed gate (done, G41; exact, transport positive, short-run
+    end-to-end negative):** decode +56.08%, reads -28.17%, publication 24.66 s.
+13. **Arena/cache co-ownership next:** retain the prefill snapshot as immutable
+    RAM backing while mass/LFRU protects only the 336-slot VRAM subset. Preserve
+    zero cold SSD-to-VRAM and add explicit ownership telemetry before A/B.
+14. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-14. **Prompt-intent closed-arena gate:** split one request into semantic router-only
+15. **Prompt-intent closed-arena gate:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-15. Only then return to physical REAP rotation and SPEX transfer composition.
+16. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
