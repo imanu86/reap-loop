@@ -1207,3 +1207,70 @@ Pass only if the complete candidate path improves a declared end-to-end metric
 without degrading exactness or L0-L3 quality. Outside-set selections must be
 zero by construction, and all probe/build/preload cost is charged. Test a
 router-only or early-exit probe before any repeated full-prefill design.
+
+## 2026-07-15 Native Windows G42 Closed Snapshot and VRAM Tiering
+
+Question: can G41's immutable pinned-RAM snapshot co-own residency with a
+mass/LFRU-protected VRAM tier, while a request-scoped closed mask makes every
+decode selection snapshot-backed and forbids SSD fallback?
+
+Implementation: ordinary prefill records the complete 256-way unbiased router
+probability row. Three hash-routed layers contribute all 768 entries; normalized
+semantic mass ranks the remaining 3,783 entries, filling a 4,551-slot, 30 GiB
+pinned snapshot. Only after publication, a request-scoped bias excludes semantic
+experts outside that snapshot. A 256-slot VRAM tier uses mass/LFRU with clock
+430, replacement budget 16, minimum frequency 3 and hysteresis 1.25. The mask
+is reset at request end and is never reused as a static domain mask.
+
+Accepted protocol: native Windows RTX 3060 12 GiB, 64 GiB RAM,
+`ds4-2bit.gguf`, 43-token cyberpunk prompt, context 256, max 12, greedy
+no-think, full prefill chunk, 2 GiB stream budget, 1,024 MiB load reserve,
+Q8-F16 off, embedding-row staging on, I/O QD 1 and eight WRAP workers. Control
+was G41-style selected-top6 bulk WRAP without cache/tiering/mask. Candidate was
+the closed full-probability snapshot plus cache256 and enforce mass/LFRU. Order
+was control A, closed A, closed B, control B, control C, closed C; every arm was
+an independent one-request process with no warmup.
+
+All six outputs matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+This is exact short-prefix transport evidence, not an L0-L3 quality verdict.
+
+| Metric | Control | Closed G42 | Delta |
+|---|---:|---:|---:|
+| TTFT | 44.451 s | 82.078 s | +37.627 s |
+| Publication | 22.982 s | 62.407 s | +39.425 s |
+| Server decode | 2.277 t/s | 4.083 t/s | +79.36% |
+| Client throughput | 0.2395 t/s | 0.1414 t/s | -40.97% |
+| Process reads | 36.772 GiB | 23.190 GiB | -36.93% |
+| Peak dedicated VRAM | 10.121 GiB | 10.443 GiB | +0.323 GiB |
+| Minimum available RAM | 5.255 GiB | 0.363 GiB | -4.892 GiB |
+
+Every closed replication measured exactly 516 route calls, 3,096 selected
+experts, 886 VRAM hits, 2,210 pinned-RAM hits, 14.568 GiB RAM-to-VRAM traffic,
+288 promotions, 32 demotions and 1,922 transient uses. Across all three:
+snapshot misses were zero, cold-to-RAM and cold-to-VRAM were zero, SSD bytes
+were zero and runtime failures were zero. The remaining 2,210 events are VRAM
+cache misses serviced from pinned RAM, not SSD misses.
+
+Critical negative protocol finding: using a 4,096 MiB load reserve reduced the
+startup hot-weight cache to about 4.94 GiB. A first control/closed pair fell to
+0.14/0.15 t/s and read 116.164/109.026 GiB. The closed worker cost rose to
+5.948 ms/job. Changing only the reserve to 1,024 MiB restored a 7.21 GiB hot
+cache; an `n=1` gate reached 4.11 t/s, 23.232 GiB reads and 1.796 ms/job. The
+accepted `n=3` matrix uses 1,024 MiB. Earlier reserve-4,096 cache-size probes are
+not promoted as capacity verdicts; cache336 separately crossed a measured VRAM
+cliff.
+
+Verdict: request-scoped closure plus immutable RAM/VRAM co-ownership passes its
+mechanism and steady-decode gates. Decode improves 79.36% and SSD decode traffic
+is eliminated. It remains end-to-end negative at 12 tokens because publication
+dominates TTFT. Arithmetic projects break-even near 194 generated tokens; this
+is not measured. Next run long `n>=3` with L0-L3 grading, then reduce the 62.4 s
+publication by reusing prefill reads and batching fills. The 0.065-0.741 GiB
+minimum RAM headroom in individual closed runs is also not production-safe.
+
+Native report: `G42_CLOSED_SNAPSHOT_TIERING_RESULTS.md`; implementation and
+runner commit `4640c33`; runner SHA-256
+`86af52a4e82e99ae5ee9dd06aaa321fc70f8d4c67d5935cd128eff5608ccbc2c`;
+matrix SHA-256
+`9e09e68d5c6a9e4e4c815f55f15b691a07aa79338ab5d2981c8a4a9911d4fa79`.

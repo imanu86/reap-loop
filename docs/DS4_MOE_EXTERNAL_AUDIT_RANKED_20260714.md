@@ -653,6 +653,47 @@ explicit co-ownership: immutable pinned-RAM snapshot plus a mass/LFRU-protected
 VRAM subset, never cold SSD directly to VRAM. Full report:
 `G41_PREFILL_BULK_SEED_CYBERPUNK_RESULTS.md`, native commit `97fae74`.
 
+### Rank 1/6 composed checkpoint: G42 closes SSD and reaches 4.08 t/s
+
+G42 implements the co-ownership required by G41. One unbiased full-probability
+prefill ranks a 4,551-entry request-scoped snapshot: 768 entries cover every
+expert in the three hash-routed layers and 3,783 semantic entries are selected
+by normalized accumulated mass. The snapshot remains immutable pinned-RAM
+backing while mass/LFRU protects 256 experts in VRAM. Only after both data and
+metadata publish, a per-request mask excludes semantic entries outside the
+snapshot; it is removed at request end and is not a reusable domain mask.
+
+The balanced matrix used three independent one-request processes per arm,
+1,024 MiB load reserve and exact 12-token cyberpunk output. All outputs matched
+hash `921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+
+| Metric | G41-style control | Closed G42 |
+|---|---:|---:|
+| TTFT | 44.451 s | 82.078 s |
+| Publication | 22.982 s | 62.407 s |
+| Decode | 2.277 t/s | 4.083 t/s |
+| Process reads | 36.772 GiB | 23.190 GiB |
+| Snapshot misses | 653 arena misses/request | 0 |
+| SSD bytes | fallback possible | 0 measured |
+
+Closed G42 improved decode 79.36% and reduced process reads 36.93%. Every
+replication measured 886 VRAM hits and 2,210 pinned-RAM hits, with zero
+snapshot misses, zero cold admission, zero SSD bytes and zero failures. The
+remaining miss-shaped GPU gaps are RAM-to-VRAM service events, not SSD access.
+
+A protocol A/B also exposed a critical VRAM-partition constraint: reserving
+4,096 MiB left only about 4.94 GiB for hot non-expert weights and reduced both
+arms to 0.14-0.15 t/s. Reserving 1,024 MiB restored a 7.21 GiB hot cache and
+the accepted 4.08 t/s mean. Cache capacity and hot-weight residency must always
+be measured together.
+
+G42 does not yet pass short end-to-end throughput because the closed snapshot
+costs 62.4 seconds to publish. Arithmetic projects a 194-token break-even, not
+a measured one. Next priority is publication reuse/batching plus a long `n>=3`
+L0-L3 gate. Minimum available RAM fell to 0.065-0.741 GiB in individual closed
+runs, so production capacity also needs explicit headroom. Full report:
+`G42_CLOSED_SNAPSHOT_TIERING_RESULTS.md`, native commit `4640c33`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -725,19 +766,23 @@ commit `63ba10d`.
     148.00% and reduced decode 76.72% versus the matched arena control.
 12. **Prefill bulk-seed gate (done, G41; exact, transport positive, short-run
     end-to-end negative):** decode +56.08%, reads -28.17%, publication 24.66 s.
-13. **Arena/cache co-ownership next:** retain the prefill snapshot as immutable
-    RAM backing while mass/LFRU protects only the 336-slot VRAM subset. Preserve
-    zero cold SSD-to-VRAM and add explicit ownership telemetry before A/B.
-14. **P4-D next:** restore tile-capable wave kernels without changing G39's
+13. **Arena/cache co-ownership done, G42:** request-scoped 4,551-entry closed
+    snapshot plus a 256-slot mass/LFRU VRAM tier measured 4.083 t/s, zero
+    snapshot misses and zero SSD bytes. The 336-slot candidate crossed the VRAM
+    cliff; 256 is the current measured configuration, not a universal optimum.
+14. **Publication optimization next:** reuse ordinary prefill reads, batch or
+    pipeline snapshot fills and preserve at least the measured 7.21 GiB hot-
+    weight cache. Then measure long `n>=3` break-even with L0-L3 grading.
+15. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-15. **Prompt-intent closed-arena gate:** split one request into semantic router-only
+16. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-16. Only then return to physical REAP rotation and SPEX transfer composition.
+17. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
