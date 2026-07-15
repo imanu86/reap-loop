@@ -1,0 +1,256 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor</title>
+    <style>
+        /* reset essenziale */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f4f5f7; color: #1a1a1a; line-height: 1.4; }
+        nav { background: #2c3e50; color: white; padding: 0.8rem 1rem; display: flex; justify-content: space-between; align-items: center; }
+        nav h1 { font-size: 1.2rem; font-weight: 600; }
+        nav .status-badge { background: #27c93f; color: #fff; padding: 0.2rem 0.8rem; border-radius: 20px; font-size: 0.8rem; }
+        .hero { background: #1e293b; color: white; padding: 1.5rem 1rem; text-align: center; }
+        .hero h2 { font-size: 1.5rem; } .hero p { margin-top: 0.5rem; }
+        .container { max-width: 900px; margin: 1.5rem auto; padding: 0 1rem; }
+        .filter-bar { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+        .filter-bar input { flex: 1; padding: 0.4rem; border: 1px solid #ccc; border-radius: 6px; }
+        .filter-bar button { background: #2c3e50; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; }
+        .table-wrap { overflow: auto; }
+        table { width: 100%; border-collapse: collapse; background: white; border-radius: 8px; overflow: hidden; shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        th, td { padding: 0.6rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f8fafc; font-weight: 600; }
+        .status { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.7rem; }
+        .status.success { background: #dcfce7; color: #15803d; }
+        .status.failure { background: #fee2e2; color: #b91c1c; }
+        .status.pending { background: #fef9c3; color: #a3a3a3; }
+        .actions { display: flex; gap: 0.3rem; }
+        .actions button { background: transparent; border: 1px solid #ccc; padding: 0.2rem 0.6rem; border-radius: 4px; cursor: pointer; font-size: 0.7rem; }
+        .add-section { margin-top: 1.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+        .add-section input { flex: 1; min-width: 120px; padding: 0.4rem; border: 1px solid #ccc; border-radius: 6px; }
+        .add-section button { background: #2c3e50; color: white; border: none; padding: 0.4rem 1rem; border-radius: 6px; cursor: pointer; }
+        .popup-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; z-index: 1000; }
+        .popup { background: white; padding: 1.5rem; border-radius: 12px; max-width: 400px; text-align: center; }
+        .popup p { margin-bottom: 1rem; }
+        .popup button { background: #2c3e50; color: white; border: none; padding: 0.4rem 1.2rem; border-radius: 6px; cursor: pointer; margin: 0.2rem; }
+        .hidden { display: none; }
+        .inline-flex { display: flex; gap: 0.3rem; }
+        footer { text-align: center; padding: 1rem; color: #64748b; }
+    </style>
+</head>
+<body>
+<!-- NAV -->
+<nav>
+<h1>⚙️ BuildWatch</h1>
+<div class="status-badge">● operativo</div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+<h2>Stato generale: 3 build attive</h2>
+<p>Monitoraggio in tempo reale dei job di compilazione</p>
+</section>
+
+<div class="container">
+<!-- filtro -->
+<div class="filter-bar">
+<input type="text" id="filterInput" placeholder="filtra per nome, stato o commit..." autofocus>
+<button id="filterBtn">🔍 Filtra</button>
+</div>
+
+<!-- tabella -->
+<div class="table-wrap">
+<table id="buildTable">
+<thead>
+<tr><th>Job</th><th>Stato</th><th>Commit</th><th>Azioni</th></tr>
+</thead>
+<tbody id="buildList">
+</tbody>
+</table>
+</div>
+
+<!-- modulo aggiunta -->
+<div class="add-section">
+<input type="text" id="jobNameInput" placeholder="nome job (es. frontend)" value="">
+<input type="text" id="commitInput" placeholder="commit hash (es. a1b2c3)" value="">
+<button id="addJobBtn">➕ Aggiungi job</button>
+</div>
+
+</div>
+
+<footer>aggiorna la tabella con filtro e azioni</footer>
+
+<!-- popup conferma -->
+<div id="confirmPopup" class="popup-overlay hidden">
+<div class="popup">
+<p id="popupMessage">Riavviare la build selezionata?</p>
+<div class="inline-flex">
+<button id="confirmYes">✅ Sì</button>
+<button id="confirmNo">❌ No</button>
+</div>
+</div>
+</div>
+
+<script>
+// stato iniziale: job di esempio
+const jobs = [
+    { id: 1, name: 'frontend', status: 'success', commit: 'a1b2c3' },
+    { id: 2, name: 'backend-api', status: 'failure', commit: 'd4e5f6' },
+    { id: 3, name: 'mobile-app', status: 'pending', commit: 'g7h8i9' }
+];
+
+let nextId = 4;  // per nuovi job
+
+// elementi
+const buildList = document.getElementById('buildList');
+const filterInput = document.getElementById('filterInput');
+const filterBtn = document.getElementById('filterBtn');
+const addJobBtn = document.getElementById('addJobBtn');
+const jobNameInput = document.getElementById('jobNameInput');
+const commitInput = document.getElementById('commitInput');
+const confirmPopup = document.getElementById('confirmPopup');
+const popupMessage = document.getElementById('popupMessage');
+const confirmYes = document.getElementById('confirmYes');
+const confirmNo = document.getElementById('confirmNo');
+
+// helper: aggiorna tabella con filtro
+function renderTable(filterText = '') {
+    const filtered = jobs.filter(job => {
+        const lower = filterText.toLowerCase();
+        return job.name.toLowerCase().includes(lower) || 
+        job.status.toLowerCase().includes(lower) || 
+        job.commit.toLowerCase().includes(lower);
+    });
+    buildList.innerHTML = '';
+    if (filtered.length === 0) {
+    buildList.innerHTML = '<tr><td colspan="4" style="text-align:center; padding:1rem;">nessun job corrisponde</td></tr>';
+    }
+    filtered.forEach(job => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td>${job.name}</td>
+        <td><span class="status ${job.status}">${job.status}</span></td>
+        <td><code>${job.commit}</code></td>
+        <td class="actions">
+        <button class="rebuild-btn" data-id="${job.id}">🔄 rilancia</button>
+        <button class="delete-btn" data-id="${job.id}">🗑️ elimina</button>
+        </td>`;
+    // eventi per pulsanti
+    tr.querySelector('.rebuild-btn').addEventListener('click', () => showConfirm(job.id));
+    tr.querySelector('.delete-btn').addEventListener('click', () => {
+        if (confirm('Eliminare definitivamente?')) {
+            // elimina
+            const idx = jobs.findIndex(j => j.id === job.id);
+            if (idx !== -1) jobs.splice(idx,1);
+            renderTable(filterInput.value);
+        // aggiorna hero
+        updateHero();
+        });
+    });
+    // aggiungi riga
+    buildList.appendChild(tr);
+    });
+    // aggiorna hero dopo render
+    updateHero();
+}
+
+function updateHero() {
+    const hero = document.querySelector('.hero h2');
+    hero.textContent = `Stato generale: ${jobs.length} build attive`;
+    // se filtro attivo mostra conto filtrato
+    const rows = document.querySelectorAll('#buildList tr');
+    const visible = rows.length;
+    hero.innerHTML = `Stato generale: ${jobs.length} build ${filtered? ' (filtrate)'}`;
+    // mantieni semplice
+    hero.innerHTML = `Stato generale: ${jobs.length} build attive`;
+    // opzionale: se filtro cambia
+    // ma per semplicità non complico
+    // ok
+}
+
+// mostra popup conferma per rebuild
+function showConfirm(jobId) {
+    const popup = document.getElementById('confirmPopup');
+    popup.classList.remove('hidden');
+    popupMessage.textContent = 'Riavviare la build selezionata?';
+    // salva id
+    let pendingId = null;
+    confirmYes.onclick = function() {
+        pendingId = jobId;
+        // simula riavvio: cambia stato in pending
+        const job = jobs.find(j => j.id === jobId);
+        if (job) {
+        job.status = 'pending';
+        renderTable(filterInput.value);
+        popup.classList.add('hidden');
+        // aggiorna hero
+        updateHero();
+        }
+    };
+    confirmNo.onclick = function() {
+        popup.classList.add('hidden');
+    };
+    // cleanup
+    // evita stack
+    // reset
+    // funziona
+}
+
+// filtro
+filterBtn.addEventListener('click', () => {
+    renderTable(filterInput.value);
+});
+// filtro anche su enter
+filterInput.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') filterBtn.click();
+});
+
+// aggiungi job
+addJobBtn.addEventListener('click', () => {
+    const name = jobNameInput.value.trim();
+    const commit = commitInput.value.trim();
+    if (name && commit) {
+    const newJob = { id: nextId, name, status: 'pending', commit };
+    jobs.push(newJob);
+    nextId++;
+    renderTable(filterInput.value);
+    jobNameInput.value = '';
+    commitInput.value = '';
+    updateHero();
+    }
+    // se manca, alert semplice
+    else alert('compila nome e commit');
+});
+
+// inizializza tabella
+renderTable('');
+
+// popup conferma globale
+document.addEventListener('click', (e) => {
+    if (e.target && e.target.closest('.rebuild-btn')) {
+    // gestito da onclick interno
+    // ma per sicurezza
+    // no
+}
+});
+
+// elimina gestito da pulsante interno
+
+// hero update
+updateHero();
+
+// aggiungi pulsante rebuild anche per nuovi
+// già gestito
+
+// chiudi popup con overlay click
+confirmPopup.addEventListener('click', (e) => {
+    if (e.target === confirmPopup) {
+    confirmPopup.classList.add('hidden');
+});
+
+// sicurezza
+</script>
+</body>
+</html>

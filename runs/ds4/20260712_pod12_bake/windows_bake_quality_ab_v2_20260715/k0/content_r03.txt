@@ -1,0 +1,233 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor Dashboard</title>
+<style>
+/* reset & base */
+* { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, 'Segoe UI', Roboto, sans-serif; }
+body { background:#f4f7fa; color:#1a1a1a; padding:1rem; }
+/* nav */
+nav { background:#1e2a3a; padding:0.75rem 1.5rem; border-radius:0.75rem; margin-bottom:1.5rem; display:flex; align-items:center; gap:1.5rem; }
+nav h1 { color:#fff; font-size:1.4rem; font-weight:600; }
+nav a { color:#b0c7e0; text-decoration:none; font-size:0.95rem; transition:color .15s; }
+nav a:hover { color:#fff; }
+/* hero */
+.hero { background:linear-gradient(145deg,#2b3b4e,#1e2a3a); padding:2rem 1.5rem; border-radius:1rem; margin-bottom:1.5rem; color:#fff; display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; }
+.hero h2 { font-size:1.8rem; font-weight:500; }
+.hero .status { background:#2ecc71; padding:0.3rem 1rem; border-radius:2rem; font-weight:600; font-size:0.95rem; letter-spacing:0.5px; }
+/* filter & add bar */
+.toolbar { display:flex; flex-wrap:wrap; gap:1rem; margin-bottom:1rem; align-items:center; }
+.toolbar input { flex:1; min-width:180px; padding:0.5rem 0.75rem; border:1px solid #ccc; border-radius:0.5rem; font-size:0.95rem; background:#fff; }
+.toolbar .add-btn { background:#1e2a3a; color:#fff; border:none; padding:0.5rem 1.2rem; border-radius:0.5rem; font-weight:500; cursor:pointer; transition:background .15s; }
+.toolbar .add-btn:hover { background:#2b3b4e; }
+/* table */
+.table-wrap { background:#fff; border-radius:0.75rem; box-shadow:0 2px 6px rgba(0,0,0,0.05); overflow-x:auto; }
+table { width:100%; border-collapse:collapse; }
+th { background:#f0f3f7; padding:0.75rem 1rem; text-align:left; font-weight:600; border-bottom:2px solid #dce1e8; }
+td { padding:0.75rem 1rem; border-bottom:1px solid #eaeef2; }
+tr:last-child td { border-bottom:none; }
+.job-name { font-weight:500; }
+.status-badge { display:inline-block; padding:0.2rem 0.6rem; border-radius:1rem; font-size:0.8rem; font-weight:500; }
+.status-success { background:#d5f5e3; color:#0e6b3e; }
+.status-fail { background:#fadbd4; color:#b33c1a; }
+.status-pending { background:#fdebd0; color:#8a6a0a; }
+.action-btn { background:transparent; border:1px solid #1e2a3a; color:#1e2a3a; padding:0.2rem 0.7rem; border-radius:0.4rem; cursor:pointer; font-size:0.8rem; transition:0.1s; }
+.action-btn:hover { background:#1e2a3a; color:#fff; }
+/* modal overlay */
+.modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); display:flex; align-items:center; justify-content:center; z-index:1000; }
+.modal-box { background:#fff; padding:1.5rem 2rem; border-radius:1rem; min-width:300px; max-width:90vw; box-shadow:0 20px 40px rgba(0,0,0,0.2); }
+.modal-box h3 { margin-bottom:0.75rem; }
+.modal-box p { margin-bottom:1.2rem; color:#444; }
+.modal-actions { display:flex; gap:0.75rem; justify-content:flex-end; }
+.modal-actions button { border:none; padding:0.5rem 1.2rem; border-radius:0.5rem; font-weight:500; cursor:pointer; }
+.modal-confirm { background:#1e2a3a; color:#fff; }
+.modal-cancel { background:#e0e4e9; color:#1a1a1a; }
+/* add form inside modal */
+.add-form { display:flex; flex-direction:column; gap:0.6rem; }
+.add-form input { padding:0.5rem 0.75rem; border:1px solid #ccc; border-radius:0.4rem; font-size:0.95rem; }
+.add-form label { font-weight:500; margin-top:0.2rem; }
+</style>
+</head>
+<body>
+<nav>
+  <h1>⚡ BuildMonitor</h1>
+  <a href="#">Dashboard</a>
+  <a href="#">Jobs</a>
+  <a href="#">Logs</a>
+</nav>
+
+<div class="hero">
+  <h2>Build Status</h2>
+  <div class="status" id="heroStatus">✅ Operativo</div>
+</div>
+
+<div class="toolbar">
+  <input type="text" id="filterInput" placeholder="🔍 Filtra job per nome…" oninput="applyFilter()">
+  <button class="add-btn" id="openAddModal">➕ Nuovo job</button>
+</div>
+
+<div class="table-wrap">
+<table id="jobTable">
+<thead>
+<tr><th>Job</th><th>Stato</th><th>Ultima build</th><th>Azioni</th></tr>
+</thead>
+<tbody id="jobBody">
+  <!-- righe esistenti -->
+</tbody>
+</table>
+</div>
+
+<!-- modal per aggiungere job (hidden) -->
+<div id="addModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>➕ Aggiungi job</h3>
+    <div class="add-form">
+      <label for="newJobName">Nome job</label>
+      <input type="text" id="newJobName" placeholder="es. frontend-build">
+      <label for="newJobStatus">Stato iniziale</label>
+      <select id="newJobStatus">
+        <option value="success">✅ Success</option>
+        <option value="fail">❌ Fail</option>
+        <option value="pending">⏳ Pending</option>
+      </select>
+    </div>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeAddModal()">Annulla</button>
+      <button class="modal-confirm" onclick="confirmAddJob()">Aggiungi</button>
+    </div>
+  </div>
+</div>
+
+<!-- modal conferma rilancio (hidden) -->
+<div id="confirmModal" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>🔄 Rilancia build</h3>
+    <p id="confirmMessage">Vuoi rilanciare la build selezionata?</p>
+    <div class="modal-actions">
+      <button class="modal-cancel" onclick="closeConfirmModal()">Annulla</button>
+      <button class="modal-confirm" id="confirmBtn">Rilancia</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ========== dati iniziali ==========
+let jobs = [
+  { id: 'j1', name: 'frontend-ci', status: 'success', lastBuild: '2025-03-17 11:23' },
+  { id: 'j2', name: 'backend-tests', status: 'fail', lastBuild: '2025-03-17 10:15' },
+  { id: 'j3', name: 'mobile-release', status: 'pending', lastBuild: '2025-03-16 22:04' },
+  { id: 'j4', name: 'docs-build', status: 'success', lastBuild: '2025-03-17 09:44' }
+];
+let nextId = 5;
+
+// modali
+let addModal = document.getElementById('addModal');
+let confirmModal = document.getElementById('confirmModal');
+let confirmCallback = null;
+
+// helper per aggiornare hero status
+function updateHeroStatus() {
+  const failed = jobs.filter(j => j.status === 'fail').length;
+  const pending = jobs.filter(j => j.status === 'pending').length;
+  let badge = document.getElementById('heroStatus');
+  if (failed > 0) {
+    badge.textContent = '⚠️ ' + failed + ' fallita';
+    badge.style.background = '#e74c3c';
+  } else if (pending > 0) {
+    badge.textContent = '⏳ ' + pending + ' in attesa';
+    badge.style.background = '#f39c12';
+  } else {
+    badge.textContent = '✅ Tutto operativo';
+    badge.style.background = '#2ecc71';
+  }
+}
+
+// render tabella con filtro
+function renderTable() {
+  const filterVal = document.getElementById('filterInput').value.toLowerCase();
+  const tbody = document.getElementById('jobBody');
+  tbody.innerHTML = '';
+  const filtered = jobs.filter(j => j.name.toLowerCase().includes(filterVal));
+  filtered.forEach(job => {
+    const tr = document.createElement('tr');
+    let statusClass = 'status-success';
+    if (job.status === 'fail') statusClass = 'status-fail';
+    else if (job.status === 'pending') statusClass = 'status-pending';
+    tr.innerHTML = `
+      <td class="job-name">${job.name}</td>
+      <td><span class="status-badge ${statusClass}">${job.status}</span></td>
+      <td>${job.lastBuild}</td>
+      <td><button class="action-btn" data-id="${job.id}">🔄 Rilancia</button></td>
+    `;
+    tbody.appendChild(tr);
+  });
+  // assegna eventi rilancio
+  document.querySelectorAll('#jobBody .action-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const id = this.dataset.id;
+      const job = jobs.find(j => j.id === id);
+      if (!job) return;
+      // mostra popup conferma
+      document.getElementById('confirmMessage').textContent = `Rilancia build per "${job.name}"?`;
+      confirmModal.style.display = 'flex';
+      // salva callback
+      confirmCallback = function() {
+        // aggiorna stato e lastBuild
+        job.status = 'pending';
+        job.lastBuild = new Date().toLocaleString('it-IT', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' });
+        renderTable();
+        updateHeroStatus();
+        closeConfirmModal();
+      };
+      document.getElementById('confirmBtn').onclick = confirmCallback;
+    });
+  });
+}
+
+// filtro
+function applyFilter() { renderTable(); }
+
+// modali add
+function openAddModal() { addModal.style.display = 'flex'; }
+function closeAddModal() { addModal.style.display = 'none'; }
+function confirmAddJob() {
+  const nameInput = document.getElementById('newJobName');
+  const statusSelect = document.getElementById('newJobStatus');
+  const name = nameInput.value.trim();
+  if (!name) { alert('Inserisci un nome job'); return; }
+  const status = statusSelect.value;
+  jobs.push({
+    id: 'j' + (nextId++),
+    name: name,
+    status: status,
+    lastBuild: new Date().toLocaleString('it-IT', { year:'numeric', month:'2-digit', day:'2-digit', hour:'2-digit', minute:'2-digit' })
+  });
+  renderTable();
+  updateHeroStatus();
+  nameInput.value = '';
+  closeAddModal();
+}
+
+// modali confirm
+function closeConfirmModal() {
+  confirmModal.style.display = 'none';
+  confirmCallback = null;
+}
+
+// inizializza
+renderTable();
+updateHeroStatus();
+
+// chiudi modali su overlay click
+document.addEventListener('click', function(e) {
+  if (e.target.classList.contains('modal-overlay')) {
+    closeAddModal();
+    closeConfirmModal();
+  }
+});
+</script>
+</body>
+</html>

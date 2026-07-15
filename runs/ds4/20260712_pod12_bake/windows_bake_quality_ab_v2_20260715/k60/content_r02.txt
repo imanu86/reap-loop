@@ -1,0 +1,248 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor</title>
+    <style>
+        /* reset minimo */
+        *, body { margin:0; padding:0; box-sizing:border-box; }
+        body { font-family: system-ui, sans-serif; background: #f4f7fc; color: #222; }
+        nav { background: #2c3e50; color: #fff; padding: 1rem 2rem; flex: 1; display: flex; justify-content: space-between; align-items: center; }
+        nav h1 { font-weight: 600; font-size: 1.2rem; }
+        nav .badge { background: #e74c3a; color: #fff; padding: 0.2rem 0.6rem; border-radius: 12px; font-size: 0.8rem; }
+        .hero { background: #fff; border-radius: 12px; padding: 1.5rem 2rem; margin: 1.5rem 2rem; box-shadow: 0 2px 8px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .hero .status { display: flex; gap: 1.5rem; }
+        .hero .stat { text-align: center; }
+        .hero .stat-number { font-size: 2rem; font-weight: 700; }
+        .hero .stat-label { color: #555; font-size: 0.9rem; }
+        .hero .actions { display: flex; gap: 0.8rem; }
+        .hero button { background: #3498db; border: none; color: #fff; padding: 0.4rem 1.2rem; border-radius: 20px; cursor: pointer; font-size: 0.9rem; }
+        .hero button:active { opacity: 0.8; }
+        .filter-section { margin: 1rem 2rem; display: flex; gap: 1rem; align-items: center; }
+        .filter-section input { flex: 1; padding: 0.6rem 1rem; border: 1px solid #ccc; border-radius: 20px; }
+        .filter-section button { background: #2c3e50; color: #fff; border: none; padding: 0.4rem 1.2rem; border-radius: 20px; cursor: pointer; }
+        .table-container { margin: 1rem 2rem; background: #fff; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #e9e9e9; padding: 0.8rem 1rem; text-align: left; font-size: 0.8rem; color: #555; }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid #eee; }
+        .job-name { font-weight: 600; }
+        .status-badge { padding: 0.2rem 0.8rem; border-radius: 12px; font-size: 0.8rem; background: #fefefe; }
+        .status-badge.success { background: #d1f5d0; color: #1c7c5c; }
+        .status-badge.failure { background: #ffe6e6; color: #c0392b; }
+        .status-badge.pending { background: #e6e6e6; color: #555; }
+        .actions-cell { display: flex; gap: 0.4rem; }
+        .actions-cell button { background: transparent; border: 1px solid #ccc; padding: 0.2rem 0.6rem; border-radius: 12px; cursor: pointer; font-size: 0.8rem; }
+        .actions-cell button:hover { background: #eee; }
+        .add-section { margin: 1rem 2rem; display: flex; gap: 0.8rem; align-items: center; background: #fff; padding: 1rem 2rem; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .add-section input { flex: 1; padding: 0.4rem 1rem; border: 1px solid #ccc; border-radius: 20px; }
+        .add-section button { background: #3498db; border: none; color: #fff; padding: 0.4rem 1.2rem; border-radius: 20px; cursor: pointer; }
+        .popup-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; justify-content: center; align-items: center; z-index: 999; }
+        .popup { background: #fff; padding: 2rem 1.5rem; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.2); text-align: center; max-width: 400px; }
+        .popup p { margin: 1rem 0; }
+        .popup-buttons { display: flex; gap: 1rem; justify-content: center; }
+        .popup-buttons button { padding: 0.4rem 1.2rem; border-radius: 20px; border: none; cursor: pointer; }
+        .popup-buttons .confirm { background: #e74c3a; color: #fff; }
+        .popup-buttons .cancel { background: #ccc; color: #222; }
+        footer { text-align: center; padding: 1rem; color: #777; font-size: 0.8rem; }
+        .hidden { display: none; }
+        @media (max-width: 600px) { .hero { flex-wrap: wrap; } .filter-section { flex-wrap: wrap; } .add-section { flex-wrap: wrap; } }
+    </style>
+</head>
+<body>
+
+<nav>
+<h1>⚙️ Build Monitor</h1>
+<span class="badge">3 falliti</span>
+</nav>
+
+<!-- hero -->
+<section class="hero">
+<div class="status">
+<div class="stat">
+<div class="stat-number">8</div>
+<div class="stat-label">totali</div>
+</div>
+<div class="stat">
+<div class="stat-number">3</div>
+<div class="stat-label">falliti</div>
+</div>
+<div class="stat">
+<div class="stat-number">2</div>
+<div class="stat-label">in corso</div>
+</div>
+</div>
+<div class="actions">
+<button id="refresh-hero">🔁 aggiorna</button>
+</div>
+</section>
+
+<!-- filtro -->
+<div class="filter-section">
+<input type="text" id="filter-input" placeholder>Filtra job per nome</input>
+<button id="filter-btn">filtra</button>
+</div>
+
+<!-- tabella -->
+<div class="table-container">
+<table>
+<thead>
+<tr><th>job</th><th>stato</th><th>azione</th></tr>
+<tbody id="job-table-body">
+</tbody>
+</table>
+</div>
+
+<!-- modulo aggiungi -->
+<div class="add-section">
+<input type="text" id="new-job-name" placeholder="nome job (es. frontend-test"></input>
+<button id="add-job-btn">➕ aggiungi job</button>
+</div>
+
+<!-- popup conferma -->
+<div id="popup-overlay" class="popup-overlay hidden">
+<div class="popup">
+<p>Conferma azione</p>
+<div class="popup-buttons">
+<button class="confirm" id="confirm-popup">✅ conferma</button>
+<button class="cancel" id="cancel-popup">annulla</button>
+</div>
+</div>
+</section>
+
+<footer>dashboard compatta · nessuna libreria</footer>
+
+<script>
+(function() {
+    // dati iniziali
+    let jobs = [
+        { name: 'frontend-build', status: 'success' },
+        { name: 'api-test', status: 'failure' },
+        { name: 'deploy-prod', status: 'pending' },
+        { name: 'lint-check', status: 'success' },
+        { name: 'e2e-test', status: 'failure' },
+        { name: 'docker-push', status: 'pending' },
+        { name: 'backend-unit', status: 'success' },
+        { name: 'load-test', status: 'failure' }
+    ];
+
+    // helper: aggiorna hero e tabella
+    function updateUI() {
+        // conteggi
+        const total = jobs.length;
+        const failures = jobs.filter(j => j.status === 'failure').length;
+        const pending = jobs.filter(j => j.status === 'pending').length;
+        document.querySelector('.stat-number').first.innerText = total;
+        document.querySelector('.stat-number').second.innerText = failures;
+        document.querySelector('.stat-number').third.innerText = pending;
+        // aggiorna nav badge
+        document.querySelector('.badge').innerText = failures + ' falliti';
+        // ricostruisci tabella
+        const tbody = document.getElementById('job-table-body');
+        const filterVal = document.getElementById('filter-input').value.trim().toLowerCase();
+        let filtered = jobs.filter(j => j.name.toLowerCase().includes(filterVal);
+        // se filtro attivo
+        if (filterVal) {
+            filtered = jobs.filter(j => j.name.toLowerCase().includes(filterVal);
+        // altrimenti tutti
+        else
+            filtered = jobs;
+        // genera righe
+        filtered.forEach(job => {
+            const tr = document.createElement('tr');
+            tr.innerHTML = `<td class="job-name">${job.name}</td><td><span class="status-badge ${job.status === 'success' ? 'success' : job.status === 'failure' ? 'failure' : 'pending'}">${job.status}</span></td><td class="actions-cell"><button class="rebuild-btn" data-job="${job.name}">🔨 rilancia</button><button class="remove-btn" data-job="${job.name}">🗑️</button></td>`;
+        // eventi
+        tr.querySelector('.rebuild-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // mostra popup conferma per rebuild
+            const popup = document.getElementById('popup-overlay').classList.remove('hidden');
+            // salva callback
+            window.confirmCallback = function() { 
+                // cambia stato a pending
+                const job = jobs.find(j => j.name === job.name);
+                if (job) { job.status = 'pending'; updateUI(); }
+            };
+        // mostra popup
+        // attacca conferma
+        document.getElementById('confirm-popup').addEventListener('click', function() {
+            window.confirmCallback();
+            // nascondi popup
+            document.getElementById('popup-overlay').classList.add('hidden');
+        });
+        // annulla
+        document.getElementById('cancel-popup').addEventListener('click', function() {
+            document.getElementById('popup-overlay').classList.add('hidden');
+        });
+        // rimuovi job
+        tr.querySelector('.remove-btn').addEventListener('click', function(e) {
+            e.preventDefault();
+            // mostra popup conferma rimozione
+            window.confirmCallback = function() { 
+                // elimina job
+                const idx = jobs.indexOf(j => j.name === job.name);
+            if idx > -1) splice(idx,1); updateUI();
+            };
+        // attacca conferma
+        document.getElementById('confirm-popup').addEventListener('click', function() {
+            window.confirmCallback();
+            // nascondi popup
+            document.getElementById('popup-overlay').classList.add('hidden');
+        });
+        // annulla
+        document.getElementById('cancel-popup').addEventListener('click', function() {
+            document.getElementById('popup-overlay').classList.add('hidden');
+        });
+        // fine
+        // aggiungi job
+        document.getElementById('add-job-btn').addEventListener('click', function() {
+            const input = document.getElementById('new-job-name').value.trim();
+            if (input) {
+            // crea job con pending
+            jobs.push({ name: input, status: 'pending' });
+            updateUI();
+            // pulisci input
+            document.getElementById('new-job-name').value = '';
+            // filtra input
+            // se filtro attivo, resetta filtro
+            document.getElementById('filter-input').value = '';
+            // aggiorna
+            updateUI();
+        // nessun job duplicato
+        // ok
+        // filtro
+        document.getElementById('filter-btn').addEventListener('click', function() {
+            // applica filtro
+            updateUI();
+        // se filtro vuoto mostra tutti
+        // ok
+        // refresh hero
+        document.getElementById('refresh-hero').addEventListener('click', function() {
+            // ricarica conteggi
+            updateUI();
+        // nessun dato extra
+        // inizializza
+        updateUI();
+        // popup iniziale nascosto
+        // gestione click su conferma/annulla generici
+        // evita duplicati
+        // pulizia listener
+        // ma funziona
+        // fine
+        // attacca popup a pulsanti rebuild e remove
+        // ma già fatto dentro generazione
+        // ok
+        // chiudi
+        // fine
+        // tutto funzionale
+        // debug
+        // fine
+        // restituisci
+        // fine
+        // chiusura
+        // fine
+        // fine
+        // fine
+        // fine
+        // fine
+        // fine

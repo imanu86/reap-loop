@@ -1,0 +1,96 @@
+{
+  "k65": [
+    {
+      "run": 1,
+      "grade": {
+        "task": "frontpage",
+        "level": 1,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 2,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 9539
+      },
+      "elapsed_s": 300.825091,
+      "usage": null
+    },
+    {
+      "run": 2,
+      "grade": {
+        "task": "frontpage",
+        "level": 0,
+        "detail": {
+          "has_body_struct": false,
+          "nav": false,
+          "hero": false,
+          "form": false,
+          "style": true,
+          "script": false,
+          "button": false,
+          "js_errors": 0,
+          "button_wired": false,
+          "form_wired": false,
+          "tag_mismatch": 0
+        }
+      },
+      "finish_reason": "length",
+      "client_stop": null,
+      "elapsed_s": 298.945839,
+      "usage": {
+        "prompt_tokens": 135,
+        "completion_tokens": 3200,
+        "total_tokens": 3335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 135
+        }
+      }
+    },
+    {
+      "run": 3,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": false,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "length",
+      "client_stop": null,
+      "elapsed_s": 338.991947,
+      "usage": {
+        "prompt_tokens": 135,
+        "completion_tokens": 3200,
+        "total_tokens": 3335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 135
+        }
+      }
+    }
+  ]
+}

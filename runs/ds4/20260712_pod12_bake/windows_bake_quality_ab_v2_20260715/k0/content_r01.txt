@@ -1,0 +1,246 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor (compact)</title>
+<style>
+/* reset & essential */
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+body{background:#f4f6f8;padding:1rem}
+/* nav */
+nav{background:#1e293b;color:#f8fafc;padding:.6rem 1rem;border-radius:8px;margin-bottom:1rem}
+nav h1{font-size:1.2rem;font-weight:600}
+/* hero */
+.hero{background:#e2e8f0;padding:1rem;border-radius:8px;margin-bottom:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:.75rem}
+.hero .status{font-weight:600;padding:.2rem .6rem;border-radius:20px;background:#22c55e;color:#fff;font-size:.85rem}
+.hero .bad-count{background:#ef4444;padding:.2rem .6rem;border-radius:20px;color:#fff;font-size:.85rem}
+/* filter */
+.filter-bar{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.filter-bar input{flex:1;padding:.45rem .6rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem}
+.filter-bar button{background:#0f172a;color:#fff;border:none;padding:.45rem 1rem;border-radius:6px;cursor:pointer;font-size:.9rem}
+/* table */
+.table-wrap{background:#fff;border-radius:8px;padding:.5rem;overflow-x:auto;border:1px solid #e2e8f0}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:.5rem .4rem;border-bottom:1px solid #e2e8f0}
+th{background:#f1f5f9;font-weight:600}
+td .job-name{font-weight:500}
+td .status-badge{display:inline-block;padding:.15rem .5rem;border-radius:12px;font-size:.8rem;font-weight:500}
+.status-badge.ok{background:#22c55e;color:#fff}
+.status-badge.fail{background:#ef4444;color:#fff}
+.status-badge.pending{background:#facc15;color:#1e293b}
+.action-btn{background:transparent;border:1px solid #0f172a;border-radius:6px;padding:.2rem .6rem;cursor:pointer;font-size:.8rem;transition:.1s}
+.action-btn:hover{background:#0f172a;color:#fff}
+/* add form */
+.add-section{background:#fff;padding:.75rem;border-radius:8px;margin-top:1rem;border:1px solid #e2e8f0;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.add-section input{flex:1 1 140px;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem}
+.add-section button{background:#0f172a;color:#fff;border:none;padding:.4rem 1rem;border-radius:6px;cursor:pointer}
+/* popup overlay */
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+.popup-box{background:#fff;padding:1.2rem 1.5rem;border-radius:12px;max-width:360px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,.3)}
+.popup-box h3{margin-bottom:.5rem}
+.popup-actions{display:flex;gap:.75rem;margin-top:1rem;justify-content:flex-end}
+.popup-actions button{padding:.4rem 1rem;border-radius:6px;border:1px solid #333;cursor:pointer;background:#fff}
+.popup-actions .confirm{border-color:#ef4444;background:#ef4444;color:#fff}
+</style>
+</head>
+<body>
+<nav><h1>⚡ Build Monitor</h1></nav>
+
+<div class="hero">
+  <span class="status">✅ 3 OK</span>
+  <span class="bad-count">❌ 1 FAIL</span>
+  <span style="font-size:.85rem;background:#facc15;padding:.2rem .6rem;border-radius:20px;color:#1e293b">⏳ 1 pending</span>
+  <span style="margin-left:auto;font-size:.85rem;color:#475569">ultimo: 2 min</span>
+</div>
+
+<div class="filter-bar">
+  <input id="filterInput" placeholder="filtra per nome / stato (es: ok, fail, pending)..." />
+  <button id="resetFilter">↺ reset</button>
+</div>
+
+<div class="table-wrap">
+<table id="buildTable">
+<thead><tr><th>Job</th><th>Stato</th><th>Commit</th><th>Durata</th><th>Azioni</th></tr></thead>
+<tbody id="tableBody">
+  <!-- righe esistenti -->
+  <tr><td class="job-name">frontend-ci</td><td><span class="status-badge ok">OK</span></td><td>a1b2c3</td><td>42s</td><td><button class="action-btn" data-job="frontend-ci">▶ rilancia</button></td></tr>
+  <tr><td class="job-name">api-test</td><td><span class="status-badge fail">FAIL</span></td><td>d4e5f6</td><td>2m12s</td><td><button class="action-btn" data-job="api-test">▶ rilancia</button></td></tr>
+  <tr><td class="job-name">build-worker</td><td><span class="status-badge pending">pending</span></td><td>g7h8i9</td><td>--</td><td><button class="action-btn" data-job="build-worker">▶ rilancia</button></td></tr>
+  <tr><td class="job-name">lint-check</td><td><span class="status-badge ok">OK</span></td><td>j0k1l2</td><td>18s</td><td><button class="action-btn" data-job="lint-check">▶ rilancia</button></td></tr>
+</tbody>
+</table>
+</div>
+
+<div class="add-section">
+  <input id="newJobName" placeholder="nuovo job (es: deploy)" />
+  <input id="newJobStatus" placeholder="stato (ok/fail/pending)" />
+  <button id="addJobBtn">➕ aggiungi</button>
+</div>
+
+<!-- popup (hidden) -->
+<div id="popupOverlay" class="popup-overlay" style="display:none">
+  <div class="popup-box">
+    <h3 id="popupTitle">▶ Rilancia build?</h3>
+    <p id="popupMsg">Vuoi rilanciare il job selezionato?</p>
+    <div class="popup-actions">
+      <button id="popupCancel">annulla</button>
+      <button id="popupConfirm" class="confirm">conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // stato
+  const tbody = document.getElementById('tableBody');
+  const filterInput = document.getElementById('filterInput');
+  const resetBtn = document.getElementById('resetFilter');
+  const addBtn = document.getElementById('addJobBtn');
+  const newName = document.getElementById('newJobName');
+  const newStatus = document.getElementById('newJobStatus');
+  // popup
+  const overlay = document.getElementById('popupOverlay');
+  const popupTitle = document.getElementById('popupTitle');
+  const popupMsg = document.getElementById('popupMsg');
+  const cancelBtn = document.getElementById('popupCancel');
+  const confirmBtn = document.getElementById('popupConfirm');
+
+  let currentJob = null; // per popup
+
+  // helper badge
+  function badge(status){
+    const s = status.toLowerCase().trim();
+    if(s==='ok'||s==='success') return '<span class="status-badge ok">OK</span>';
+    if(s==='fail'||s==='error'||s==='failed') return '<span class="status-badge fail">FAIL</span>';
+    return '<span class="status-badge pending">pending</span>';
+  }
+
+  // aggiorna hero (conta)
+  function updateHero(){
+    const rows = tbody.querySelectorAll('tr');
+    let ok=0, fail=0, pending=0;
+    rows.forEach(tr=>{
+      const html = tr.innerHTML;
+      if(html.includes('status-badge ok')) ok++;
+      else if(html.includes('status-badge fail')) fail++;
+      else pending++;
+    });
+    document.querySelector('.hero .status').textContent = `✅ ${ok} OK`;
+    document.querySelector('.hero .bad-count').textContent = `❌ ${fail} FAIL`;
+    // pending badge aggiornato
+    const pendingSpan = document.querySelector('.hero span:nth-child(3)');
+    if(pendingSpan) pendingSpan.textContent = `⏳ ${pending} pending`;
+  }
+
+  // aggiungi riga
+  function addRow(job, status, commit='', durata=''){
+    const tr = document.createElement('tr');
+    const statusBadge = badge(status);
+    const commitTxt = commit || (Math.random().toString(36).slice(2,8));
+    const durataTxt = durata || (status.toLowerCase().trim()==='pending'?'--':(Math.floor(Math.random()*90)+10)+'s');
+    tr.innerHTML = `<td class="job-name">${job}</td><td>${statusBadge}</td><td>${commitTxt}</td><td>${durataTxt}</td><td><button class="action-btn" data-job="${job}">▶ rilancia</button></td>`;
+    tbody.appendChild(tr);
+    updateHero();
+    applyFilter();
+  }
+
+  // filtro
+  function applyFilter(){
+    const val = filterInput.value.toLowerCase().trim();
+    const rows = tbody.querySelectorAll('tr');
+    rows.forEach(tr=>{
+      const text = tr.textContent.toLowerCase();
+      if(!val || text.includes(val)){
+        tr.style.display='';
+      } else {
+        tr.style.display='none';
+      }
+    });
+  }
+
+  // reset filtro
+  function resetFilter(){
+    filterInput.value='';
+    tbody.querySelectorAll('tr').forEach(r=>r.style.display='');
+  }
+
+  // popup show
+  function showPopup(jobName, action='rilancia'){
+    currentJob = jobName;
+    popupTitle.textContent = `▶ ${action} build?`;
+    popupMsg.textContent = `Vuoi ${action} il job "${jobName}"?`;
+    overlay.style.display='flex';
+  }
+
+  function hidePopup(){
+    overlay.style.display='none';
+    currentJob=null;
+  }
+
+  // rilancio (simulato)
+  function relaunchJob(jobName){
+    showPopup(jobName, 'rilancia');
+    // conferma -> esegue
+    confirmBtn.onclick = function(){
+      hidePopup();
+      // cambia stato a pending per simulare
+      const rows = tbody.querySelectorAll('tr');
+      for(let tr of rows){
+        const td = tr.querySelector('.job-name');
+        if(td && td.textContent.trim() === jobName){
+          const statusTd = tr.querySelector('td:nth-child(2)');
+          if(statusTd){
+            statusTd.innerHTML = badge('pending');
+            // durata pending
+            const durataTd = tr.querySelector('td:nth-child(4)');
+            if(durataTd) durataTd.textContent = '--';
+          }
+          break;
+        }
+      }
+      updateHero();
+      applyFilter();
+    };
+    cancelBtn.onclick = hidePopup;
+  }
+
+  // eventi: pulsanti rilancia (delegation)
+  tbody.addEventListener('click', e=>{
+    const btn = e.target.closest('.action-btn');
+    if(!btn) return;
+    const job = btn.getAttribute('data-job');
+    if(job) relaunchJob(job);
+  });
+
+  // aggiungi job
+  addBtn.addEventListener('click', ()=>{
+    const name = newName.value.trim();
+    const status = newStatus.value.trim();
+    if(!name || !status){
+      alert('compila nome e stato');
+      return;
+    }
+    addRow(name, status);
+    newName.value='';
+    newStatus.value='';
+  });
+
+  // filtro
+  filterInput.addEventListener('input', applyFilter);
+  resetBtn.addEventListener('click', resetFilter);
+
+  // popup overlay chiudi con click fuori?
+  overlay.addEventListener('click', e=>{
+    if(e.target === overlay) hidePopup();
+  });
+
+  // inizializza hero
+  updateHero();
+  // eventuali righe aggiuntive? già presenti
+
+})();
+</script>
+</body>
+</html>

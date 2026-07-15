@@ -1,7 +1,7 @@
 # Native Windows coding bake campaign - 2026-07-15
 
-Status: in progress. This file separates measured facts from pending gates. No
-quality verdict is valid until all three runs per arm finish.
+Status: first static-mask quality gate complete. This file separates measured
+facts from pending gates.
 
 ## Provenance
 
@@ -103,17 +103,43 @@ The replacement protocol uses:
 - client stop on `</html>` or measured repetition;
 - L0-L3 functional grading; never a verdict from `n=1` or `repeat_flag`.
 
-Interim observation only: K0 run 1 reached `</html>` at 10,023 characters and
-was graded L2 because it implemented the add-job section as a `div`, not the
-requested HTML `form`. This is not a campaign verdict. The remaining runs and
-masked arms were still running when this record was written.
+Final grades for this candidate-mask campaign:
+
+| Arm | Run 1 | Run 2 | Run 3 | Median | Result |
+|---|---:|---:|---:|---:|---|
+| K0 | L2 | L2 | L2 | L2 | reference |
+| K60 | L1 | L1 | L1 | L1 | rejected |
+| K65 | L1 | L0 | L2 | L1 | rejected |
+
+All three K0 runs reached `</html>` without restart. They were L2 because the
+model implemented the add-job section as a `div`, not the requested HTML
+`form`. K60 never completed functional JavaScript; two runs reached the token
+limit and one was stopped on measured repeated comment lines. K65 was unstable:
+one HTML close with two detected JavaScript errors, one L0 length exhaustion,
+and one incomplete L2 length exhaustion.
+
+Decode throughput from these Linux oracle runs must not be compared across
+arms as a controlled performance A/B. K0/K60 ran on the RTX 3090 Ti worker,
+where final observed averages were about 6.8 and 8.0 t/s respectively. K65 ran
+on a different RTX 3090 node and reached about 9.7 t/s. Node, GPU, and storage
+differences confound that number; none is a native-Windows result.
+
+Post-test protocol audit found that the candidate masks were ranked from every
+prefill position of six uncensored K0 coding prompts but only six decode tokens
+per prompt. They are therefore prompt/prefill-informed masks, not masks learned
+over complete long K0 generations. This is a material limitation and the next
+candidate selection must include full-decode routing mass before another bake
+decision.
 
 ## Pending gates
 
-1. Complete and archive the K0/K60/K65 `n=3` functional A/B.
-2. Apply and build the native Windows embedded-mask loader patch.
-3. Emit the winning compact pack on the pod.
-4. Assemble and inspect the NTFS sparse artifact on Windows.
-5. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
+1. Trace complete uncensored K0 decode sessions on the fixed coding learn split
+   and rebuild K60/K62.5/K65 from full-session routing mass.
+2. Re-run the virtual-mask `n=3` quality gate; do not emit a pack for a mask
+   below the K0 reference grade.
+3. Apply and build the native Windows embedded-mask loader patch.
+4. Emit only the winning compact pack on the pod.
+5. Assemble and inspect the NTFS sparse artifact on Windows.
+6. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
    cache misses, and throughput. Zero SSD during measured inference is a
    separate fail-closed gate.
