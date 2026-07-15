@@ -1665,3 +1665,48 @@ Native report: `G48_NO_DEFAULT_SYNC_CROSS_PROMPT_RESULTS.md`; runner:
 `g7_runs/g48_no_default_sync_cross_prompt_result.json` and
 `g7_runs/g48_italian_default_outlier_recheck_result.json`; native commit:
 `aeb839a`.
+
+## 2026-07-15 Native Windows G49 WRAP Part Profile
+
+Question: where inside the `source-parts` WRAP do the reproducible long-tail
+intervals occur, and can an opt-in per-worker CPU profile observe them without
+changing output?
+
+Implementation: `DS4_CUDA_ARENA_WRAP_PART_PROFILE=1` records aggregate
+per-phase-worker work, memcpy time, slow-copy count, maximum part latency and
+coordinator main/join time. It adds no per-part logging, GPU readback, CUDA
+event or synchronization. The 25 ms slow-part threshold is configurable through
+`DS4_CUDA_ARENA_WRAP_SLOW_PART_MS`. The harness requires the expected three
+phases, full part/worker accounting and the requested threshold.
+
+Protocol: interleaved `off-a,on-a,off-b,on-b,off-c,on-c`, one fresh process per
+run, same Italian prompt, context 256, eight generated tokens, 30 GiB closed
+arena, source-parts plus trusted worker checksum, cache 320, mass/LFRU tiering,
+no-default-sync and request-phase trace. This is an `n=3` profile-overhead gate,
+not a decode-throughput or L0-L3 quality verdict.
+
+All six outputs were byte-identical with SHA-256
+`b78be49a2b62f691ee8a8b5b486b2735275cc85bbbc98ee3102c06116487a5e8`.
+Every run had 344 route calls, 355 VRAM routes, 1,709 pinned-RAM routes,
+11.2654 GiB H2D and zero SSD, snapshot misses, route errors or tier failures.
+
+| Metric | Profile off | Profile on | Delta |
+|---|---:|---:|---:|
+| WRAP mean | 25.572 s | 28.520 s | +11.5% |
+| WRAP median | 25.849 s | 27.211 s | +5.3% |
+
+The profiler is therefore diagnostic-only. In the three on runs, coordinator
+join consumed 11-69 ms while aggregate worker memcpy time was 177-232 s.
+Individual 2.16-2.75 MiB parts took up to 6.95 s. Available physical memory
+fell to approximately 1 MiB, 2 MiB and 254 MiB. None of the six runs crossed
+the predeclared 2x-combined-median outlier threshold.
+
+Measured conclusion: the normal wall is inside mmap-backed source copies, not
+the coordinator join. Near-zero available RAM is concurrent with the stalls but
+is not yet a causal proof for the historical 145-267 s WRAPs. The discriminating
+next A/B is an opt-in Windows release of pageable mmap source pages between the
+gate/up/down phases. The current `cuda_model_discard_source_pages()` is a no-op
+on Windows because only its POSIX path is implemented.
+
+Native report: `G49_WRAP_PART_PROFILE_RESULTS.md`; runner:
+`g49_wrap_part_profile_ab.ps1`; native commit: `51ca565`.

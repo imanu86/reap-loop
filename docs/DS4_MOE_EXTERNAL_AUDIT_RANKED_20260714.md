@@ -919,6 +919,25 @@ the cause. The next diagnostic should measure per-worker WRAP progress and
 latency alongside Windows memory-pressure and I/O counters. Full report:
 `G48_NO_DEFAULT_SYNC_CROSS_PROMPT_RESULTS.md`, native commit `aeb839a`.
 
+### Rank 1/6 WRAP part diagnostic: G49
+
+G49 adds an opt-in CPU-only profile around each source-part mmap memcpy and the
+worker coordinator. The disabled path retains the original copy loop; the
+enabled path adds no GPU operation or synchronization. An interleaved `n=3`
+off/on gate preserved exact output and identical transport: 344 route calls,
+355 VRAM routes, 1,709 pinned-RAM routes, 11.2654 GiB H2D and zero SSD/failures.
+
+The profile has measured cost and must remain diagnostics-only: WRAP median was
+25.849 s off versus 27.211 s on (+5.3%); means were 25.572 and 28.520 s
+(+11.5%). It nevertheless localizes the normal wall. Join consumed only 11-69
+ms, aggregate worker memcpy time was 177-232 s, and individual 2.16-2.75 MiB
+parts took up to 6.95 s. Available RAM fell to 1-254 MiB in the profiled runs.
+
+This is concurrency, not yet causality. The next isolated test should release
+pageable mmap source pages between the trusted checksum's gate/up/down phases
+on Windows. Full report: `G49_WRAP_PART_PROFILE_RESULTS.md`, native commit
+`51ca565`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -1014,22 +1033,25 @@ commit `63ba10d`.
 19. **G46 cross-prompt exactness done, G48:** three distinct prompt pairs were
     byte-identical with complete route accounting and zero SSD. The `n=1`
     values make no throughput claim.
-20. **WRAP long-tail diagnosis next:** instrument per-worker source-parts
-    progress/latency and concurrent Windows memory-pressure/I/O counters. G48
-    reproduced two long prefill/WRAP runs among four identical processes.
-21. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
+20. **WRAP long-tail diagnosis done, G49:** exact `n=3` off/on localizes the
+    normal wall inside mmap-backed part copies, not join. The profile costs
+    +5.3% median and remains diagnostics-only; available RAM reached 1-254 MiB.
+21. **Windows source-page release next:** opt-in trim between gate/up/down,
+    with exact `n>=3` A/B and part-profile diagnostic side runs. This tests the
+    observed near-zero RAM condition without changing the learned closed set.
+22. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
     and 71.58 GiB H2D with true hit/miss separation or amortized physical
     rotation. Preserve the request-scoped closed snapshot and zero SSD.
-22. **P4-D next:** restore tile-capable wave kernels without changing G39's
+23. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-23. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+24. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-24. Only then return to physical REAP rotation and SPEX transfer composition.
+25. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
