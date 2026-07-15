@@ -509,6 +509,38 @@ policy gate is a longer exact workload plus a domain switch; the next independen
 transport lever remains batch-union/waved prefill. Full report:
 `G36_MASS_LFRU_TIERING_RESULTS.md` at native commit `b1ef49c`.
 
+### Rank 4 measured checkpoint: G37 batch-union and chunk amplification
+
+Native CUDA already performs the first half of Rank 4: for every MoE
+layer/chunk, `cuda_moe_selected_load()` deduplicates all `n_tokens * top_k`
+routes into one compact expert union and remaps the route slots. G37 added an
+opt-in, observation-only summary and an explicit harness chunk parameter; it did
+not change routing, weights or execution order.
+
+The counter-ordered matrix used the 43-token cyberpunk prompt, cache336 LRU,
+GPU-resident decode routes, one discarded warmup and `n=3` measured requests per
+process. All 27 measured outputs and all nine warmups matched exact hash
+`aa3b17600d88d3161605db8389b5bf03d4e94debcc8eeb74dca27aed95a154ab`.
+
+| Chunk | TTFT | Unique unions | Logical source spans | Upload syncs |
+|---:|---:|---:|---:|---:|
+| full (43) | 7.547 s | 11,764 | 77.506 GiB | 168 |
+| 16 | 8.609 s | 17,956 | 118.263 GiB | 504 |
+| 8* | 10.393 s | 22,632 | 149.087 GiB | 1,008 |
+
+The telemetry A/B measured -0.21% TTFT, which is effectively zero within run
+noise. Relative to full chunk, chunk 16 added 52.59% logical source traffic and
+14.07% TTFT; chunk 8 added 92.35% logical source traffic and 37.70% TTFT.
+Chunk 8 is a single-process `n=3` directional observation without a second
+counter-order replication. `source_span_bytes` is a selected-loader logical
+counter, not physical SSD bytes; the separate Win32 counter excludes mmap
+page-ins.
+
+Verdict: P4-A is already implemented and now measured. P4-B should not duplicate
+that code. Its purpose is to retain a wide prompt batch while partitioning a
+too-large compact union into exact output-summing expert waves. Full report:
+`G37_PREFILL_UNION_RESULTS.md` in the native Windows repo.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -568,8 +600,11 @@ commit `63ba10d`.
 7. **P3 policy commit (done, G36; exact, positive on short workload):**
    slow-clock mass/LFRU admission reduced replacements 3,963 -> 48 and raised
    server decode 4.948 -> 5.557 t/s. Longer/domain-switch validation remains.
-8. **P4 code commit:** prefill union and then waves as separate toggles.
-9. Only then return to physical REAP rotation and SPEX transfer composition.
+8. **P4-A measurement commit (done, G37):** existing per-layer/chunk union is
+   exact; smaller chunks measured 52.59-92.35% more logical source traffic.
+9. **P4-B code/A-B commit:** waved prefill only when the wide union exceeds the
+   compact staging budget; exact partial-output accumulation is a hard gate.
+10. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 

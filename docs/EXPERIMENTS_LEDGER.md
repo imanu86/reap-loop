@@ -947,3 +947,40 @@ universal yet: one deterministic prompt and one parameter set were measured.
 Required follow-up is a longer exact workload and a domain switch. Native commit:
 `b1ef49c`; full report: `G36_MASS_LFRU_TIERING_RESULTS.md`; matrix SHA-256:
 `877eb5a6bffd9c61c041b805e972433057a02866db30bb254912d5271bb6dbf5`.
+
+## 2026-07-15 Native Windows G37 Prefill Union and Chunk Amplification
+
+Question: does CUDA prefill already deduplicate routed experts within a
+layer/chunk, and how much repeated transport is induced by narrower chunks?
+
+Code audit found that `cuda_moe_selected_load()` already unions all
+`n_tokens * 6` selected IDs and remaps routes to compact slots. G37 added
+`DS4_CUDA_PREFILL_UNION_STATS=1` and the harness parameter `-PrefillChunk`; both
+are observation-only when enabled and absent by default.
+
+Setup: native Windows RTX 3060 12 GB, `ds4-2bit.gguf`, 43-token cyberpunk HTML
+prompt, context 256, max 1, cache336 LRU, GPU-resident decode routes, 2 GiB
+stream budget, Q8-F16 off, embed-row staging on. Tiering, dynamic arena, REAP,
+masks, SPEX, split hit/miss and overlap were off. Every process used one
+discarded warmup and `n=3` measured requests.
+
+| Chunk | TTFT | Unique expert-unions | Dedup | Logical source spans | Win32 process reads | Syncs |
+|---:|---:|---:|---:|---:|---:|---:|
+| full (43) | 7.547 s | 11,764 | 3.684x | 77.506 GiB | 123.781 GiB | 168 |
+| 16 | 8.609 s | 17,956 | 2.414x | 118.263 GiB | 125.175 GiB | 504 |
+| 8* | 10.393 s | 22,632 | 1.915x | 149.087 GiB | 155.399 GiB | 1,008 |
+
+Telemetry ON was -0.015832 s (-0.21%) TTFT versus OFF, an effectively zero
+difference within run noise. All 27 measured outputs and all nine warmups matched exact hash
+`aa3b17600d88d3161605db8389b5bf03d4e94debcc8eeb74dca27aed95a154ab`.
+Relative to full chunk, chunk16 added 52.59% logical source traffic and 14.07%
+TTFT; chunk8 added 92.35% traffic and 37.70% TTFT. Chunk8 is a single-process
+`n=3` directional observation without a second counter-order replication.
+
+Verdict: P4-A batch-union is already implemented and exact. Reload amplification
+is across chunks. Proceed to P4-B only as a capacity-bounded wave executor that
+keeps a wider chunk but sums partial expert outputs exactly. Do not interpret
+`source_span_bytes` as physical SSD traffic; it is logical selected-loader
+traffic, while Win32 process reads exclude mmap page-ins. Native report:
+`G37_PREFILL_UNION_RESULTS.md`; matrix SHA-256:
+`10df0586b2da1c6f9fb3a573e10c762dea1cbed28c2def5af98d9651ec731709`.
