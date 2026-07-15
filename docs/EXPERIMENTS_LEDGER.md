@@ -1066,6 +1066,55 @@ same workload before judging end-to-end SOTA. Native report:
 `G39_PREFILL_WAVE_OVERLAP_RESULTS.md`; commits `78f50cb`, `5633856`; final matrix
 SHA-256 `b1f6ed162a42f772ccb42f60087fdc38aabc87507fd7dcae33b29f2a307fbfd1`.
 
+## 2026-07-15 Native Windows G40 Cyberpunk Mass/LFRU Composition
+
+Question: does the G36 short-prompt mass/LFRU win compose with production
+full-chunk prefill on the 43-token cyberpunk coding prompt, and does it reduce
+the decode misses measured in G39?
+
+Protocol: native Windows RTX 3060 12 GiB, 64 GiB RAM, DeepSeek-V4-Flash IQ2XXS,
+context 256, max 12, greedy no-think server path, production full-chunk prefill,
+cache 336 LRU, GPU-resident routes, Q8-F16 off, embedding-row staging on,
+2 GiB budget, 4096 MiB load reserve and 128 MiB runtime reserve. Arms were
+production without arena, 8 GiB arena control, and 8 GiB arena plus enforce-mode
+mass/LFRU (`clock=430`, replacement budget 16, minimum frequency 3,
+hysteresis 1.25). Counter-order was production A, arena A, mass A, mass B,
+arena B, production B. Every process used one discarded warmup plus `n=3`.
+
+All 18 measured outputs and six warmups matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+This is an exact short-prefix transport result, not an L0-L3 long-quality
+verdict. Production exposed 42 routed layers per request; both arena arms
+exposed 43, and the runner validates that measured accounting difference.
+
+| Metric | Production | Arena control | Mass/LFRU |
+|---|---:|---:|---:|
+| TTFT | 7.912 s | 7.905 s | 7.913 s |
+| Server decode | 2.068 t/s | 1.990 t/s | 0.463 t/s |
+| Client throughput | 0.875 t/s | 0.862 t/s | 0.355 t/s |
+| Process reads | 164.37 GiB | 174.99 GiB | 433.99 GiB |
+| All-hit route calls | 28 | 28 | 137 |
+| Miss-worker jobs | 1,988 | 2,036 | 1,927 |
+| Missing experts | 7,164 | 7,444 | 6,155 |
+| Route wait | 4.798 ms/call | 4.940 ms/call | 8.548 ms/call |
+
+Both mass/LFRU replications deterministically recorded 2,125 cold-to-RAM
+admissions, 400 VRAM promotions, 64 physical replacements, 5,755 transient
+routes, 336 final VRAM states, 15,040,512,000 SSD bytes and 43,564,400,640
+RAM-to-GPU bytes, with zero failures.
+
+Verdict: the residency signal is useful, but the current incremental actuator
+is a strong transport negative on this prompt. Missing experts fell 17.32% while
+reads rose 148.00% and decode fell 76.72% versus the matched arena control. The
+arena was allocated but prefill-mass observation/WRAP was deliberately off, so
+it remained unseeded before decode. Next gate: bulk-publish the ordinary prompt
+mass into pinned RAM once, include that cost in TTFT, and only then let slow-
+clock mass/LFRU protect the VRAM subset.
+
+Native report: `G40_MASS_LFRU_CYBERPUNK_RESULTS.md`; native commit `6298b66`;
+runner SHA-256 `e579a0e86d4376b67d368d22cb1d8056ff98f7e8f54d08af33b603f669cfaee0`;
+matrix SHA-256 `a9553908ee9ad7798b8a9fd65ac9ca0acaf77154b503c8c55c1e6daee8137024`.
+
 ## Planned: Request-Scoped Prompt-Intent Closed Arena
 
 Hypothesis, not a result: on a transport-bound host, a request such as an HTML
@@ -1085,6 +1134,13 @@ Existing code already has unbiased prefill mass observation, transactional
 pinned-arena publication, mass/LFRU VRAM protection and a static REAP bias-mask
 actuator. Missing code is the request-scoped closed-set owner, an in-memory
 per-request bias API and a true router-only/early-exit semantic probe.
+
+G40 establishes the ordering constraint: first test bulk publication from the
+ordinary original-prompt prefill, with no semantic shards and no closed-set
+mask. That G41 gate isolates transport and the pay-once hypothesis. Current
+runtime ownership intentionally forbids a published prefill snapshot and
+enforce-mode mass/LFRU from co-owning the arena; patch that ownership only if
+the isolated seed gate succeeds.
 
 Required A/B:
 
