@@ -541,6 +541,38 @@ that code. Its purpose is to retain a wide prompt batch while partitioning a
 too-large compact union into exact output-summing expert waves. Full report:
 `G37_PREFILL_UNION_RESULTS.md` in the native Windows repo.
 
+### Rank 4 measured checkpoint: G38 capacity-bounded waves
+
+G38 adds opt-in `DS4_CUDA_PREFILL_WAVES=1`. It preserves G37's complete
+per-layer/chunk expert union, partitions only the compact staging work, writes
+each partial down result to its original token/route slot and invokes the normal
+ordered six-route sum once. The router selection and weights are not narrowed.
+
+The final counter-ordered matrix used the 43-token cyberpunk prompt, cache336
+LRU, one discarded warmup and `n=3` measured requests per process. Two processes
+per arm compared production kernels, generic sorted kernels, and generic sorted
+kernels with forced 31-expert waves. All 18 measured outputs and six warmups
+matched the expected exact hash.
+
+| Arm | TTFT | Client t/s | Decode t/s | Process reads | Peak VRAM |
+|---|---:|---:|---:|---:|---:|
+| production | 7.319 s | 0.945 | 2.230 | 164.49 GiB | 10.900 GiB |
+| generic | 11.007 s | 0.732 | 2.230 | 164.55 GiB | 10.900 GiB |
+| wave31 | 10.141 s | 0.836 | 2.945 | 131.14 GiB | 10.437 GiB |
+
+Wave31 was 7.86% faster than its same-kernel generic control and both observed
+the same cumulative 11,716 union experts. Against production it regressed TTFT
+38.56% and client throughput 11.47%, while reducing process reads 20.27% and
+peak dedicated VRAM 4.25%. Forced-width safety probes also passed at 7 experts
+(435 waves) and 1 expert (2,929 waves), with exact output and zero failures;
+these `n=1` probes are mechanism evidence only.
+
+Verdict: exact capacity mechanism, negative production performance in serial
+v1. Keep opt-in. G39 should double-buffer weights and pair metadata, overlap
+upload N+1 with compute N, and restore tile-capable wave kernels without changing
+the full-union or final ordered-sum contracts. Full report:
+`G38_PREFILL_WAVES_RESULTS.md` in the native Windows repo.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -602,9 +634,16 @@ commit `63ba10d`.
    server decode 4.948 -> 5.557 t/s. Longer/domain-switch validation remains.
 8. **P4-A measurement commit (done, G37):** existing per-layer/chunk union is
    exact; smaller chunks measured 52.59-92.35% more logical source traffic.
-9. **P4-B code/A-B commit:** waved prefill only when the wide union exceeds the
-   compact staging budget; exact partial-output accumulation is a hard gate.
-10. Only then return to physical REAP rotation and SPEX transfer composition.
+9. **P4-B code/A-B commit (done, G38; exact mechanism, negative serial v1):**
+   full-union waved prefill passed exactness but regressed production TTFT
+   38.56%; keep opt-in and proceed only to isolated double-buffer overlap.
+10. **P4-C next:** double-buffer/upload overlap and tile-capable wave kernels.
+11. **Prompt-intent preload gate:** split one request into semantic router-only
+   probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
+   run the unchanged original prompt once. Account probe time inside TTFT and
+   compare exact output, cold misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not
+   generate separate shard continuations or attempt to merge their KV caches.
+12. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 

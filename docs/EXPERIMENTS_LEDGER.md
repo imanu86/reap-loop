@@ -984,3 +984,67 @@ keeps a wider chunk but sums partial expert outputs exactly. Do not interpret
 traffic, while Win32 process reads exclude mmap page-ins. Native report:
 `G37_PREFILL_UNION_RESULTS.md`; matrix SHA-256:
 `10df0586b2da1c6f9fb3a573e10c762dea1cbed28c2def5af98d9651ec731709`.
+
+## 2026-07-15 Native Windows G38 Capacity-Bounded Prefill Waves
+
+Question: can the full G37 expert union be executed exactly in bounded staging
+waves, preserving wide-chunk deduplication without requiring every selected
+expert to occupy compact VRAM simultaneously?
+
+Implementation: `DS4_CUDA_PREFILL_WAVES=1` builds the full exact union once,
+partitions experts into waves, remaps only original pairs active in each wave,
+writes down outputs to their original six-route slots and performs one final
+ordered sum. `DS4_CUDA_PREFILL_WAVE_FORCE_EXPERTS=N` is a validation override.
+V1 bypasses prefill cache admission and tile kernels and serializes staging
+buffer reuse; default-off behavior remains unchanged.
+
+Setup: native Windows RTX 3060 12 GB, `ds4-2bit.gguf`, 43-token cyberpunk HTML
+prompt, context 256, max 12, cache336 LRU, GPU-resident decode routes, 2 GiB
+stream budget, Q8-F16 off and embed-row staging on. Tiering, dynamic arena,
+REAP, mask, SPEX and split hit/miss were off. The counter-ordered matrix ran
+`production/wave31/generic/generic/wave31/production`, each with one discarded
+warmup and `n=3` measured requests.
+
+| Arm | TTFT | Client t/s | Decode t/s | Process reads | Peak dedicated VRAM |
+|---|---:|---:|---:|---:|---:|
+| production | 7.319 s | 0.945 | 2.230 | 164.49 GiB | 10.900 GiB |
+| generic | 11.007 s | 0.732 | 2.230 | 164.55 GiB | 10.900 GiB |
+| wave31 | 10.141 s | 0.836 | 2.945 | 131.14 GiB | 10.437 GiB |
+
+All 18 measured outputs and six warmups matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Generic and wave31 observed the same cumulative 11,716 union experts. Boundary
+safety probes at forced widths 7 and 1 processed 435 and 2,929 waves with zero
+failures and expected output; they are `n=1` mechanism checks, not performance
+verdicts.
+
+Verdict: exact capacity proof, negative production promotion. Wave31 reduced
+process reads 20.27% and peak VRAM 4.25%, but its serial generic path regressed
+TTFT 38.56% versus production. Keep opt-in. Next isolated gate: double-buffer
+wave weights/pair metadata, overlap upload N+1 with compute N, then restore
+tile-capable wave kernels. Native report: `G38_PREFILL_WAVES_RESULTS.md`;
+matrix SHA-256:
+`22fbd216fad414d7bf828e53f3ac104f1ecf710cf4a33236e70445a00ac9747c`.
+
+## Planned: Prompt-Intent Router Prior
+
+Hypothesis, not a result: on a transport-bound host, a request such as an HTML
+page with CSS and JavaScript can be decomposed into a few semantic intent shards.
+Short unbiased router probes over those shards may expose the per-layer expert
+mass needed by the upcoming job early enough to preload a better RAM/VRAM set.
+
+The probes are placement hints only. They must not create independent generated
+continuations, alter the original prompt, narrow routing, or merge incompatible
+KV caches. The original request still receives one normal exact prefill.
+
+Required A/B:
+
+- control: one original prefill;
+- candidate: all shard-probe time plus preload plus the same original prefill;
+- same build, prompt, cache state and expected output hash, with `n>=3`;
+- report end-to-end TTFT including probes, probe-only time, cold misses,
+  SSD-to-RAM bytes, RAM-to-VRAM bytes, peak memory and decode throughput.
+
+Pass only if the complete candidate path improves measured end-to-end TTFT or
+another declared primary metric without changing exact output. A router-only or
+early-exit probe should be tested before any repeated full-prefill design.
