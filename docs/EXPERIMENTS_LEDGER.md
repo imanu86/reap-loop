@@ -779,3 +779,29 @@ Open recovery gaps:
   pinned build (`W=30,50,80,110,130,150`) and grade rendered HTML, because the
   2026-07-10 W50/W130 replay showed the expected sensitivity but did not fully
   reproduce the old W130 L3 note.
+
+## 2026-07-15 Native Windows G33 Split Hit/Miss
+
+Question: can resident exact routes compute while the G32 worker fetches true
+misses, then join once without changing output?
+
+Setup: native Windows RTX 3060 12 GB, model
+`C:\ds4-models\ds4-2bit.gguf`, prompt `Hi`, context 256, max 12 (EOS after 9),
+cache336 LRU, 2 GiB stream window, Q8-F16 cache disabled, embedding-row staging
+enabled, REAP/SPEX/dynamic arena disabled. G32 control and G33 split were run
+with discarded warmup and counter-ordered `n=3` plus `n=5` samples. Exact hash
+was enforced for warmup and every measured request.
+
+| Run | Server decode t/s | Client t/s | Worker wait | Exact |
+|---|---:|---:|---:|---|
+| G32 control n=3 | 3.2233 | 2.1721 | 3.865 ms/layer | yes |
+| G33 split n=3 | 3.2633 | 2.1510 | 3.630 ms/layer | yes |
+| G33 split n=5 | 3.1860 | 2.1430 | 3.701 ms/layer | yes |
+| G32 control n=5 | 3.2060 | 2.1670 | 3.770 ms/layer | yes |
+
+Aggregate across eight requests per variant: server `3.2125 -> 3.2150 t/s`
+(+0.08%), client `2.1689 -> 2.1460 t/s` (-1.06%). The intended overlap is
+measured, but it does not repay the extra masked launches and final ordered
+sum at the current 42.24% route-hit distribution. Verdict: exact mechanism
+checkpoint, negative throughput result, keep opt-in. Native-Windows commit:
+`e4d669e`; full report: `G33_SPLIT_HIT_MISS_RESULTS.md` in that repo.

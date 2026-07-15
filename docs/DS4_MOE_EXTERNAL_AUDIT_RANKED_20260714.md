@@ -389,6 +389,40 @@ Preferred schedule when a layer contains both hits and misses:
 
 This preserves model semantics. Placement may lag by one token; routing does not.
 
+### Rank 2 measured checkpoint: G33
+
+Native-Windows commit `e4d669e` implements the exact split schedule behind
+`DS4_CUDA_MOE_SPLIT_HIT_MISS=1`. The resolver publishes resident pointers and a
+stable hit mask; hit kernels run while the exact worker fetches misses; miss
+kernels run after one join; a final route-ordered sum preserves greedy output.
+The only new persistent allocation is a roughly 96 KiB six-route down scratch,
+not another expert copy.
+
+The exactness gate and all primed requests matched hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+Two counter-ordered A/Bs compared G32 synchronous-worker control with G33:
+
+| Samples | Variant | Server decode t/s | Client t/s | Exact |
+|---:|---|---:|---:|---|
+| 3 | G32 control | 3.2233 | 2.1721 | yes |
+| 3 | G33 split | 3.2633 | 2.1510 | yes |
+| 5 | G33 split | 3.1860 | 2.1430 | yes |
+| 5 | G32 control | 3.2060 | 2.1670 | yes |
+
+Across eight measured requests per variant, server throughput was effectively
+flat (`3.2125 -> 3.2150 t/s`, +0.08%) and client throughput regressed
+(`2.1689 -> 2.1460 t/s`, -1.06%). Worker-ready wait decreased from
+3.865 to 3.630 ms/layer in the n=3 pair and from 3.770 to 3.701 ms/layer in
+the n=5 pair, proving that overlap occurred, but extra masked launches and the
+materialized final sum consumed the gain.
+
+Verdict: Rank 2 is exact but is not a throughput win at the measured 42.24%
+route-hit distribution. Keep it opt-in as infrastructure; do not enable or
+compose policy into it. Full commands and artifacts are in
+`G33_SPLIT_HIT_MISS_RESULTS.md` at native-Windows commit `e4d669e`. The next
+isolated implementation test is Rank 8 SPEX CPU speculation (`off/k=1/k=2`),
+which may begin useful cold-expert work earlier than the exact miss boundary.
+
 ### Rank 3 physical states
 
 Use explicit states, not inferred booleans:
@@ -429,11 +463,11 @@ gain. A mechanism/exactness probe may use `n=1`; any performance verdict require
 
 ## Execution sequence
 
-1. **P0 measurement commit:** standalone warm-tier benchmark and ledger schema.
-2. **P1 code commit:** direct resident slots, old miss fallback unchanged.
-3. **P1 A/B commit:** `n>=3` cold and primed state, exact hashes, transfer bytes.
-4. **P2 code commit:** mixed hit/miss scheduler selected by P0 result.
-5. **P2-SPEX measurement commit:** speculative CPU miss `off/k=1/k=2`, after
+1. **P0 measurement commit (done, G29):** standalone warm-tier benchmark and ledger schema.
+2. **P1 code commit (done, G32):** direct resident slots, old miss fallback unchanged.
+3. **P1 A/B commit (done, G32):** `n>=3` primed state, exact hashes and route counters.
+4. **P2 code/A-B commit (done, G33; exact, no speed win):** mixed hit/miss scheduler.
+5. **P2-SPEX measurement commit (next):** speculative CPU miss `off/k=1/k=2`, after
    the exact mixed scheduler exists and before any placement policy is combined.
 6. **P3 code commit:** cold-to-RAM admission invariant plus mass/LFRU telemetry.
 7. **P4 code commit:** prefill union and then waves as separate toggles.
