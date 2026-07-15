@@ -347,6 +347,36 @@ Minimal first patch:
 Do not combine REAP rotation, SPEX, prefill waves or a new eviction policy in
 this patch. The first A/B must isolate removal of resident-hit movement.
 
+### Rank 1 measured checkpoint: G32
+
+Native-Windows commit `1126211` implements the device slot map, exact GPU route
+resolver, persistent direct route pointers and a separate exact miss worker
+behind `DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1`. The output remained exact at
+`n=3` with hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+
+Primed RTX 3060 A/B, cache 336, prompt `Hi`, 9 generated tokens:
+
+| Variant | Server decode t/s | Client t/s | Exact |
+|---|---:|---:|---|
+| G32 off | 3.273 | 2.1625 | yes |
+| G32 on | 3.223 | 2.0720 | yes |
+| delta | -1.53% | -4.19% | unchanged |
+
+Across warmup plus three measured requests, G32 saw 3,832 resident hits out of
+9,072 exact routes (42.24%), but only 12 of 1,512 layers were all-hit (0.79%).
+The working WDDM path still paid 2.629 ms/layer for resolver synchronization
+and 3.747 ms/layer waiting for the exact miss worker. GPU spin-wait deadlocked,
+ordered host-callback upload deadlocked, and CUDA stream memory waits were
+reported unsupported by the 3060 WDDM driver.
+
+Verdict: Rank 1 is exact and retained as opt-in infrastructure, but it is not a
+throughput win by itself. The measured low all-hit-layer rate promotes Rank 2:
+resident routes must execute separately from true misses so partial hits can
+pay without requiring an entirely resident layer. Full commands, failed
+mechanisms and artifacts are in native-Windows
+`G32_GPU_RESIDENT_ROUTE_RESULTS.md` at commit `1126211`.
+
 ### Rank 2 exact schedule
 
 Preferred schedule when a layer contains both hits and misses:
