@@ -319,7 +319,8 @@ ability to fail cheaply and cleanly.
 | 5 | GPU-resident result handoff and sync collapse | WDDM launch/sync tax remains after expert transport | llama.cpp #24524, PocketMoE event path | Stage timeline proves fewer syncs; exact hash; no hidden CPU round trip |
 | 6 | Slow-clock mass/LFRU physical adaptation | G27 policy correct but -17.5% on short decode | REAP G27, Colibri LFRU | Long decode/request A/B; movement cost amortized; bounded swaps |
 | 7 | Confirmed-miss priority and cancelable partial prefetch | Avoids speculative work blocking exact needs | ProMoE, MoE-Infinity | Saved foreground wait exceeds wasted bytes/time |
-| 8 | SPEX/PILOT prediction | Useful only after transfers can overlap | existing SPEX, Colibri PILOT | Recall, precision, saved wait and waste; never trained on prompt/mask |
+| 8 | SPEX -> speculative CPU IQ2XXS miss execution | Uses prediction to start 1-2 likely cold experts before the exact router confirms them | existing SPEX plus Rank 0 CPU gate | Exact router remains authoritative; k=1/k=2 recall, lead time, useful CPU work, discarded CPU work and decode interference |
+| 9 | SPEX/PILOT transfer prefetch | Useful only after transfers can overlap | existing SPEX, Colibri PILOT | Recall, precision, saved wait and waste; never trained on prompt/mask |
 
 ### Rank 0 is a gate, not a detour
 
@@ -375,15 +376,38 @@ Allowed shortcuts:
 This implements the intended rule that a one-off cold expert does not displace a
 hot persistent expert.
 
+### Rank 8 SPEX CPU speculation test
+
+This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
+the existing IQ2XXS CPU implementation performs the speculative computation.
+The exact router is always authoritative:
+
+1. expose only information available before the target route is known;
+2. predict at most `k=1`, then `k=2`, likely nonresident experts;
+3. start CPU gate/up/SwiGLU/down without changing the active mask or placement;
+4. when the real router result arrives, consume matching results and discard the
+   rest; never substitute a prediction for an exact routed expert;
+5. compare `off`, `k=1` and `k=2` with identical prompt, cache state and build.
+
+Record per layer/token: predicted IDs, exact IDs, prediction lead time, CPU start
+and finish timestamps, useful and discarded expert computations, foreground
+wait saved, total CPU time, process reads, GPU utilization and decode t/s. The
+test passes only if exact hashes match, useful work finishes before demand often
+enough to reduce measured foreground wait, and CPU contention does not erase the
+gain. A mechanism/exactness probe may use `n=1`; any performance verdict requires
+`n>=3`.
+
 ## Execution sequence
 
 1. **P0 measurement commit:** standalone warm-tier benchmark and ledger schema.
 2. **P1 code commit:** direct resident slots, old miss fallback unchanged.
 3. **P1 A/B commit:** `n>=3` cold and primed state, exact hashes, transfer bytes.
 4. **P2 code commit:** mixed hit/miss scheduler selected by P0 result.
-5. **P3 code commit:** cold-to-RAM admission invariant plus mass/LFRU telemetry.
-6. **P4 code commit:** prefill union and then waves as separate toggles.
-7. Only then return to physical REAP rotation and SPEX composition.
+5. **P2-SPEX measurement commit:** speculative CPU miss `off/k=1/k=2`, after
+   the exact mixed scheduler exists and before any placement policy is combined.
+6. **P3 code commit:** cold-to-RAM admission invariant plus mass/LFRU telemetry.
+7. **P4 code commit:** prefill union and then waves as separate toggles.
+8. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
