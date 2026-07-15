@@ -7,9 +7,9 @@ The unpacked file receives an embedded DS4 bake manifest after the original
 GGUF logical end; a compatible ds4-win loader must validate and apply it before
 routing. Expert ids therefore remain the original DS4 ids.
 
-The ``plan`` and ``pack`` commands require the ``gguf`` Python package. The
-``unpack`` command uses only the standard library and marks the output sparse
-through FSCTL_SET_SPARSE on Windows.
+The ``plan``, ``pack``, and ``pack-stream`` commands require the ``gguf``
+Python package. The ``unpack`` command uses only the standard library and marks
+the output sparse through FSCTL_SET_SPARSE on Windows.
 """
 
 from __future__ import annotations
@@ -67,6 +67,14 @@ class Extent:
     @property
     def end(self) -> int:
         return self.offset + self.length
+
+
+@dataclass(frozen=True)
+class PackWriteResult:
+    total_bytes: int
+    payload_sha256: str
+    manifest_sha256: str
+    full_pack_sha256: str
 
 
 def sha256_file(path: pathlib.Path, chunk_size: int = 8 << 20) -> str:
@@ -206,11 +214,31 @@ def build_plan(
     }
 
 
-def write_pack(model_path: pathlib.Path, pack_path: pathlib.Path, plan: dict) -> None:
+def _write_all(target, data: bytes) -> None:
+    view = memoryview(data)
+    while view:
+        written = target.write(view)
+        if written is None:
+            return
+        if written <= 0:
+            raise BrokenPipeError("write returned no bytes")
+        view = view[written:]
+
+
+def write_pack_stream(model_path: pathlib.Path, target, plan: dict) -> PackWriteResult:
     payload_digest = hashlib.sha256()
+    full_digest = hashlib.sha256()
     copied = 0
-    with model_path.open("rb") as source, pack_path.open("wb") as target:
-        target.write(PACK_MAGIC)
+    total_bytes = 0
+
+    def write(data: bytes) -> None:
+        nonlocal total_bytes
+        _write_all(target, data)
+        full_digest.update(data)
+        total_bytes += len(data)
+
+    with model_path.open("rb") as source:
+        write(PACK_MAGIC)
         for offset, length in plan["extents"]:
             source.seek(offset)
             remaining = length
@@ -218,7 +246,7 @@ def write_pack(model_path: pathlib.Path, pack_path: pathlib.Path, plan: dict) ->
                 block = source.read(min(8 << 20, remaining))
                 if not block:
                     raise EOFError(f"source ended in extent offset={offset} length={length}")
-                target.write(block)
+                write(block)
                 payload_digest.update(block)
                 copied += len(block)
                 remaining -= len(block)
@@ -227,18 +255,50 @@ def write_pack(model_path: pathlib.Path, pack_path: pathlib.Path, plan: dict) ->
         plan = dict(plan)
         plan["payload_sha256"] = payload_digest.hexdigest()
         manifest = json.dumps(plan, separators=(",", ":"), sort_keys=True).encode("utf-8")
-        manifest_digest = hashlib.sha256(manifest).digest()
-        target.write(manifest)
-        target.write(
+        manifest_digest = hashlib.sha256(manifest)
+        write(manifest)
+        write(
             FOOTER.pack(
                 PACK_END_MAGIC,
                 len(manifest),
                 payload_digest.digest(),
-                manifest_digest,
+                manifest_digest.digest(),
             )
         )
+    return PackWriteResult(
+        total_bytes=total_bytes,
+        payload_sha256=payload_digest.hexdigest(),
+        manifest_sha256=manifest_digest.hexdigest(),
+        full_pack_sha256=full_digest.hexdigest(),
+    )
+
+
+def write_pack(model_path: pathlib.Path, pack_path: pathlib.Path, plan: dict) -> PackWriteResult:
+    with pack_path.open("wb") as target:
+        result = write_pack_stream(model_path, target, plan)
     print(json.dumps({"pack": str(pack_path), "bytes": pack_path.stat().st_size,
-                      "payload_sha256": payload_digest.hexdigest()}, indent=2))
+                      "payload_sha256": result.payload_sha256}, indent=2))
+    return result
+
+
+def write_status_atomic(path: pathlib.Path, result: PackWriteResult) -> None:
+    payload = json.dumps(
+        {
+            "total_bytes": result.total_bytes,
+            "payload_sha256": result.payload_sha256,
+            "manifest_sha256": result.manifest_sha256,
+            "full_pack_sha256": result.full_pack_sha256,
+        },
+        indent=2,
+        sort_keys=True,
+    )
+    tmp_path = path.with_name(f".{path.name}.tmp.{os.getpid()}")
+    with tmp_path.open("w", encoding="utf-8", newline="\n") as stream:
+        stream.write(payload)
+        stream.write("\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    os.replace(tmp_path, path)
 
 
 def read_pack_manifest(pack_path: pathlib.Path) -> tuple[dict, bytes, bytes]:
@@ -391,7 +451,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     sub = parser.add_subparsers(dest="command", required=True)
 
-    for name in ("plan", "pack"):
+    for name in ("plan", "pack", "pack-stream"):
         cmd = sub.add_parser(name)
         cmd.add_argument("--model", type=pathlib.Path, required=True)
         cmd.add_argument("--mask", type=pathlib.Path, required=True)
@@ -400,6 +460,8 @@ def parse_args() -> argparse.Namespace:
         cmd.add_argument("--merge-gap", type=int, default=4096)
         if name == "pack":
             cmd.add_argument("--out", type=pathlib.Path, required=True)
+        if name == "pack-stream":
+            cmd.add_argument("--status-out", type=pathlib.Path, required=True)
 
     cmd = sub.add_parser("unpack")
     cmd.add_argument("--pack", type=pathlib.Path, required=True)
@@ -431,9 +493,23 @@ def main() -> int:
         compact["extent_count"] = len(plan["extents"])
         print(json.dumps(compact, indent=2, sort_keys=True))
         return 0
+    if args.command == "pack-stream":
+        try:
+            result = write_pack_stream(args.model, sys.stdout.buffer, plan)
+            sys.stdout.buffer.flush()
+        except BrokenPipeError as exc:
+            raise SystemExit("pack-stream failed: stdout pipe closed") from exc
+        write_status_atomic(args.status_out, result)
+        return 0
     write_pack(args.model, args.out, plan)
     return 0
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    try:
+        raise SystemExit(main())
+    except BrokenPipeError:
+        try:
+            sys.stdout = open(os.devnull, "w", encoding="utf-8")
+        finally:
+            raise SystemExit(1)
