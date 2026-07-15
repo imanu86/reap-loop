@@ -1,7 +1,7 @@
 # Windows G55-G57 Execution Runbook
 
-Date: 2026-07-15  
-Native branch: `port/windows-dynamic-arena-0051`  
+Date: 2026-07-15
+Native branch: `port/windows-dynamic-arena-0051`
 REAP branch: `plan/0051-transport-gate-20260713`
 
 This runbook is fail-closed. Do not launch any command below until the bake
