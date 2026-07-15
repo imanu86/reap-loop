@@ -1471,3 +1471,75 @@ Native report: `G45_DIRECT_RESIDENT_CACHE_RESULTS.md`; primary artifacts:
 `g7_runs/g45_ttft_outlier_recheck_result.json`,
 `g7_runs/g7_g45_stable_cache{256,320}_{a,b,c}_result.json` and
 `g7_runs/g7_g45_cache256_ttft_recheck_{a,b,c}_result.json`.
+
+## 2026-07-15 Native Windows G46 GPU-Resident Route No-Default-Sync
+
+Question: can the GPU-resident route handoff omit its explicit
+`cudaStreamSynchronize(0)` and rely on the existing mapped request sequence and
+worker-ready publication without changing output, residency or transport?
+
+Implementation: native commit `b9fa97f` adds opt-in
+`DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1`. The route resolver kernel publishes its
+mapped request with `__threadfence_system()`. The route worker still completes
+and synchronizes required H2D on its upload stream before publishing its ready
+sequence. The caller still waits for that exact sequence. Only the earlier
+default-stream-wide synchronization is skipped. The default behavior is
+unchanged when the variable is absent. Runtime and harness counters require
+every route call to be accounted as exactly one of `default_sync` or
+`no_default_sync`.
+
+Protocol: exact G45 cache320 source-parts closed snapshot on native Windows RTX
+3060, `ds4-2bit.gguf`, context 256, 64 generated tokens, 30 GiB dynamic arena
+with 4,551 entries, eight-worker source-parts WRAP, 1,024 MiB startup reserve,
+0.125 GiB cache reserve, Q8-F16 off, mass/LFRU tiering and GPU-resident routes.
+Split hit/miss and dynamic REAP/SPEX prediction were disabled. Three independent
+processes per arm ran in order default A, no-sync A, no-sync B, default B,
+default C, no-sync C.
+
+Expected output SHA-256:
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+All six processes matched it. This 64-token prefix is a transport exactness
+protocol and has no L0-L3 document-quality verdict.
+
+| Metric | Default sync | No default sync | Delta |
+|---|---:|---:|---:|
+| Server decode mean | 4.4600 t/s | 4.5633 t/s | +2.32% |
+| Server decode median | 4.46 t/s | 4.58 t/s | +2.69% |
+| Decode seconds mean | 14.348 s | 14.021 s | -2.28% |
+| Caller resolve mean | 2.813 ms/call | 0.000 ms/call | moved out of caller |
+| Worker-ready wait mean | 1.615 ms/call | 4.446 ms/call | synchronization shifts here |
+| Total handoff mean | 4.428 ms/call | 4.446 ms/call | +0.41% |
+| Route worker mean | 1.631 ms/job | 1.621 ms/job | -0.57% |
+| VRAM route hits mean | 5,653 | 5,653 | identical |
+| Pinned-RAM route hits mean | 10,859 | 10,859 | identical |
+| Pinned-RAM H2D mean | 71.5803 GiB | 71.5803 GiB | identical |
+| Snapshot misses / SSD bytes / failures | 0 / 0 / 0 | 0 / 0 / 0 | exact closed snapshot |
+
+Per-process decode was default 4.46, 4.46 and 4.46 t/s versus no-sync 4.53,
+4.58 and 4.58 t/s. No decode outlier or recurrent 204-355 second TTFT stall was
+present, so the permanent three-extra-process outlier rule was not triggered.
+
+Provenance: parent `22d92af09df43cd5bb604ade5a66494eb8d7206f`;
+executable SHA-256
+`e48237f6696e8737a4e2bc21a2e75250207650e62fbf92a3377d51b3a7194080`;
+`ds4_cuda.cu` SHA-256
+`a58c5ca99522212c7414fbb69f2372ef5aef7b3eb366eda06867b9cfb0293ca7`;
+harness SHA-256
+`0623a8b52dd59dab8621603c177b006aba53acdc02532af2f16ebcd696ac073b`;
+model bytes 86,720,111,488. Another Codex task briefly created candidate-only
+`g46_no_default_sync_64_{a,b,c}` artifacts and interrupted the first matrix
+coordinator after two authoritative results. Those candidate-only tags are
+excluded. The runner's `-Resume` mode revalidated the two complete JSON files
+and executed the four missing processes without changing the runtime protocol.
+
+Verdict: exact positive `n=3` transport result. G46 raises the current
+closed-snapshot/cache320 decode by 2.32% without changing experts, residency,
+transport volume or SSD traffic. Keep opt-in until a cross-prompt exactness
+matrix passes. The next measured bottleneck is the 10,859 pinned-RAM routes and
+71.58 GiB repeated H2D; independently add post-WRAP phase timestamps to localize
+the intermittent TTFT stall.
+
+Native report: `G46_NO_DEFAULT_SYNC_RESULTS.md`; runner:
+`g46_no_default_sync_ab.ps1`; summary:
+`g7_runs/g46_no_default_sync_ab_result.json`; authoritative per-run artifacts:
+`g7_runs/g7_g46_{default,nosync}_{a,b,c}_result.json`.

@@ -833,6 +833,46 @@ In parallel, add phase telemetry after WRAP publication to localize the
 recurrent 204-355 s unexplained interval. Keep that diagnostic separate from
 the cache320 transport verdict.
 
+### Rank 1/6 synchronization checkpoint: G46 removes the global route barrier
+
+G46 keeps the complete G45 cache320 contract and changes only the
+GPU-resident route handoff. Behind
+`DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1`, the caller no longer executes an
+explicit `cudaStreamSynchronize(0)` before waiting for the existing
+system-fenced mapped request and worker-ready sequence. The worker still
+synchronizes every required H2D on its upload stream before publishing ready.
+The default path is unchanged when the gate is absent.
+
+The exact A/B used three independent processes per arm in balanced order:
+default A, no-sync A, no-sync B, default B, default C, no-sync C. All six
+processes produced expected hash
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`,
+effective cache capacity 320, 4,551 closed-snapshot entries, zero snapshot
+misses, zero SSD bytes and zero tier/route failures.
+
+| Metric | Default sync | No default sync | Delta |
+|---|---:|---:|---:|
+| Server decode mean | 4.4600 t/s | 4.5633 t/s | +2.32% |
+| Server decode median | 4.46 t/s | 4.58 t/s | +2.69% |
+| Decode seconds mean | 14.348 s | 14.021 s | -2.28% |
+| Caller resolve | 2.813 ms/call | 0.000 ms/call | moved out of caller |
+| Worker-ready wait | 1.615 ms/call | 4.446 ms/call | synchronization shifts here |
+| Total handoff | 4.428 ms/call | 4.446 ms/call | +0.41% |
+| VRAM / RAM routes | 5,653 / 10,859 | 5,653 / 10,859 | identical |
+| Pinned-RAM H2D | 71.5803 GiB | 71.5803 GiB | identical |
+
+Per-process decode was default 4.46/4.46/4.46 and candidate
+4.53/4.58/4.58 t/s. No decode or large TTFT outlier was present, so the
+three-extra-process outlier rule was not triggered. The synchronization cost
+mostly moves into the worker-ready wait, but removing the default-stream-wide
+serialization point still yields a replicated exact decode gain.
+
+Verdict: exact positive transport optimization for this 64-token protocol;
+keep opt-in until a cross-prompt exactness matrix passes. The material next
+bottleneck is unchanged: 10,859 pinned-RAM routes and 71.58 GiB of repeated
+H2D in 64 decode tokens. Full report: `G46_NO_DEFAULT_SYNC_RESULTS.md`, native
+commit `b9fa97f`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -919,20 +959,26 @@ commit `63ba10d`.
     measured decode 4.4367 -> 4.4767 t/s and pinned-RAM H2D 75.0344 ->
     71.5803 GiB, with exact output, zero snapshot misses and zero SSD. The
     336-slot candidate failed reproducible capacity and is not a default.
-17. **No-default-sync route handoff next:** keep the G45 cache320 closed
-    snapshot as baseline, remove only the redundant default-stream sync in the
-    GPU-resident handoff behind an opt-in gate, then require exact safety before
-    any `n>=3` throughput verdict.
-18. **P4-D next:** restore tile-capable wave kernels without changing G39's
+17. **No-default-sync route handoff done, G46:** exact `n=3` per arm raised
+    decode 4.4600 -> 4.5633 t/s (+2.32%) with identical route counts, H2D,
+    residency and zero SSD. Keep opt-in pending cross-prompt exactness.
+18. **G46 promotion and TTFT localization next:** run the accepted no-sync
+    mechanism on multiple prompt shapes while adding timestamped phases after
+    WRAP publication. Do not mix the diagnostic instrumentation into a
+    throughput verdict until its overhead is measured.
+19. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
+    and 71.58 GiB H2D with true hit/miss separation or amortized physical
+    rotation. Preserve the request-scoped closed snapshot and zero SSD.
+20. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-19. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+21. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-20. Only then return to physical REAP rotation and SPEX transfer composition.
+22. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
