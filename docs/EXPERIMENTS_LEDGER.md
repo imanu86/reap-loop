@@ -1326,3 +1326,42 @@ Native report: `G43_WRAP_CHECKSUM_RESULTS.md`; implementation/runner commit
 `5ca8f15395505b6e808b7dc86ed4c15bd22bdf64ce481bb415b0017f1cd07d4b`;
 matrix SHA-256
 `109cd153e2c1bdc3a16042cadae8c3c7d07159dc4661c072e4df11f770704120`.
+
+## 2026-07-15 Native Windows G44 Source-Parts WRAP Order
+
+Question: can the G42/G43 closed-snapshot first copy from model `mmap` be made
+faster by copying in global source-offset order instead of expert-major order,
+without changing exactness, residency or the default path?
+
+Implementation: opt-in source-parts copies model `mmap` in global source-offset
+order with barriered gate/up/down phases and incremental exact canonical
+full-slot FNV. The default expert-major path is unchanged. Native implementation
+commit `48234f31ec5828ae094496e42eb01f498e4b87c8`.
+
+Protocol: exact G42/G43 closed snapshot on native Windows RTX 3060, same
+4,551-entry 30 GiB pinned arena, cache256 mass/LFRU, zero allowed SSD fallback
+and expected output hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Three independent one-request processes per arm, ordered expert A, source A,
+source B, expert B, expert C, source C.
+
+| Metric | Expert-major | Source-parts | Delta |
+|---|---:|---:|---:|
+| WRAP median | 31.947 s | 25.829 s | -6.118 s (-19.15%) |
+| TTFT median | 52.508 s | 46.184 s | -6.324 s (-12.04%) |
+| Decode mean | 4.04 t/s | 4.10 t/s | no claim |
+
+All six runs matched exact output hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Every run measured 516 route calls, 3,096 selections, 886 VRAM hits and
+2,210 pinned-RAM hits. Snapshot misses, SSD bytes and tiering failures were
+zero in both arms.
+
+Individual WRAP times were expert 30.109, 31.947 and 201.671 s versus source
+25.040, 25.829 and 26.301 s. The expert outlier is retained because Windows
+standby cannot be purged. Decode means were 4.04 versus 4.10 t/s, so this is
+not a decode result.
+
+Verdict: exact positive startup optimization for the measured closed snapshot.
+The next ranked lever is direct resident slots and hit/miss separation, not more
+first-copy scheduling. Native report: `G44_SOURCE_PARTS_RESULTS.md`.

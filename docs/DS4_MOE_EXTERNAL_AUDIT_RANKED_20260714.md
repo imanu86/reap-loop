@@ -722,6 +722,40 @@ seconds in a separate cold mechanism run. Next compare expert-major with a
 globally source-ordered or part-major copy schedule, one lever at a time. Full
 report: `G43_WRAP_CHECKSUM_RESULTS.md`, native commit `4a3b792`.
 
+### Rank 1/6 source-parts checkpoint: G44 orders first copy by source
+
+G44 keeps the exact G42/G43 closed-snapshot configuration: native Windows
+RTX 3060, the same 4,551-entry 30 GiB pinned snapshot, cache256 mass/LFRU,
+zero allowed SSD fallback and expected hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+The new opt-in source-parts path copies model `mmap` in global source-offset
+order, with barriered gate/up/down phases and incremental exact canonical
+full-slot FNV. The default expert-major path is unchanged.
+
+The balanced A/B used three independent one-request processes per arm, ordered
+expert A, source A, source B, expert B, expert C, source C. All six outputs
+matched the expected hash. Every run retained 516 route calls, 3,096 selections,
+886 VRAM hits, 2,210 pinned-RAM hits, zero snapshot misses, zero SSD bytes and
+zero tiering failures.
+
+| Metric | Expert-major | Source-parts |
+|---|---:|---:|
+| WRAP median | 31.947 s | 25.829 s |
+| TTFT median | 52.508 s | 46.184 s |
+| Decode mean | 4.04 t/s | 4.10 t/s |
+
+G44 cuts primary WRAP median 31.947 -> 25.829 s, a 6.118 s or 19.15%
+improvement, and cuts TTFT median 52.508 -> 46.184 s, a 6.324 s or 12.04%
+improvement. Individual WRAP times were expert 30.109, 31.947 and 201.671 s
+versus source 25.040, 25.829 and 26.301 s. The expert outlier is retained
+because Windows standby cannot be purged. Decode means were 4.04 versus
+4.10 t/s, so make no decode claim.
+
+Verdict: exact positive startup optimization for the measured closed snapshot.
+The next ranked lever is direct resident slots and hit/miss separation, not more
+first-copy scheduling. Full report: `G44_SOURCE_PARTS_RESULTS.md`, native
+implementation commit `48234f31ec5828ae094496e42eb01f498e4b87c8`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -801,20 +835,23 @@ commit `63ba10d`.
 14. **Duplicate publication checksum done, G43:** joined workers now provide
     the accepted checksum, cutting WRAP 65.214 -> 27.251 s and TTFT 86.028 ->
     47.355 s with exact output, unchanged 4.093 t/s decode and zero SSD.
-15. **First-copy optimization next:** compare expert-major with globally
-    source-ordered or part-major snapshot fills. Preserve the 1,024 MiB reserve,
-    measured hot-weight cache, zero-SSD closure and explicit phase telemetry.
-    Then measure long `n>=3` break-even with L0-L3 grading.
-16. **P4-D next:** restore tile-capable wave kernels without changing G39's
+15. **First-copy source-parts done, G44:** global source-offset ordering cut
+    WRAP median 31.947 -> 25.829 s and TTFT median 52.508 -> 46.184 s with
+    exact output, unchanged zero SSD and no decode claim.
+16. **Direct resident slots / hit-miss separation next:** return to Rank 1/2
+    with the G44 closed snapshot as baseline. Preserve the 1,024 MiB reserve,
+    measured hot-weight cache, zero-SSD closure, explicit phase telemetry and
+    permanent `n>=3` requirement for throughput verdicts.
+17. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-17. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+18. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-18. Only then return to physical REAP rotation and SPEX transfer composition.
+19. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
