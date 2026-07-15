@@ -419,9 +419,8 @@ materialized final sum consumed the gain.
 Verdict: Rank 2 is exact but is not a throughput win at the measured 42.24%
 route-hit distribution. Keep it opt-in as infrastructure; do not enable or
 compose policy into it. Full commands and artifacts are in
-`G33_SPLIT_HIT_MISS_RESULTS.md` at native-Windows commit `e4d669e`. The next
-isolated implementation test is Rank 8 SPEX CPU speculation (`off/k=1/k=2`),
-which may begin useful cold-expert work earlier than the exact miss boundary.
+`G33_SPLIT_HIT_MISS_RESULTS.md` at native-Windows commit `e4d669e`. This result
+motivated the isolated G34 SPEX CPU test below before physical tiering.
 
 ### Rank 3 physical states
 
@@ -439,6 +438,39 @@ Allowed shortcuts:
 
 This implements the intended rule that a one-off cold expert does not displace a
 hot persistent expert.
+
+### Rank 3 measured checkpoint: G35
+
+Native-Windows commit `083c305` implements the physical state machine behind
+`DS4_EXPERT_TIERING=enforce`. A first cold touch reads the exact IQ2XXS expert
+once into exclusive `cudaHostAllocDefault` pinned RAM and serves that route
+through a transient GPU slab. A second touch promotes it to persistent VRAM;
+VRAM eviction retains the pinned RAM copy, so later recall does not return to
+SSD. Routing, masks and expert bytes remain unchanged.
+
+The counter-ordered matrix ran `off/enforce/enforce/off`, with one discarded
+warmup and `n=3` measured requests per arm. Configuration was RTX 3060 12 GB,
+prompt `Hi`, context 256, max 12, cache336 LRU and an 8 GiB pinned arena. All 12
+measured outputs and four warmups matched exact hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+
+| Metric | Control | Tiering enforce | Delta |
+|---|---:|---:|---:|
+| Server decode | 3.2283 t/s | 4.9750 t/s | +54.10% |
+| Client throughput | 2.1986 t/s | 2.8909 t/s | +31.49% |
+| Process reads/run | 60.275 GiB | 31.001 GiB | -48.57% |
+| Warmup | 4.201 s | 11.381 s | +7.180 s once |
+
+Both enforce runs recorded `cold_to_ram=1005`, `cold_to_vram=0`, 4,299 RAM
+hits/promotions and 3,963 VRAM demotions, with zero tier failures. This proves
+the cold-to-RAM invariant and exceeds the previous 3.4 t/s local target. It also
+shows excessive physical churn: mass and LFRU are measured, but G35 still
+promotes on the second touch. The next isolated test is a slow-clock mass/LFRU
+admission policy with hysteresis; it must preserve exactness and the zero
+cold-to-VRAM invariant while reducing promotions and demotions.
+
+Full protocol, provenance and result hashes are in
+`G35_REAL_EXPERT_TIERING_RESULTS.md` at native-Windows commit `083c305`.
 
 ### Rank 8 SPEX CPU speculation test
 
@@ -494,9 +526,12 @@ commit `63ba10d`.
 4. **P2 code/A-B commit (done, G33; exact, no speed win):** mixed hit/miss scheduler.
 5. **P2-SPEX measurement commit (done, G34; exact, negative):** speculative CPU
    miss `off/k=1/k=2`; keep opt-in, do not compose into the runtime policy.
-6. **P3 code commit:** cold-to-RAM admission invariant plus mass/LFRU telemetry.
-7. **P4 code commit:** prefill union and then waves as separate toggles.
-8. Only then return to physical REAP rotation and SPEX transfer composition.
+6. **P3 code/A-B commit (done, G35; exact, positive):** physical cold-to-RAM
+   admission plus VRAM promotion/demotion and mass/LFRU telemetry.
+7. **P3 policy commit:** slow-clock mass/LFRU admission with hysteresis, measured
+   against G35 second-touch promotion.
+8. **P4 code commit:** prefill union and then waves as separate toggles.
+9. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 

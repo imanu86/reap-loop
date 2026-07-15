@@ -849,3 +849,46 @@ time. Do not promote unconditional CPU IQ2XXS speculation. Retain the probe and
 test SPEX as a high-confidence RAM staging/pinning signal after real tier states
 exist. Native-Windows commit: `63ba10d`; full report:
 `G34_SPEX_CPU_OBSERVE_RESULTS.md` in that repo.
+
+## 2026-07-15 Native Windows G35 Real Expert Tiering
+
+Question: does an exact physical tier policy that admits every first cold expert
+to pinned RAM, then promotes reused experts to VRAM, reduce repeated SSD/model
+reads and improve decode without changing routing or output?
+
+Setup: native Windows RTX 3060 12 GB, model
+`C:\ds4-models\ds4-2bit.gguf`, prompt `Hi`, context 256, max 12 (EOS after 9),
+cache336 LRU, 2 GiB stream window, 8 GiB exclusive
+`cudaHostAllocDefault` arena, Q8-F16 off and embedding-row staging on. REAP,
+SPEX, G33 split and other observers were disabled. The counter-ordered matrix
+ran `off/enforce/enforce/off`; every arm used one discarded warmup and `n=3`
+measured requests.
+
+`DS4_EXPERT_TIERING=enforce` uses these physical transitions:
+`SSD_COLD -> RAM_PROBATION -> RAM_WARM -> VRAM_PROTECTED`. First touch reads
+exact native quantized bytes once into pinned RAM and computes through a
+transient GPU slab. Second touch promotes to persistent VRAM. VRAM eviction
+retains the RAM copy, so recall does not force another SSD read.
+
+| Metric | Control aggregate | Enforce aggregate | Delta |
+|---|---:|---:|---:|
+| Server decode | 3.2283 t/s | 4.9750 t/s | +54.10% |
+| Client throughput | 2.1986 t/s | 2.8909 t/s | +31.49% |
+| Process reads/run | 60.275 GiB | 31.001 GiB | -48.57% |
+| Warmup | 4.201 s | 11.381 s | +7.180 s once |
+
+All 12 measured outputs and all four warmups matched exact hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+Each enforce run reported 1,005 cold-to-RAM admissions, zero cold-to-VRAM
+admissions, 4,299 RAM hits/promotions, 3,963 VRAM demotions, 1,005 transient
+routes and zero failures. The final matrix artifact is
+`g7_runs/g35_tiering_ab_result.json`, SHA-256
+`6b860294fe60921d32314b4077f379496ce2fbac77df3dd9f9f1ac0e117b8c86`.
+
+Verdict: exact positive throughput and transport result. The pay-once pinned-RAM
+admission removes repeated model reads and raises server decode above the prior
+3.4 t/s local target. Promotion on the second touch is intentionally simple and
+causes high churn, so it is not yet the final policy. Next A/B: slow-clock
+mass/LFRU admission plus hysteresis, with exactness, zero cold-to-VRAM and lower
+promotion/demotion counts as hard gates. Native-Windows commit: `083c305`; full
+report: `G35_REAL_EXPERT_TIERING_RESULTS.md` in that repo.
