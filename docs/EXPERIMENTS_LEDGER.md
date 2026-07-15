@@ -1952,3 +1952,46 @@ Native commits:
 [`4368674`](https://github.com/imanu86/ds4-win/commit/4368674),
 [`0423df5`](https://github.com/imanu86/ds4-win/commit/0423df5),
 [`31342db`](https://github.com/imanu86/ds4-win/commit/31342db).
+
+## 2026-07-15 G36/G46 Protocol Audit and G51 Hardening
+
+A read-only audit separated two valid but incomparable throughput records:
+
+| Authorized scope | Protocol | Measured record |
+|---|---|---:|
+| Short-path tiering | G36, prompt `Hi`, EOS after 9 decode tokens, cache336, 8 GiB arena, warmup discarded, n=3 | 5.5567 t/s |
+| Realistic closed snapshot | G46, cyberpunk prompt, 64 generated tokens, cache320, 30 GiB request-scoped snapshot, n=3 independent processes | 4.5633 t/s mean |
+
+G36 is an exact positive result: mass/LFRU reduced RAM H2D from 34.963 to
+27.679 GiB and raised decode from 4.948 to 5.5567 t/s. It is not the general
+Windows SOTA because its prompt, decode length, cache, arena, warmup policy and
+native commit differ from G46/G54. G46 remains the authorized record for the
+realistic 64-token closed-snapshot protocol. G54 sequential-file reproduced
+that decode class at 4.553 t/s while changing only the WRAP source path.
+
+This audit selects G51 as the next decode lever: the G46/G54 path still pays
+10,859 pinned-RAM routes and 71.5803 GiB of route H2D over 64 generated tokens.
+The G51 candidate seeds the top eight request-mass experts per routed layer
+(320 entries) into VRAM once after snapshot publication. Its n=3 runner uses
+counterbalanced order `control,on,on,control,control,on`, exact output SHA,
+identical source/cache/tiering/no-default-sync settings, contamination gates,
+and separate counters for seed H2D versus decode-route H2D.
+
+Commit
+[`7a79265`](https://github.com/imanu86/ds4-win/commit/7a79265)
+adds a stable FNV-1a fingerprint of the complete request-scoped candidate
+bitset. The harness rejects missing fingerprints and the G51 matrix rejects
+any control/candidate mask mismatch. Release build passed and `ctest -C
+Release` passed 1/1 without launching DS4 or using the GPU. Build input
+fingerprint: `9821365dc16fb02291101b9b9ef436336b446f90797a8aecb21e526f3d5b06aa`;
+executable SHA-256:
+`18b8e53627690d950ad37329fb32354a2b278a30b30df012df56b99d374419e1`.
+
+Decision order after the external `GPU/DISCO LIBERI` gate:
+
+1. complete clean G55 QD1/QD8 n=3 and retain the winning transport;
+2. run one G56 metadata-only layout profile;
+3. run G51 n=3 per arm using that fixed transport;
+4. judge G51 primarily by route H2D, pinned-RAM routes, VRAM routes and exact
+   output; seed H2D is an explicit one-time cost, not decode-route traffic;
+5. run G57 K60 functional safety only after verified SHA/unpack/manifest.

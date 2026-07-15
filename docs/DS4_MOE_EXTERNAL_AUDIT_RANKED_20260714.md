@@ -1073,19 +1073,37 @@ commit `63ba10d`.
     improves normal median WRAP but produces a measured 372.042 s WRAP tail,
     sustained disk saturation and an unusable host. Keep default-off; only a
     range-selective bounded-I/O design merits follow-up.
-22. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
-    and 71.58 GiB H2D with true hit/miss separation or amortized physical
-    rotation. Preserve the request-scoped closed snapshot and zero SSD.
-23. **P4-D next:** restore tile-capable wave kernels without changing G39's
+22. **G51 prefill VRAM seed ready, performance pending:** the candidate pays
+    one request-scoped upload of the top eight prefill-mass experts per routed
+    layer, then measures whether it reduces the 10,859 RAM routes and 71.58
+    GiB decode-route H2D. Commit `7a79265` fingerprints the complete candidate
+    bitset and the matrix rejects any mask mismatch. Judge route H2D separately
+    from the one-time seed upload; run n=3 only after the transport gate.
+23. **G52-G54 transport path done:** direct sequential-file WRAP removed mmap
+    source duplication; workers4 was rejected; G54 retained workers1
+    sequential-file after an exact counterbalanced n=3 source-hint A/B.
+24. **G55 transport gate next when quiescent:** the contaminated QD8 run proves
+    only functional correctness. Complete clean QD1/QD8 n=3 before G51 and
+    freeze the winning queue depth for both arms.
+25. **G56 layout profile next when quiescent:** one metadata-only profile will
+    determine whether bounded range coalescing has structural headroom. It is
+    not a throughput run and cannot authorize a performance claim.
+26. **G57 sparse K60 safety pending external verification:** runtime guards,
+    parser tests and safety runner are ready. Do not launch before exact local
+    SHA, NTFS sparse unpack, manifest inspection and literal `GPU/DISCO LIBERI`.
+27. **Pinned-RAM route reduction follow-on:** if G51 does not amortize its seed,
+    attack the same measured wall with true hit/miss separation or slow-clock
+    physical rotation. Preserve the request-scoped closed snapshot and zero SSD.
+28. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-24. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+29. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-25. Only then return to physical REAP rotation and SPEX transfer composition.
+30. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
