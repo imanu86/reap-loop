@@ -20,11 +20,13 @@ Current DS4 worktree:
 
 - repository: `C:/Users/imanu/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/ds4-win-work`
 - branch: `port/windows-dynamic-arena-0051`
-- HEAD: `97fae74`
+- HEAD: `30f864b`
 - G39 was measured from base `78f50cb` plus the reviewed hardening committed as
   `5633856`; source, executable, manifest and matrix hashes pin that state.
 - G40 is the exact cyberpunk composition checkpoint at native commit `6298b66`.
 - G41 is the exact 30 GiB prefill bulk-seed checkpoint at native commit `97fae74`.
+- G50 rejects whole-process Windows working-set trim and adds a fail-closed
+  process-isolation gate at native commit `30f864b`.
 
 External snapshots audited:
 
@@ -938,6 +940,35 @@ pageable mmap source pages between the trusted checksum's gate/up/down phases
 on Windows. Full report: `G49_WRAP_PART_PROFILE_RESULTS.md`, native commit
 `51ca565`.
 
+### Rank 1/6 Windows working-set trim checkpoint: G50 rejected
+
+G50 tests the G49 follow-up directly. The on arm calls
+`SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1)` after the gate and up
+joins; the default path is unchanged. The source-parts schedule, 30 GiB
+request-scoped closed snapshot, cache320 mass/LFRU, no-default-sync, exact
+prompt/hash and zero-SSD contract remain fixed.
+
+The base interleaved matrix used `n=3` fresh processes per arm. Both arms
+triggered the predeclared 2x-combined-median rule, producing three extra off and
+two completed extra on processes. The sixth planned extension, `on-x3`, was
+stopped after sustained 100% disk utilization made Windows unusable and is
+recorded as interrupted rather than imputed. All 11 completed outputs were
+byte-identical; runtime telemetry proves distinct PIDs with no interval overlap.
+
+Normal-case WRAP median improved from 28.185 s off to 23.406 s on in the
+expanded completed set, and the normal on rows preserved about 8-9 GiB
+available RAM. The candidate still fails: `on-x2` measured 372.042 s WRAP after
+normal load/prefill, making expanded on mean 106.284 s versus 50.918 s off. The
+two trim calls cost only 3.387 s; the long tail is downstream repaging/copy.
+Completed on rows had about 20.3-21.3 million page faults. `on-c` also exposed
+independent 110.010 s startup and 171.330 s prefill tails.
+
+Verdict: reject global working-set purge. It is too indiscriminate and can turn
+the next mmap phase into sustained disk page-in. Keep it default-off. A future
+source-page lever must be range-selective and pass a bounded-I/O microgate
+before another full run. Native report: `G50_WRAP_WORKING_SET_TRIM_RESULTS.md`;
+native commit [`30f864b`](https://github.com/imanu86/ds4-win/commit/30f864ba6b351f1fc621ea272c3f36e4c7e6e000).
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -1036,9 +1067,10 @@ commit `63ba10d`.
 20. **WRAP long-tail diagnosis done, G49:** exact `n=3` off/on localizes the
     normal wall inside mmap-backed part copies, not join. The profile costs
     +5.3% median and remains diagnostics-only; available RAM reached 1-254 MiB.
-21. **Windows source-page release next:** opt-in trim between gate/up/down,
-    with exact `n>=3` A/B and part-profile diagnostic side runs. This tests the
-    observed near-zero RAM condition without changing the learned closed set.
+21. **Windows source-page release rejected, G50:** global working-set trim
+    improves normal median WRAP but produces a measured 372.042 s WRAP tail,
+    sustained disk saturation and an unusable host. Keep default-off; only a
+    range-selective bounded-I/O design merits follow-up.
 22. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
     and 71.58 GiB H2D with true hit/miss separation or amortized physical
     rotation. Preserve the request-scoped closed snapshot and zero SSD.

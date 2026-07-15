@@ -1710,3 +1710,61 @@ on Windows because only its POSIX path is implemented.
 
 Native report: `G49_WRAP_PART_PROFILE_RESULTS.md`; runner:
 `g49_wrap_part_profile_ab.ps1`; native commit: `51ca565`.
+
+## 2026-07-15 Native Windows G50 Working-Set Trim
+
+Question: does releasing the Windows process working set between the trusted
+`gate`, `up` and `down` source-parts phases prevent the near-zero-RAM WRAP
+stalls measured in G48/G49?
+
+Implementation: opt-in
+`DS4_CUDA_ARENA_WRAP_TRIM_BETWEEN_PHASES=1` invokes
+`SetProcessWorkingSetSize(GetCurrentProcess(), -1, -1)` after the first two
+phase joins. The harness requires source-parts plus trusted worker checksums and
+fails closed unless both calls succeed. The default path is unchanged. This
+uses the request-scoped prefill-learned closed set; it is not a reusable static
+domain mask.
+
+Protocol: same Italian prompt and exact eight-token hash as G49; interleaved
+base `off-a,on-a,off-b,on-b,off-c,on-c`, one fresh process per row. Both arms
+crossed the 2x-combined-median outlier rule. Three extra processes per arm were
+planned; all three off and two on extensions completed. `on-x3` was stopped
+after sustained 100% disk activity made Windows unusable. It has no imputed
+result and the matrix is explicitly `finalized-incomplete-system-impact`.
+
+All 11 completed outputs were byte-identical with SHA-256
+`b78be49a2b62f691ee8a8b5b486b2735275cc85bbbc98ee3102c06116487a5e8`.
+Every completed run retained zero SSD bytes, snapshot misses, routing errors and
+tier failures. The 11 runtime telemetry intervals used distinct PIDs and had no
+temporal overlap.
+
+| Scope | Trim off WRAP mean / median | Trim on WRAP mean / median |
+|---|---:|---:|
+| Base n=3 per arm | 75.095 / 29.843 s | 45.382 / 23.406 s |
+| Expanded completed | n=6: 50.918 / 28.185 s | n=5: 106.284 / 23.406 s |
+
+Normal on rows reached 23.197-23.406 s WRAP and kept roughly 8-9 GiB available,
+versus 25.079-29.843 s normal off WRAP with 1-231 MiB available. This apparent
+normal-case benefit is rejected because `on-x2` measured a 372.042 s WRAP after
+a normal 9.667 s load and 20.418 s prefill. The two trim calls themselves took
+only 3.387 s. The remaining time is downstream page-in/copy, accompanied by
+about 20.3-21.3 million page faults per completed on process. `on-c` separately
+measured a 110.010 s load, 171.330 s prefill and 89.542 s WRAP. The interrupted
+`on-x3` had already spent 139.586 s preparing the 7.21 GiB startup cache before
+the operator stopped disk saturation.
+
+Verdict: reject whole-process working-set trim. It is too broad, can evict mmap
+source and other pages needed by the next phase, creates catastrophic repaging,
+and makes the host unusable. Keep the switch default-off and out of launch
+recipes. Any follow-up must be range-selective and first prove bounded disk
+traffic in a small gate.
+
+Post-study harness hardening acquires `Local\DS4_G7_MEASUREMENT_LOCK` and
+refuses launch if another DS4, G7 harness or G7 runtime monitor is present. The
+mutex collision and error-path release were tested without model launch.
+
+Native report: `G50_WRAP_WORKING_SET_TRIM_RESULTS.md`; runner:
+`g50_wrap_trim_ab.ps1`; native commit:
+[`30f864b`](https://github.com/imanu86/ds4-win/commit/30f864ba6b351f1fc621ea272c3f36e4c7e6e000);
+matrix SHA-256:
+`a6dcb05492aaf6917eb366b096a6f961d58a17901f235bc661dec8a0ca61ad21`.
