@@ -1,0 +1,287 @@
+diff --git a/ds4.c b/ds4.c
+index 0000000..0000000 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -408,6 +408,12 @@ typedef struct {
+ 
+ #define DS4_GGUF_MAGIC 0x46554747u /* "GGUF", little endian. */
+ #define DS4_MAX_DIMS   8
++#define DS4_BAKE_FILE_MAGIC "DS4BAKEFILEv1\0\0\0"
++#define DS4_BAKE_FILE_FOOTER_SIZE 56u
++#define DS4_BAKE_FILE_VERSION 1u
++#define DS4_BAKE_MASK_BYTES_PER_LAYER (DS4_N_EXPERT / 8u)
++#define DS4_BAKE_EXPECTED_LAYERS 43u
++#define DS4_BAKE_EXPECTED_MASK_LEN (DS4_BAKE_EXPECTED_LAYERS * DS4_BAKE_MASK_BYTES_PER_LAYER)
+ 
+ typedef struct {
+     const char *ptr;
+@@ -946,6 +952,12 @@ typedef struct {
+     os_mmap_t mmap;
+     const uint8_t *map;
+     uint64_t size;
++    bool bake_embedded;
++    uint64_t bake_mapped_size;
++    uint64_t bake_manifest_len;
++    uint32_t bake_manifest_crc32;
++    uint32_t bake_mask_crc32;
++    uint8_t bake_retained[DS4_BAKE_EXPECTED_LAYERS][DS4_BAKE_MASK_BYTES_PER_LAYER];
+ 
+     uint32_t version;
+     uint64_t n_kv;
+@@ -1041,6 +1053,139 @@ static ds4_cursor cursor_at(const ds4_model *m, uint64_t pos) {
+     return c;
+ }
+ 
++static uint32_t ds4_read_le32(const uint8_t *p) {
++    return ((uint32_t)p[0]) |
++           ((uint32_t)p[1] << 8) |
++           ((uint32_t)p[2] << 16) |
++           ((uint32_t)p[3] << 24);
++}
++
++static uint64_t ds4_read_le64(const uint8_t *p) {
++    return ((uint64_t)ds4_read_le32(p)) |
++           ((uint64_t)ds4_read_le32(p + 4) << 32);
++}
++
++static uint32_t ds4_crc32_update(uint32_t crc, const uint8_t *data, uint64_t len) {
++    crc = ~crc;
++    for (uint64_t i = 0; i < len; i++) {
++        crc ^= data[i];
++        for (uint32_t bit = 0; bit < 8; bit++) {
++            crc = (crc >> 1) ^ (0xedb88320u & (0u - (crc & 1u)));
++        }
++    }
++    return ~crc;
++}
++
++static uint32_t ds4_crc32(const uint8_t *data, uint64_t len) {
++    return ds4_crc32_update(0, data, len);
++}
++
++static bool ds4_u64_add_overflow(uint64_t a, uint64_t b, uint64_t *out) {
++    if (a > UINT64_MAX - b) return true;
++    *out = a + b;
++    return false;
++}
++
++static void ds4_bake_file_probe(ds4_model *m) {
++    const uint64_t mapped = m->mmap.size;
++    if (mapped < DS4_BAKE_FILE_FOOTER_SIZE) return;
++
++    const uint8_t *footer = m->map + (size_t)(mapped - DS4_BAKE_FILE_FOOTER_SIZE);
++    if (memcmp(footer, DS4_BAKE_FILE_MAGIC, 16) != 0) return;
++
++    const uint32_t version = ds4_read_le32(footer + 16);
++    const uint32_t n_layers = ds4_read_le32(footer + 20);
++    const uint32_t n_experts = ds4_read_le32(footer + 24);
++    const uint32_t mask_len = ds4_read_le32(footer + 28);
++    const uint64_t source_size = ds4_read_le64(footer + 32);
++    const uint64_t manifest_len = ds4_read_le64(footer + 40);
++    const uint32_t manifest_crc32 = ds4_read_le32(footer + 48);
++    const uint32_t mask_crc32 = ds4_read_le32(footer + 52);
++
++    if (version != DS4_BAKE_FILE_VERSION ||
++        n_layers != DS4_BAKE_EXPECTED_LAYERS ||
++        n_experts != DS4_N_EXPERT ||
++        mask_len != DS4_BAKE_EXPECTED_MASK_LEN) {
++        fprintf(stderr,
++                "ds4: DS4BAKE invalid footer version=%u layers=%u experts=%u mask_len=%u\n",
++                version,
++                n_layers,
++                n_experts,
++                mask_len);
++        ds4_die("DS4BAKE footer failed closed");
++    }
++
++    uint64_t trailer = 0;
++    uint64_t total = 0;
++    if (ds4_u64_add_overflow(manifest_len, mask_len, &trailer) ||
++        ds4_u64_add_overflow(trailer, DS4_BAKE_FILE_FOOTER_SIZE, &trailer) ||
++        ds4_u64_add_overflow(source_size, trailer, &total) ||
++        total != mapped ||
++        source_size > mapped ||
++        manifest_len > mapped ||
++        (uint64_t)mask_len > mapped) {
++        fprintf(stderr,
++                "ds4: DS4BAKE invalid trailer source=%" PRIu64 " manifest=%" PRIu64 " mask=%u mapped=%" PRIu64 "\n",
++                source_size,
++                manifest_len,
++                mask_len,
++                mapped);
++        ds4_die("DS4BAKE size validation failed closed");
++    }
++
++    const uint8_t *manifest = m->map + (size_t)source_size;
++    const uint8_t *mask = manifest + (size_t)manifest_len;
++    const uint32_t got_manifest_crc32 = ds4_crc32(manifest, manifest_len);
++    const uint32_t got_mask_crc32 = ds4_crc32(mask, mask_len);
++    if (got_manifest_crc32 != manifest_crc32 || got_mask_crc32 != mask_crc32) {
++        fprintf(stderr,
++                "ds4: DS4BAKE CRC mismatch manifest=%08x/%08x mask=%08x/%08x\n",
++                got_manifest_crc32,
++                manifest_crc32,
++                got_mask_crc32,
++                mask_crc32);
++        ds4_die("DS4BAKE checksum validation failed closed");
++    }
++
++    uint32_t retained_total = 0;
++    uint32_t active_layers = 0;
++    for (uint32_t il = 0; il < DS4_BAKE_EXPECTED_LAYERS; il++) {
++        uint32_t retained = 0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++            retained += (mask[il * DS4_BAKE_MASK_BYTES_PER_LAYER + e / 8u] >> (e % 8u)) & 1u;
++        }
++        if (retained < DS4_N_EXPERT_USED) {
++            fprintf(stderr,
++                    "ds4: DS4BAKE invalid layer=%u retained=%u required=%u\n",
++                    il,
++                    retained,
++                    (unsigned)DS4_N_EXPERT_USED);
++            ds4_die("DS4BAKE retained mask leaves too few experts");
++        }
++        if (retained < DS4_N_EXPERT) active_layers++;
++        retained_total += retained;
++    }
++
++    memcpy(m->bake_retained, mask, DS4_BAKE_EXPECTED_MASK_LEN);
++    m->bake_embedded = true;
++    m->bake_mapped_size = mapped;
++    m->bake_manifest_len = manifest_len;
++    m->bake_manifest_crc32 = manifest_crc32;
++    m->bake_mask_crc32 = mask_crc32;
++    m->size = source_size;
++
++    fprintf(stderr,
++            "ds4: DS4BAKE embedded mask loaded source=%" PRIu64 " mapped=%" PRIu64 " manifest=%" PRIu64 " active_layers=%u retained=%u/%u manifest_crc32=%08x mask_crc32=%08x\n",
++            source_size,
++            mapped,
++            manifest_len,
++            active_layers,
++            retained_total,
++            (unsigned)(DS4_BAKE_EXPECTED_LAYERS * DS4_N_EXPERT),
++            manifest_crc32,
++            mask_crc32);
++}
++
+ static ds4_kv *model_find_kv(const ds4_model *m, const char *key) {
+     for (uint64_t i = 0; i < m->n_kv; i++) {
+         if (ds4_streq(m->kv[i].key, key)) return &m->kv[i];
+@@ -1238,6 +1387,7 @@ static void model_open(ds4_model *m, const char *path, bool metal_mapping,
+      */
+     m->map = m->mmap.addr;
+     m->size = m->mmap.size;
++    ds4_bake_file_probe(m);
+ 
+     ds4_cursor c = cursor_at(m, 0);
+     uint32_t magic;
+@@ -5310,6 +5460,7 @@ static ds4_reap_mask_stamp g_reap_mask_stamp;
+ static uint8_t g_reap_mask_pruned[DS4_N_LAYER][DS4_N_EXPERT];
+ static uint8_t g_reap_mask_layer_active[DS4_N_LAYER];
+ static float g_reap_bias_masked[DS4_N_LAYER][DS4_N_EXPERT];
++static bool g_reap_mask_embedded;
+ static const void *g_reap_bias_tensor[DS4_N_LAYER];
+ static uint32_t g_reap_bias_n;
+ static uint32_t g_reap_mask_pruned_count;
+@@ -5361,6 +5512,7 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+     uint32_t updates = 0;
+     uint32_t creates = 0;
+     uint32_t failures = 0;
++    const char *source = g_reap_mask_embedded ? "DS4BAKE" : (g_reap_mask_path ? g_reap_mask_path : "");
+     uint32_t hash_layers = 0;
+     if (update_gpu) {
+ #ifndef DS4_NO_GPU
+@@ -5403,8 +5555,8 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+         g_reap_mask_gpu_applied = failures == 0 && updates + creates == slot;
+     }
+     fprintf(stderr,
+-            "ds4: REAP mask applied path=\"%s\" pruned=%u layers=%u bias_layers=%u ranges_updated=%u ranges_created=%u ranges_failed=%u\n",
+-            g_reap_mask_path ? g_reap_mask_path : "",
++            "ds4: REAP mask applied source=\"%s\" pruned=%u layers=%u bias_layers=%u ranges_updated=%u ranges_created=%u ranges_failed=%u\n",
++            source,
+             g_reap_mask_pruned_count,
+             g_reap_mask_layer_count,
+             g_reap_bias_n,
+@@ -5420,7 +5572,73 @@ static void ds4_reap_mask_apply(const ds4_model *model, const ds4_weights *weigh
+     }
+ }
+ 
++static void ds4_reap_mask_check_env_conflict(void) {
++    if (!g_reap_mask_env_checked) {
++        g_reap_mask_env_checked = true;
++        const char *p = getenv("DS4_REAP_MASK_FILE");
++        if (p && p[0]) g_reap_mask_path = ds4_strdup(p);
++    }
++    if (g_reap_mask_embedded && g_reap_mask_path) {
++        fprintf(stderr,
++                "ds4: DS4BAKE embedded mask conflicts with DS4_REAP_MASK_FILE=\"%s\"\n",
++                g_reap_mask_path);
++        ds4_die("DS4BAKE refuses external REAP mask override");
++    }
++}
++
++static void ds4_reap_mask_install_embedded(const ds4_model *model, const ds4_weights *weights) {
++    if (!model || !model->bake_embedded) return;
++    g_reap_mask_embedded = true;
++    ds4_reap_mask_check_env_conflict();
++
++    memset(g_reap_mask_pruned, 0, sizeof(g_reap_mask_pruned));
++    memset(g_reap_mask_layer_active, 0, sizeof(g_reap_mask_layer_active));
++    memset(g_reap_bias_tensor, 0, sizeof(g_reap_bias_tensor));
++    g_reap_bias_n = 0;
++    g_reap_mask_pruned_count = 0;
++    g_reap_mask_layer_count = 0;
++    g_reap_mask_range_updates = 0;
++    g_reap_mask_range_creates = 0;
++    g_reap_mask_range_failures = 0;
++    g_reap_mask_gpu_applied = false;
++
++    for (uint32_t il = 0; il < DS4_N_LAYER; il++) {
++        uint32_t retained = 0;
++        uint32_t pruned = 0;
++        for (uint32_t e = 0; e < DS4_N_EXPERT; e++) {
++            const uint8_t byte = model->bake_retained[il][e / 8u];
++            const bool keep = ((byte >> (e % 8u)) & 1u) != 0;
++            if (keep) {
++                retained++;
++            } else {
++                g_reap_mask_pruned[il][e] = 1;
++                pruned++;
++            }
++        }
++        if (retained < DS4_N_EXPERT_USED) ds4_die("DS4BAKE retained mask leaves too few experts");
++        if (pruned != 0) {
++            g_reap_mask_layer_active[il] = 1;
++            g_reap_mask_layer_count++;
++            g_reap_mask_pruned_count += pruned;
++        }
++    }
++
++    g_reap_mask_loaded = true;
++    fprintf(stderr,
++            "ds4: DS4BAKE installed embedded retained mask pruned=%u active_layers=%u\n",
++            g_reap_mask_pruned_count,
++            g_reap_mask_layer_count);
++    ds4_reap_mask_apply(model, weights, false);
++}
++
+ static void ds4_reap_mask_poll(const ds4_model *model, const ds4_weights *weights, bool update_gpu) {
++    ds4_reap_mask_check_env_conflict();
++    if (g_reap_mask_embedded) {
++        if (update_gpu && !g_reap_mask_gpu_applied) {
++            ds4_reap_mask_apply(model, weights, true);
++        }
++        return;
++    }
+     if (!g_reap_mask_env_checked) {
+         g_reap_mask_env_checked = true;
+         const char *p = getenv("DS4_REAP_MASK_FILE");
+@@ -18404,6 +18613,7 @@ int ds4_engine_open(ds4_engine **out, const ds4_engine_options *opt) {
+     vocab_load(&e->vocab, &e->model);
+     config_validate_model(&e->model);
+     weights_bind(&e->weights, &e->model);
++    ds4_reap_mask_install_embedded(&e->model, &e->weights);
+     if (e->backend == DS4_BACKEND_CPU && !cpu_load_directional_steering(e)) {
+         ds4_engine_close(e);
+         *out = NULL;
