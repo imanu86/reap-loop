@@ -1543,3 +1543,67 @@ Native report: `G46_NO_DEFAULT_SYNC_RESULTS.md`; runner:
 `g46_no_default_sync_ab.ps1`; summary:
 `g7_runs/g46_no_default_sync_ab_result.json`; authoritative per-run artifacts:
 `g7_runs/g7_g46_{default,nosync}_{a,b,c}_result.json`.
+
+## 2026-07-15 Native Windows G47 Request-Phase Trace
+
+Question: can request-local CPU monotonic timestamps separate prefill compute,
+WRAP, sync return, decode entry and first-token work without changing exact
+output or materially slowing the accepted G46 path?
+
+Implementation: native commit `134a984` adds opt-in
+`DS4_REQUEST_PHASE_TRACE=1`. The server traces prompt/session/decode/first-token
+boundaries; CUDA traces prefill-finalize and WRAP-copy boundaries. The path adds
+no GPU readback, CUDA event, device allocation or synchronization. The harness
+requires exactly 16 ordered events for one non-warmup prefill-WRAP request and
+rejects any phase line in the trace-off arm. Multi-request and KV-prefix
+sub-sync traces are outside this gate.
+
+Protocol: the G46 no-default-sync architecture, context 256, 64 exact generated
+tokens, 30 GiB source-parts closed snapshot, cache request/effective capacity
+320, Q8-F16 off and mass/LFRU tiering. A final-binary safety with the former
+0.125 GiB cache reserve reached only 309 effective slots under WDDM and was
+excluded. Reserve 0 restored 320/320 without OOM and was held identical across
+both arms.
+
+Primary balanced `n=3` per arm produced trace-off 4.30/4.50/4.51 t/s and
+trace-on 4.35/4.49/4.48 t/s. Because the first value in each arm was lower,
+the permanent outlier rule triggered three additional independent processes per
+arm: off 4.49/4.50/4.50 and on 4.47/4.46/4.45 t/s.
+
+Combined `n=6` per arm:
+
+| Metric | Trace off | Trace on | Delta on vs off |
+|---|---:|---:|---:|
+| Server decode mean | 4.4667 t/s | 4.4500 t/s | -0.37% |
+| Server decode median | 4.500 t/s | 4.465 t/s | -0.78% |
+| Decode seconds mean | 14.3277 s | 14.3747 s | +0.33% |
+| TTFT mean | 45.3057 s | 45.0570 s | -0.55% |
+| Client wall mean | 60.0401 s | 59.8258 s | -0.36% |
+| Client wall median | 59.1633 s | 59.6789 s | +0.87% |
+
+All 12 outputs matched expected SHA-256
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+Every process had 5,653 VRAM routes, 10,859 pinned-RAM routes, 71.5803 GiB
+pinned-RAM H2D, zero snapshot misses, zero SSD bytes and zero failures. This is
+an exact telemetry/overhead protocol, not an L0-L3 quality verdict.
+
+Across the six trace-on processes, measured means were 21.2525 s prefill compute,
+23.6924 s WRAP timeline, 23.6325 s WRAP copy, 5.5 ms after WRAP to finalize
+return, 6.5 ms finalize-to-sync-return, 17.1 ms to decode entry and 531.8 ms for
+the first eval. Prompt-to-first-token mean was 45.6148 s. Normal time after WRAP
+terminal through session-sync return is therefore about 12 ms, not tens of
+seconds.
+
+No G47 process reproduced the earlier 200-370 second TTFT events, so their cause
+remains unmeasured. G47 does establish that the label "post-WRAP stall" is not
+supported for normal runs and is ready to localize the next reproduced event.
+
+Verdict: exact, operational opt-in telemetry with measured combined overhead
+below one percent. Enable for controlled diagnostics; disable for final
+performance verdicts unless a paired trace-off arm is present.
+
+Native report: `G47_REQUEST_PHASE_TRACE_RESULTS.md`; runner:
+`g47_phase_trace_overhead_ab.ps1`; summaries:
+`g7_runs/g47_phase_trace_overhead_ab_result.json` and
+`g7_runs/g47_phase_trace_outlier_recheck_result.json`; native commit:
+`134a984`.

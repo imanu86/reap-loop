@@ -873,6 +873,30 @@ bottleneck is unchanged: 10,859 pinned-RAM routes and 71.58 GiB of repeated
 H2D in 64 decode tokens. Full report: `G46_NO_DEFAULT_SYNC_RESULTS.md`, native
 commit `b9fa97f`.
 
+### Rank 1/6 diagnostic checkpoint: G47 localizes normal TTFT phases
+
+G47 adds opt-in CPU monotonic timestamps around session sync, prefill finalize,
+WRAP copy, decode entry and first token. It adds no GPU readback, CUDA event,
+allocation or synchronization. The trace-off arm emits no phase lines; the
+trace-on harness requires 16 ordered events for the controlled one-request
+protocol.
+
+The primary `n=3` matrix showed lower first samples in both arms, so the
+permanent outlier rule added three independent processes to each arm. Combined
+`n=6` means were 4.4667 t/s trace-off and 4.4500 t/s trace-on (-0.37%); medians
+were 4.500 and 4.465 t/s (-0.78%). All 12 outputs were hash-exact, with identical
+5,653 VRAM routes, 10,859 pinned-RAM routes, 71.5803 GiB H2D and zero SSD.
+
+The six traced runs measured 21.2525 s mean prefill compute and 23.6924 s WRAP.
+After WRAP terminal, finalize return took 5.5 ms and session-sync return another
+6.5 ms on average. First eval was 531.8 ms. Thus normal TTFT is dominated by
+prefill plus WRAP, not a post-WRAP interval.
+
+The prior 200-370 second TTFT outlier was not reproduced, so its source remains
+unknown. G47 is accepted as low-overhead diagnostic instrumentation, not as a
+throughput lever. Full report: `G47_REQUEST_PHASE_TRACE_RESULTS.md`, native
+commit `134a984`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -962,23 +986,24 @@ commit `63ba10d`.
 17. **No-default-sync route handoff done, G46:** exact `n=3` per arm raised
     decode 4.4600 -> 4.5633 t/s (+2.32%) with identical route counts, H2D,
     residency and zero SSD. Keep opt-in pending cross-prompt exactness.
-18. **G46 promotion and TTFT localization next:** run the accepted no-sync
-    mechanism on multiple prompt shapes while adding timestamped phases after
-    WRAP publication. Do not mix the diagnostic instrumentation into a
-    throughput verdict until its overhead is measured.
-19. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
+18. **TTFT phase diagnostic done, G47:** exact combined `n=6` per arm measured
+    trace overhead below one percent. Normal post-WRAP-to-sync-return time is
+    about 12 ms; the intermittent 200-370 s event was not reproduced.
+19. **G46 cross-prompt promotion next:** run no-default-sync on multiple prompt
+    shapes with exact hashes. Use G47 only in paired diagnostic arms.
+20. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
     and 71.58 GiB H2D with true hit/miss separation or amortized physical
     rotation. Preserve the request-scoped closed snapshot and zero SSD.
-20. **P4-D next:** restore tile-capable wave kernels without changing G39's
+21. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-21. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+22. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-22. Only then return to physical REAP rotation and SPEX transfer composition.
+23. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
