@@ -105,6 +105,20 @@ standalone verdict because it includes the one-time seed upload.
 Fill `$k60Model` and optional `$k60Pack` only from the final verified handoff.
 Do not infer paths from partial downloads.
 
+The `SparseFile` attribute alone is not evidence of physical sparsity. Before
+launching G57, the verified handoff must also prove all of the following:
+
+- `fsutil sparse queryrange` reports allocated ranges separated by real holes,
+  rather than one allocated range covering `[0, EOF]`;
+- `GetCompressedFileSize` (or an equivalent allocation query) is materially
+  smaller than the logical file size;
+- payload SHA-256, manifest CRC and mask CRC still match after sparsification;
+- the target volume has enough free space for the run without paging or
+  emergency allocation pressure.
+
+If any condition fails, do not launch DS4. Fix or re-unpack the sparse model
+with explicit hole punching (`FSCTL_SET_ZERO_DATA`) and repeat every gate.
+
 ```powershell
 $k60Model = "<verified local K60 sparse GGUF path>"
 $k60Pack = "<verified local K60 ds4pack path, or empty if independently verified>"
@@ -132,6 +146,8 @@ claim is permitted.
 - Stop immediately on any hash, mask-fingerprint or provenance mismatch.
 - Stop on any contamination preflight/runtime abort; do not count the row.
 - Stop on any snapshot miss, SSD byte, absent sparse expert read or tier error.
+- Stop if an allegedly sparse model has no physical holes or allocated bytes
+  equal its logical size.
 - Never resume rows produced by a different runner/executable/build hash.
 - Commit raw summaries and the ledger interpretation before implementing the
   next lever.
