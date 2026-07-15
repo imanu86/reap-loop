@@ -1417,11 +1417,22 @@ Per-run decode was 256: 4.44, 4.44, 4.43 t/s; 320: 4.48, 4.48, 4.47 t/s. The
 64 extra slots replaced exactly 524 pinned-RAM routes with VRAM hits over
 64 generated tokens and removed 3.454 GiB of H2D traffic.
 
-TTFT caveat: `g45_stable_cache256_c` reported 377.736 s TTFT while decode
-remained 4.43 t/s. Its source-parts WRAP interval was only 23.084 s, so the
-stall is outside WRAP and before first token. Current telemetry localizes it
-only as an unlocalized prefill/WDDM stall; TTFT mean is not used for the cache
-verdict.
+TTFT caveat and recheck: `g45_stable_cache256_c` reported 377.736 s TTFT while
+decode remained 4.43 t/s and WRAP was only 23.084 s. Three required independent
+cache256 rechecks measured:
+
+| Recheck | TTFT s | WRAP s | TTFT - WRAP s | Decode t/s |
+|---|---:|---:|---:|---:|
+| A | 42.959 | 22.481 | 20.478 | 4.42 |
+| B | 42.569 | 22.065 | 20.504 | 4.44 |
+| C | 226.664 | 21.979 | 204.685 | 4.41 |
+
+All three were exact, capacity256, zero snapshot misses, zero SSD and zero
+failures, with the same 5,129 VRAM hits and 11,383 pinned-RAM hits. Recheck C
+reproduced the stall while WRAP and decode stayed normal. Two of six measured
+cache256 processes therefore have a recurrent unlocalized pre-first-token
+stall. This does not establish a cache256 correlation because only three
+cache320 processes exist. TTFT mean is not used for the cache verdict.
 
 Provenance: measured parent
 `a8e48d7c4872e406f5f5a3764d45660315a0f687`; executable SHA-256
@@ -1436,7 +1447,9 @@ SHA-256 `235d4220e3903425ae55c32cec950a01a58bf601f6b55d80c2784995aa069533`;
 execution runner SHA-256
 `23699ea6251ad4bffb5e03d077de0fdfa9be9095c55ac15171e680463132a31d`;
 corrected summary runner SHA-256
-`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`.
+`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`;
+TTFT recheck runner SHA-256
+`75fdf15e0747a6f4724e42af9014b778c392b5932a7296a34eebd7d7354dcf6e`.
 The first summary had a PowerShell median-index bug; the corrected summary was
 regenerated from the same six per-run JSON files without repeating runtime
 measurement.
@@ -1448,9 +1461,13 @@ small consistent decode gain and a larger direct mechanism improvement at about
 gate should remove only the redundant default-stream synchronization in the
 GPU-resident route handoff, relying on the existing mapped request sequence and
 worker-ready publication. It must be opt-in, no-default-sync, exact-safe first,
-and promoted only after an `n>=3` A/B.
+and promoted only after an `n>=3` A/B. In parallel, add phase telemetry after
+WRAP publication to localize the recurrent 204-355 s unexplained interval.
 
 Native report: `G45_DIRECT_RESIDENT_CACHE_RESULTS.md`; primary artifacts:
 `g45_direct_resident_cache_ab.ps1`,
+`g45_ttft_outlier_recheck.ps1`,
 `g7_runs/g45_direct_resident_cache_ab_result.json` and
-`g7_runs/g7_g45_stable_cache{256,320}_{a,b,c}_result.json`.
+`g7_runs/g45_ttft_outlier_recheck_result.json`,
+`g7_runs/g7_g45_stable_cache{256,320}_{a,b,c}_result.json` and
+`g7_runs/g7_g45_cache256_ttft_recheck_{a,b,c}_result.json`.

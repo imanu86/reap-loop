@@ -796,10 +796,15 @@ of H2D traffic. This is a small but replicated decode win and a clearer direct
 mechanism win, at about 441 MiB additional peak VRAM.
 
 One 256 run reported a 377.736 s TTFT while decode stayed 4.43 t/s and the
-source-parts WRAP interval was only 23.084 s. The stall is an unlocalized
-prefill/WDDM event before first token, so TTFT mean is not used for the cache
-verdict. The 64-token output is a deterministic prefix transport test only; it
-does not claim complete HTML or L0-L3 quality.
+source-parts WRAP interval was only 23.084 s. Per the outlier rule, three more
+independent cache256 processes were run: TTFT was 42.959, 42.569 and 226.664 s;
+WRAP was 22.481, 22.065 and 21.979 s; decode was 4.42, 4.44 and 4.41 t/s. Thus
+the stall recurred and is real: two of six cache256 processes showed a large
+unexplained pre-first-token interval, while WRAP and decode remained normal.
+All rechecks were exact and zero-SSD. This does not prove a cache256
+correlation because only three cache320 processes exist. TTFT mean is not used
+for the cache verdict. The 64-token output is a deterministic prefix transport
+test only; it does not claim complete HTML or L0-L3 quality.
 
 Provenance: measured parent
 `a8e48d7c4872e406f5f5a3764d45660315a0f687`; executable SHA-256
@@ -812,7 +817,9 @@ SHA-256 `235d4220e3903425ae55c32cec950a01a58bf601f6b55d80c2784995aa069533`;
 runner SHA-256
 `23699ea6251ad4bffb5e03d077de0fdfa9be9095c55ac15171e680463132a31d`;
 corrected summary runner SHA-256
-`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`.
+`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`;
+TTFT recheck runner SHA-256
+`75fdf15e0747a6f4724e42af9014b778c392b5932a7296a34eebd7d7354dcf6e`.
 
 Verdict: 320 protected expert slots are the best measured reproducible capacity
 for the current RTX 3060 configuration. Keep 336 rejected for default use. The
@@ -821,6 +828,10 @@ the GPU-resident route handoff, relying on the mapped request sequence and
 worker-ready publication. It must remain opt-in, no-default-sync, exact-safe
 first, and only then run an `n>=3` A/B. Full report:
 `G45_DIRECT_RESIDENT_CACHE_RESULTS.md`.
+
+In parallel, add phase telemetry after WRAP publication to localize the
+recurrent 204-355 s unexplained interval. Keep that diagnostic separate from
+the cache320 transport verdict.
 
 ### Rank 8 SPEX CPU speculation test
 
