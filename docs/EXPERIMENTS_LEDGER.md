@@ -1922,8 +1922,17 @@ The dedicated runner is a single functional/profile run, not an n=3 benchmark.
 Its purpose is to choose whether bounded range coalescing has enough structural
 headroom to justify implementation before another performance matrix.
 
+Pre-run hardening commit
+[`06ddc61`](https://github.com/imanu86/ds4-win/commit/06ddc61)
+requires the actual request-scoped closed-mask contract, a present candidate
+fingerprint, and `no_default_sync_calls == route_calls` with zero default-sync
+or route errors. The fingerprint is included in the profile validation output.
+This keeps the metadata observation from silently profiling a different mask
+or route handoff.
+
 Native commit:
-[`7c66418`](https://github.com/imanu86/ds4-win/commit/7c66418).
+[`7c66418`](https://github.com/imanu86/ds4-win/commit/7c66418),
+[`06ddc61`](https://github.com/imanu86/ds4-win/commit/06ddc61).
 
 ## 2026-07-15 Native Windows G57 Sparse K60/K75 Runtime Guards
 

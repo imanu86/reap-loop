@@ -1089,7 +1089,8 @@ commit `63ba10d`.
     the matrix reject mask-fingerprint or QD1/QD>1 counter-contract mismatch.
 25. **G56 layout profile next when quiescent:** one metadata-only profile will
     determine whether bounded range coalescing has structural headroom. It is
-    not a throughput run and cannot authorize a performance claim.
+    not a throughput run and cannot authorize a performance claim. Commit
+    `06ddc61` requires closed-mask, fingerprint and no-default-sync contracts.
 26. **G57 sparse K60 safety pending external verification:** runtime guards,
     parser tests and safety runner are ready. Do not launch before exact local
     SHA, NTFS sparse unpack, manifest inspection and literal `GPU/DISCO LIBERI`.
