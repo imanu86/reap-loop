@@ -125,8 +125,9 @@ on a different RTX 3090 node and reached about 9.7 t/s. Node, GPU, and storage
 differences confound that number; none is a native-Windows result.
 
 Post-test protocol audit found that the candidate masks were ranked from every
-prefill position of six uncensored K0 coding prompts but only six decode tokens
-per prompt. They are therefore prompt/prefill-informed masks, not masks learned
+prefill position of six uncensored K0 coding prompts but only one decode token
+per prompt. The CSV `n=6` field is router top-k width, not a decode-token count.
+They are therefore prompt/prefill-informed masks, not masks learned
 over complete long K0 generations. This is a material limitation and the next
 candidate selection must include full-decode routing mass before another bake
 decision.

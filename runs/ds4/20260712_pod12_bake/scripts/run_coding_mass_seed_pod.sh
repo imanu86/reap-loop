@@ -8,6 +8,11 @@ MODEL=${MODEL:-/root/models/ds4-2bit.gguf}
 OUT=${OUT:-$REPO/runs/ds4/20260712_pod12_bake/coding_mass_prefill_seed_20260715}
 PORT=${PORT:-18082}
 PROMPT_SPLIT=${PROMPT_SPLIT:-learn}
+PROMPT_IDS=${PROMPT_IDS:-}
+MAX_TOKENS=${MAX_TOKENS:-1}
+CONTEXT=${CONTEXT:-2048}
+BUILD_MASKS=${BUILD_MASKS:-1}
+REAP_COMMIT=${REAP_COMMIT:-}
 MASK_BUILDER=$REPO/runs/ds4/20260712_virtual_bake/scripts/build_mass_mask.py
 ROUTE_CSV="$OUT/${PROMPT_SPLIT}_route.csv"
 
@@ -18,7 +23,7 @@ fi
 mkdir -p "$OUT/$PROMPT_SPLIT" "$OUT/masks"
 test -x "$BIN"
 test -s "$MODEL"
-test -f "$MASK_BUILDER"
+if [[ "$BUILD_MASKS" == 1 ]]; then test -f "$MASK_BUILDER"; fi
 
 python3 - "$OUT/prompts.json" <<'PY'
 import json
@@ -72,14 +77,26 @@ env | LC_ALL=C sort > "$OUT/server_env.txt"
 {
     printf 'binary_sha256='; sha256sum "$BIN" | awk '{print $1}'
     printf 'model_size='; stat -c %s "$MODEL"
-    printf 'reap_commit='; git -C "$REPO" rev-parse HEAD
     printf 'prompt_split=%s\n' "$PROMPT_SPLIT"
+    printf 'prompt_ids=%s\n' "$PROMPT_IDS"
+    printf 'max_tokens=%s\n' "$MAX_TOKENS"
+    printf 'context=%s\n' "$CONTEXT"
+    printf 'build_masks=%s\n' "$BUILD_MASKS"
     printf 'started_utc='; date -u +%FT%TZ
 } > "$OUT/manifest.txt"
 
+if [[ -n "$REAP_COMMIT" ]]; then
+    printf 'reap_commit=%s\n' "$REAP_COMMIT" >> "$OUT/manifest.txt"
+elif git -C "$REPO" rev-parse HEAD >/dev/null 2>&1; then
+    printf 'reap_commit=' >> "$OUT/manifest.txt"
+    git -C "$REPO" rev-parse HEAD >> "$OUT/manifest.txt"
+else
+    printf 'reap_commit=unknown\n' >> "$OUT/manifest.txt"
+fi
+
 "$BIN" -m "$MODEL" --cuda --ssd-streaming \
     --ssd-streaming-cache-experts 1024 --prefill-chunk 512 \
-    -c 2048 -n 256 --host 127.0.0.1 --port "$PORT" --cors \
+    -c "$CONTEXT" -n "$((MAX_TOKENS + 128))" --host 127.0.0.1 --port "$PORT" --cors \
     >"$OUT/server.stdout.log" 2>"$OUT/server.stderr.log" &
 SERVER_PID=$!
 echo "$SERVER_PID" > "$OUT/server.pid"
@@ -98,15 +115,21 @@ if [[ "$ready" != 1 ]]; then
     exit 1
 fi
 
-python3 - "$OUT/prompts.json" "$OUT/$PROMPT_SPLIT" "$PORT" "$PROMPT_SPLIT" <<'PY'
+python3 - "$OUT/prompts.json" "$OUT/$PROMPT_SPLIT" "$PORT" "$PROMPT_SPLIT" "$PROMPT_IDS" "$MAX_TOKENS" <<'PY'
 import json
 import pathlib
 import sys
 import time
 import urllib.request
 
-prompts_path, out_dir, port, split = sys.argv[1], pathlib.Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4]
+prompts_path, out_dir, port, split, prompt_ids, max_tokens = sys.argv[1], pathlib.Path(sys.argv[2]), int(sys.argv[3]), sys.argv[4], sys.argv[5], int(sys.argv[6])
 items = json.load(open(prompts_path, encoding="utf-8"))[split]
+if prompt_ids:
+    selected = set(prompt_ids.split(","))
+    items = [item for item in items if item["id"] in selected]
+    missing = selected - {item["id"] for item in items}
+    if missing:
+        raise SystemExit(f"unknown prompt ids: {sorted(missing)}")
 url = f"http://127.0.0.1:{port}/v1/chat/completions"
 for item in items:
     payload = {
@@ -115,7 +138,7 @@ for item in items:
             {"role": "system", "content": "Rispondi direttamente, senza ragionamento visibile."},
             {"role": "user", "content": item["prompt"]},
         ],
-        "max_tokens": 1,
+        "max_tokens": max_tokens,
         "temperature": 0,
         "stream": False,
         "think": False,
@@ -141,7 +164,7 @@ SERVER_PID=""
 trap - EXIT
 
 test -s "$ROUTE_CSV"
-if [[ "$PROMPT_SPLIT" == "learn" ]]; then
+if [[ "$PROMPT_SPLIT" == "learn" && "$BUILD_MASKS" == 1 ]]; then
     for spec in 154:k60 160:k62_5 166:k65; do
         keep=${spec%%:*}
         name=${spec##*:}
