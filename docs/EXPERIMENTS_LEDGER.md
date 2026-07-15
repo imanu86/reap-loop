@@ -1026,25 +1026,79 @@ tile-capable wave kernels. Native report: `G38_PREFILL_WAVES_RESULTS.md`;
 matrix SHA-256:
 `22fbd216fad414d7bf828e53f3ac104f1ecf710cf4a33236e70445a00ac9747c`.
 
-## Planned: Prompt-Intent Router Prior
+## 2026-07-15 Native Windows G39 Double-Buffered Prefill Waves
+
+Question: can G38 upload wave N+1 while wave N computes, preserving the complete
+per-layer expert union and final ordered six-route sum?
+
+Implementation: opt-in `DS4_CUDA_PREFILL_WAVE_DOUBLE_BUFFER=1` owns two parity
+sets of gate/up/down slabs, route-slot and active-pair arrays, upload-ready
+events and compute-done events. Parity ownership persists across layer
+boundaries. A post-matrix review found two latent error-path races; accepted
+code fences a prior upload before slab resize and seals or drains already
+enqueued parity work after a failed launch.
+
+Setup: native Windows RTX 3060 12 GB, `ds4-2bit.gguf`, 43-token cyberpunk HTML
+prompt, context 256, max 12, cache336 LRU, GPU-resident decode routes, 2 GiB
+stream budget, Q8-F16 off, embed-row staging on. Tiering, dynamic arena, REAP,
+mask, SPEX and split hit/miss were off. Counter-order was
+`serial/overlap/production/production/overlap/serial`, with one discarded
+warmup and `n=3` measured requests per process.
+
+| Arm | TTFT | Client t/s | Decode t/s | Process reads | Peak dedicated VRAM |
+|---|---:|---:|---:|---:|---:|
+| production | 7.862 s | 0.8759 | 2.0533 | 164.45 GiB | 10.900 GiB |
+| serial wave31 | 10.388 s | 0.8192 | 2.8200 | 131.32 GiB | 10.437 GiB |
+| overlap wave31 | 8.583 s | 0.9308 | 2.7883 | 131.31 GiB | 10.642 GiB |
+
+All 18 measured outputs and six warmups matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Overlap improved TTFT 17.38% versus serial wave31 but remained 9.18% behind
+production. Both overlap replications reported 456 waves, 454 parity reuse
+fences, 456 compute records and zero failures. A post-review `IoQD=2` `n=1`
+probe was exact across 42 layers and 114 waves; it is mechanism evidence only.
+
+Measured residency limitation: the isolated wave arms did not admit prefill
+experts into the decode cache. Each four-request process reported 2,016 route
+calls, only 24 all-hit calls, 1,992 miss-worker jobs and 7,141 missing experts.
+The next gate composes production full-chunk prefill with G36 mass/LFRU on this
+same workload before judging end-to-end SOTA. Native report:
+`G39_PREFILL_WAVE_OVERLAP_RESULTS.md`; commits `78f50cb`, `5633856`; final matrix
+SHA-256 `b1f6ed162a42f772ccb42f60087fdc38aabc87507fd7dcae33b29f2a307fbfd1`.
+
+## Planned: Request-Scoped Prompt-Intent Closed Arena
 
 Hypothesis, not a result: on a transport-bound host, a request such as an HTML
 page with CSS and JavaScript can be decomposed into a few semantic intent shards.
 Short unbiased router probes over those shards may expose the per-layer expert
-mass needed by the upcoming job early enough to preload a better RAM/VRAM set.
+mass needed by the upcoming job early enough to build one closed RAM/VRAM set.
 
-The probes are placement hints only. They must not create independent generated
-continuations, alter the original prompt, narrow routing, or merge incompatible
-KV caches. The original request still receives one normal exact prefill.
+The candidate is request-scoped, not a reusable static domain mask. Aggregate
+unbiased per-layer mass, select a complete set that fits pinned RAM plus VRAM,
+place the highest-mass subset in VRAM and the remainder in pinned RAM, then make
+outside experts ineligible for that request. Discard and rebuild the set when
+intent changes. The probes must not create independent generated continuations,
+alter the original prompt or merge incompatible KV caches. The original request
+still receives one normal prefill under the candidate set.
+
+Existing code already has unbiased prefill mass observation, transactional
+pinned-arena publication, mass/LFRU VRAM protection and a static REAP bias-mask
+actuator. Missing code is the request-scoped closed-set owner, an in-memory
+per-request bias API and a true router-only/early-exit semantic probe.
 
 Required A/B:
 
 - control: one original prefill;
-- candidate: all shard-probe time plus preload plus the same original prefill;
+- candidate: all shard-probe, set-build and preload time plus the same original
+  prefill and decode under the closed set;
 - same build, prompt, cache state and expected output hash, with `n>=3`;
 - report end-to-end TTFT including probes, probe-only time, cold misses,
-  SSD-to-RAM bytes, RAM-to-VRAM bytes, peak memory and decode throughput.
+  SSD-to-RAM bytes, RAM-to-VRAM bytes, set size per layer, mass coverage,
+  outside-set selections, peak memory and decode throughput;
+- for long coding deliverables, grade every output L0-L3 and report the last
+  coherent token; a short exact-prefix hash is not a quality verdict.
 
-Pass only if the complete candidate path improves measured end-to-end TTFT or
-another declared primary metric without changing exact output. A router-only or
-early-exit probe should be tested before any repeated full-prefill design.
+Pass only if the complete candidate path improves a declared end-to-end metric
+without degrading exactness or L0-L3 quality. Outside-set selections must be
+zero by construction, and all probe/build/preload cost is charged. Test a
+router-only or early-exit probe before any repeated full-prefill design.

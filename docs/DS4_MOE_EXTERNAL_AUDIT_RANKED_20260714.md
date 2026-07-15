@@ -20,9 +20,9 @@ Current DS4 worktree:
 
 - repository: `C:/Users/imanu/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/ds4-win-work`
 - branch: `port/windows-dynamic-arena-0051`
-- HEAD: `c4bb45d`
-- warning: `ds4.c`, `ds4_cuda.cu`, `ds4_gpu.h` and `g7_measure.ps1` are modified;
-  the line references in this report describe that working tree, not only HEAD.
+- HEAD: `5633856`
+- G39 was measured from base `78f50cb` plus the reviewed hardening committed as
+  `5633856`; source, executable, manifest and matrix hashes pin that state.
 
 External snapshots audited:
 
@@ -573,6 +573,40 @@ upload N+1 with compute N, and restore tile-capable wave kernels without changin
 the full-union or final ordered-sum contracts. Full report:
 `G38_PREFILL_WAVES_RESULTS.md` in the native Windows repo.
 
+### Rank 4 measured checkpoint: G39 exact double-buffered waves
+
+G39 adds opt-in `DS4_CUDA_PREFILL_WAVE_DOUBLE_BUFFER=1` on top of G38. Two
+parity-owned weight and metadata slabs allow upload of wave N+1 after compute N
+is launched. Persistent compute events fence reuse across layer boundaries. A
+post-matrix review found and fixed two latent failure-path races: slab resize now
+fences any prior upload, and failed mid-wave launches seal or drain already
+enqueued parity work.
+
+The accepted counter-ordered rerun used the same 43-token cyberpunk prompt,
+cache336 LRU, one discarded warmup and `n=3` measured requests per process. All
+18 measured outputs and six warmups matched exact hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+
+| Arm | TTFT | Client t/s | Decode t/s | Process reads | Peak VRAM |
+|---|---:|---:|---:|---:|---:|
+| production | 7.862 s | 0.8759 | 2.0533 | 164.45 GiB | 10.900 GiB |
+| serial wave31 | 10.388 s | 0.8192 | 2.8200 | 131.32 GiB | 10.437 GiB |
+| overlap wave31 | 8.583 s | 0.9308 | 2.7883 | 131.31 GiB | 10.642 GiB |
+
+Overlap recovered 17.38% TTFT and 13.62% client throughput versus the same
+serial wave path, with effectively unchanged reads. It remained 9.18% slower
+than production TTFT while reading 20.15% fewer bytes. Both overlap replications
+recorded 456 waves, 454 parity reuse fences, 456 compute records and zero
+failures. A post-review `IoQD=2` probe was also exact across 42 layers and 114
+waves; it is mechanism evidence only.
+
+The isolated G39 decode path deliberately did not admit prefill experts into
+the cache. Each four-request wave process measured only 24 all-hit calls out of
+2,016 route calls, 1,992 miss-worker jobs and 7,141 missing experts. This is a
+measured reason to compose G36 mass/LFRU and later test a request-scoped closed
+arena; it is not evidence against the overlap mechanism. Full report:
+`G39_PREFILL_WAVE_OVERLAP_RESULTS.md`, native commits `78f50cb` and `5633856`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -637,13 +671,22 @@ commit `63ba10d`.
 9. **P4-B code/A-B commit (done, G38; exact mechanism, negative serial v1):**
    full-union waved prefill passed exactness but regressed production TTFT
    38.56%; keep opt-in and proceed only to isolated double-buffer overlap.
-10. **P4-C next:** double-buffer/upload overlap and tile-capable wave kernels.
-11. **Prompt-intent preload gate:** split one request into semantic router-only
-   probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
-   run the unchanged original prompt once. Account probe time inside TTFT and
-   compare exact output, cold misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not
-   generate separate shard continuations or attempt to merge their KV caches.
-12. Only then return to physical REAP rotation and SPEX transfer composition.
+10. **P4-C code/A-B commit (done, G39; exact overlap, not production TTFT):**
+    double buffering recovered 17.38% versus serial wave31 but remained 9.18%
+    behind production. Post-review failure ownership was hardened in `5633856`.
+11. **Composed SOTA gate next:** production full-chunk prefill plus G36
+    mass/LFRU on the same cyberpunk prompt and cache state; measure prefill,
+    decode, route misses and exactness together instead of comparing separate records.
+12. **P4-D next:** restore tile-capable wave kernels without changing G39's
+    full-union, ordered-sum or parity-ownership contracts.
+13. **Prompt-intent closed-arena gate:** split one request into semantic router-only
+    probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
+    build a request-scoped closed set whose complete payload fits pinned RAM plus
+    VRAM. Outside experts become ineligible only for that request. Account probe,
+    build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
+    misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
+    continuations or attempt to merge their KV caches.
+14. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
@@ -655,7 +698,9 @@ Stop conditions:
 ## Deferred or rejected for now
 
 - K8 direct/bake: paused by user decision.
-- Static domain masks: rejected.
+- Reusable/cross-session static domain masks: rejected. A mask built from
+  unbiased probes for one request and discarded on intent change remains a
+  planned closed-arena experiment, not a reusable domain mask.
 - Learned prompt/mask predictors: rejected.
 - AirLLM whole-layer streaming: wrong exchange granularity.
 - Global expert LRU: G9 measured zero hits and a regression at 32/96 slots.
