@@ -892,3 +892,58 @@ causes high churn, so it is not yet the final policy. Next A/B: slow-clock
 mass/LFRU admission plus hysteresis, with exactness, zero cold-to-VRAM and lower
 promotion/demotion counts as hard gates. Native-Windows commit: `083c305`; full
 report: `G35_REAL_EXPERT_TIERING_RESULTS.md` in that repo.
+
+## 2026-07-15 Native Windows G36 Mass/LFRU Slow-Clock Tiering
+
+Question: can a mass/frequency/recency policy preserve the exact G35 tier path
+while reducing VRAM churn and improving throughput?
+
+Setup: native Windows RTX 3060 12 GB, model
+`C:\ds4-models\ds4-2bit.gguf`, prompt `Hi`, context 256, max 12 (EOS after 9),
+cache336 LRU, GPU-resident routes, 8 GiB exclusive pinned arena, 2 GiB stream
+window, Q8-F16 off and embedding-row staging on. REAP, SPEX, masks, split
+hit/miss and other observers were disabled.
+
+Policy under test:
+
+```text
+DS4_EXPERT_TIERING=enforce
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=16
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+```
+
+The final runner used order
+`second-touch/mass-lfru/mass-lfru/second-touch`, with one discarded warmup and
+`n=3` measured requests in every process. It compared complete build, harness
+and model provenance before aggregation. All 12 measured outputs and all four
+warmups matched exact hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+
+| Metric | G35 second-touch | G36 mass/LFRU | Delta |
+|---|---:|---:|---:|
+| Server decode | 4.9483 t/s | 5.5567 t/s | +12.29% |
+| Client throughput | 2.8195 t/s | 3.0439 t/s | +7.96% |
+| Warmup | 11.498 s | 11.384 s | -0.114 s |
+| VRAM hits | 3,984 | 5,089 | +27.74% |
+| VRAM promotions | 4,299 | 384 | -91.07% |
+| VRAM demotions/replacements | 3,963 | 48 | -98.79% |
+| Transient routes | 1,005 | 3,815 | +279.60% |
+| RAM H2D | 34.963 GiB | 27.679 GiB | -20.83% |
+| Process reads | 31.001 GiB | 31.001 GiB | unchanged |
+
+Both candidate processes recorded 336 free-slot promotions, 48 replacements,
+three policy epochs, 2,010 minimum-frequency skips, 1,753 budget skips, 52
+score/hysteresis skips, 1,005 cold-to-RAM transitions, zero cold-to-VRAM
+transitions and zero failures. A post-review `observe` regression smoke also
+passed exactness after policy accounting was correctly limited to enforce mode.
+
+Verdict: exact positive mechanism and short-prompt throughput result. The equal
+31.001 GiB process reads show that G36 does not avoid the initial cold admission;
+it wins by stabilizing the VRAM hotset and reducing repeated H2D. Do not call it
+universal yet: one deterministic prompt and one parameter set were measured.
+Required follow-up is a longer exact workload and a domain switch. Native commit:
+`b1ef49c`; full report: `G36_MASS_LFRU_TIERING_RESULTS.md`; matrix SHA-256:
+`877eb5a6bffd9c61c041b805e972433057a02866db30bb254912d5271bb6dbf5`.

@@ -472,6 +472,43 @@ cold-to-VRAM invariant while reducing promotions and demotions.
 Full protocol, provenance and result hashes are in
 `G35_REAL_EXPERT_TIERING_RESULTS.md` at native-Windows commit `083c305`.
 
+### Rank 3 policy checkpoint: G36
+
+Native-Windows commit `b1ef49c` adds opt-in
+`DS4_EXPERT_TIER_POLICY=mass-lfru` without changing the G35 cold-to-RAM data
+path. It fills free VRAM slots after three observed uses, then evaluates
+replacement candidates over a 430-call clock with a budget of 16 physical
+changes. Candidate and victim are compared with a mass/frequency/recency score
+and a 1.25 hysteresis factor. Rejected experts remain in pinned RAM and use the
+exact transient route.
+
+The final counter-ordered matrix used
+`second-touch/mass-lfru/mass-lfru/second-touch`, one discarded warmup and `n=3`
+measured requests per process. The runner fails closed if any process differs in
+HEAD, executable, CUDA source, build manifest, compile-input fingerprint,
+harness or model provenance. All 12 measured outputs and four warmups matched
+the expected exact hash.
+
+| Metric | G35 second-touch | G36 mass/LFRU | Delta |
+|---|---:|---:|---:|
+| Server decode | 4.9483 t/s | 5.5567 t/s | +12.29% |
+| Client throughput | 2.8195 t/s | 3.0439 t/s | +7.96% |
+| VRAM hits | 3,984 | 5,089 | +27.74% |
+| VRAM replacements | 3,963 | 48 | -98.79% |
+| RAM H2D | 34.963 GiB | 27.679 GiB | -20.83% |
+| Process reads | 31.001 GiB | 31.001 GiB | unchanged |
+
+Both G36 arms retained 336 VRAM residents, admitted 1,005 cold experts to RAM,
+recorded zero cold-to-VRAM transitions and zero failures. The unchanged process
+reads isolate the gain to hotset stability and lower RAM-to-GPU churn, not fewer
+initial model reads.
+
+Verdict: exact positive short-workload checkpoint. Keep the policy opt-in because
+only one deterministic prompt and one parameter set are measured. The next
+policy gate is a longer exact workload plus a domain switch; the next independent
+transport lever remains batch-union/waved prefill. Full report:
+`G36_MASS_LFRU_TIERING_RESULTS.md` at native commit `b1ef49c`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -528,8 +565,9 @@ commit `63ba10d`.
    miss `off/k=1/k=2`; keep opt-in, do not compose into the runtime policy.
 6. **P3 code/A-B commit (done, G35; exact, positive):** physical cold-to-RAM
    admission plus VRAM promotion/demotion and mass/LFRU telemetry.
-7. **P3 policy commit:** slow-clock mass/LFRU admission with hysteresis, measured
-   against G35 second-touch promotion.
+7. **P3 policy commit (done, G36; exact, positive on short workload):**
+   slow-clock mass/LFRU admission reduced replacements 3,963 -> 48 and raised
+   server decode 4.948 -> 5.557 t/s. Longer/domain-switch validation remains.
 8. **P4 code commit:** prefill union and then waves as separate toggles.
 9. Only then return to physical REAP rotation and SPEX transfer composition.
 
