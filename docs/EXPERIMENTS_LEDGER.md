@@ -1274,3 +1274,55 @@ runner commit `4640c33`; runner SHA-256
 `86af52a4e82e99ae5ee9dd06aaa321fc70f8d4c67d5935cd128eff5608ccbc2c`;
 matrix SHA-256
 `9e09e68d5c6a9e4e4c815f55f15b691a07aa79338ab5d2981c8a4a9911d4fa79`.
+
+## 2026-07-15 Native Windows G43 WRAP Worker Checksum
+
+Question: can G42 snapshot publication avoid a second serial read of the full
+30 GiB pinned arena by trusting the FNV checksum already computed after each
+worker copies its complete expert slot?
+
+Implementation: the default public finish path is unchanged and still computes
+the second checksum. Opt-in `DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1`
+stores the checksum produced by each copy worker after the full slot copy. All
+workers are joined before finish and transactional publication. Invalid values
+disable the option. WRAP telemetry now separates begin, copy plus worker
+checksum, finish, publish and total time.
+
+Protocol: exact G42 closed-snapshot configuration, native Windows RTX 3060
+12 GiB, 64 GiB RAM, same cyberpunk prompt, context 256, max 12, 30 GiB pinned
+arena, 4,551 entries, eight workers, cache256 mass/LFRU, 1,024 MiB load reserve,
+Q8-F16 off and zero allowed SSD fallback. Three independent one-request
+processes per arm, no warmup, counter-order verify A, worker A, worker B,
+verify B, verify C, worker C.
+
+| Metric | Finish verify | Worker checksum | Delta |
+|---|---:|---:|---:|
+| TTFT | 86.028 s | 47.355 s | -38.673 s (-44.95%) |
+| WRAP total | 65.214 s | 27.251 s | -37.963 s (-58.21%) |
+| Copy plus worker checksum | 32.758 s | 27.236 s | -5.522 s |
+| Finish checksum | 32.433 s | 0.001 s | -32.432 s |
+| Server decode | 4.093 t/s | 4.093 t/s | 0.00% |
+| Process reads | 23.598 GiB | 23.211 GiB | -0.387 GiB |
+
+All six runs matched exact output hash
+`921a62bdb39d9d07161326274fcbc0070f3c4b9e75153d27b1b6dc96811f6e88`.
+Every run measured 886 VRAM hits and 2,210 pinned-RAM hits. Snapshot misses,
+cold admissions, SSD bytes and tier failures were zero in both arms.
+
+Negative/variability evidence: an earlier mechanism run on a cold page-fault
+state spent 253.623 s in copy plus worker FNV and 32.347 s in finish, for
+286.070 s total, while retaining exact output, zero SSD and 4.01 t/s decode.
+The accepted matrix still measured 23.003-40.565 s copy variation, whereas the
+removed finish pass was stable at 31.821-33.565 s.
+
+Verdict: exact positive end-to-end startup optimization for the measured G42
+transport gate. The next isolated lever is a globally source-ordered or
+part-major first-copy schedule. Preserve the 1,024 MiB reserve and zero-SSD
+contracts; the 30 GiB arena still left only 0.226-0.325 GiB mean minimum RAM
+headroom across arms.
+
+Native report: `G43_WRAP_CHECKSUM_RESULTS.md`; implementation/runner commit
+`4a3b792`; runner SHA-256
+`5ca8f15395505b6e808b7dc86ed4c15bd22bdf64ce481bb415b0017f1cd07d4b`;
+matrix SHA-256
+`109cd153e2c1bdc3a16042cadae8c3c7d07159dc4661c072e4df11f770704120`.

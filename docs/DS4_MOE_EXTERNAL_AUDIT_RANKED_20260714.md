@@ -694,6 +694,34 @@ L0-L3 gate. Minimum available RAM fell to 0.065-0.741 GiB in individual closed
 runs, so production capacity also needs explicit headroom. Full report:
 `G42_CLOSED_SNAPSHOT_TIERING_RESULTS.md`, native commit `4640c33`.
 
+### Rank 1/6 publication checkpoint: G43 removes the duplicate checksum
+
+Profiling showed that every WRAP worker already computed FNV-1a after copying a
+complete expert slot, but `finish_load` then reread the entire 30 GiB arena
+serially and computed the same checksum again. G43 keeps the original public
+finish path unchanged and adds an opt-in worker-checksum path used only after
+all copy workers join.
+
+The balanced A/B used the exact G42 closed-snapshot configuration and three
+independent one-request processes per arm. All six outputs matched the expected
+hash; each run retained 886 VRAM hits, 2,210 pinned-RAM hits, zero snapshot
+misses, zero SSD bytes and zero tier failures.
+
+| Metric | Finish verify | Worker checksum |
+|---|---:|---:|
+| TTFT | 86.028 s | 47.355 s |
+| WRAP total | 65.214 s | 27.251 s |
+| Copy plus worker FNV | 32.758 s | 27.236 s |
+| Finish FNV | 32.433 s | 0.001 s |
+| Decode | 4.093 t/s | 4.093 t/s |
+
+G43 cuts WRAP 58.21% and TTFT 44.95% without changing steady decode or
+residency. The next ranked bottleneck is the first copy from model `mmap`, which
+varied from 23.003 to 40.565 seconds in the accepted matrix and reached 253.623
+seconds in a separate cold mechanism run. Next compare expert-major with a
+globally source-ordered or part-major copy schedule, one lever at a time. Full
+report: `G43_WRAP_CHECKSUM_RESULTS.md`, native commit `4a3b792`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -770,19 +798,23 @@ commit `63ba10d`.
     snapshot plus a 256-slot mass/LFRU VRAM tier measured 4.083 t/s, zero
     snapshot misses and zero SSD bytes. The 336-slot candidate crossed the VRAM
     cliff; 256 is the current measured configuration, not a universal optimum.
-14. **Publication optimization next:** reuse ordinary prefill reads, batch or
-    pipeline snapshot fills and preserve at least the measured 7.21 GiB hot-
-    weight cache. Then measure long `n>=3` break-even with L0-L3 grading.
-15. **P4-D next:** restore tile-capable wave kernels without changing G39's
+14. **Duplicate publication checksum done, G43:** joined workers now provide
+    the accepted checksum, cutting WRAP 65.214 -> 27.251 s and TTFT 86.028 ->
+    47.355 s with exact output, unchanged 4.093 t/s decode and zero SSD.
+15. **First-copy optimization next:** compare expert-major with globally
+    source-ordered or part-major snapshot fills. Preserve the 1,024 MiB reserve,
+    measured hot-weight cache, zero-SSD closure and explicit phase telemetry.
+    Then measure long `n>=3` break-even with L0-L3 grading.
+16. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-16. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+17. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-17. Only then return to physical REAP rotation and SPEX transfer composition.
+18. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
