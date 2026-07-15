@@ -2029,3 +2029,6 @@ Decision order after the external `GPU/DISCO LIBERI` gate:
 4. judge G51 primarily by route H2D, pinned-RAM routes, VRAM routes and exact
    output; seed H2D is an explicit one-time cost, not decode-route traffic;
 5. run G57 K60 functional safety only after verified SHA/unpack/manifest.
+
+Exact commands, promotion rules and stop conditions are frozen in
+`docs/G55_G57_WINDOWS_EXECUTION_RUNBOOK_20260715.md`.
