@@ -1873,3 +1873,75 @@ Native commits:
 [`e4ba9ec`](https://github.com/imanu86/ds4-win/commit/e4ba9ec).
 Native summary:
 `g7_runs/g54_wrap_file_source_ab_result.json`.
+
+## 2026-07-15 Native Windows G55 File-QD Functional Safety
+
+G55 added a bounded asynchronous direct-file reader for arena WRAP and made
+requested/observed queue depth plus submit/completion/failure counts explicit.
+The only completed QD8 run occurred while the K60/K75 R2 downloads were active
+on a second physical disk. It was authorized solely as a functional safety and
+set `system_quiescence_skipped=true`.
+
+Valid measured gates from that run:
+
+- process exit `0` and expected temp0/nothink content SHA-256
+  `31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`;
+- requested/observed file QD `8/8`;
+- submits/completions/failures `13,653 / 13,653 / 0`;
+- no DS4 process left behind and VRAM returned to baseline.
+
+WRAP time, TTFT, decode t/s, disk rate, and every other timed value from this
+run are invalid and excluded from SOTA/A-B comparisons. G55 still requires a
+quiescent counterbalanced QD1-versus-QD8 n>=3 matrix.
+
+Native commits:
+[`438dcd6`](https://github.com/imanu86/ds4-win/commit/438dcd6),
+[`fbaeca0`](https://github.com/imanu86/ds4-win/commit/fbaeca0),
+[`975097a`](https://github.com/imanu86/ds4-win/commit/975097a).
+
+## 2026-07-15 Native Windows G56 WRAP Layout Profiler
+
+G56 is implemented but not yet measured. With
+`DS4_CUDA_ARENA_WRAP_LAYOUT_PROFILE=1`, it scans the already-built source-part
+metadata and reports, independently for gate/up/down, payload bytes, source
+gaps, overlaps, 4 KiB alignment, and projected read-count/byte amplification
+for coalescing thresholds 0, 4 KiB, 64 KiB, and 1 MiB. It performs no model
+read and does not alter the copy schedule; the option is off by default.
+
+The dedicated runner is a single functional/profile run, not an n=3 benchmark.
+Its purpose is to choose whether bounded range coalescing has enough structural
+headroom to justify implementation before another performance matrix.
+
+Native commit:
+[`7c66418`](https://github.com/imanu86/ds4-win/commit/7c66418).
+
+## 2026-07-15 Native Windows G57 Sparse K60/K75 Runtime Guards
+
+The native loader now parses the self-describing sparse bake trailer, validates
+manifest/bitset/CRC/tensor geometry and proves that every non-routed GGUF range
+is physically present. Runtime guards install the embedded allowed set before
+CUDA map/cache setup and fail closed at CPU top-k/final-use, CUDA selected-load,
+dynamic-arena target, and SPEX queue boundaries. Whole-block fallbacks, mapped
+host windows, full-model copies, chunked copies, external REAP masks, Metal,
+and MTP combinations that could read sparse holes are rejected.
+
+Measured no-GPU verification:
+
+- Release build completed and produced `ds4_server.exe`;
+- `ctest -C Release`: 1/1 `ds4_bake_test` passed in 0.02 s;
+- `git diff --check` passed apart from line-ending warnings;
+- independent read-only call-path review reported no finding.
+
+These are build/parser/safety-structure results only. They establish no K60
+startup correctness, quality, TTFT, decode throughput, or SOTA result. The
+first K60 n=1 functional safety remains blocked until the external verifier
+reports exact size/SHA, NTFS sparse unpack, manifest inspection, and the
+explicit handoff `GPU/DISCO LIBERI`.
+
+Native commits:
+[`b86ef4c`](https://github.com/imanu86/ds4-win/commit/b86ef4c),
+[`2a086c6`](https://github.com/imanu86/ds4-win/commit/2a086c6),
+[`3edaaff`](https://github.com/imanu86/ds4-win/commit/3edaaff),
+[`068b4b3`](https://github.com/imanu86/ds4-win/commit/068b4b3),
+[`4368674`](https://github.com/imanu86/ds4-win/commit/4368674),
+[`0423df5`](https://github.com/imanu86/ds4-win/commit/0423df5).
