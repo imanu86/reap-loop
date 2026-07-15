@@ -11,6 +11,7 @@ OUT=${OUT:-$REPO/runs/ds4/20260712_pod12_bake/windows_bake_quality_ab_v2_2026071
 PORT=${PORT:-18083}
 GPU_LOCK=${GPU_LOCK:-/tmp/ds4-gpu.lock}
 MAX_TOKENS=${MAX_TOKENS:-3200}
+ARMS=${ARMS:-"k0 k60 k65"}
 
 test -x "$BIN"
 test -s "$MODEL"
@@ -56,6 +57,13 @@ run_arm() {
     fi
 
     env | LC_ALL=C sort > "$dir/server_env.txt"
+    {
+        date -u +%FT%TZ
+        uname -a
+        nvidia-smi --query-gpu=name,uuid,driver_version,memory.total \
+            --format=csv,noheader
+        free -b
+    } > "$dir/hardware.txt"
     printf '%q ' "$BIN" -m "$MODEL" --cuda --ssd-streaming \
         --ssd-streaming-cache-experts 1024 --prefill-chunk 512 \
         -c 4096 -n "$((MAX_TOKENS + 128))" --host 127.0.0.1 --port "$PORT" --cors \
@@ -121,17 +129,22 @@ PY
     cleanup_server
 }
 
-run_arm k0 NONE
-run_arm k60 "$LEARN/masks/k60_coding.txt"
-run_arm k65 "$LEARN/masks/k65_coding.txt"
+for arm in $ARMS; do
+    case "$arm" in
+        k0) run_arm k0 NONE ;;
+        k60) run_arm k60 "$LEARN/masks/k60_coding.txt" ;;
+        k65) run_arm k65 "$LEARN/masks/k65_coding.txt" ;;
+        *) echo "unknown arm: $arm" >&2; exit 2 ;;
+    esac
+done
 
-python3 - "$OUT" <<'PY'
+python3 - "$OUT" $ARMS <<'PY'
 import json
 import pathlib
 import sys
 out = pathlib.Path(sys.argv[1])
 summary = {}
-for arm in ("k0", "k60", "k65"):
+for arm in sys.argv[2:]:
     rows = []
     for run in range(1, 4):
         grade = json.load(open(out / arm / f"grade_r0{run}.json"))
