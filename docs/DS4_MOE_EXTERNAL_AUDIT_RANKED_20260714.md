@@ -1094,6 +1094,8 @@ commit `63ba10d`.
 26. **G57 sparse K60 safety pending external verification:** runtime guards,
     parser tests and safety runner are ready. Do not launch before exact local
     SHA, NTFS sparse unpack, manifest inspection and literal `GPU/DISCO LIBERI`.
+    Commit `93cb193` makes resume fail closed on code/build/prompt provenance
+    and on any inherited full-model WRAP/tiering/SPEX/mask option.
 27. **Pinned-RAM route reduction follow-on:** if G51 does not amortize its seed,
     attack the same measured wall with true hit/miss separation or slow-clock
     physical rotation. Preserve the request-scoped closed snapshot and zero SSD.

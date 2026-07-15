@@ -1957,6 +1957,14 @@ WRAP/dynamic arena and checks footer/manifest, CRC32, mask/payload SHA-256,
 positive selected-route counters, zero rejected selections, and a non-empty
 coherent temp0/nothink output. It remains n=1 functional only.
 
+Pre-run provenance hardening commit
+[`93cb193`](https://github.com/imanu86/ds4-win/commit/93cb193)
+closes two resume-path gaps. The runner now revalidates hashes for CUDA,
+server, sparse parser, header and build manifest plus prompt/token contract.
+The result must also prove WRAP, composed prefill, dynamic arena, expert cache,
+tiering, SPEX and external REAP mask are all disabled. A full-model protocol
+can therefore neither be inherited silently nor summarized as sparse safety.
+
 These are build/parser/safety-structure results only. They establish no K60
 startup correctness, quality, TTFT, decode throughput, or SOTA result. The
 first K60 n=1 functional safety remains blocked until the external verifier
@@ -1970,7 +1978,8 @@ Native commits:
 [`068b4b3`](https://github.com/imanu86/ds4-win/commit/068b4b3),
 [`4368674`](https://github.com/imanu86/ds4-win/commit/4368674),
 [`0423df5`](https://github.com/imanu86/ds4-win/commit/0423df5),
-[`31342db`](https://github.com/imanu86/ds4-win/commit/31342db).
+[`31342db`](https://github.com/imanu86/ds4-win/commit/31342db),
+[`93cb193`](https://github.com/imanu86/ds4-win/commit/93cb193).
 
 ## 2026-07-15 G36/G46 Protocol Audit and G51 Hardening
 
