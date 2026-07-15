@@ -20,13 +20,15 @@ Current DS4 worktree:
 
 - repository: `C:/Users/imanu/AppData/Local/Packages/Claude_pzs8sxrjxfjjc/LocalCache/Local/ds4-win-work`
 - branch: `port/windows-dynamic-arena-0051`
-- HEAD: `30f864b`
+- HEAD: `1a6ac80`
 - G39 was measured from base `78f50cb` plus the reviewed hardening committed as
   `5633856`; source, executable, manifest and matrix hashes pin that state.
 - G40 is the exact cyberpunk composition checkpoint at native commit `6298b66`.
 - G41 is the exact 30 GiB prefill bulk-seed checkpoint at native commit `97fae74`.
 - G50 rejects whole-process Windows working-set trim and adds a fail-closed
   process-isolation gate at native commit `30f864b`.
+- Post-G50 harness hardening samples CPU, disk and GPU immediately before model
+  launch and rejects contaminated hosts at native commit `1a6ac80`.
 
 External snapshots audited:
 

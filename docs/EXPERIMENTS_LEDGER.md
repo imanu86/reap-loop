@@ -1762,6 +1762,13 @@ traffic in a small gate.
 Post-study harness hardening acquires `Local\DS4_G7_MEASUREMENT_LOCK` and
 refuses launch if another DS4, G7 harness or G7 runtime monitor is present. The
 mutex collision and error-path release were tested without model launch.
+Native commit `1a6ac80` adds a second default-on gate immediately before model
+launch: five measured samples reject sustained median CPU above 60%, disk above
+30%, aggregate disk I/O above 64 MiB/s, or GPU above 85%. It checks the maximum
+utilization across all visible GPUs, records actual cadence and provenance, and
+does not write its JSON between the quiet window and a real server launch.
+Fail/pass behavior was verified in dedicated no-launch probes; this is harness
+validation, not a performance result.
 
 Native report: `G50_WRAP_WORKING_SET_TRIM_RESULTS.md`; runner:
 `g50_wrap_trim_ab.ps1`; native commit:
