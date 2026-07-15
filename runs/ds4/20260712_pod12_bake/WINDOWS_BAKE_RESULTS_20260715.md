@@ -1,7 +1,8 @@
 # Native Windows coding bake campaign - 2026-07-15
 
-Status: full-decode K0 learn and held-out routing complete; full-decode mask
-quality gate running. This file separates measured facts from pending gates.
+Status: full-decode K0 learn, held-out routing, and virtual-mask quality gates
+complete. Physical K60/K75 mass-ranked packs are being streamed to R2. This
+file separates measured facts from pending gates.
 
 ## Provenance
 
@@ -148,9 +149,11 @@ offsets do not change. A smoke test verified included extents byte-for-byte,
 excluded holes as zero, payload SHA-256, trailer CRCs, and bitset/manifest
 agreement.
 
-The physical K60/K65 packs have not been emitted yet. Writing 54-57 GiB before
-the quality gate would spend pod time and transfer cost without changing the
-quality evidence.
+`pack-stream` extends the packer with a binary-only stdout path, atomic status
+receipt, and SHA-256 for the payload, embedded manifest, and complete pack. The
+R2 runner records separate packer/uploader exits and requires the remote object
+size to match the emitted byte count. This avoids a 54-64 GiB temporary file on
+the 50 GiB-free pod disks.
 
 ## Functional A/B
 
@@ -196,27 +199,66 @@ over complete long K0 generations. This is a material limitation and the next
 candidate selection must include full-decode routing mass before another bake
 decision.
 
-The replacement full-decode mask gate is running as two controlled pod-local
-groups, each with its own K0 reference and three runs per arm:
+The replacement full-decode mask gate ran as two controlled pod-local groups,
+each with its own K0 reference and three temperature conditions per arm:
 
 - RTX 3090 Ti worker: K0, K60, K70;
 - RTX 3090 worker: K0, K65, K75.
 
-Each arm uses the same dashboard prompt, cache 1024, context 4096, temperatures
+Each arm used the same dashboard prompt, cache 1024, context 4096, temperatures
 `0`, `0.2`, and `0.7`, HTML-close/repetition stop guard, and L0-L3 grading.
-No grade is reported here until all runs in the arm are complete.
+These are three robustness conditions, not three iid repeats at one temperature.
+
+| Pod / GPU | Arm | temp 0 | temp 0.2 | temp 0.7 | Median |
+|---|---|---:|---:|---:|---:|
+| A / RTX 3090 Ti | K0 | L2 | L1 | L1 | L1 |
+| A / RTX 3090 Ti | K60 mass | L2 | L2 | L2 | L2 |
+| A / RTX 3090 Ti | K70 mass | L2 | L1 | L2 | L2 |
+| B / RTX 3090 | K0 | L2 | L2 | L2 | L2 |
+| B / RTX 3090 | K65 mass | L2 | L1 | L1 | L1 |
+| B / RTX 3090 | K75 mass | L1 | L2 | L2 | L2 |
+
+The Linux oracle throughput is recorded in
+`quality_full_decode_mass_weight_results_20260715.csv`, but it is not a native
+Windows performance result. K60 mass was the only candidate to score L2 in all
+three conditions while retaining a payload below 64 GiB. It therefore becomes
+the primary capacity candidate. K75 mass is also packed because the user asked
+to measure its practical residency; its `63.8894 GiB` payload leaves no inferred
+headroom, so native-Windows capacity remains an explicit gate rather than a
+pre-test rejection.
+
+## Mean-selected-weight control
+
+A separate control ranked experts by mean selected gate weight:
+`sum(selected_weight) / selected_calls`. It deliberately removes frequency,
+unlike routing mass. Masks were still learned only from the six uncensored K0
+full-decode sessions.
+
+| Mask | Learn calls | Learn mass | Held-out calls | Held-out mass | Held-out all six | Worst layer mass |
+|---|---:|---:|---:|---:|---:|---:|
+| K60 mean-weight | 82.2899% | 88.0645% | 77.5733% | 80.6544% | 24.7320% | 64.5858% |
+| K75 mean-weight | 91.1475% | 94.2993% | 87.2844% | 88.2741% | 45.0497% | 75.3200% |
+
+The functional control produced:
+
+| Pod / GPU | Arm | temp 0 | temp 0.2 | temp 0.7 | Median |
+|---|---|---:|---:|---:|---:|
+| A / RTX 3090 Ti | K60 mean-weight | L2 | L2 | L2 | L2 |
+| B / RTX 3090 | K75 mean-weight | L1 | L1 | L2 | L1 |
+
+K60 mean-weight surviving one dashboard panel does not override its much lower
+held-out routing coverage. The bake candidates remain the mass-ranked masks.
 
 ## Pending gates
 
-1. Finish the full-decode virtual-mask `n=3` quality gate; do not emit a pack
-   for a mask below its pod-local K0 reference grade.
-2. Decide whether any quality-passing static mask also fits the measured target
-   memory budget with runtime headroom. If not, record static bake as rejected
-   and return to dynamic tier rotation.
-3. Apply and build the native Windows embedded-mask loader patch only for a
-   surviving static candidate.
-4. Emit only a quality- and capacity-passing compact pack on the pod.
-5. Assemble and inspect the NTFS sparse artifact on Windows.
-6. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
+1. Finish and verify the K60/K75 mass pack streams on R2; reject any pipeline or
+   remote-size mismatch.
+2. Download each pack and verify its complete SHA-256 against the producer
+   receipt before unpacking.
+3. Assemble and inspect the NTFS sparse artifacts on Windows.
+4. Apply and build the native Windows embedded-mask loader patch.
+5. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
    cache misses, and throughput. Zero SSD during measured inference is a
    separate fail-closed gate.
+6. Keep K60 as the primary candidate; promote K75 only if measured host-memory
+   residency leaves sufficient runtime headroom.

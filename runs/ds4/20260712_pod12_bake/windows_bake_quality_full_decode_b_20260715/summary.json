@@ -1,0 +1,272 @@
+{
+  "k0": [
+    {
+      "run": 1,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 9961
+      },
+      "elapsed_s": 429.309149,
+      "usage": null
+    },
+    {
+      "run": 2,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 9328
+      },
+      "elapsed_s": 404.639322,
+      "usage": null
+    },
+    {
+      "run": 3,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 8827
+      },
+      "elapsed_s": 373.602783,
+      "usage": null
+    }
+  ],
+  "k65": [
+    {
+      "run": 1,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 9842
+      },
+      "elapsed_s": 370.807724,
+      "usage": null
+    },
+    {
+      "run": 2,
+      "grade": {
+        "task": "frontpage",
+        "level": 1,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": false,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": false,
+          "form_wired": false,
+          "tag_mismatch": 0
+        }
+      },
+      "finish_reason": "length",
+      "client_stop": null,
+      "elapsed_s": 406.347911,
+      "usage": {
+        "prompt_tokens": 135,
+        "completion_tokens": 3200,
+        "total_tokens": 3335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 135
+        }
+      }
+    },
+    {
+      "run": 3,
+      "grade": {
+        "task": "frontpage",
+        "level": 1,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": false,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": false,
+          "form_wired": false,
+          "tag_mismatch": 0
+        }
+      },
+      "finish_reason": "length",
+      "client_stop": null,
+      "elapsed_s": 392.110835,
+      "usage": {
+        "prompt_tokens": 135,
+        "completion_tokens": 3200,
+        "total_tokens": 3335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 135
+        }
+      }
+    }
+  ],
+  "k75": [
+    {
+      "run": 1,
+      "grade": {
+        "task": "frontpage",
+        "level": 1,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": false,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": false,
+          "form_wired": false,
+          "tag_mismatch": 0
+        }
+      },
+      "finish_reason": "length",
+      "client_stop": null,
+      "elapsed_s": 414.051575,
+      "usage": {
+        "prompt_tokens": 135,
+        "completion_tokens": 3200,
+        "total_tokens": 3335,
+        "prompt_tokens_details": {
+          "cached_tokens": 0,
+          "cache_write_tokens": 135
+        }
+      }
+    },
+    {
+      "run": 2,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 12131
+      },
+      "elapsed_s": 415.429673,
+      "usage": null
+    },
+    {
+      "run": 3,
+      "grade": {
+        "task": "frontpage",
+        "level": 2,
+        "detail": {
+          "has_body_struct": true,
+          "nav": true,
+          "hero": true,
+          "form": false,
+          "style": true,
+          "script": true,
+          "button": true,
+          "js_errors": 0,
+          "button_wired": true,
+          "form_wired": false,
+          "tag_mismatch": 0,
+          "restart": false
+        }
+      },
+      "finish_reason": "client_stop_html_close",
+      "client_stop": {
+        "reason": "client_stop_html_close",
+        "trim_to_chars": 8530
+      },
+      "elapsed_s": 344.494657,
+      "usage": null
+    }
+  ]
+}

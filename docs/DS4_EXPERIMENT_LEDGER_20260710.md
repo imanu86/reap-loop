@@ -6,12 +6,12 @@ Numbers are copied from artifacts when `source_kind=runner_summary` or `source_k
 ## Output Files
 
 - Master CSV: `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`
-- Rows total: 592
+- Rows total: 622
 - Runner-measured rows: 213
 - Windows-native G7 result rows: 175
 - Windows-native independent campaign aggregates: 16
 - Windows-native failed safety rows: 1
-- Legacy / Claude / claim rows: 187
+- Legacy / Claude / claim rows: 217
 
 ## Current Readout
 

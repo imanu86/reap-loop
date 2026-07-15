@@ -1,0 +1,236 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact</title>
+<style>
+/* essential reset + minimal theme */
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+body{background:#f4f6f9;padding:1rem}
+nav{background:#1e293b;color:#f8fafc;padding:.6rem 1rem;border-radius:8px;margin-bottom:1rem;display:flex;gap:1rem;align-items:center;flex-wrap:wrap}
+nav h1{font-size:1.2rem;font-weight:600;margin-right:auto}
+nav span{background:#334155;padding:.2rem .6rem;border-radius:20px;font-size:.8rem}
+.hero{background:#e2e8f0;padding:1rem;border-radius:8px;margin-bottom:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:.75rem}
+.hero .status{font-weight:600;padding:.2rem .6rem;border-radius:20px;background:#22c55e;color:#fff;font-size:.9rem}
+.hero .bad{background:#ef4444}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+th,td{text-align:left;padding:.5rem .75rem;border-bottom:1px solid #e2e8f0;font-size:.9rem}
+th{background:#f1f5f9;font-weight:600;color:#1e293b}
+td{vertical-align:middle}
+.job-ok{color:#15803d;font-weight:600}
+.job-fail{color:#b91c1c;font-weight:600}
+.job-pending{color:#b45309}
+.filter-bar{display:flex;gap:.5rem;margin-bottom:.75rem;flex-wrap:wrap}
+.filter-bar input{flex:1;min-width:140px;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem}
+.filter-bar button{background:#1e293b;color:#fff;border:none;padding:.4rem .9rem;border-radius:6px;cursor:pointer;font-size:.9rem}
+.actions{display:flex;gap:.4rem;flex-wrap:wrap}
+.actions button{background:#f1f5f9;border:1px solid #cbd5e1;border-radius:6px;padding:.2rem .6rem;font-size:.8rem;cursor:pointer}
+.actions .rebuild{background:#dbeafe;border-color:#3b82f6;color:#1e40af}
+.add-job{background:#fff;padding:.75rem;border-radius:8px;margin-top:1rem;display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;box-shadow:0 1px 3px rgba(0,0,0,.06)}
+.add-job input{flex:1;min-width:120px;padding:.4rem .6rem;border:1px solid #cbd5e1;border-radius:6px;font-size:.9rem}
+.add-job button{background#0f172a;color:#fff;border:none;padding:.4rem 1rem;border-radius:6px;cursor:pointer;font-weight:500}
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+.popup-box{background:#fff;padding:1.2rem 1.5rem;border-radius:10px;max-width:360px;width:90%;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.popup-box h3{margin-bottom:.5rem;font-weight:600}
+.popup-actions{display:flex;gap:.75rem;margin-top:1rem;justify-content:flex-end}
+.popup-actions button{padding:.4rem 1rem;border-radius:6px;border:1px solid #cbd5e1;background:#fff;cursor:pointer;font-weight:500}
+.popup-actions .confirm{background#dc2626;color:#fff;border-color:#dc2626}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<nav>
+  <h1>⚡ BuildBoard</h1>
+  <span>🔧 compact</span>
+  <span>📦 6 jobs</span>
+</nav>
+
+<!-- hero con stato generale -->
+<div class="hero">
+  <span class="status" id="heroStatus">✅ 3 OK</span>
+  <span>ultimo: <span id="heroLast">#app-382</span></span>
+  <span style="font-size:.85rem;color:#475569">stato generale: 3 successi, 2 falliti, 1 in sospeso</span>
+</div>
+
+<!-- filtro testuale -->
+<div class="filter-bar">
+  <input type="text" id="filterInput" placeholder="🔍 filtra per nome / stato (es: ok, fail, pending)">
+  <button id="resetFilter">↺ cancella</button>
+</div>
+
+<!-- tabella job -->
+<table id="jobTable">
+  <thead><tr><th>Job</th><th>Build</th><th>Stato</th><th>Azioni</th></tr></thead>
+  <tbody id="tableBody">
+    <!-- righe esistenti -->
+    <tr><td>web-app</td><td>#382</td><td class="job-ok">✅ successo</td><td class="actions"><button class="rebuild" data-job="web-app">🔄 rilancia</button></td></tr>
+    <tr><td>api-gateway</td><td>#179</td><td class="job-fail">❌ fallito</td><td class="actions"><button class="rebuild" data-job="api-gateway">🔄 rilancia</button></td></tr>
+    <tr><td>db-migrate</td><td>#210</td><td class="job-pending">⏳ in sospeso</td><td class="actions"><button class="rebuild" data-job="db-migrate">🔄 rilancia</button></td></tr>
+    <tr><td>auth-service</td><td>#401</td><td class="job-ok">✅ successo</td><td class="actions"><button class="rebuild" data-job="auth-service">🔄 rilancia</button></td></tr>
+    <tr><td>payment-worker</td><td>#98</td><td class="job-fail">❌ fallito</td><td class="actions"><button class="rebuild" data-job="payment-worker">🔄 rilancia</button></td></tr>
+    <tr><td>frontend-lint</td><td>#556</td><td class="job-ok">✅ successo</td><td class="actions"><button class="rebuild" data-job="frontend-lint">🔄 rilancia</button></td></tr>
+  </tbody>
+</table>
+
+<!-- modulo aggiungi job -->
+<div class="add-job">
+  <input type="text" id="newJobName" placeholder="nome job (es: deploy-cache)">
+  <input type="text" id="newJobBuild" placeholder="build id (es: #777)">
+  <button id="addJobBtn">➕ aggiungi job</button>
+</div>
+
+<!-- popup conferma (hidden) -->
+<div id="confirmPopup" class="popup-overlay hidden">
+  <div class="popup-box">
+    <h3>⚠️ Conferma</h3>
+    <p id="popupMsg">Rilanciare la build selezionata?</p>
+    <div class="popup-actions">
+      <button id="popupCancel">annulla</button>
+      <button id="popupConfirm" class="confirm">✅ rilancia</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// --- dati e stato ---
+let jobs = [
+  { name:'web-app', build:'#382', status:'ok' },
+  { name:'api-gateway', build:'#179', status:'fail' },
+  { name:'db-migrate', build:'#210', status:'pending' },
+  { name:'auth-service', build:'#401', status:'ok' },
+  { name:'payment-worker', build:'#98', status:'fail' },
+  { name:'frontend-lint', build:'#556', status:'ok' }
+];
+
+let currentFilter = '';
+let pendingRebuildJob = null; // per popup
+
+// helpers
+function statusClass(s) {
+  if(s==='ok') return 'job-ok';
+  if(s==='fail') return 'job-fail';
+  return 'job-pending';
+}
+function statusLabel(s) {
+  if(s==='ok') return '✅ successo';
+  if(s==='fail') return '❌ fallito';
+  return '⏳ in sospeso';
+}
+
+// aggiorna hero e tabella
+function render() {
+  const tbody = document.getElementById('tableBody');
+  // filtro
+  const f = currentFilter.toLowerCase();
+  const filtered = jobs.filter(j => {
+    if(!f) return true;
+    const haystack = j.name.toLowerCase() + ' ' + j.status.toLowerCase();
+    return haystack.includes(f);
+  });
+
+  let html = '';
+  filtered.forEach(j => {
+    const cls = statusClass(j.status);
+    const label = statusLabel(j.status);
+    html += `<tr><td>${j.name}</td><td>${j.build}</td><td class="${cls}">${label}</td><td class="actions"><button class="rebuild" data-job="${j.name}">🔄 rilancia</button></td></tr>`;
+  });
+  tbody.innerHTML = html;
+
+  // hero status
+  const total = jobs.length;
+  const ok = jobs.filter(j=>j.status==='ok').length;
+  const fail = jobs.filter(j=>j.status==='fail').length;
+  const pend = jobs.filter(j=>j.status==='pending').length;
+  document.getElementById('heroStatus').textContent = ok>fail ? '✅ '+ok+' OK' : (fail>0?'⚠️ alcuni falliti':'⏳ misto');
+  document.getElementById('heroStatus').className = 'status' + (fail>0?' bad':'');
+  // ultimo build (primo della lista)
+  const lastBuild = jobs.length>0 ? jobs[0].build : '#---';
+  document.getElementById('heroLast').textContent = lastBuild;
+
+  // se nessun job filtrato, mostra riga vuota
+  if(filtered.length===0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:1rem;color:#6b7280">nessun job corrisponde al filtro</td></tr>`;
+  }
+}
+
+// popup
+function showPopup(msg, jobName) {
+  document.getElementById('popupMsg').textContent = msg;
+  pendingRebuildJob = jobName;
+  document.getElementById('confirmPopup').classList.remove('hidden');
+}
+function hidePopup() {
+  document.getElementById('confirmPopup').classList.add('hidden');
+  pendingRebuildJob = null;
+}
+
+// rilancia (conferma)
+function requestRebuild(jobName) {
+  showPopup(`Rilanciare build per "${jobName}"?`, jobName);
+}
+
+// popup confirm -> esegue "rilancia" (simula cambio stato)
+document.getElementById('popupConfirm').addEventListener('click', function(){
+  if(pendingRebuildJob) {
+    const idx = jobs.findIndex(j => j.name === pendingRebuildJob);
+    if(idx !== -1) {
+      // simula: stato -> pending, build incrementato
+      jobs[idx].status = 'pending';
+      const oldNum = parseInt(jobs[idx].build.replace('#','')) || 0;
+      jobs[idx].build = '#' + (oldNum+1);
+    }
+    // eventuale riordino (sposta in alto?) no, solo update
+    render();
+    hidePopup();
+  }
+});
+document.getElementById('popupCancel').addEventListener('click', hidePopup);
+// click overlay chiude? no, solo pulsanti
+
+// filtro
+document.getElementById('filterInput').addEventListener('input', function(e){
+  currentFilter = e.target.value;
+  render();
+});
+document.getElementById('resetFilter').addEventListener('click', function(){
+  document.getElementById('filterInput').value = '';
+  currentFilter = '';
+  render();
+});
+
+// aggiungi job
+document.getElementById('addJobBtn').addEventListener('click', function(){
+  const nameInput = document.getElementById('newJobName');
+  const buildInput = document.getElementById('newJobBuild');
+  const name = nameInput.value.trim();
+  const build = buildInput.value.trim();
+  if(!name || !build) {
+    alert('compila entrambi i campi');
+    return;
+  }
+  // evita duplicati (opzionale)
+  if(jobs.some(j=>j.name===name)) {
+    alert('job già esistente');
+    return;
+  }
+  jobs.push({ name, build, status:'pending' });
+  nameInput.value = '';
+  buildInput.value = '';
+  render();
+});
+
+// delegazione eventi per pulsanti rebuild (dinamici)
+document.getElementById('jobTable').addEventListener('click', function(e){
+  const btn = e.target.closest('.rebuild');
+  if(!btn) return;
+  const jobName = btn.getAttribute('data-job');
+  if(jobName) requestRebuild(jobName);
+});
+
+// inizializza
+render();
+</script>
+</body>
+</html>

@@ -1,0 +1,234 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact Dashboard</title>
+<style>
+/* essential reset & layout */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; background: #f4f6f9; padding: 1rem; }
+/* nav */
+nav { background: #1e293b; color: #f8fafc; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; gap: 1.5rem; align-items: center; }
+nav a { color: #cbd5e1; text-decoration: none; font-weight: 500; }
+nav a:hover { color: #fff; }
+nav span { font-weight: 700; letter-spacing: 0.5px; margin-right: auto; }
+/* hero */
+.hero { background: linear-gradient(145deg, #0f172a, #1e293b); color: #f1f5f9; padding: 1.2rem 1.5rem; border-radius: 0.5rem; margin-bottom: 1.2rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.hero h2 { font-size: 1.3rem; font-weight: 600; }
+.hero .status { background: #2dd4bf; color: #0f172a; padding: 0.2rem 0.9rem; border-radius: 2rem; font-weight: 600; font-size: 0.9rem; }
+/* filter & actions */
+.toolbar { display: flex; flex-wrap: wrap; gap: 0.6rem; margin-bottom: 0.8rem; align-items: center; }
+.toolbar input { flex: 1; min-width: 140px; padding: 0.4rem 0.7rem; border: 1px solid #cbd5e1; border-radius: 0.3rem; background: #fff; }
+.toolbar button { background: #0f172a; color: #f8fafc; border: none; padding: 0.4rem 1rem; border-radius: 0.3rem; cursor: pointer; font-weight: 500; font-size: 0.85rem; }
+.toolbar button:hover { background: #1e293b; }
+/* table */
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 0.4rem; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+th, td { padding: 0.6rem 0.8rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f1f5f9; color: #0f172a; font-weight: 600; }
+td { vertical-align: middle; }
+td .job-id { font-family: monospace; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 0.2rem; font-size: 0.8rem; }
+td .status-badge { display: inline-block; padding: 0.1rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
+.status-badge.ok { background: #d1fae5; color: #065f46; }
+.status-badge.fail { background: #fee2e2; color: #9b1c1c; }
+.status-badge.pending { background: #fef9c3; color: #92400e; }
+td button { background: transparent; border: 1px solid #94a3b8; border-radius: 0.3rem; padding: 0.2rem 0.6rem; cursor: pointer; font-size: 0.75rem; }
+td button:hover { background: #e2e8f0; border-color: #0f172a; }
+/* add form */
+.add-job { margin-top: 1.2rem; background: #fff; padding: 0.9rem 1rem; border-radius: 0.4rem; display: flex; flex-wrap: wrap; gap: 0.6rem; align-items: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+.add-job input { flex: 1; min-width: 120px; padding: 0.4rem 0.7rem; border: 1px solid #cbd5e1; border-radius: 0.3rem; }
+.add-job button { background: #0f172a; color: #fff; border: none; padding: 0.4rem 1.2rem; border-radius: 0.3rem; cursor: pointer; font-weight: 500; }
+.add-job button:hover { background: #1e293b; }
+/* popup overlay */
+.popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 100; }
+.popup-card { background: #fff; padding: 1.5rem 2rem; border-radius: 0.6rem; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.popup-card p { margin-bottom: 1rem; font-size: 1rem; }
+.popup-card button { margin: 0 0.4rem; padding: 0.4rem 1.2rem; border: 1px solid #0f172a; background: #fff; border-radius: 0.3rem; cursor: pointer; font-weight: 500; }
+.popup-card button.confirm { background: #0f172a; color: #fff; border: none; }
+/* responsive */
+@media (max-width: 600px) { nav { flex-wrap: wrap; } .hero { flex-direction: column; align-items: start; } }
+</style>
+</head>
+<body>
+<!-- nav -->
+<nav>
+  <span>⚡ BuildDash</span>
+  <a href="#">Dashboard</a>
+  <a href="#">Jobs</a>
+  <a href="#">Logs</a>
+</nav>
+
+<!-- hero -->
+<div class="hero">
+  <h2>Build Status</h2>
+  <div class="status" id="heroStatus">● 3 OK · 1 FAIL</div>
+</div>
+
+<!-- filter + bulk relaunch -->
+<div class="toolbar">
+  <input type="text" id="filterInput" placeholder="🔍 filter by job name or ID...">
+  <button id="relaunchAllBtn">⟳ relaunch all</button>
+</div>
+
+<!-- job table -->
+<table id="jobTable">
+  <thead>
+    <tr><th>Job</th><th>ID</th><th>Status</th><th>Action</th></tr>
+  </thead>
+  <tbody id="tableBody">
+    <!-- static demo rows, fully interactive -->
+    <tr data-id="1" data-name="frontend-build"><td>frontend-build</td><td><span class="job-id">#001</span></td><td><span class="status-badge ok">OK</span></td><td><button class="relaunchBtn">⟳ relaunch</button></td></tr>
+    <tr data-id="2" data-name="api-tests"><td>api-tests</td><td><span class="job-id">#002</span></td><td><span class="status-badge fail">FAIL</span></td><td><button class="relaunchBtn">⟳ relaunch</button></td></tr>
+    <tr data-id="3" data-name="deploy-staging"><td>deploy-staging</td><td><span class="job-id">#003</span></td><td><span class="status-badge ok">OK</span></td><td><button class="relaunchBtn">⟳ relaunch</button></td></tr>
+    <tr data-id="4" data-name="integration"><td>integration</td><td><span class="job-id">#004</span></td><td><span class="status-badge pending">PENDING</span></td><td><button class="relaunchBtn">⟳ relaunch</button></td></tr>
+  </tbody>
+</table>
+
+<!-- add job form -->
+<div class="add-job">
+  <input type="text" id="newJobName" placeholder="job name (e.g. 'nightly-build')">
+  <button id="addJobBtn">➕ add job</button>
+</div>
+
+<!-- popup (confirmation) -->
+<div class="popup-overlay" id="confirmPopup">
+  <div class="popup-card">
+    <p id="popupMessage">Relaunch all builds?</p>
+    <div>
+      <button id="popupCancel">cancel</button>
+      <button class="confirm" id="popupConfirm">confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ----- single-file vanilla JS -----
+(function() {
+  const tableBody = document.getElementById('tableBody');
+  const filterInput = document.getElementById('filterInput');
+  const heroStatus = document.getElementById('heroStatus');
+  const relaunchAllBtn = document.getElementById('relaunchAllBtn');
+  const addJobBtn = document.getElementById('addJobBtn');
+  const newJobName = document.getElementById('newJobName');
+  const popup = document.getElementById('confirmPopup');
+  const popupMessage = document.getElementById('popupMessage');
+  const popupCancel = document.getElementById('popupCancel');
+  const popupConfirm = document.getElementById('popupConfirm');
+
+  // pending action (relaunch single / relaunch all)
+  let pendingAction = null;
+
+  // ----- helper: update hero status -----
+  function updateHeroStatus() {
+    const rows = tableBody.querySelectorAll('tr');
+    let ok = 0, fail = 0, pending = 0;
+    rows.forEach(row => {
+      const badge = row.querySelector('.status-badge');
+      if (!badge) return;
+      if (badge.classList.contains('ok')) ok++;
+      else if (badge.classList.contains('fail')) fail++;
+      else if (badge.classList.contains('pending')) pending++;
+    });
+    heroStatus.textContent = `● ${ok} OK · ${fail} FAIL · ${pending} PENDING`;
+  }
+
+  // ----- filter rows -----
+  function applyFilter() {
+    const q = filterInput.value.toLowerCase();
+    const rows = tableBody.querySelectorAll('tr');
+    rows.forEach(row => {
+      const name = (row.dataset.name || '').toLowerCase();
+      const idText = row.querySelector('.job-id')?.textContent || '';
+      const match = name.includes(q) || idText.includes(q);
+      row.style.display = match ? '' : 'none';
+    });
+  }
+
+  // ----- relaunch single job (simulate) -----
+  function relaunchJob(tr) {
+    const badge = tr.querySelector('.status-badge');
+    if (!badge) return;
+    badge.className = 'status-badge pending';
+    badge.textContent = 'PENDING';
+    updateHeroStatus();
+  }
+
+  // ----- relaunch all visible -----
+  function relaunchAllVisible() {
+    const rows = tableBody.querySelectorAll('tr');
+    rows.forEach(tr => {
+      if (tr.style.display !== 'none') {
+        const badge = tr.querySelector('.status-badge');
+        if (badge) {
+          badge.className = 'status-badge pending';
+          badge.textContent = 'PENDING';
+        }
+      }
+    });
+    updateHeroStatus();
+  }
+
+  // ----- add new job row -----
+  function addJob(name) {
+    if (!name.trim()) return;
+    const id = Date.now().toString(36).slice(-4);
+    const nextId = tableBody.children.length + 1;
+    const tr = document.createElement('tr');
+    tr.dataset.id = id;
+    tr.dataset.name = name.trim();
+    tr.innerHTML = `<td>${name.trim()}</td><td><span class="job-id">#${String(nextId).padStart(3,'0')}</span></td><td><span class="status-badge pending">PENDING</span></td><td><button class="relaunchBtn">⟳ relaunch</button></td>`;
+    tableBody.appendChild(tr);
+    // attach relaunch event
+    tr.querySelector('.relaunchBtn').addEventListener('click', function(e) {
+      e.stopPropagation();
+      const tr = this.closest('tr');
+      if (tr) relaunchJob(tr);
+    });
+    updateHeroStatus();
+    applyFilter(); // ensure filter hides if needed
+  }
+
+  // ----- popup handling -----
+  function showPopup(message, action) {
+    popupMessage.textContent = message;
+    pendingAction = action;
+    popup.style.display = 'flex';
+  }
+
+  popupCancel.addEventListener('click', function() {
+    popup.style.display = 'none';
+    pendingAction = null;
+  });
+
+  popupConfirm.addEventListener('click', function() {
+    if (typeof pendingAction === 'function') pendingAction();
+    popup.style.display = 'none';
+    pendingAction = null;
+  });
+
+  // ----- event wiring -----
+  // filter
+  filterInput.addEventListener('input', applyFilter);
+
+  // relaunch all button -> popup
+  relaunchAllBtn.addEventListener('click', function() {
+    showPopup('Relaunch all visible builds?', function() {
+      relaunchAllVisible();
+    });
+  });
+
+  // add job
+  addJobBtn.addEventListener('click', function() {
+    const name = newJobName.value;
+    if (!name.trim()) return;
+    addJob(name);
+    newJobName.value = '';
+  });
+
+  // per-row relaunch buttons (initial + dynamic)
+  document.addEventListener('click', function(e) {
+    const btn = e.target.closest('.relaunchBtn');
+    if (!btn) return;
+    e.preventDefault();
+    const tr =

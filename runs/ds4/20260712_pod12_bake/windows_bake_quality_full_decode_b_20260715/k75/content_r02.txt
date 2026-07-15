@@ -1,0 +1,255 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor · compact</title>
+    <style>
+        *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+        body{background:#f4f6f9;padding:1rem;min-height:100vh;display:flex;flex-direction:column}
+        nav{background:#1e293b;color:#f8fafc;padding:.75rem 1.25rem;border-radius:12px;margin-bottom:1.5rem;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+        nav h1{font-size:1.3rem;font-weight:600;letter-spacing:-.02em}
+        nav .badge{background:#334155;padding:.2rem .7rem;border-radius:20px;font-size:.8rem;color:#cbd5e1}
+        .hero{background:linear-gradient(145deg,#e2e8f0,#f8fafc);padding:1.5rem 2rem;border-radius:20px;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:1rem;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+        .hero h2{font-size:1.5rem;font-weight:500;color:#0f172a}
+        .hero .status{background:#0f172a;color:#f8fafc;padding:.4rem 1rem;border-radius:40px;font-size:.9rem;font-weight:500}
+        .hero .status.ok{background:#15803d}
+        .hero .status.warn{background:#b45309}
+        .hero .status.fail{background:#b91c1c}
+        .controls{display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;margin-bottom:1rem}
+        .controls input{flex:1;min-width:180px;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:40px;background:#fff;font-size:.9rem}
+        .controls button{background:#0f172a;color:#fff;border:none;padding:.5rem 1.2rem;border-radius:40px;font-size:.9rem;cursor:pointer;transition:background .15s}
+        .controls button:hover{background:#1e293b}
+        .table-wrap{background:#fff;border-radius:20px;padding:0;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.04);margin-bottom:1.5rem}
+        table{width:100%;border-collapse:collapse;font-size:.9rem}
+        th{background:#f1f5f9;color:#475569;font-weight:500;padding:.75rem 1rem;text-align:left}
+        td{padding:.75rem 1rem;border-bottom:1px solid #e2e8f0}
+        td:last-child{display:flex;gap:.5rem;flex-wrap:wrap}
+        .btn{background:#e2e8f0;border:none;padding:.3rem .9rem;border-radius:30px;font-size:.8rem;cursor:pointer;transition:.1s;font-weight:500}
+        .btn.rebuild{background:#d0d7de;color:#0f172a}
+        .btn.rebuild:hover{background:#b0b8c4}
+        .btn.danger{background:#fecaca;color:#b91c1c}
+        .btn.danger:hover{background:#fca5a5}
+        .add-form{background:#fff;padding:1rem 1.5rem;border-radius:20px;display:flex;flex-wrap:wrap;gap:.75rem;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+        .add-form input{flex:1;min-width:140px;padding:.5rem .75rem;border:1px solid #cbd5e1;border-radius:40px;font-size:.9rem}
+        .add-form button{background:#0f172a;color:#fff;border:none;padding:.5rem 1.5rem;border-radius:40px;cursor:pointer}
+        .popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+        .popup{background:#fff;padding:1.5rem 2rem;border-radius:24px;max-width:380px;width:90%;box-shadow:0 20px 40px rgba(0,0,0,.2);text-align:center}
+        .popup h3{margin-bottom:.75rem;font-weight:500;color:#0f172a}
+        .popup p{margin-bottom:1.25rem;color:#475569;font-size:.95rem}
+        .popup .actions{display:flex;gap:.75rem;justify-content:center}
+        .popup .actions button{padding:.5rem 1.5rem;border-radius:40px;border:none;font-weight:500;cursor:pointer}
+        .popup .confirm{background#0f172a;color:#fff}
+        .popup .cancel{background#e2e8f0;color:#0f172a}
+        .hidden{display:none}
+        .flex-shr{flex:1;min-height:0}
+    </style>
+</head>
+<body>
+    <nav>
+        <h1>⚡ BuildBoard</h1>
+        <span class="badge">monitor · compact</span>
+    </nav>
+
+    <div class="hero">
+        <h2>stato generale</h2>
+        <span id="heroStatus" class="status ok">✅ operativo</span>
+    </div>
+
+    <div class="controls">
+        <input type="text" id="filterInput" placeholder="filtra per nome / stato …" value="">
+        <button id="resetFilterBtn">↺ cancella</button>
+    </div>
+
+    <div class="table-wrap">
+        <table id="buildTable">
+            <thead>
+                <tr><th>job</th><th>stato</th><th>commit</th><th>azioni</th></tr>
+            </thead>
+            <tbody id="buildBody">
+                <!-- popolato da JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <div class="add-form">
+        <input type="text" id="newJobName" placeholder="nome job (es: frontend)" value="">
+        <input type="text" id="newJobCommit" placeholder="commit (es: a1b2c3)" value="">
+        <button id="addJobBtn">➕ aggiungi</button>
+    </div>
+
+    <!-- popup conferma (hidden) -->
+    <div id="confirmPopup" class="popup-overlay hidden">
+        <div class="popup">
+            <h3>⚠️ conferma</h3>
+            <p id="popupMessage">rilanciare questa build?</p>
+            <div class="actions">
+                <button id="popupConfirmBtn" class="confirm">✅ conferma</button>
+                <button id="popupCancelBtn" class="cancel">annulla</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        (function(){
+            // ---------- stato iniziale ----------
+            let jobs = [
+                { id: 'j1', name: 'frontend-ci', status: 'success', commit: 'e2a1f' },
+                { id: 'j2', name: 'api-tests', status: 'running', commit: 'b4c9d' },
+                { id: 'j3', name: 'integration', status: 'fail', commit: 'ff0a3' },
+                { id: 'j4', name: 'linter', status: 'success', commit: 'a1b2c' }
+            ];
+            let nextId = 5;
+
+            // riferimenti DOM
+            const tbody = document.getElementById('buildBody');
+            const filterInput = document.getElementById('filterInput');
+            const resetBtn = document.getElementById('resetFilterBtn');
+            const heroStatus = document.getElementById('heroStatus');
+            const addBtn = document.getElementById('addJobBtn');
+            const newName = document.getElementById('newJobName');
+            const newCommit = document.getElementById('newJobCommit');
+
+            // popup
+            const popupOverlay = document.getElementById('confirmPopup');
+            const popupMsg = document.getElementById('popupMessage');
+            const confirmBtn = document.getElementById('popupConfirmBtn');
+            const cancelBtn = document.getElementById('popupCancelBtn');
+            let pendingRebuildId = null;   // id del job da rebuild dopo conferma
+
+            // ---------- helper: aggiorna hero status ----------
+            function updateHero() {
+                const anyFail = jobs.some(j => j.status === 'fail');
+                const anyRunning = jobs.some(j => j.status === 'running');
+                let text, cls;
+                if (anyFail) {
+                    text = '❌ critico';
+                    cls = 'fail';
+                } else if (anyRunning) {
+                    text = '⏳ in corso';
+                    cls = 'warn';
+                } else {
+                    text = '✅ operativo';
+                    cls = 'ok';
+                }
+                heroStatus.textContent = text;
+                heroStatus.className = 'status ' + cls;
+            }
+
+            // ---------- render tabella con filtro ----------
+            function render() {
+                const filter = filterInput.value.toLowerCase().trim();
+                const filtered = jobs.filter(j => {
+                    if (!filter) return true;
+                    return j.name.toLowerCase().includes(filter) || j.status.toLowerCase().includes(filter);
+                });
+
+                let html = '';
+                for (let j of filtered) {
+                    const statusIcon = j.status === 'success' ? '✅' : j.status === 'running' ? '⏳' : '❌';
+                    html += `<tr>
+                        <td><strong>${j.name}</strong></td>
+                        <td>${statusIcon} ${j.status}</td>
+                        <td><code>${j.commit}</code></td>
+                        <td>
+                            <button class="btn rebuild" data-id="${j.id}">⟳ rilancia</button>
+                            <button class="btn danger" data-id="${j.id}">🗑 elimina</button>
+                        </td>
+                    </tr>`;
+                }
+                if (filtered.length === 0) {
+                    html = `<tr><td colspan="4" style="text-align:center;padding:1.5rem;color:#64748b">nessuna build corrisponde</td></tr>`;
+                }
+                tbody.innerHTML = html;
+                updateHero();
+
+                // ascolta click su pulsanti (delegato)
+                tbody.addEventListener('click', function(e) {
+                    const target = e.target;
+                    if (!target.classList.contains('btn')) return;
+                    const id = target.getAttribute('data-id');
+                    if (!id) return;
+
+                    if (target.classList.contains('rebuild')) {
+                        // mostra popup conferma
+                        const job = jobs.find(j => j.id === id);
+                        if (!job) return;
+                        pendingRebuildId = id;
+                        popupMsg.textContent = `rilanciare build "${job.name}" ?`;
+                        popupOverlay.classList.remove('hidden');
+                    } else if (target.classList.contains('danger')) {
+                        // elimina senza popup
+                        jobs = jobs.filter(j => j.id !== id);
+                        render();
+                    }
+                });
+            }
+
+            // ---------- popup conferma ----------
+            function closePopup() {
+                popupOverlay.classList.add('hidden');
+                pendingRebuildId = null;
+            }
+
+            confirmBtn.addEventListener('click', function() {
+                if (pendingRebuildId) {
+                    const idx = jobs.findIndex(j => j.id === pendingRebuildId);
+                    if (idx !== -1) {
+                        // simula rebuild: stato -> running, commit incrementato
+                        jobs[idx].status = 'running';
+                        const oldCommit = jobs[idx].commit;
+                        jobs[idx].commit = oldCommit + '+rebuild';
+                    }
+                    pendingRebuildId = null;
+                    render();
+                }
+                closePopup();
+            });
+
+            cancelBtn.addEventListener('click', function() {
+                closePopup();
+            });
+
+            // chiusura overlay se click fuori (opzionale)
+            popupOverlay.addEventListener('click', function(e) {
+                if (e.target === popupOverlay) closePopup();
+            });
+
+            // ---------- filtro ----------
+            filterInput.addEventListener('input', render);
+            resetBtn.addEventListener('click', function() {
+                filterInput.value = '';
+                render();
+            });
+
+            // ---------- aggiungi job ----------
+            addBtn.addEventListener('click', function() {
+                const name = newName.value.trim();
+                const commit = newCommit.value.trim();
+                if (!name || !commit) {
+                    alert('compila nome e commit');
+                    return;
+                }
+                // evita duplicati (semplice)
+                if (jobs.some(j => j.name === name)) {
+                    alert('job già esistente');
+                    return;
+                }
+                jobs.push({
+                    id: 'j' + nextId++,
+                    name: name,
+                    status: 'running',
+                    commit: commit
+                });
+                newName.value = '';
+                newCommit.value = '';
+                render();
+            });
+
+            // ---------- init ----------
+            render();
+        })();
+    </script>
+</body>
+</html>

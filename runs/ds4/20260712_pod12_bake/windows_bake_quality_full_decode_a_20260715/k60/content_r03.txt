@@ -1,0 +1,196 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · single‑file</title>
+<style>
+/* ⚡ CSS essenziale, compatto */
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui,Segoe UI,Roboto,sans-serif}
+body{background:#f4f6f9;padding:1.5rem;display:grid;gap:1.5rem}
+nav{background:#1e293b;color:#fff;padding:.75rem 1.5rem;border-radius:1rem;display:flex;flex-wrap:wrap;align-items:center;gap:1rem}
+nav h1{font-size:1.3rem;font-weight:600;margin-right:auto}
+nav a{color:#b9c7d9;text-decoration:none;font-size:.9rem;padding:.2rem .6rem;border-radius:6px;transition:background .15s}
+nav a:hover{background:#334155;color:#fff}
+.hero{background:linear-gradient(135deg,#0f172a,#1e293b);color:#fff;padding:1.5rem 2rem;border-radius:1.2rem;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:1rem}
+.hero h2{font-size:1.5rem;font-weight:500;letter-spacing:-.5px}
+.hero .badge{background:#22c55e;padding:.25rem .9rem;border-radius:40px;font-weight:600;font-size:1rem;box-shadow:0 0 0 2px #14532d}
+.hero .badge.warn{background:#eab308;color:#1e1b0c}
+.hero .badge.err{background:#ef4444;color:#fff}
+.job-controls{display:flex;flex-wrap:wrap;gap:1rem;align-items:center;background:#fff;padding:1rem 1.5rem;border-radius:1rem;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.job-controls input{flex:1;min-width:180px;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:40px;font-size:.9rem;background:#f9fafb}
+.job-controls button{background:#0f172a;color:#fff;border:none;padding:.6rem 1.2rem;border-radius:40px;font-weight:500;font-size:.9rem;cursor:pointer;transition:background .2s}
+.job-controls button:hover{background:#1e293b}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:1rem;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.04)}
+th{background:#f1f5f9;text-align:left;padding:.7rem 1rem;font-size:.85rem;color:#1e293b;font-weight:600}
+td{padding:.7rem 1rem;border-bottom:1px solid #e9edf2;font-size:.9rem}
+td .status-indicator{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:.5rem;background:#22c55e}
+td .status-indicator.warn{background:#eab308}
+td .status-indicator.err{background:#ef4444}
+td .status-indicator.paused{background:#94a3b8}
+.action-btn{background:transparent;border:1px solid #0f172a;border-radius:30px;padding:.2rem .8rem;font-size:.85rem;cursor:pointer;transition:.1s;color:#0f172a;font-weight:500}
+.action-btn:hover{background:#0f172a;color:#fff}
+.add-section{background:#fff;border-radius:1rem;padding:1rem 1.5rem;display:flex;flex-wrap:wrap;gap:1rem;align-items:center;box-shadow:0 2px 6px rgba(0,0,0,.04)}
+.add-section input{flex:1;min-width:140px;padding:.6rem .8rem;border:1px solid #d1d5db;border-radius:40px;font-size:.9rem}
+.add-section button{background:#0f172a;color:#fff;border:none;padding:.6rem 1.4rem;border-radius:40px;font-weight:500;cursor:pointer}
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:1000}
+.popup-box{background:#fff;border-radius:2rem;padding:1.8rem 2rem;max-width:360px;width:90%;box-shadow:0 20px 40px rgba(0,0,0,.2);text-align:center}
+.popup-box p{margin-bottom:1.5rem;font-size:1.1rem;font-weight:450}
+.popup-actions{display:flex;gap:1rem;justify-content:center}
+.popup-actions button{border:none;padding:.6rem 1.5rem;border-radius:40px;font-weight:600;cursor:pointer;font-size:.95rem}
+.popup-actions .confirm{background#0f172a;color:#fff}
+.popup-actions .cancel{background#e5e7eb;color:#1e293b}
+</style>
+</head>
+<body>
+<!-- NAV -->
+<nav>
+<h1>⚡ BuildBoard</h1>
+<a href="#">Dashboard</a>
+<a href="#">Jobs</a>
+<a href="#">Logs</a>
+</nav>
+
+<!-- HERO con stato generale -->
+<div class="hero" id="heroStatus">
+<h2>stato generale · build</h2>
+<div class="badge" id="heroBadge">✅ 0 errori</div>
+</div>
+
+<!-- Filtro testuale + pulsante rilancio -->
+<div class="job-controls">
+<input type="text" id="filterInput" placeholder="filtra job per nome, stato…" oninput="applyFilter()">
+<button id="retryAllBtn" onclick="retryAllBuilds()">🔄 rilancia tutte</button>
+</div>
+
+<!-- TABELLA job -->
+<table id="buildTable">
+<thead><tr><th>job</th><th>stato</th><th>ultima build</th><th>azione</th></tr></thead>
+<tbody id="buildBody">
+<!-- righe dinamiche -->
+</tbody>
+</table>
+
+<!-- modulo aggiungi job -->
+<div class="add-section">
+<input type="text" id="newJobName" placeholder="nome job (es. frontend-ci)">
+<button onclick="addJob()">➕ aggiungi job</button>
+</div>
+
+<!-- POPUP (conferma javascript) -->
+<div id="popupContainer" class="popup-overlay" style="display:none">
+<div class="popup-box">
+<p id="popupMessage">conferma azione?</p>
+<div class="popup-actions">
+<button class="confirm" id="popupConfirm">conferma</button>
+<button class="cancel" onclick="closePopup()">annulla</button>
+</div>
+</div>
+</div>
+
+<script>
+//  Single‑file JavaScript, nessuna libreria esterna
+// Dati iniziali
+const jobs = [
+{ id: 'job-1', name: 'backend-api', status: 'success', last: '14:23:11' },
+{ id: 'job-2', name: 'frontend-ui', status: 'fail', last: '14:22:04' },
+{ id: 'job-3', name: 'mobile-build', status: 'pending', last: '14:21:55' },
+{ id: 'job-4', name: 'e2e-tests', status: 'success', last: '14:20:30' },
+{ id: 'job-5', name: 'docs-gen', status: 'paused', last: '14:19:12' },
+];
+
+let currentFilter = '';
+let pendingPopupAction = null; // per popup
+
+// render tabella + badge hero
+function renderTable() {
+const tbody = document.getElementById('buildBody');
+const filter = document.getElementById('filterInput').value.toLowerCase().trim();
+const filtered = jobs.filter(j => {
+if (!filter) return true;
+return j.name.toLowerCase().includes(filter) || j.status.toLowerCase().includes(filter);
+});
+
+tbody.innerHTML = '';
+filtered.forEach(j => {
+const statusClass = j.status === 'success' ? '' : (j.status === 'fail' ? 'err' : (j.status === 'pending' ? 'warn' : 'paused'));
+const badgeColor = statusClass === 'err' ? 'err' : (statusClass === 'warn' ? 'warn' : (statusClass === 'paused' ? 'paused' : ''));
+const tr = document.createElement('tr');
+tr.innerHTML = `<td>${j.name}</td>
+<td><span class="status-indicator ${badgeColor}"></span>${j.status}</td>
+<td>${j.last}</td>
+<td><button class="action-btn" onclick="retryBuild('${j.id}')">rilancia</button></td>`;
+tbody.appendChild(tr);
+});
+
+// aggiorna hero badge
+const successCount = jobs.filter(j => j.status === 'success').length;
+const failCount = jobs.filter(j => j.status === 'fail').length;
+const otherCount = jobs.length - successCount - failCount;
+let badgeText = `✅ ${successCount} ok`;
+let badgeClass = '';
+if (failCount > 0) { badgeText += ` · ${failCount} falliti`; badgeClass = 'err'; }
+else if (otherCount > 0) { badgeText += ` · ${otherCount} in attesa`; badgeClass = 'warn'; }
+const heroBadge = document.getElementById('heroBadge');
+heroBadge.textContent = badgeText;
+heroBadge.className = 'badge' + (badgeClass ? ' '+badgeClass : '');
+}
+
+// filtro
+function applyFilter() { renderTable(); }
+
+// rilancio singolo (simula cambiamento stato)
+function retryBuild(jobId) {
+const job = jobs.find(j => j.id === jobId);
+if (!job) return;
+// mostra popup conferma
+showPopup(`rilanciare build "${job.name}"?`, () => {
+job.status = 'pending';
+job.last = new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+renderTable();
+closePopup();
+});
+}
+
+// rilancio tutte
+function retryAllBuilds() {
+const failed = jobs.filter(j => j.status === 'fail' || j.status === 'paused');
+if (failed.length === 0) { alert('nessuna build da rilanciare'); return; }
+showPopup(`rilanciare ${failed.length} job in pausa/errore?`, () => {
+failed.forEach(j => { j.status = 'pending'; j.last = new Date().toLocaleTimeString('it-IT', {hour:'2-digit',minute:'2-digit',second:'2-digit'}); });
+renderTable();
+closePopup();
+});
+}
+
+// aggiungi job
+function addJob() {
+const input = document.getElementById('newJobName');
+const name = input.value.trim();
+if (!name) { alert('inserire un nome job'); return; }
+// controlla duplicati (opzionale)
+if (jobs.some(j => j.name === name)) { alert('job già esistente'); return; }
+jobs.push({ id: 'job-'+Date.now(), name, status: 'pending', last: '--' });
+input.value = '';
+renderTable();
+}
+
+// popup system
+function showPopup(msg, onConfirm) {
+document.getElementById('popupMessage').textContent = msg;
+document.getElementById('popupContainer').style.display = 'flex';
+pendingPopupAction = onConfirm;
+document.getElementById('popupConfirm').onclick = function() { if (pendingPopupAction) pendingPopupAction(); };
+}
+
+function closePopup() {
+document.getElementById('popupContainer').style.display = 'none';
+pendingPopupAction = null;
+}
+
+// init
+renderTable();
+</script>
+</body>
+</html>

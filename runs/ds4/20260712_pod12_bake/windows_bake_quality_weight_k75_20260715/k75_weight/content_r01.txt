@@ -1,0 +1,201 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor · compact dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; padding: 1rem; }
+        /* nav */
+        .nav { background: #1a1f2b; color: #fff; padding: 0.6rem 1.2rem; border-radius: 10px; display: flex; gap: 1.5rem; align-items: center; flex-wrap: wrap; }
+        .nav a { color: #b9c1d4; text-decoration: none; font-weight: 500; padding: 0.2rem 0; border-bottom: 2px solid transparent; transition: 0.1s; }
+        .nav a:hover { color: #fff; border-bottom-color: #6c8aff; }
+        .nav .brand { font-weight: 700; color: #fff; margin-right: auto; }
+        /* hero */
+        .hero { background: linear-gradient(145deg, #1e293b, #2d3a52); color: #e2e8f0; padding: 1.5rem 2rem; border-radius: 16px; margin: 1rem 0; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 1rem; }
+        .hero h1 { font-size: 1.8rem; font-weight: 600; letter-spacing: -0.02em; }
+        .hero .status-badge { background: #22c55e; padding: 0.3rem 1rem; border-radius: 40px; font-weight: 600; color: #0a0f1a; font-size: 0.9rem; }
+        /* filtro + pulsanti */
+        .toolbar { display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; margin: 0.8rem 0 1rem; }
+        .toolbar input { padding: 0.5rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 40px; background: #fff; width: 200px; font-size: 0.9rem; }
+        .toolbar button { background: #1e293b; border: none; color: #fff; padding: 0.5rem 1.2rem; border-radius: 40px; font-weight: 500; cursor: pointer; transition: 0.1s; font-size: 0.9rem; }
+        .toolbar button:hover { background: #2d3a52; }
+        .toolbar .add-btn { background: #2563eb; }
+        .toolbar .add-btn:hover { background: #1d4ed8; }
+        /* tabella */
+        .table-wrap { background: #fff; border-radius: 16px; padding: 0.5rem 0; box-shadow: 0 2px 6px rgba(0,0,0,0.04); overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th { text-align: left; padding: 0.9rem 1rem; color: #475569; font-weight: 500; background: #f8fafc; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 0.8rem 1rem; border-bottom: 1px solid #f1f5f9; }
+        .job-name { font-weight: 600; color: #0f172a; }
+        .status-badge-sm { display: inline-block; padding: 0.2rem 0.8rem; border-radius: 30px; font-size: 0.8rem; font-weight: 500; }
+        .status-ok { background: #dcfce7; color: #166534; }
+        .status-fail { background: #fee2e2; color: #991b1b; }
+        .status-progress { background: #e0f2fe; color: #075985; }
+        .action-btn { background: transparent; border: 1px solid #94a3b8; border-radius: 30px; padding: 0.2rem 0.8rem; font-size: 0.8rem; cursor: pointer; transition: 0.1s; }
+        .action-btn:hover { background: #e2e8f0; border-color: #64748b; }
+        .restart-btn { color: #2563eb; border-color: #2563eb; }
+        .restart-btn:hover { background: #dbeafe; }
+        /* modulo aggiunta */
+        .add-section { background: #fff; border-radius: 16px; padding: 1.2rem 1.5rem; margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; }
+        .add-section input { padding: 0.5rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 40px; flex: 1 1 140px; min-width: 100px; }
+        .add-section button { background: #2563eb; border: none; color: #fff; padding: 0.5rem 1.5rem; border-radius: 40px; font-weight: 500; cursor: pointer; }
+        /* popup (dialog) */
+        .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .popup-card { background: #fff; border-radius: 20px; padding: 1.8rem 2rem; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+        .popup-card p { margin-bottom: 1.2rem; font-size: 1.1rem; }
+        .popup-card button { background: #1e293b; border: none; color: #fff; padding: 0.6rem 1.8rem; border-radius: 40px; font-weight: 500; margin: 0 0.4rem; cursor: pointer; }
+        .popup-card .cancel { background: #94a3b8; }
+        .popup-card .confirm { background: #2563eb; }
+        .footer-note { margin-top: 1rem; text-align: center; color: #94a3b8; font-size: 0.85rem; }
+    </style>
+</head>
+<body>
+    <!-- nav -->
+    <div class="nav">
+        <span class="brand">⚡ BuildBoard</span>
+        <a href="#">Dashboard</a>
+        <a href="#">Jobs</a>
+        <a href="#">Logs</a>
+        <a href="#">Settings</a>
+    </div>
+
+    <!-- hero con stato generale -->
+    <div class="hero">
+        <h1>Build pipeline</h1>
+        <div class="status-badge">● 4 OK · 1 FAIL</div>
+    </div>
+
+    <!-- filtro + pulsanti -->
+    <div class="toolbar">
+        <input type="text" id="filterInput" placeholder="🔍 filter jobs …" value="">
+        <button id="restartSelected">⟳ restart selected</button>
+        <button id="addJobBtn" class="add-btn">➕ add job</button>
+    </div>
+
+    <!-- tabella -->
+    <div class="table-wrap">
+        <table id="jobTable">
+            <thead>
+                <tr><th>Job</th><th>Status</th><th>Branch</th><th>Action</th></tr>
+            </thead>
+            <tbody id="tbody">
+                <tr><td class="job-name">web-app</td><td><span class="status-badge-sm status-ok">success</span></td><td>main</td><td><button class="action-btn restart-btn" data-job="web-app">⟳ restart</button></td></tr>
+                <tr><td class="job-name">api-gateway</td><td><span class="status-badge-sm status-fail">failed</span></td><td>develop</td><td><button class="action-btn restart-btn" data-job="api-gateway">⟳ restart</button></td></tr>
+                <tr><td class="job-name">auth-service</td><td><span class="status-badge-sm status-progress">building</span></td><td>feature/login</td><td><button class="action-btn restart-btn" data-job="auth-service">⟳ restart</button></td></tr>
+                <tr><td class="job-name">notification</td><td><span class="status-badge-sm status-ok">success</span></td><td>main</td><td><button class="action-btn restart-btn" data-job="notification">⟳ restart</button></td></tr>
+                <tr><td class="job-name">scheduler</td><td><span class="status-badge-sm status-ok">success</span></td><td>main</td><td><button class="action-btn restart-btn" data-job="scheduler">⟳ restart</button></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- modulo aggiungi job -->
+    <div class="add-section" id="addSection">
+        <input type="text" id="newJobName" placeholder="job name (e.g. cache-layer)">
+        <input type="text" id="newJobBranch" placeholder="branch (e.g. main)" value="main">
+        <button id="confirmAdd">➕ add</button>
+    </div>
+
+    <!-- popup di conferma -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-card">
+            <p id="popupMessage">restart build for <strong>api-gateway</strong>?</p>
+            <div>
+                <button class="cancel" id="popupCancel">cancel</button>
+                <button class="confirm" id="popupConfirm">confirm</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-note">click "restart" → popup · filtro live · add job inserisce riga</div>
+
+    <script>
+        (function() {
+            // --- stato ---
+            const tbody = document.getElementById('tbody');
+            const filterInput = document.getElementById('filterInput');
+            const restartSelectedBtn = document.getElementById('restartSelected');
+            const addJobBtn = document.getElementById('addJobBtn');
+            const newJobName = document.getElementById('newJobName');
+            const newJobBranch = document.getElementById('newJobBranch');
+            const confirmAdd = document.getElementById('confirmAdd');
+
+            // popup
+            const overlay = document.getElementById('popupOverlay');
+            const popupMsg = document.getElementById('popupMessage');
+            const cancelBtn = document.getElementById('popupCancel');
+            const confirmBtn = document.getElementById('popupConfirm');
+
+            // dati interni per restart callback
+            let pendingRestartJob = null;
+
+            // helper: aggiorna badge hero (stato generale)
+            function updateHeroStatus() {
+                const rows = tbody.querySelectorAll('tr');
+                let ok = 0, fail = 0, progress = 0;
+                rows.forEach(row => {
+                    const badge = row.querySelector('.status-badge-sm');
+                    if (!badge) return;
+                    const text = badge.textContent.trim().toLowerCase();
+                    if (text === 'success') ok++;
+                    else if (text === 'failed') fail++;
+                    else if (text === 'building') progress++;
+                });
+                const heroBadge = document.querySelector('.hero .status-badge');
+                let statusText = `● ${ok} OK · ${fail} FAIL`;
+                if (progress > 0) statusText += ` · ${progress} building`;
+                heroBadge.textContent = statusText;
+            }
+
+            // restart job (simulato) con popup
+            function requestRestart(jobName) {
+                pendingRestartJob = jobName;
+                popupMsg.innerHTML = `restart build for <strong>${jobName}</strong>?`;
+                overlay.style.display = 'flex';
+            }
+
+            // conferma restart
+            function confirmRestart() {
+                if (!pendingRestartJob) return;
+                const job = pendingRestartJob;
+                // simula: cambia stato a "building" per il job specifico
+                const rows = tbody.querySelectorAll('tr');
+                for (let row of rows) {
+                    const nameCell = row.querySelector('.job-name');
+                    if (nameCell && nameCell.textContent.trim() === job) {
+                        const badge = row.querySelector('.status-badge-sm');
+                        if (badge) {
+                            badge.className = 'status-badge-sm status-progress';
+                            badge.textContent = 'building';
+                        }
+                        break;
+                    }
+                }
+                pendingRestartJob = null;
+                overlay.style.display = 'none';
+                updateHeroStatus();
+            }
+
+            // cancellazione popup
+            function cancelPopup() {
+                pendingRestartJob = null;
+                overlay.style.display = 'none';
+            }
+
+            // --- eventi restart (delegati) ---
+            tbody.addEventListener('click', function(e) {
+                const target = e.target.closest('.restart-btn');
+                if (!target) return;
+                const job = target.getAttribute('data-job');
+                if (job) requestRestart(job);
+            });
+
+            // pulsante "restart selected" (simula restart primo job selezionato? per semplicità usa primo job della tabella)
+            restartSelectedBtn.addEventListener('click', function() {
+                const firstRow = tbody.querySelector('tr');
+                if (!firstRow) return;
+                const nameCell = firstRow.querySelector('.job-name');
+                if (nameCell) {
+                    const job = nameCell.textContent.trim

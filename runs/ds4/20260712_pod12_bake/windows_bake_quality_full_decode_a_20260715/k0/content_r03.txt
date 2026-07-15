@@ -1,0 +1,214 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor Dashboard</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+        body { background: #f4f6f9; color: #1e293b; padding: 1rem; }
+        nav { background: #1e293b; color: #f8fafc; padding: 0.75rem 1.5rem; border-radius: 0.5rem; display: flex; justify-content: space-between; align-items: center; }
+        nav h1 { font-size: 1.2rem; font-weight: 600; }
+        nav span { font-size: 0.9rem; opacity: 0.9; }
+        .hero { background: #e2e8f0; padding: 1.2rem 1.5rem; margin: 1rem 0; border-radius: 0.5rem; display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; justify-content: space-between; }
+        .hero .status { display: flex; gap: 1.2rem; flex-wrap: wrap; }
+        .hero .status div { background: #fff; padding: 0.3rem 0.9rem; border-radius: 2rem; font-size: 0.9rem; font-weight: 500; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .hero .filter { display: flex; gap: 0.5rem; align-items: center; }
+        .hero .filter input { padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 2rem; font-size: 0.9rem; outline: none; width: 180px; }
+        .hero .filter button { background: #475569; color: #fff; border: none; padding: 0.4rem 1rem; border-radius: 2rem; font-size: 0.9rem; cursor: pointer; }
+        .card { background: #fff; border-radius: 0.5rem; padding: 1rem; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        .table-wrap { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 0.6rem 0.8rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; font-weight: 600; font-size: 0.85rem; color: #475569; }
+        td { font-size: 0.9rem; }
+        .status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 600; }
+        .success { background: #dcfce7; color: #166534; }
+        .fail { background: #fee2e2; color: #991b1b; }
+        .pending { background: #fef9c3; color: #92400e; }
+        .actions { display: flex; gap: 0.4rem; }
+        .actions button { background: transparent; border: 1px solid #cbd5e1; padding: 0.2rem 0.7rem; border-radius: 2rem; font-size: 0.8rem; cursor: pointer; transition: 0.1s; }
+        .actions button:hover { background: #e2e8f0; }
+        .add-section { margin-top: 1rem; display: flex; flex-wrap: wrap; gap: 0.8rem; align-items: center; }
+        .add-section input { padding: 0.4rem 0.8rem; border: 1px solid #cbd5e1; border-radius: 2rem; font-size: 0.9rem; outline: none; }
+        .add-section button { background: #2563eb; color: #fff; border: none; padding: 0.4rem 1.2rem; border-radius: 2rem; font-size: 0.9rem; cursor: pointer; }
+        .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; z-index: 1000; }
+        .popup { background: #fff; padding: 1.5rem 2rem; border-radius: 0.75rem; max-width: 400px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.15); }
+        .popup h3 { margin-bottom: 0.5rem; }
+        .popup p { margin-bottom: 1.2rem; font-size: 0.95rem; color: #475569; }
+        .popup .popup-actions { display: flex; gap: 1rem; justify-content: center; }
+        .popup .popup-actions button { padding: 0.4rem 1.5rem; border-radius: 2rem; border: none; font-weight: 500; cursor: pointer; }
+        .popup .confirm { background: #dc2626; color: #fff; }
+        .popup .cancel { background: #e2e8f0; color: #1e293b; }
+        .footer { margin-top: 1rem; text-align: right; font-size: 0.8rem; color: #94a3b8; }
+        .hidden { display: none; }
+    </style>
+</head>
+<body>
+    <!-- nav -->
+    <nav>
+        <h1>⚡ Build Monitor</h1>
+        <span>3 job attivi</span>
+    </nav>
+
+    <!-- hero -->
+    <div class="hero">
+        <div class="status">
+            <div>✅ 2 success</div>
+            <div>❌ 1 fail</div>
+            <div>⏳ 0 pending</div>
+        </div>
+        <div class="filter">
+            <input id="filterInput" placeholder="filtra job…" value="">
+            <button id="filterBtn">Filtra</button>
+        </div>
+    </div>
+
+    <!-- tabella -->
+    <div class="card table-wrap">
+        <table id="jobTable">
+            <thead><tr><th>Job</th><th>Status</th><th>Branch</th><th>Ultimo run</th><th>Azioni</th></tr></thead>
+            <tbody id="tableBody">
+                <!-- righe esistenti -->
+                <tr><td>frontend-ci</td><td><span class="status-badge success">success</span></td><td>main</td><td>2 min fa</td><td class="actions"><button class="rebuild">🔄 rilancia</button><button class="remove">✖ rimuovi</button></td></tr>
+                <tr><td>api-tests</td><td><span class="status-badge fail">fail</span></td><td>develop</td><td>15 min fa</td><td class="actions"><button class="rebuild">🔄 rilancia</button><button class="remove">✖ rimuovi</button></td></tr>
+                <tr><td>deploy-prod</td><td><span class="status-badge success">success</span></td><td>release</td><td>1 ora fa</td><td class="actions"><button class="rebuild">🔄 rilancia</button><button class="remove">✖ rimuovi</button></td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- modulo aggiungi job -->
+    <div class="add-section">
+        <input id="newJobName" placeholder="nome job (es. ui-test)">
+        <input id="newJobBranch" placeholder="branch (es. feat/ux)">
+        <button id="addJobBtn">➕ Aggiungi job</button>
+    </div>
+
+    <!-- popup di conferma -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup">
+            <h3>⚠️ Conferma</h3>
+            <p id="popupMsg">Rilanciare la build selezionata?</p>
+            <div class="popup-actions">
+                <button class="cancel" id="popupCancel">Annulla</button>
+                <button class="confirm" id="popupConfirm">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">click su "rilancia" o "rimuovi" — popup conferma</div>
+
+    <script>
+        (function(){
+            // stato interno
+            let jobs = [
+                { name: 'frontend-ci', status: 'success', branch: 'main', run: '2 min fa' },
+                { name: 'api-tests', status: 'fail', branch: 'develop', run: '15 min fa' },
+                { name: 'deploy-prod', status: 'success', branch: 'release', run: '1 ora fa' }
+            ];
+            let filterText = '';
+            let pendingConfirmAction = null; // { type, index }
+
+            // DOM refs
+            const tbody = document.getElementById('tableBody');
+            const filterInput = document.getElementById('filterInput');
+            const filterBtn = document.getElementById('filterBtn');
+            const newName = document.getElementById('newJobName');
+            const newBranch = document.getElementById('newJobBranch');
+            const addBtn = document.getElementById('addJobBtn');
+            const popupOverlay = document.getElementById('popupOverlay');
+            const popupMsg = document.getElementById('popupMsg');
+            const popupConfirm = document.getElementById('popupConfirm');
+            const popupCancel = document.getElementById('popupCancel');
+            const navSpan = document.querySelector('nav span');
+            const heroStatus = document.querySelector('.hero .status');
+
+            // helper aggiornamento hero e nav
+            function updateCounts() {
+                const total = jobs.length;
+                const success = jobs.filter(j => j.status === 'success').length;
+                const fail = jobs.filter(j => j.status === 'fail').length;
+                const pending = jobs.filter(j => j.status === 'pending').length;
+                navSpan.textContent = total + ' job attivi';
+                heroStatus.innerHTML = `
+                    <div>✅ ${success} success</div>
+                    <div>❌ ${fail} fail</div>
+                    <div>⏳ ${pending} pending</div>
+                `;
+            }
+
+            // render tabella con filtro
+            function renderTable() {
+                const filtered = jobs.filter(j => 
+                    j.name.toLowerCase().includes(filterText.toLowerCase()) ||
+                    j.branch.toLowerCase().includes(filterText.toLowerCase())
+                );
+                let html = '';
+                filtered.forEach((job, idx) => {
+                    const statusClass = job.status === 'success' ? 'success' : (job.status === 'fail' ? 'fail' : 'pending');
+                    html += `<tr><td>${job.name}</td><td><span class="status-badge ${statusClass}">${job.status}</span></td><td>${job.branch}</td><td>${job.run}</td><td class="actions"><button class="rebuild" data-index="${idx}">🔄 rilancia</button><button class="remove" data-index="${idx}">✖ rimuovi</button></td></tr>`;
+                });
+                tbody.innerHTML = html;
+                // attacca eventi ai bottoni (delega)
+                tbody.querySelectorAll('.rebuild').forEach(btn => {
+                    btn.addEventListener('click', function(e){
+                        const idx = this.dataset.index;
+                        const realIdx = jobs.findIndex(j => j.name === filtered[idx].name); // mapping corretto
+                        if(realIdx === -1) return;
+                        pendingConfirmAction = { type: 'rebuild', index: realIdx };
+                        popupMsg.textContent = `Rilanciare la build "${jobs[realIdx].name}"?`;
+                        popupOverlay.style.display = 'flex';
+                    });
+                });
+                tbody.querySelectorAll('.remove').forEach(btn => {
+                    btn.addEventListener('click', function(e){
+                        const idx = this.dataset.index;
+                        const realIdx = jobs.findIndex(j => j.name === filtered[idx].name);
+                        if(realIdx === -1) return;
+                        pendingConfirmAction = { type: 'remove', index: realIdx };
+                        popupMsg.textContent = `Rimuovere definitivamente "${jobs[realIdx].name}"?`;
+                        popupOverlay.style.display = 'flex';
+                    });
+                });
+            }
+
+            // applica filtro
+            function applyFilter() {
+                filterText = filterInput.value.trim();
+                renderTable();
+            }
+
+            // aggiungi job
+            function addJob() {
+                const name = newName.value.trim();
+                const branch = newBranch.value.trim();
+                if(!name || !branch) { alert('Compila nome e branch'); return; }
+                jobs.push({ name, status: 'pending', branch, run: 'ora' });
+                newName.value = ''; newBranch.value = '';
+                updateCounts();
+                renderTable();
+            }
+
+            // gestione popup
+            function confirmAction() {
+                if(!pendingConfirmAction) return;
+                const { type, index } = pendingConfirmAction;
+                if(type === 'rebuild') {
+                    jobs[index].status = 'pending';
+                    jobs[index].run = 'adesso';
+                } else if (type === 'remove') {
+                    jobs.splice(index, 1);
+                }
+                pendingConfirmAction = null;
+                updateCounts();
+                renderTable();
+                popupOverlay.style.display = 'none';
+            }
+
+            function cancelPopup() {
+                pendingConfirmAction = null;
+                popupOverlay.style.display = 'none';
+            }
+
+            // eventi

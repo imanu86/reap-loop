@@ -1,0 +1,231 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact</title>
+<style>
+/* essential reset & layout */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; background: #f4f6f9; color: #1e293b; padding: 1rem; }
+/* nav */
+nav { background: #1e293b; color: #f8fafc; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1rem; display: flex; gap: 1.5rem; align-items: center; }
+nav a { color: #cbd5e1; text-decoration: none; font-weight: 500; transition: color .15s; }
+nav a:hover { color: #fff; }
+nav span { font-weight: 700; letter-spacing: .5px; margin-right: auto; }
+/* hero */
+.hero { background: linear-gradient(145deg, #2d3a4a, #1e293b); padding: 1.5rem 2rem; border-radius: 0.5rem; margin-bottom: 1.5rem; color: #f8fafc; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.hero h2 { font-size: 1.4rem; font-weight: 600; }
+.hero .status { background: #22c55e; padding: 0.3rem 1rem; border-radius: 2rem; font-size: 0.9rem; font-weight: 500; color: #0f172a; }
+/* filter */
+.filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+.filter-bar input { flex: 1; min-width: 180px; padding: 0.5rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.9rem; background: #fff; }
+.filter-bar button { background: #1e293b; color: #f8fafc; border: none; padding: 0.5rem 1rem; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: background .15s; }
+.filter-bar button:hover { background: #334155; }
+/* table */
+table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+th, td { padding: 0.65rem 1rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f1f5f9; font-weight: 600; font-size: 0.85rem; color: #475569; }
+td { font-size: 0.9rem; }
+td .status-badge { display: inline-block; padding: 0.2rem 0.6rem; border-radius: 1rem; font-size: 0.75rem; font-weight: 500; }
+.status-badge.ok { background: #dcfce7; color: #166534; }
+.status-badge.fail { background: #fee2e2; color: #991b1b; }
+.status-badge.pending { background: #fef9c3; color: #92400e; }
+td button { background: transparent; border: 1px solid #94a3b8; border-radius: 0.25rem; padding: 0.2rem 0.6rem; font-size: 0.8rem; cursor: pointer; transition: .1s; }
+td button:hover { background: #e2e8f0; border-color: #64748b; }
+/* add form */
+.add-form { margin-top: 1.5rem; display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; background: #fff; padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.04); }
+.add-form input { flex: 1; min-width: 140px; padding: 0.45rem 0.75rem; border: 1px solid #cbd5e1; border-radius: 0.375rem; font-size: 0.9rem; }
+.add-form button { background: #2563eb; color: #fff; border: none; padding: 0.45rem 1.2rem; border-radius: 0.375rem; font-weight: 500; cursor: pointer; transition: background .15s; }
+.add-form button:hover { background: #1d4ed8; }
+/* popup overlay */
+.popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 100; }
+.popup-box { background: #fff; padding: 1.5rem 2rem; border-radius: 0.75rem; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.popup-box p { margin-bottom: 1rem; font-size: 1rem; }
+.popup-actions { display: flex; gap: 1rem; justify-content: center; }
+.popup-actions button { padding: 0.5rem 1.5rem; border-radius: 0.375rem; border: none; font-weight: 500; cursor: pointer; }
+.popup-confirm { background: #1e293b; color: #f8fafc; }
+.popup-cancel { background: #e2e8f0; color: #1e293b; }
+/* responsive */
+@media (max-width: 600px) { nav { flex-wrap: wrap; } .hero { flex-direction: column; align-items: stretch; } }
+</style>
+</head>
+<body>
+<!-- nav -->
+<nav>
+  <span>⚡ BuildBoard</span>
+  <a href="#">Dashboard</a>
+  <a href="#">Jobs</a>
+  <a href="#">Logs</a>
+</nav>
+
+<!-- hero -->
+<div class="hero">
+  <h2>Build status · <span id="heroStatus" class="status">✅ all stable</span></h2>
+  <div>🔧 <span id="jobCount">0</span> job(s) monitored</div>
+</div>
+
+<!-- filter -->
+<div class="filter-bar">
+  <input type="text" id="filterInput" placeholder="🔍 filter by name / status …">
+  <button id="resetFilter">Reset</button>
+</div>
+
+<!-- table -->
+<table id="buildTable">
+  <thead>
+    <tr><th>Job</th><th>Status</th><th>Branch</th><th>Action</th></tr>
+  </thead>
+  <tbody id="tableBody">
+    <!-- rows inserted by js -->
+  </tbody>
+</table>
+
+<!-- add form -->
+<div class="add-form">
+  <input type="text" id="newJobName" placeholder="job name (e.g. frontend)">
+  <input type="text" id="newJobBranch" placeholder="branch (main)" value="main">
+  <button id="addJobBtn">➕ Add job</button>
+</div>
+
+<!-- popup confirmation -->
+<div class="popup-overlay" id="popupOverlay">
+  <div class="popup-box">
+    <p id="popupMessage">Rebuild job?</p>
+    <div class="popup-actions">
+      <button class="popup-confirm" id="popupConfirm">Confirm</button>
+      <button class="popup-cancel" id="popupCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ----- in-memory data -----
+let jobs = [
+  { id: 'j1', name: 'frontend', status: 'ok', branch: 'main' },
+  { id: 'j2', name: 'api-gateway', status: 'fail', branch: 'develop' },
+  { id: 'j3', name: 'worker', status: 'pending', branch: 'feat/cache' },
+  { id: 'j4', name: 'auth-service', status: 'ok', branch: 'main' }
+];
+let nextId = 100;
+
+// ----- DOM refs -----
+const tbody = document.getElementById('tableBody');
+const filterInput = document.getElementById('filterInput');
+const resetBtn = document.getElementById('resetFilter');
+const heroStatus = document.getElementById('heroStatus');
+const jobCountSpan = document.getElementById('jobCount');
+const newName = document.getElementById('newJobName');
+const newBranch = document.getElementById('newJobBranch');
+const addBtn = document.getElementById('addJobBtn');
+const popupOverlay = document.getElementById('popupOverlay');
+const popupMsg = document.getElementById('popupMessage');
+const confirmBtn = document.getElementById('popupConfirm');
+const cancelBtn = document.getElementById('popupCancel');
+
+// ----- pending rebuild target (job id) -----
+let pendingRebuildId = null;
+
+// ----- helpers -----
+function statusBadge(status) {
+  const map = { ok: 'ok', fail: 'fail', pending: 'pending' };
+  return `<span class="status-badge ${map[status] || 'pending'}">${status}</span>`;
+}
+
+function renderRows(filterText = '') {
+  const f = filterText.toLowerCase().trim();
+  const filtered = jobs.filter(j => {
+    if (!f) return true;
+    return j.name.toLowerCase().includes(f) || j.status.toLowerCase().includes(f);
+  });
+  if (filtered.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="4" style="text-align:center; padding:1.5rem; color:#64748b;">no matching jobs</td></tr>`;
+  } else {
+    tbody.innerHTML = filtered.map(j => `
+      <tr>
+        <td><strong>${j.name}</strong></td>
+        <td>${statusBadge(j.status)}</td>
+        <td>${j.branch}</td>
+        <td><button class="rebuild-btn" data-id="${j.id}">🔄 relaunch</button></td>
+      </tr>
+    `).join('');
+  }
+  // attach rebuild events
+  document.querySelectorAll('.rebuild-btn').forEach(btn => {
+    btn.addEventListener('click', function(e) {
+      const id = this.dataset.id;
+      const job = jobs.find(j => j.id === id);
+      if (!job) return;
+      pendingRebuildId = id;
+      popupMsg.textContent = `Rebuild "${job.name}" (${job.branch})?`;
+      popupOverlay.style.display = 'flex';
+    });
+  });
+  updateHeroAndCount();
+}
+
+function updateHeroAndCount() {
+  const total = jobs.length;
+  jobCountSpan.textContent = total;
+  const okCount = jobs.filter(j => j.status === 'ok').length;
+  const failCount = jobs.filter(j => j.status === 'fail').length;
+  let text = '✅ all stable';
+  if (failCount > 0) text = '⚠️ some failing';
+  else if (okCount === 0 && total > 0) text = '⏳ pending';
+  heroStatus.textContent = text;
+}
+
+// ----- add job -----
+function addJob() {
+  const name = newName.value.trim();
+  const branch = newBranch.value.trim() || 'main';
+  if (!name) return;
+  const statuses = ['ok', 'fail', 'pending'];
+  const randStatus = statuses[Math.floor(Math.random() * 3)];
+  jobs.push({ id: 'j' + nextId++, name, status: randStatus, branch });
+  renderRows(filterInput.value);
+  newName.value = '';
+  newBranch.value = 'main';
+}
+
+// ----- rebuild (relaunch) -----
+function confirmRebuild() {
+  if (!pendingRebuildId) return;
+  const idx = jobs.findIndex(j => j.id === pendingRebuildId);
+  if (idx === -1) return;
+  // toggle status to pending (simulate relaunch)
+  jobs[idx].status = 'pending';
+  renderRows(filterInput.value);
+  pendingRebuildId = null;
+  popupOverlay.style.display = 'none';
+}
+
+// ----- cancel popup -----
+function cancelPopup() {
+  pendingRebuildId = null;
+  popupOverlay.style.display = 'none';
+}
+
+// ----- filter & reset -----
+filterInput.addEventListener('input', () => renderRows(filterInput.value));
+resetBtn.addEventListener('click', () => {
+  filterInput.value = '';
+  renderRows('');
+});
+
+// ----- add event -----
+addBtn.addEventListener('click', addJob);
+
+// ----- popup events -----
+confirmBtn.addEventListener('click', confirmRebuild);
+cancelBtn.addEventListener('click', cancelPopup);
+popupOverlay.addEventListener('click', function(e) {
+  if (e.target === popupOverlay) cancelPopup();
+});
+
+// ----- initial render -----
+renderRows('');
+</script>
+</body>
+</html>

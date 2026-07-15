@@ -1,0 +1,219 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact Dashboard</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; background: #f4f6f9; color: #1e293b; padding: 1rem; }
+nav { background: #1e293b; color: #f8fafc; padding: 0.75rem 1.25rem; border-radius: 0.5rem; margin-bottom: 1.5rem; display: flex; align-items: center; gap: 1.5rem; flex-wrap: wrap; }
+nav h1 { font-size: 1.3rem; font-weight: 600; letter-spacing: -0.5px; }
+nav .badge { background: #3b82f6; padding: 0.2rem 0.7rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+.hero { background: linear-gradient(135deg, #1e293b, #334155); color: white; padding: 1.5rem 2rem; border-radius: 0.75rem; margin-bottom: 1.5rem; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.hero h2 { font-size: 1.5rem; font-weight: 500; }
+.hero .status { background: #22c55e; padding: 0.3rem 1rem; border-radius: 30px; font-weight: 600; font-size: 0.9rem; }
+.filter-bar { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+.filter-bar input { flex: 1; min-width: 180px; padding: 0.5rem 0.75rem; border: 1px solid #d1d5db; border-radius: 0.4rem; font-size: 0.9rem; background: white; }
+.filter-bar button { background: #3b82f6; border: none; color: white; padding: 0.5rem 1rem; border-radius: 0.4rem; font-weight: 500; cursor: pointer; transition: background 0.1s; }
+.filter-bar button:hover { background: #2563eb; }
+table { width: 100%; border-collapse: collapse; background: white; border-radius: 0.5rem; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+th, td { padding: 0.65rem 0.75rem; text-align: left; border-bottom: 1px solid #e2e8f0; }
+th { background: #f1f5f9; font-weight: 600; font-size: 0.8rem; color: #475569; }
+td { font-size: 0.9rem; }
+td .job-id { font-family: monospace; background: #e2e8f0; padding: 0.1rem 0.4rem; border-radius: 12px; font-size: 0.75rem; }
+td .status-badge { display: inline-block; padding: 0.15rem 0.6rem; border-radius: 20px; font-size: 0.75rem; font-weight: 500; }
+.status-badge.success { background: #22c55e; color: white; }
+.status-badge.fail { background: #ef4444; color: white; }
+.status-badge.pending { background: #f59e0b; color: white; }
+.action-btn { background: transparent; border: 1px solid #d1d5db; padding: 0.2rem 0.6rem; border-radius: 0.3rem; cursor: pointer; font-size: 0.8rem; transition: 0.1s; }
+.action-btn:hover { background: #e2e8f0; border-color: #9ca3af; }
+.add-section { margin-top: 1.5rem; background: white; padding: 1rem 1.25rem; border-radius: 0.5rem; box-shadow: 0 2px 6px rgba(0,0,0,0.05); display: flex; flex-wrap: wrap; gap: 0.75rem; align-items: center; }
+.add-section input { flex: 1; min-width: 140px; padding: 0.4rem 0.6rem; border: 1px solid #d1d5db; border-radius: 0.3rem; font-size: 0.9rem; }
+.add-section button { background: #1e293b; color: white; border: none; padding: 0.4rem 1rem; border-radius: 0.3rem; font-weight: 500; cursor: pointer; }
+.add-section button:hover { background: #334155; }
+.popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1000; }
+.popup-box { background: white; padding: 1.5rem 2rem; border-radius: 0.75rem; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+.popup-box h3 { margin-bottom: 0.75rem; }
+.popup-actions { display: flex; gap: 1rem; justify-content: center; margin-top: 1.2rem; }
+.popup-actions button { padding: 0.4rem 1.2rem; border-radius: 0.4rem; border: none; font-weight: 500; cursor: pointer; }
+.popup-confirm { background: #ef4444; color: white; }
+.popup-cancel { background: #e2e8f0; color: #1e293b; }
+</style>
+</head>
+<body>
+<nav>
+  <h1>⚡ BuildBoard</h1>
+  <span class="badge">live · compact</span>
+</nav>
+
+<div class="hero">
+  <h2>Build status</h2>
+  <span class="status" id="heroStatus">✅ all stable</span>
+</div>
+
+<div class="filter-bar">
+  <input type="text" id="filterInput" placeholder="🔍 filter by job, commit, status...">
+  <button id="resetFilterBtn">reset</button>
+</div>
+
+<table id="buildTable">
+<thead><tr><th>Job</th><th>Commit</th><th>Status</th><th>Action</th></tr></thead>
+<tbody id="tableBody">
+  <!-- popolato da JS -->
+</tbody>
+</table>
+
+<div class="add-section">
+  <input type="text" id="newJobName" placeholder="job name (es: frontend)">
+  <input type="text" id="newCommitId" placeholder="commit (es: a1b2c3)">
+  <button id="addJobBtn">➕ add job</button>
+</div>
+
+<!-- popup conferma -->
+<div class="popup-overlay" id="confirmPopup">
+  <div class="popup-box">
+    <h3>⚠️ restart build?</h3>
+    <p id="popupJobInfo">job: ...</p>
+    <div class="popup-actions">
+      <button class="popup-confirm" id="popupConfirmBtn">restart</button>
+      <button class="popup-cancel" id="popupCancelBtn">cancel</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ---------- DATI INIZIALI ----------
+let builds = [
+  { id: 'b-101', job: 'frontend', commit: 'e2a1f', status: 'success' },
+  { id: 'b-102', job: 'api-gateway', commit: 'c3d4e', status: 'fail' },
+  { id: 'b-103', job: 'worker-queue', commit: 'f5g6h', status: 'pending' },
+  { id: 'b-104', job: 'frontend', commit: 'a7b8c', status: 'success' },
+  { id: 'b-105', job: 'auth-service', commit: 'd9e0f', status: 'success' },
+];
+
+let nextId = 106;
+let currentFilter = '';
+
+// elementi
+const tbody = document.getElementById('tableBody');
+const heroStatus = document.getElementById('heroStatus');
+const filterInput = document.getElementById('filterInput');
+const resetBtn = document.getElementById('resetFilterBtn');
+const newJobName = document.getElementById('newJobName');
+const newCommitId = document.getElementById('newCommitId');
+const addBtn = document.getElementById('addJobBtn');
+const popupOverlay = document.getElementById('confirmPopup');
+const popupJobInfo = document.getElementById('popupJobInfo');
+const popupConfirm = document.getElementById('popupConfirmBtn');
+const popupCancel = document.getElementById('popupCancelBtn');
+
+// popup state
+let pendingRestartId = null;
+
+// ---------- RENDER ----------
+function renderTable() {
+  const filter = currentFilter.toLowerCase();
+  const filtered = builds.filter(b => {
+    if (!filter) return true;
+    return b.job.toLowerCase().includes(filter) ||
+           b.commit.toLowerCase().includes(filter) ||
+           b.status.toLowerCase().includes(filter);
+  });
+
+  let html = '';
+  filtered.forEach(b => {
+    const statusClass = b.status === 'success' ? 'success' : b.status === 'fail' ? 'fail' : 'pending';
+    html += `<tr>
+      <td><span class="job-id">${b.job}</span></td>
+      <td><code>${b.commit}</code></td>
+      <td><span class="status-badge ${statusClass}">${b.status}</span></td>
+      <td><button class="action-btn" data-id="${b.id}">⟳ restart</button></td>
+    </tr>`;
+  });
+  tbody.innerHTML = html;
+
+  // aggancia eventi restart
+  tbody.querySelectorAll('.action-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.dataset.id;
+      const build = builds.find(b => b.id === id);
+      if (!build) return;
+      pendingRestartId = id;
+      popupJobInfo.textContent = `job: ${build.job} · commit: ${build.commit}`;
+      popupOverlay.style.display = 'flex';
+    });
+  });
+
+  updateHeroStatus();
+}
+
+function updateHeroStatus() {
+  const hasFail = builds.some(b => b.status === 'fail');
+  const hasPending = builds.some(b => b.status === 'pending');
+  let text;
+  if (hasFail) text = '❌ failures detected';
+  else if (hasPending) text = '⏳ pending builds';
+  else text = '✅ all stable';
+  heroStatus.textContent = text;
+}
+
+// ---------- FILTRO ----------
+filterInput.addEventListener('input', () => {
+  currentFilter = filterInput.value;
+  renderTable();
+});
+resetBtn.addEventListener('click', () => {
+  filterInput.value = '';
+  currentFilter = '';
+  renderTable();
+});
+
+// ---------- AGGIUNTA JOB ----------
+addBtn.addEventListener('click', () => {
+  const job = newJobName.value.trim();
+  const commit = newCommitId.value.trim();
+  if (!job || !commit) return alert('job and commit required');
+  const newBuild = {
+    id: `b-${nextId++}`,
+    job: job,
+    commit: commit,
+    status: 'pending'
+  };
+  builds.push(newBuild);
+  renderTable();
+  newJobName.value = '';
+  newCommitId.value = '';
+});
+
+// ---------- POPUP CONFERMA ----------
+popupConfirm.addEventListener('click', () => {
+  if (!pendingRestartId) return;
+  const idx = builds.findIndex(b => b.id === pendingRestartId);
+  if (idx !== -1) {
+    builds[idx].status = 'pending';
+    renderTable();
+  }
+  pendingRestartId = null;
+  popupOverlay.style.display = 'none';
+});
+
+popupCancel.addEventListener('click', () => {
+  pendingRestartId = null;
+  popupOverlay.style.display = 'none';
+});
+
+// click overlay per chiudere (opzionale)
+popupOverlay.addEventListener('click', (e) => {
+  if (e.target === popupOverlay) {
+    pendingRestartId = null;
+    popupOverlay.style.display = 'none';
+  }
+});
+
+// ---------- INIT ----------
+renderTable();
+</script>
+</body>
+</html>

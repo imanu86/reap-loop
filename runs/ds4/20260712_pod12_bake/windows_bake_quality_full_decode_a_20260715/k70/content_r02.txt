@@ -1,0 +1,242 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, sans-serif; background: #f4f5f7; padding: 16px; }
+        .nav { background: #1a1f2b; color: #fff; padding: 12px 20px; border-radius: 10px; margin-bottom: 16px; display: flex; gap: 24px; align-items: center; }
+        .nav h1 { font-size: 1.3rem; font-weight: 600; }
+        .nav a { color: #b3c2ff; text-decoration: none; font-weight: 500; margin-left: auto; }
+        .hero { background: linear-gradient(135deg, #2b3a5c, #1f2a44); color: #fff; padding: 24px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; }
+        .hero h2 { font-size: 1.5rem; font-weight: 500; }
+        .hero .status { background: #2dd4bf; padding: 6px 14px; border-radius: 30px; font-weight: 600; color: #0f172a; font-size: 0.9rem; }
+        .controls { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px; align-items: center; }
+        .controls input { padding: 8px 14px; border: 1px solid #ccc; border-radius: 30px; flex: 1; min-width: 180px; }
+        .controls button { background: #1e293b; color: #fff; border: none; padding: 8px 16px; border-radius: 30px; font-weight: 500; cursor: pointer; transition: background .2s; }
+        .controls button:hover { background: #334155; }
+        .table-wrap { background: #fff; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #f1f5f9; padding: 12px 16px; text-align: left; font-weight: 600; color: #1e293b; border-bottom: 2px solid #e2e8f0; }
+        td { padding: 12px 16px; border-bottom: 1px solid #e2e8f0; }
+        .job-name { font-weight: 500; }
+        .badge { display: inline-block; padding: 2px 12px; border-radius: 30px; font-size: 0.8rem; font-weight: 600; }
+        .badge.success { background: #d1fae5; color: #065f46; }
+        .badge.fail { background: #fee2e2; color: #9b1c1c; }
+        .badge.pending { background: #e0e7ff; color: #312e81; }
+        .action-btn { background: transparent; border: 1px solid #94a3b8; border-radius: 20px; padding: 4px 12px; font-size: 0.8rem; cursor: pointer; transition: .2s; }
+        .action-btn:hover { background: #e2e8f0; border-color: #1e293b; }
+        .add-section { margin-top: 20px; background: #fff; padding: 16px 20px; border-radius: 12px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .add-section input { padding: 8px 14px; border: 1px solid #d1d5db; border-radius: 30px; flex: 1; min-width: 140px; }
+        .add-section button { background: #0f172a; color: #fff; border: none; padding: 8px 18px; border-radius: 30px; font-weight: 500; cursor: pointer; }
+        .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .popup-box { background: #fff; padding: 28px 32px; border-radius: 20px; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+        .popup-box h3 { margin-bottom: 12px; }
+        .popup-actions { margin-top: 20px; display: flex; gap: 16px; justify-content: center; }
+        .popup-actions button { padding: 8px 24px; border-radius: 30px; border: none; font-weight: 600; cursor: pointer; }
+        .popup-confirm { background: #0f172a; color: #fff; }
+        .popup-cancel { background: #e2e8f0; }
+        .footer { margin-top: 20px; text-align: center; font-size: 0.8rem; color: #64748b; }
+    </style>
+</head>
+<body>
+    <!-- NAV -->
+    <div class="nav">
+        <h1>⚡ BuildBoard</h1>
+        <a href="#">📋 dashboard</a>
+    </div>
+
+    <!-- HERO con stato generale -->
+    <div class="hero">
+        <h2>Pipeline status</h2>
+        <div class="status" id="heroStatus">✅ 3 success</div>
+    </div>
+
+    <!-- FILTER + RILANCIA -->
+    <div class="controls">
+        <input type="text" id="filterInput" placeholder="🔍 filtra per nome / stato ..." value="">
+        <button id="restartSelected">🔄 rilancia selezionati</button>
+    </div>
+
+    <!-- TABELLA -->
+    <div class="table-wrap">
+        <table id="jobTable">
+            <thead>
+                <tr><th><input type="checkbox" id="selectAll"></th><th>Job</th><th>Stato</th><th>Azioni</th></tr>
+            </thead>
+            <tbody id="tbody">
+                <!-- righe esistenti -->
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODULO AGGIUNGI JOB -->
+    <div class="add-section">
+        <input type="text" id="newJobName" placeholder="nome job (es: deploy-api)">
+        <input type="text" id="newJobStatus" placeholder="stato (success/fail/pending)">
+        <button id="addJobBtn">➕ aggiungi job</button>
+    </div>
+
+    <!-- POPUP CONFERMA -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-box">
+            <h3>⚠️ Conferma</h3>
+            <p id="popupMessage">Vuoi rilanciare i job selezionati?</p>
+            <div class="popup-actions">
+                <button class="popup-cancel" id="popupCancel">Annulla</button>
+                <button class="popup-confirm" id="popupConfirm">Conferma</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">single‑file · interazioni native</div>
+
+    <script>
+        (function() {
+            // ---------- DATI INIZIALI ----------
+            let jobs = [
+                { id: 'j1', name: 'build-frontend', status: 'success' },
+                { id: 'j2', name: 'unit-tests', status: 'fail' },
+                { id: 'j3', name: 'deploy-backend', status: 'pending' },
+                { id: 'j4', name: 'lint-check', status: 'success' },
+            ];
+            let selectedIds = new Set();
+            let idCounter = 5;
+
+            // DOM refs
+            const tbody = document.getElementById('tbody');
+            const filterInput = document.getElementById('filterInput');
+            const selectAllBox = document.getElementById('selectAll');
+            const heroStatus = document.getElementById('heroStatus');
+            const restartBtn = document.getElementById('restartSelected');
+            const addJobBtn = document.getElementById('addJobBtn');
+            const newJobName = document.getElementById('newJobName');
+            const newJobStatus = document.getElementById('newJobStatus');
+            const popupOverlay = document.getElementById('popupOverlay');
+            const popupMessage = document.getElementById('popupMessage');
+            const popupConfirm = document.getElementById('popupConfirm');
+            const popupCancel = document.getElementById('popupCancel');
+
+            // ---------- RENDER ----------
+            function render() {
+                const filter = filterInput.value.toLowerCase().trim();
+                let filtered = jobs;
+                if (filter) {
+                    filtered = jobs.filter(j => 
+                        j.name.toLowerCase().includes(filter) || 
+                        j.status.toLowerCase().includes(filter)
+                    );
+                }
+
+                // aggiorna stato hero
+                const successCount = jobs.filter(j => j.status === 'success').length;
+                const failCount = jobs.filter(j => j.status === 'fail').length;
+                const pendingCount = jobs.filter(j => j.status === 'pending').length;
+                heroStatus.textContent = `✅ ${successCount} success · ❌ ${failCount} fail · ⏳ ${pendingCount} pending`;
+
+                // righe tabella
+                let html = '';
+                for (let job of filtered) {
+                    const checked = selectedIds.has(job.id) ? 'checked' : '';
+                    const badgeClass = job.status === 'success' ? 'badge success' : (job.status === 'fail' ? 'badge fail' : 'badge pending');
+                    html += `<tr>
+                        <td><input type="checkbox" class="row-check" data-id="${job.id}" ${checked}></td>
+                        <td class="job-name">${job.name}</td>
+                        <td><span class="${badgeClass}">${job.status}</span></td>
+                        <td><button class="action-btn" data-action="restart" data-id="${job.id}">⟳ rilancia</button></td>
+                    </tr>`;
+                }
+                tbody.innerHTML = html;
+
+                // sincronizza selectAll
+                const visibleRows = tbody.querySelectorAll('.row-check');
+                const checkedRows = tbody.querySelectorAll('.row-check:checked');
+                if (visibleRows.length === 0) {
+                    selectAllBox.checked = false;
+                } else {
+                    selectAllBox.checked = (visibleRows.length === checkedRows.length);
+                }
+
+                // aggancia eventi riga (checkbox + pulsanti)
+                tbody.querySelectorAll('.row-check').forEach(cb => {
+                    cb.addEventListener('change', function(e) {
+                        const id = this.dataset.id;
+                        if (this.checked) selectedIds.add(id);
+                        else selectedIds.delete(id);
+                        // aggiorna selectAll
+                        const all = tbody.querySelectorAll('.row-check');
+                        const checkedAll = tbody.querySelectorAll('.row-check:checked');
+                        selectAllBox.checked = (all.length === checkedAll.length);
+                    });
+                });
+
+                tbody.querySelectorAll('[data-action="restart"]').forEach(btn => {
+                    btn.addEventListener('click', function(e) {
+                        const id = this.dataset.id;
+                        // popup per singolo rilancio
+                        const job = jobs.find(j => j.id === id);
+                        if (!job) return;
+                        popupMessage.textContent = `Rilanciare build "${job.name}" ?`;
+                        popupOverlay.style.display = 'flex';
+                        // salva riferimento
+                        popupConfirm._pendingAction = () => {
+                            // cambia stato a pending
+                            job.status = 'pending';
+                            render();
+                            popupOverlay.style.display = 'none';
+                        };
+                        popupCancel.onclick = function() { popupOverlay.style.display = 'none'; };
+                        popupConfirm.onclick = function() {
+                            if (popupConfirm._pendingAction) popupConfirm._pendingAction();
+                        };
+                    });
+                });
+            }
+
+            // ---------- EVENTI GLOBALI ----------
+            // selectAll
+            selectAllBox.addEventListener('change', function(e) {
+                const checked = this.checked;
+                const checkboxes = tbody.querySelectorAll('.row-check');
+                checkboxes.forEach(cb => {
+                    cb.checked = checked;
+                    const id = cb.dataset.id;
+                    if (checked) selectedIds.add(id);
+                    else selectedIds.delete(id);
+                });
+            });
+
+            // filtro
+            filterInput.addEventListener('input', function() {
+                render();
+            });
+
+            // pulsante rilancio selezionati (con popup)
+            restartBtn.addEventListener('click', function() {
+                if (selectedIds.size === 0) {
+                    alert('Nessun job selezionato.');
+                    return;
+                }
+                const names = jobs.filter(j => selectedIds.has(j.id)).map(j => j.name).join(', ');
+                popupMessage.textContent = `Rilanciare ${selectedIds.size} build: ${names} ?`;
+                popupOverlay.style.display = 'flex';
+                popupConfirm._pendingAction = () => {
+                    jobs.forEach(j => {
+                        if (selectedIds.has(j.id)) j.status = 'pending';
+                    });
+                    selectedIds.clear();
+                    render();
+                    popupOverlay.style.display = 'none';
+                };
+                popupCancel.onclick = function() { popupOverlay.style.display = 'none'; };
+                popupConfirm.onclick = function() {
+                    if (popupConfirm._pendingAction) popupConfirm._pendingAction();
+                };
+            });
+
+            // aggiungi job
+            addJobBtn.addEventListener('click', function() {
+                const name =

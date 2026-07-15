@@ -1,0 +1,227 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · compact dashboard</title>
+<style>
+  /* reset & essentials */
+  * { margin:0; padding:0; box-sizing:border-box; font-family:system-ui, 'Segoe UI', Roboto, sans-serif; }
+  body { background:#f4f6f9; padding:1.5rem; }
+  .card { background:#fff; border-radius:12px; padding:1.2rem 1.5rem; margin-bottom:1.5rem; box-shadow:0 2px 6px rgba(0,0,0,0.05); }
+  nav { display:flex; gap:1.5rem; align-items:center; flex-wrap:wrap; }
+  nav a { text-decoration:none; color:#1a1a2e; font-weight:500; padding:0.3rem 0; border-bottom:2px solid transparent; transition:0.1s; }
+  nav a:hover { border-bottom-color:#2d6b9f; }
+  .hero { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; }
+  .hero h2 { font-size:1.6rem; font-weight:600; color:#1e293b; }
+  .badge { background:#1e293b; color:#fff; padding:0.3rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:500; }
+  .badge.ok { background:#15803d; }
+  .badge.warn { background:#b45309; }
+  .badge.err { background:#b91c1c; }
+  .filter-bar { display:flex; gap:0.8rem; align-items:center; flex-wrap:wrap; margin-bottom:0.8rem; }
+  .filter-bar input { flex:1; min-width:180px; padding:0.5rem 0.8rem; border:1px solid #d1d5db; border-radius:8px; font-size:0.95rem; }
+  .filter-bar button { background:#1e293b; color:#fff; border:none; padding:0.5rem 1.2rem; border-radius:8px; cursor:pointer; font-weight:500; }
+  .filter-bar button:hover { background:#2d3748; }
+  table { width:100%; border-collapse:collapse; }
+  th, td { text-align:left; padding:0.7rem 0.5rem; border-bottom:1px solid #e5e7eb; }
+  th { color:#475569; font-weight:500; font-size:0.85rem; text-transform:uppercase; }
+  td { font-size:0.95rem; }
+  .status-indicator { display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#aaa; }
+  .status-indicator.pass { background:#22c55e; }
+  .status-indicator.fail { background:#ef4444; }
+  .status-indicator.pending { background:#f59e0b; }
+  .action-btn { background:transparent; border:1px solid #d1d5db; border-radius:6px; padding:0.2rem 0.6rem; cursor:pointer; font-size:0.85rem; transition:0.1s; }
+  .action-btn:hover { background:#f1f5f9; border-color:#9ca3af; }
+  .add-job { display:flex; gap:0.6rem; flex-wrap:wrap; margin-top:0.5rem; }
+  .add-job input { padding:0.5rem 0.8rem; border:1px solid #d1d5db; border-radius:8px; flex:1; }
+  .add-job button { background:#2d6b9f; color:#fff; border:none; padding:0.5rem 1.2rem; border-radius:8px; cursor:pointer; font-weight:500; }
+  .add-job button:hover { background:#1e4f7a; }
+  /* popup overlay */
+  .popup-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); align-items:center; justify-content:center; z-index:1000; }
+  .popup-box { background:#fff; padding:1.8rem 2rem; border-radius:16px; max-width:380px; width:90%; text-align:center; box-shadow:0 20px 40px rgba(0,0,0,0.2); }
+  .popup-box p { margin-bottom:1.2rem; font-size:1rem; color:#1e293b; }
+  .popup-actions { display:flex; gap:1rem; justify-content:center; }
+  .popup-actions button { padding:0.5rem 1.5rem; border-radius:8px; border:none; font-weight:500; cursor:pointer; }
+  .popup-confirm { background#b91c1c; color:#fff; }
+  .popup-cancel { background#e5e7eb; color:#1e293b; }
+  .footer-note { font-size:0.8rem; color:#6b7280; margin-top:1rem; text-align:right; }
+</style>
+</head>
+<body>
+<div class="card" id="app">
+  <!-- nav -->
+  <nav>
+    <a href="#">📋 Dashboard</a>
+    <a href="#">🔧 Jobs</a>
+    <a href="#">📈 History</a>
+    <a href="#">⚙️ Settings</a>
+  </nav>
+</div>
+
+<!-- hero con stato generale -->
+<div class="card hero">
+  <h2>Build Monitor</h2>
+  <div><span class="badge ok" id="heroStatusBadge">✅ 3 OK</span> <span style="margin-left:0.5rem;color:#475569;font-size:0.9rem;">ultimo: 2 min</span></div>
+</div>
+
+<!-- filtro + pulsante rilancio -->
+<div class="card">
+  <div class="filter-bar">
+    <input type="text" placeholder="filtra job per nome, stato …" id="filterInput">
+    <button id="relanceBtn">🔄 rilancia selezionati</button>
+  </div>
+  <!-- tabella job -->
+  <table id="jobTable">
+    <thead><tr><th>Job</th><th>Stato</th><th>Durata</th><th>Azioni</th></tr></thead>
+    <tbody id="tbodyJobs">
+      <tr><td>🔨 frontend-build</td><td><span class="status-indicator pass"></span>pass</td><td>1m 12s</td><td><button class="action-btn" data-job="frontend-build">▶ rilancia</button></td></tr>
+      <tr><td>🔨 api-tests</td><td><span class="status-indicator fail"></span>fail</td><td>0m 48s</td><td><button class="action-btn" data-job="api-tests">▶ rilancia</button></td></tr>
+      <tr><td>🔨 deploy-staging</td><td><span class="status-indicator pending"></span>pending</td><td>—</td><td><button class="action-btn" data-job="deploy-staging">▶ rilancia</button></td></tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- modulo aggiungi job -->
+<div class="card">
+  <div class="add-job">
+    <input type="text" placeholder="nuovo job (es. backend-test)" id="newJobName">
+    <button id="addJobBtn">➕ aggiungi job</button>
+  </div>
+</div>
+
+<!-- popup conferma (hidden) -->
+<div class="popup-overlay" id="confirmPopup">
+  <div class="popup-box">
+    <p id="popupMessage">Rilanciare il job selezionato?</p>
+    <div class="popup-actions">
+      <button class="popup-cancel" id="popupCancel">Annulla</button>
+      <button class="popup-confirm" id="popupConfirm">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // stato interno
+    let jobs = [
+      { name: 'frontend-build', status: 'pass', duration: '1m 12s' },
+      { name: 'api-tests', status: 'fail', duration: '0m 48s' },
+      { name: 'deploy-staging', status: 'pending', duration: '—' }
+    ];
+
+    const tbody = document.getElementById('tbodyJobs');
+    const filterInput = document.getElementById('filterInput');
+    const relanceBtn = document.getElementById('relanceBtn');
+    const addJobBtn = document.getElementById('addJobBtn');
+    const newJobName = document.getElementById('newJobName');
+    const heroBadge = document.getElementById('heroStatusBadge');
+
+    // popup
+    const popup = document.getElementById('confirmPopup');
+    const popupMsg = document.getElementById('popupMessage');
+    const popupConfirm = document.getElementById('popupConfirm');
+    const popupCancel = document.getElementById('popupCancel');
+    let pendingJobName = null;  // job da rilanciare dopo conferma
+
+    // helper aggiornamento tabella + hero
+    function renderTable(filterText = '') {
+      const filtered = jobs.filter(j => {
+        if (!filterText) return true;
+        const lower = filterText.toLowerCase();
+        return j.name.toLowerCase().includes(lower) || j.status.toLowerCase().includes(lower);
+      });
+
+      let html = '';
+      filtered.forEach(j => {
+        let indicatorClass = 'pending';
+        if (j.status === 'pass') indicatorClass = 'pass';
+        else if (j.status === 'fail') indicatorClass = 'fail';
+        else indicatorClass = 'pending';
+
+        html += `<tr><td>🔨 ${j.name}</td><td><span class="status-indicator ${indicatorClass}"></span>${j.status}</td><td>${j.duration}</td><td><button class="action-btn" data-job="${j.name}">▶ rilancia</button></td></tr>`;
+      });
+      tbody.innerHTML = html;
+
+      // aggancia event ai bottoni "rilancia" (action-btn)
+      document.querySelectorAll('.action-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          const jobName = this.dataset.job;
+          pendingJobName = jobName;
+          popupMsg.textContent = `Rilanciare il job "${jobName}"?`;
+          popup.style.display = 'flex';
+        });
+      });
+
+      // aggiorna hero badge
+      const total = jobs.length;
+      const passCount = jobs.filter(j => j.status === 'pass').length;
+      const failCount = jobs.filter(j => j.status === 'fail').length;
+      const pendingCount = jobs.filter(j => j.status === 'pending').length;
+      let badgeClass = 'ok';
+      let label = `✅ ${passCount} OK`;
+      if (failCount > 0 && passCount === 0) { badgeClass = 'err'; label = `❌ ${failCount} fail`; }
+      else if (failCount > 0) { badgeClass = 'warn'; label = `⚠️ ${passCount} OK, ${failCount} fail`; }
+      else if (pendingCount > 0 && passCount === 0) { badgeClass = 'warn'; label = `⏳ ${pendingCount} pending`; }
+      heroBadge.className = `badge ${badgeClass}`;
+      heroBadge.textContent = label;
+    }
+
+    // filtro
+    filterInput.addEventListener('input', function() {
+      renderTable(this.value);
+    });
+
+    // rilancia selezionati (simula: cambia stato a pending per i job visibili)
+    relanceBtn.addEventListener('click', function() {
+      const filterText = filterInput.value;
+      const visibleJobs = jobs.filter(j => {
+        if (!filterText) return true;
+        const lower = filterText.toLowerCase();
+        return j.name.toLowerCase().includes(lower) || j.status.toLowerCase().includes(lower);
+      });
+      if (visibleJobs.length === 0) return;
+      // chiedere conferma per tutti? usiamo popup generico
+      pendingJobName = 'selected jobs';
+      popupMsg.textContent = `Rilanciare ${visibleJobs.length} job selezionati?`;
+      popup.style.display = 'flex';
+      // override conferma per azione multipla
+      popupConfirm._multi = true;
+      popupConfirm._visibleJobs = visibleJobs.map(j => j.name);
+      // usiamo gestione separata
+    });
+
+    // conferma popup (generico)
+    function confirmAction() {
+      if (pendingJobName === 'selected jobs') {
+        // multi rilancia
+        const names = popupConfirm._visibleJobs || [];
+        names.forEach(jn => {
+          const job = jobs.find(j => j.name === jn);
+          if (job) { job.status = 'pending'; job.duration = '—'; }
+        });
+        popupConfirm._multi = false;
+        popupConfirm._visibleJobs = [];
+      } else if (pendingJobName) {
+        // singolo job
+        const job = jobs.find(j => j.name === pendingJobName);
+        if (job) { job.status = 'pending'; job.duration = '—'; }
+      }
+      pendingJobName = null;
+      popup.style.display = 'none';
+      renderTable(filterInput.value);
+    }
+
+    popupConfirm.addEventListener('click', confirmAction);
+    popupCancel.addEventListener('click', function() {
+      popup.style.display = 'none';
+      pendingJobName = null;
+    });
+
+    // aggiungi job
+    addJobBtn.addEventListener('click', function() {
+      const name = newJobName.value.trim();
+      if (!name) return;
+      // evita duplicati (opzionale)
+      if (jobs.some(j => j.name === name)) {
+        alert('

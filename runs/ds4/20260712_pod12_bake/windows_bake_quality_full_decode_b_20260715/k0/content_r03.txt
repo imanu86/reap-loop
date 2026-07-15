@@ -1,0 +1,232 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact Dashboard</title>
+<style>
+/* essential reset + layout */
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:system-ui,'Segoe UI',Roboto,sans-serif;background:#f4f6f9;padding:16px;color:#1e293b}
+/* nav */
+.nav{display:flex;gap:24px;padding:12px 0;border-bottom:1px solid #d1d5db;margin-bottom:20px}
+.nav a{text-decoration:none;font-weight:500;color:#2563eb;padding:4px 0;border-bottom:2px solid transparent}
+.nav a:hover{border-bottom-color:#2563eb}
+/* hero */
+.hero{background:#e0f2fe;padding:16px 20px;border-radius:10px;margin-bottom:24px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.hero h2{font-size:1.3rem;font-weight:600}
+.hero .status{background:#166534;color:#fff;padding:6px 14px;border-radius:20px;font-size:.9rem;font-weight:500}
+/* table card */
+.card{background:#fff;border-radius:12px;padding:16px;box-shadow:0 1px 3px rgba(0,0,0,.08);margin-bottom:24px}
+.filter-bar{display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;align-items:center}
+.filter-bar input{flex:1;min-width:140px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.95rem}
+.filter-bar button{background#2563eb;color#fff;border:none;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:500;font-size:.9rem}
+.filter-bar button:hover{background:#1d4ed8}
+table{width:100%;border-collapse:collapse;font-size:.9rem}
+th,td{text-align:left;padding:10px 8px;border-bottom:1px solid #e5e7eb}
+th{background#f9fafb;font-weight:600;color:#475569}
+td .build-id{font-family:monospace;background#f1f5f9;padding:2px 6px;border-radius:4px}
+.btn{background#2563eb;color#fff;border:none;padding:6px 14px;border-radius:8px;cursor:pointer;font-weight:500;font-size:.85rem}
+.btn:hover{background:#1d4ed8}
+.btn.outline{background:transparent;border:1px solid #2563eb;color:#2563eb}
+.btn.outline:hover{background#e0f2fe}
+/* add form */
+.add-job{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background#f9fafb;padding:12px;border-radius:10px;margin-top:12px}
+.add-job input{flex:1;min-width:120px;padding:8px 12px;border:1px solid #d1d5db;border-radius:8px;font-size:.9rem}
+.add-job button{background#0f973d;border:none;padding:8px 16px;border-radius:8px;color#fff;font-weight:500;cursor:pointer}
+.add-job button:hover{background#15803d}
+/* modal overlay */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+.modal-box{background:#fff;padding:24px;border-radius:16px;max-width:380px;width:90%;box-shadow:0 20px 30px rgba(0,0,0,.2)}
+.modal-box h3{margin-bottom:12px}
+.modal-actions{display:flex;gap:12px;justify-content:flex-end;margin-top:20px}
+.modal-actions button{padding:8px 20px;border-radius:8px;border:none;font-weight:500;cursor:pointer}
+.modal-actions .confirm{background#2563eb;color#fff}
+.modal-actions .cancel{background#e5e7eb;color#1e293b}
+</style>
+</head>
+<body>
+<!-- nav -->
+<div class="nav">
+  <a href="#">Dashboard</a>
+  <a href="#">Jobs</a>
+  <a href="#">Logs</a>
+  <a href="#">Settings</a>
+</div>
+
+<!-- hero with status -->
+<div class="hero">
+  <h2>⚡ Build Monitor</h2>
+  <span class="status" id="heroStatus">✅ 0 running</span>
+</div>
+
+<!-- main card: table + filter -->
+<div class="card">
+  <div class="filter-bar">
+    <input type="text" id="filterInput" placeholder="🔍 filter by job name / id …">
+    <button class="outline" id="resetFilter">Reset</button>
+  </div>
+  <table id="buildTable">
+    <thead><tr><th>Job</th><th>Build ID</th><th>Status</th><th>Action</th></tr></thead>
+    <tbody id="tableBody">
+      <!-- rows injected -->
+    </tbody>
+  </table>
+  <!-- add job inline -->
+  <div class="add-job">
+    <input type="text" id="newJobName" placeholder="job name (e.g. frontend)">
+    <input type="text" id="newBuildId" placeholder="build id (e.g. #a1b2)">
+    <button id="addJobBtn">➕ Add job</button>
+  </div>
+</div>
+
+<!-- popup modal (hidden) -->
+<div id="modalOverlay" class="modal-overlay" style="display:none;">
+  <div class="modal-box">
+    <h3>🔁 Rebuild confirmation</h3>
+    <p id="modalMessage">Restart build for job <strong id="modalJobName"></strong>?</p>
+    <div class="modal-actions">
+      <button class="cancel" id="modalCancel">Cancel</button>
+      <button class="confirm" id="modalConfirm">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ----- in-memory data -----
+let builds = [
+  { job: 'frontend',   buildId: '#b7d3', status: 'success' },
+  { job: 'backend-api', buildId: '#c21a', status: 'running' },
+  { job: 'mobile-app',  buildId: '#e5f0', status: 'failed' },
+  { job: 'docs',        buildId: '#a1b2', status: 'pending' }
+];
+
+let filteredBuilds = [...builds];
+
+// ----- DOM refs -----
+const tbody = document.getElementById('tableBody');
+const filterInput = document.getElementById('filterInput');
+const resetFilterBtn = document.getElementById('resetFilter');
+const heroStatus = document.getElementById('heroStatus');
+const newJobName = document.getElementById('newJobName');
+const newBuildId = document.getElementById('newBuildId');
+const addJobBtn = document.getElementById('addJobBtn');
+
+// modal
+const modalOverlay = document.getElementById('modalOverlay');
+const modalMessage = document.getElementById('modalMessage');
+const modalJobNameSpan = document.getElementById('modalJobName');
+const modalConfirm = document.getElementById('modalConfirm');
+const modalCancel = document.getElementById('modalCancel');
+
+// ----- helpers -----
+function updateHero() {
+  const running = builds.filter(b => b.status === 'running').length;
+  heroStatus.textContent = `✅ ${running} running`;
+}
+
+function renderTable(list) {
+  if (!list) list = filteredBuilds;
+  tbody.innerHTML = '';
+  list.forEach(b => {
+    const row = document.createElement('tr');
+    const statusBadge = b.status === 'running' ? '🏃 running' : b.status === 'success' ? '✅ success' : b.status === 'failed' ? '❌ failed' : '⏳ pending';
+    row.innerHTML = `
+      <td><strong>${b.job}</strong></td>
+      <td><span class="build-id">${b.buildId}</span></td>
+      <td>${statusBadge}</td>
+      <td><button class="btn outline rebuild-btn" data-job="${b.job}" data-build="${b.buildId}">⟳ rebuild</button></td>
+    `;
+    tbody.appendChild(row);
+  });
+  // attach rebuild listeners to each button
+  document.querySelectorAll('.rebuild-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const job = btn.dataset.job;
+      const buildId = btn.dataset.build;
+      showModal(job, buildId);
+    });
+  });
+}
+
+// ----- filter -----
+function applyFilter() {
+  const q = filterInput.value.trim().toLowerCase();
+  if (!q) {
+    filteredBuilds = [...builds];
+  } else {
+    filteredBuilds = builds.filter(b => 
+      b.job.toLowerCase().includes(q) || b.buildId.toLowerCase().includes(q)
+    );
+  }
+  renderTable(filteredBuilds);
+}
+
+filterInput.addEventListener('input', applyFilter);
+resetFilterBtn.addEventListener('click', () => {
+  filterInput.value = '';
+  applyFilter();
+});
+
+// ----- add job -----
+addJobBtn.addEventListener('click', () => {
+  const jobName = newJobName.value.trim();
+  const buildId = newBuildId.value.trim();
+  if (!jobName || !buildId) {
+    alert('Please fill both job name and build id.');
+    return;
+  }
+  // avoid duplicate build id? no check for simplicity
+  builds.push({ job: jobName, buildId: buildId, status: 'pending' });
+  newJobName.value = '';
+  newBuildId.value = '';
+  applyFilter();  // re-render with current filter
+  updateHero();
+});
+
+// ----- modal logic -----
+let pendingRebuildJob = null;
+let pendingRebuildBuild = null;
+
+function showModal(job, buildId) {
+  pendingRebuildJob = job;
+  pendingRebuildBuild = buildId;
+  modalJobNameSpan.textContent = job;
+  modalMessage.innerHTML = `Restart build for job <strong>${job}</strong> (${buildId})?`;
+  modalOverlay.style.display = 'flex';
+}
+
+function hideModal() {
+  modalOverlay.style.display = 'none';
+  pendingRebuildJob = null;
+  pendingRebuildBuild = null;
+}
+
+modalCancel.addEventListener('click', hideModal);
+modalConfirm.addEventListener('click', () => {
+  if (!pendingRebuildJob) return;
+  // find build and set status to 'running' (simulate rebuild)
+  const target = builds.find(b => b.job === pendingRebuildJob && b.buildId === pendingRebuildBuild);
+  if (target) {
+    target.status = 'running';
+  }
+  // reapply filter and update hero
+  applyFilter();
+  updateHero();
+  hideModal();
+});
+
+// close modal on overlay click (background)
+modalOverlay.addEventListener('click', (e) => {
+  if (e.target === modalOverlay) hideModal();
+});
+
+// ----- initial render -----
+renderTable(filteredBuilds);
+updateHero();
+
+// also update hero on any status change (rebuild already does)
+</script>
+</body>
+</html>

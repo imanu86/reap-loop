@@ -1,0 +1,202 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Build Monitor · compact dashboard</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, 'Segoe UI', Roboto, sans-serif; background: #f4f5f7; padding: 1rem; }
+        .card { background: #fff; border-radius: 12px; padding: 1.2rem; margin-bottom: 1.2rem; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+        nav { display: flex; gap: 1.2rem; align-items: center; flex-wrap: wrap; }
+        nav a { color: #1a1a1a; text-decoration: none; font-weight: 500; padding: 0.3rem 0; border-bottom: 2px solid transparent; transition: 0.1s; }
+        nav a:hover { border-bottom-color: #2a7de1; }
+        .hero { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 0.8rem; }
+        .hero h2 { font-size: 1.4rem; font-weight: 600; }
+        .badge { padding: 0.3rem 0.9rem; border-radius: 30px; font-size: 0.9rem; font-weight: 500; background: #e8ecf1; }
+        .badge.ok { background: #d3f0d3; color: #1e6b1e; }
+        .badge.warn { background: #ffe7b3; color: #8a5f00; }
+        .badge.err { background: #fdd0d0; color: #a13030; }
+        .toolbar { display: flex; gap: 0.8rem; flex-wrap: wrap; align-items: center; }
+        .toolbar input { padding: 0.5rem 0.8rem; border: 1px solid #ccc; border-radius: 30px; font-size: 0.9rem; width: 200px; }
+        .toolbar button { background: #2a7de1; border: none; color: #fff; padding: 0.5rem 1.2rem; border-radius: 30px; font-weight: 500; cursor: pointer; font-size: 0.9rem; }
+        .toolbar button:hover { background: #1f62b3; }
+        .toolbar button.secondary { background: #e5e9f0; color: #1a1a1a; }
+        .toolbar button.secondary:hover { background: #d0d5de; }
+        table { width: 100%; border-collapse: collapse; margin-top: 0.5rem; }
+        th, td { text-align: left; padding: 0.6rem 0.4rem; border-bottom: 1px solid #e0e3e8; }
+        th { font-weight: 500; color: #2f3542; }
+        .status-indicator { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+        .status-indicator.green { background: #27ae60; }
+        .status-indicator.yellow { background: #f1c40f; }
+        .status-indicator.red { background: #e74c3c; }
+        .action-btn { background: transparent; border: 1px solid #ccc; border-radius: 20px; padding: 0.2rem 0.8rem; cursor: pointer; font-size: 0.8rem; }
+        .action-btn:hover { background: #eef1f5; }
+        .form-row { display: flex; gap: 0.6rem; flex-wrap: wrap; margin: 0.5rem 0; }
+        .form-row input { flex: 1 1 140px; padding: 0.4rem 0.6rem; border: 1px solid #ccc; border-radius: 20px; font-size: 0.9rem; }
+        .form-row button { background: #2a7de1; border: none; color: #fff; padding: 0.4rem 1.2rem; border-radius: 30px; cursor: pointer; font-weight: 500; }
+        .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); align-items: center; justify-content: center; }
+        .popup-box { background: #fff; padding: 1.6rem 2rem; border-radius: 20px; max-width: 380px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        .popup-box p { margin-bottom: 1.2rem; }
+        .popup-box button { margin: 0 0.4rem; padding: 0.4rem 1.2rem; border-radius: 30px; border: none; background: #2a7de1; color: #fff; font-weight: 500; cursor: pointer; }
+        .popup-box button.cancel { background: #e5e9f0; color: #1a1a1a; }
+        .flex-wrap { display: flex; gap: 0.6rem; justify-content: center; }
+        #conf-msg { font-weight: 500; }
+        .mb-1 { margin-bottom: 0.8rem; }
+    </style>
+</head>
+<body>
+<div class="card">
+    <nav>
+        <a href="#">📋 Dashboard</a>
+        <a href="#">⚙️ Jobs</a>
+        <a href="#">📈 Reports</a>
+        <span style="margin-left:auto; font-size:0.85rem; color:#555;">build v2.4 · compact</span>
+    </nav>
+</div>
+
+<div class="card hero">
+    <h2>⚡ Build status</h2>
+    <div id="heroBadge" class="badge ok">✅ 3 ok · 1 warn</div>
+</div>
+
+<div class="card">
+    <div class="toolbar">
+        <input type="text" id="filterInput" placeholder="🔍 filter job, branch, status …" value="">
+        <button id="refreshBtn" class="secondary">🔄 refresh</button>
+        <button id="confirmPopupBtn" class="secondary" style="background:#f0e9d6;">⚠️ test confirm</button>
+    </div>
+    <div style="overflow-x:auto;">
+        <table id="jobTable">
+            <thead><tr><th>Job</th><th>Branch</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="tableBody">
+                <!-- built-in rows -->
+                <tr data-job="web-ui" data-branch="main" data-status="ok"><td><span class="status-indicator green"></span>web-ui</td><td>main</td><td>ok</td><td><button class="action-btn" data-action="rebuild">⚡ rebuild</button></td></tr>
+                <tr data-job="api-gateway" data-branch="dev" data-status="warn"><td><span class="status-indicator yellow"></span>api-gateway</td><td>dev</td><td>warn</td><td><button class="action-btn" data-action="rebuild">⚡ rebuild</button></td></tr>
+                <tr data-job="db-migration" data-branch="main" data-status="ok"><td><span class="status-indicator green"></span>db-migration</td><td>main</td><td>ok</td><td><button class="action-btn" data-action="rebuild">⚡ rebuild</button></td></tr>
+                <tr data-job="auth-service" data-branch="feature/login" data-status="err"><td><span class="status-indicator red"></span>auth-service</td><td>feature/login</td><td>err</td><td><button class="action-btn" data-action="rebuild">⚡ rebuild</button></td></tr>
+                <tr data-job="notification" data-branch="main" data-status="ok"><td><span class="status-indicator green"></span>notification</td><td>main</td><td>ok</td><td><button class="action-btn" data-action="rebuild">⚡ rebuild</button></td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card">
+    <h4 style="margin-bottom:0.4rem;">➕ Add new job</h4>
+    <div class="form-row">
+        <input type="text" id="newJobName" placeholder="job name" value="ci-pipeline">
+        <input type="text" id="newBranch" placeholder="branch" value="fix/retry">
+        <select id="newStatus" style="padding:0.4rem 0.6rem; border-radius:20px; border:1px solid #ccc; background:white;">
+            <option value="ok">ok</option>
+            <option value="warn">warn</option>
+            <option value="err">err</option>
+        </select>
+        <button id="addJobBtn">➕ add</button>
+    </div>
+</div>
+
+<!-- popup di conferma -->
+<div id="confirmPopup" class="popup-overlay">
+    <div class="popup-box">
+        <p id="conf-msg">Rebuild <span id="popupJobName">job</span>?</p>
+        <div class="flex-wrap">
+            <button id="confirmYes" class="cancel" style="background:#2a7de1; color:white;">✅ confirm</button>
+            <button id="confirmNo" class="cancel">cancel</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---------- state ----------
+        const tableBody = document.getElementById('tableBody');
+        const filterInput = document.getElementById('filterInput');
+        const heroBadge = document.getElementById('heroBadge');
+        const refreshBtn = document.getElementById('refreshBtn');
+        const confirmPopupBtn = document.getElementById('confirmPopupBtn');
+        const confirmPopup = document.getElementById('confirmPopup');
+        const confirmYes = document.getElementById('confirmYes');
+        const confirmNo = document.getElementById('confirmNo');
+        const popupJobSpan = document.getElementById('popupJobName');
+        const confMsg = document.getElementById('conf-msg');
+
+        // add form
+        const newJobName = document.getElementById('newJobName');
+        const newBranch = document.getElementById('newBranch');
+        const newStatus = document.getElementById('newStatus');
+        const addJobBtn = document.getElementById('addJobBtn');
+
+        // pending confirm callback
+        let pendingConfirmCallback = null;
+
+        // ---------- helpers ----------
+        function updateHero() {
+            const rows = tableBody.querySelectorAll('tr');
+            let ok = 0, warn = 0, err = 0;
+            rows.forEach(tr => {
+                const status = (tr.dataset.status || '').toLowerCase();
+                if (status === 'ok') ok++;
+                else if (status === 'warn') warn++;
+                else if (status === 'err') err++;
+            });
+            const total = ok + warn + err;
+            let badgeClass = 'badge ok';
+            let text = `✅ ${ok} ok`;
+            if (warn > 0) { text += ` · ${warn} warn`; badgeClass = 'badge warn'; }
+            if (err > 0) { text += ` · ${err} err`; badgeClass = 'badge err'; }
+            if (warn === 0 && err === 0) badgeClass = 'badge ok';
+            heroBadge.className = badgeClass;
+            heroBadge.textContent = text;
+        }
+
+        function applyFilter() {
+            const q = filterInput.value.toLowerCase().trim();
+            const rows = tableBody.querySelectorAll('tr');
+            rows.forEach(tr => {
+                const job = (tr.dataset.job || '').toLowerCase();
+                const branch = (tr.dataset.branch || '').toLowerCase();
+                const status = (tr.dataset.status || '').toLowerCase();
+                const text = job + ' ' + branch + ' ' + status;
+                if (!q || text.includes(q)) {
+                    tr.style.display = '';
+                } else {
+                    tr.style.display = 'none';
+                }
+            });
+            updateHero();
+        }
+
+        function rebuildJob(jobName) {
+            // find row
+            const rows = tableBody.querySelectorAll('tr');
+            let target = null;
+            rows.forEach(tr => {
+                if ((tr.dataset.job || '') === jobName) target = tr;
+            });
+            if (!target) return;
+            // toggle status: ok -> warn, warn -> err, err -> ok
+            const oldStatus = target.dataset.status;
+            let newStatus = 'ok';
+            if (oldStatus === 'ok') newStatus = 'warn';
+            else if (oldStatus === 'warn') newStatus = 'err';
+            else if (oldStatus === 'err') newStatus = 'ok';
+            target.dataset.status = newStatus;
+            // update visual
+            const cells = target.querySelectorAll('td');
+            if (cells.length >= 3) {
+                const statusCell = cells[2];
+                const indicatorSpan = cells[0].querySelector('.status-indicator');
+                let colorClass = 'green';
+                let label = 'ok';
+                if (newStatus === 'warn') { colorClass = 'yellow'; label = 'warn'; }
+                else if (newStatus === 'err') { colorClass = 'red'; label = 'err'; }
+                if (indicatorSpan) indicatorSpan.className = 'status-indicator ' + colorClass;
+                statusCell.textContent = label;
+            }
+            updateHero();
+        }
+
+        // ---------- popup logic ----------
+        function showConfirm(jobName, callback) {
+            if (pendingConfirmCallback) return

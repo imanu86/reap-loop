@@ -1,0 +1,226 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor · Compact</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;font-family:system-ui,'Segoe UI',Roboto,sans-serif}
+body{background:#f4f6f9;padding:1rem}
+nav{background:#1e293b;color:#f8fafc;padding:.6rem 1rem;border-radius:8px;margin-bottom:1rem;display:flex;gap:1.5rem;align-items:center;flex-wrap:wrap}
+nav h1{font-size:1.2rem;font-weight:600}
+nav span{background:#334155;padding:.2rem .6rem;border-radius:20px;font-size:.8rem}
+.hero{background:#e2e8f0;padding:1rem;border-radius:10px;margin-bottom:1.5rem;display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:.8rem}
+.hero .status{font-weight:600;color:#0f172a}
+.hero .badge{background:#0f172a;color:#f8fafc;padding:.2rem .8rem;border-radius:20px;font-size:.85rem}
+.filter-bar{display:flex;gap:.6rem;flex-wrap:wrap;margin-bottom:1rem;align-items:center}
+.filter-bar input{flex:1;min-width:160px;padding:.45rem .6rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+.filter-bar button{background#0f172a;color:#fff;border:none;padding:.45rem 1rem;border-radius:6px;cursor:pointer;font-weight:500}
+table{width:100%;border-collapse:collapse;background:#fff;border-radius:8px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+th,td{padding:.6rem .8rem;text-align:left;border-bottom:1px solid #e2e8f0}
+th{background#f1f5f9;color:#1e293b;font-weight:600}
+td{font-size:.9rem}
+td .action{display:flex;gap:.4rem;flex-wrap:wrap}
+.btn{background:#1e293b;color:#fff;border:none;padding:.3rem .7rem;border-radius:6px;cursor:pointer;font-size:.8rem;transition:.1s}
+.btn:hover{background:#334155}
+.btn.outline{background:0 0;border:1px solid #1e293b;color:#1e293b}
+.btn.outline:hover{background#1e293b;color:#fff}
+.add-section{background#e2e8f0;padding:1rem;border-radius:10px;margin-top:1.5rem;display:flex;flex-wrap:wrap;gap:.6rem;align-items:center}
+.add-section input{flex:1;min-width:140px;padding:.45rem .6rem;border:1px solid #cbd5e1;border-radius:6px;background:#fff}
+.add-section button{background#0f172a;color:#fff;border:none;padding:.45rem 1rem;border-radius:6px;cursor:pointer}
+.popup-overlay{position:fixed;inset:0;background:rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;z-index:1000}
+.popup-box{background:#fff;padding:1.5rem;border-radius:12px;width:90%;max-width:380px;box-shadow:0 10px 30px rgba(0,0,0,.2)}
+.popup-box h3{margin-bottom:.8rem}
+.popup-actions{display:flex;gap:.8rem;margin-top:1.2rem;justify-content:flex-end}
+.popup-actions button{background:#1e293b;color:#fff;border:none;padding:.5rem 1.2rem;border-radius:6px;cursor:pointer}
+.popup-actions .cancel{background#e2e8f0;color:#1e293b}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<nav>
+  <h1>⚡ BuildBoard</h1>
+  <span>monitor</span>
+  <span style="margin-left:auto;font-size:.85rem;background:#475569;padding:.2rem .6rem">v2.1</span>
+</nav>
+
+<div class="hero">
+  <div class="status">📊 stato generale: <span id="heroStatus">✅ 3 ok · ⏳ 1 in coda</span></div>
+  <div class="badge" id="heroBadge">4 job</div>
+</div>
+
+<div class="filter-bar">
+  <input type="text" id="filterInput" placeholder="🔍 filtro per nome / stato ...">
+  <button id="resetFilterBtn" class="btn outline">↺ cancella</button>
+</div>
+
+<table id="buildTable">
+  <thead><tr><th>job</th><th>stato</th><th>commit</th><th>azione</th></tr></thead>
+  <tbody id="tableBody">
+    <!-- righe esistenti -->
+    <tr><td>pipeline-auth</td><td>✅ success</td><td>2e3a1f</td><td class="action"><button class="btn rebuild-trigger" data-job="pipeline-auth">🔄 rilancia</button></td></tr>
+    <tr><td>ui-builder</td><td>⏳ pending</td><td>bc7d4e</td><td class="action"><button class="btn rebuild-trigger" data-job="ui-builder">🔄 rilancia</button></td></tr>
+    <tr><td>api-gateway</td><td>❌ fail</td><td>9a1b2c</td><td class="action"><button class="btn rebuild-trigger" data-job="api-gateway">🔄 rilancia</button></td></tr>
+    <tr><td>db-migrate</td><td>✅ success</td><td>1f2d3e</td><td class="action"><button class="btn rebuild-trigger" data-job="db-migrate">🔄 rilancia</button></td></tr>
+  </tbody>
+</table>
+
+<div class="add-section">
+  <input type="text" id="newJobName" placeholder="nome job (es. worker-queue)">
+  <input type="text" id="newJobCommit" placeholder="commit hash (es. a1b2c3)">
+  <button id="addJobBtn">➕ aggiungi job</button>
+</div>
+
+<!-- popup conferma -->
+<div id="confirmPopup" class="popup-overlay hidden">
+  <div class="popup-box">
+    <h3>🔄 rilancia build?</h3>
+    <p id="popupJobName"></p>
+    <div class="popup-actions">
+      <button id="popupCancel" class="cancel">annulla</button>
+      <button id="popupConfirm">conferma</button>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  // stato interno
+  let jobs = [
+    { name:'pipeline-auth', status:'success', commit:'2e3a1f' },
+    { name:'ui-builder', status:'pending', commit:'bc7d4e' },
+    { name:'api-gateway', status:'fail', commit:'9a1b2c' },
+    { name:'db-migrate', status:'success', commit:'1f2d3e' }
+  ];
+  let filterText = '';
+  let pendingRebuildJob = null;
+
+  const tbody = document.getElementById('tableBody');
+  const heroStatus = document.getElementById('heroStatus');
+  const heroBadge = document.getElementById('heroBadge');
+  const filterInput = document.getElementById('filterInput');
+  const resetBtn = document.getElementById('resetFilterBtn');
+  const addJobBtn = document.getElementById('addJobBtn');
+  const newJobName = document.getElementById('newJobName');
+  const newJobCommit = document.getElementById('newJobCommit');
+  const confirmPopup = document.getElementById('confirmPopup');
+  const popupJobName = document.getElementById('popupJobName');
+  const popupCancel = document.getElementById('popupCancel');
+  const popupConfirm = document.getElementById('popupConfirm');
+
+  // helpers
+  function statusIcon(s){
+    if(s==='success') return '✅ success';
+    if(s==='pending') return '⏳ pending';
+    if(s==='fail') return '❌ fail';
+    return '❓ '+s;
+  }
+
+  function updateHero(){
+    const total = jobs.length;
+    const success = jobs.filter(j=>j.status==='success').length;
+    const pending = jobs.filter(j=>j.status==='pending').length;
+    const fail = jobs.filter(j=>j.status==='fail').length;
+    let msg = `✅ ${success} ok · ⏳ ${pending} in coda`;
+    if(fail>0) msg += ` · ❌ ${fail} fail`;
+    heroStatus.textContent = msg;
+    heroBadge.textContent = total+' job';
+  }
+
+  function renderTable(){
+    const filtered = jobs.filter(j=>{
+      if(!filterText) return true;
+      const f = filterText.toLowerCase();
+      return j.name.toLowerCase().includes(f) || j.status.toLowerCase().includes(f);
+    });
+    if(filtered.length===0){
+      tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;padding:1.2rem;color:#64748b">nessun job corrisponde</td></tr>`;
+      return;
+    }
+    let html = '';
+    filtered.forEach(j=>{
+      const icon = statusIcon(j.status);
+      html += `<tr><td>${j.name}</td><td>${icon}</td><td>${j.commit}</td><td class="action"><button class="btn rebuild-trigger" data-job="${j.name}">🔄 rilancia</button></td></tr>`;
+    });
+    tbody.innerHTML = html;
+    // assegna listener ai bottoni rebuild (anche dopo filtro)
+    document.querySelectorAll('.rebuild-trigger').forEach(btn=>{
+      btn.addEventListener('click', function(e){
+        const job = this.dataset.job;
+        pendingRebuildJob = job;
+        popupJobName.textContent = `job: ${job}`;
+        confirmPopup.classList.remove('hidden');
+      });
+    });
+  }
+
+  function rebuildJob(jobName){
+    const idx = jobs.findIndex(j=>j.name===jobName);
+    if(idx===-1) return;
+    jobs[idx].status = 'pending';
+    jobs[idx].commit = (Math.random()*16777215).toString(16).slice(0,6);
+    renderTable();
+    updateHero();
+  }
+
+  function addJob(name, commit){
+    if(!name.trim()) return;
+    const exists = jobs.some(j=>j.name===name.trim());
+    if(exists) return;
+    jobs.push({ name:name.trim(), status:'pending', commit:commit.trim() || '000000' });
+    renderTable();
+    updateHero();
+  }
+
+  function applyFilter(text){
+    filterText = text;
+    renderTable();
+  }
+
+  // eventi
+  filterInput.addEventListener('input', function(){
+    applyFilter(this.value);
+  });
+  resetBtn.addEventListener('click', function(){
+    filterInput.value = '';
+    filterText = '';
+    renderTable();
+  });
+
+  addJobBtn.addEventListener('click', function(){
+    const name = newJobName.value.trim();
+    const commit = newJobCommit.value.trim();
+    if(!name){ alert('inserire nome job'); return; }
+    addJob(name, commit);
+    newJobName.value = '';
+    newJobCommit.value = '';
+  });
+
+  // popup
+  popupCancel.addEventListener('click', function(){
+    confirmPopup.classList.add('hidden');
+    pendingRebuildJob = null;
+  });
+  popupConfirm.addEventListener('click', function(){
+    if(pendingRebuildJob){
+      rebuildJob(pendingRebuildJob);
+    }
+    confirmPopup.classList.add('hidden');
+    pendingRebuildJob = null;
+  });
+  // click overlay per chiudere (opzionale)
+  confirmPopup.addEventListener('click', function(e){
+    if(e.target===confirmPopup){
+      confirmPopup.classList.add('hidden');
+      pendingRebuildJob = null;
+    }
+  });
+
+  // inizializza
+  renderTable();
+  updateHero();
+})();
+</script>
+</body>
+</html>

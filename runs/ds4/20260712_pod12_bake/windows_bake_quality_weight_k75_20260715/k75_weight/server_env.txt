@@ -1,0 +1,12 @@
+ARMS=k75_weight
+BIN=/root/ds4-server
+DS4_CUDA_KEEP_MODEL_PAGES=1
+DS4_CUDA_NO_DIRECT_IO=1
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=1
+DS4_CUDA_WEIGHT_ARENA_CHUNK_MB=256
+DS4_PACE=0
+DS4_REAP_MASK_FILE=/root/reap-loop/runs/ds4/20260712_pod12_bake/coding_weight_full_decode_learn_combined_20260715/masks/k75_weight_coding.txt
+LEARN=/root/reap-loop/runs/ds4/20260712_pod12_bake/coding_weight_full_decode_learn_combined_20260715
+OUT=/root/reap-loop/runs/ds4/20260712_pod12_bake/windows_bake_quality_weight_k75_20260715
+PORT=18084

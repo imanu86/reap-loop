@@ -1,0 +1,23 @@
+{
+  "model": "deepseek-v4-flash",
+  "messages": [
+    {
+      "role": "system",
+      "content": "Rispondi direttamente e senza ragionamento visibile."
+    },
+    {
+      "role": "user",
+      "content": "Crea una dashboard HTML5/CSS/JavaScript single-file e COMPATTA per monitorare build di software. Deve includere nav, hero con stato generale, tabella di job, filtro testuale, pulsante per rilanciare una build, modulo per aggiungere un job e popup di conferma JavaScript. Tutte le interazioni devono funzionare senza librerie esterne. Mantieni il CSS essenziale, completa tutto entro circa 1800 token, chiudi </html> e restituisci soltanto HTML valido."
+    }
+  ],
+  "max_tokens": 3200,
+  "temperature": 0.2,
+  "stream": true,
+  "think": false,
+  "thinking": {
+    "type": "disabled"
+  },
+  "stream_options": {
+    "include_usage": true
+  }
+}

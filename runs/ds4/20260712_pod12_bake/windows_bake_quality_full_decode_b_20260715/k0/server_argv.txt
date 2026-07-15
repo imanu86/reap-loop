@@ -1,0 +1,1 @@
+/root/ds4-server -m /root/models/ds4-2bit.gguf --cuda --ssd-streaming --ssd-streaming-cache-experts 1024 --prefill-chunk 512 -c 4096 -n 3328 --host 127.0.0.1 --port 18083 --cors 

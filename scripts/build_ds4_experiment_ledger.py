@@ -753,6 +753,121 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
     return rows + aggregate_windows_g7_campaigns(root, rows)
 
 
+def parse_quality_full_decode_mass_weight_rows(repo: Path) -> list[dict[str, str]]:
+    path = (
+        repo
+        / "runs/ds4/20260712_pod12_bake/"
+        "quality_full_decode_mass_weight_results_20260715.csv"
+    )
+    if not path.exists():
+        return []
+
+    rows: list[dict[str, str]] = []
+    with path.open(newline="", encoding="utf-8-sig", errors="replace") as handle:
+        reader = csv.DictReader(handle)
+        for src in reader:
+            suite_root = clean(src.get("suite/root"))
+            suite_path = Path(suite_root) if suite_root else path.parent
+            suite = rel(suite_path) if suite_root else rel(path.parent)
+            suite_leaf = suite_path.name if suite_root else path.parent.name
+            arm = clean(src.get("arm"))
+            run = clean(src.get("run"))
+            temperature = clean(src.get("temperature"))
+            temperature_id = temperature.replace(".", "p")
+            grade = clean(src.get("grade"))
+            finish_reason = clean(src.get("finish_reason"))
+            mask_sha = clean(src.get("mask_sha256"))
+            prompt_sha = clean(src.get("prompt_sha256"))
+            runner_sha = clean(src.get("runner_sha256"))
+            binary_sha = clean(src.get("binary_sha256"))
+
+            row = base_row()
+            row.update(
+                {
+                    "row_id": (
+                        f"QUALITY-FULL-DECODE-MASS-WEIGHT-{suite_leaf}-"
+                        f"{arm}-run{run}-t{temperature_id}"
+                    ),
+                    "source_kind": "quality_full_decode_mass_weight_csv",
+                    "evidence_level": "measured_robustness_temperature_condition",
+                    "benchmark_usable": "linux_oracle_quality_speed_diagnostic",
+                    "date": "20260715",
+                    "suite": suite,
+                    "run_id": f"{suite_leaf}/{arm}/run{run}/temp{temperature}",
+                    "category": "linux_pod_oracle_quality_full_decode",
+                    "experiment": "pod_full_decode_mass_weight_quality",
+                    "variant": arm,
+                    "profile": (
+                        f"arm={arm}; run={run}; temperature={temperature}; "
+                        "temperature is a robustness condition, not iid replication"
+                    ),
+                    "prompt_name": "software_build_dashboard_html",
+                    "prompt_sha16": prompt_sha[:16],
+                    "prompt_chars": clean(src.get("prompt_chars")),
+                    "hardware": "Linux pod oracle",
+                    "gpu": clean(src.get("GPU")),
+                    "model": clean(src.get("model")),
+                    "ctx": clean(src.get("ctx")),
+                    "prefill_chunk": clean(src.get("prefill_chunk")),
+                    "server_cache_experts": clean(src.get("cache_experts")),
+                    "request_max_tokens": clean(src.get("request_max_tokens")),
+                    "server_max_tokens": clean(src.get("server_max_tokens")),
+                    "temperature": temperature,
+                    "stream": clean(src.get("stream")),
+                    "think": clean(src.get("think")),
+                    "completion_tokens": clean(src.get("completion_tokens")),
+                    "wall_s": clean(src.get("elapsed_s")),
+                    "avg_tps": clean(src.get("tok/s")),
+                    "client_completion_mean_tps": clean(src.get("tok/s")),
+                    "content_chars": clean(src.get("content_chars")),
+                    "l0l3": grade,
+                    "client_stop_reason": (
+                        finish_reason if finish_reason.startswith("client_stop") else ""
+                    ),
+                    "finish_s": clean(src.get("elapsed_s")),
+                    "trace_rows": clean(src.get("stream_events")),
+                    "quality_signal": (
+                        f"{grade}; finish={finish_reason}; "
+                        "temperature_condition=robustness_not_iid"
+                    ),
+                    "metrics_text": (
+                        f"elapsed_s={clean(src.get('elapsed_s'))}; "
+                        f"stream_events={clean(src.get('stream_events'))}; "
+                        f"tok/s={clean(src.get('tok/s'))}"
+                    ),
+                    "setup_text": (
+                        f"suite/root={suite_root}; prompt_sha256={prompt_sha}; "
+                        f"runner_sha256={runner_sha}; binary_sha256={binary_sha}; "
+                        f"mask_sha256={mask_sha}"
+                    ),
+                    "request_settings_json": clean(src),
+                    "runtime_platform": "linux_pod_oracle",
+                    "cache_state": "not_reported",
+                    "executable_sha256": binary_sha,
+                    "harness_sha256": runner_sha,
+                    "repeats": "1",
+                    "replication_scope": "temperature_robustness_condition_not_iid",
+                    "warmup": "not_reported",
+                    "result_text": (
+                        f"{grade}; finish={finish_reason}; "
+                        f"tok/s={clean(src.get('tok/s'))}; "
+                        f"temperature={temperature}; robustness condition"
+                    ),
+                    "verdict": grade,
+                    "source_artifacts": rel(path),
+                }
+            )
+            if mask_sha:
+                row["patches"] = f"mask_sha256={mask_sha}"
+            rows.append(row)
+
+    if len(rows) != 24:
+        raise RuntimeError(
+            f"Quality full-decode mass/weight CSV expected 24 rows, found {len(rows)}"
+        )
+    return rows
+
+
 def aggregate_windows_g7_campaigns(
     root: Path, rows: list[dict[str, str]]
 ) -> list[dict[str, str]]:
@@ -1864,6 +1979,7 @@ def main() -> int:
     rows: list[dict[str, str]] = []
     rows.extend(parse_summary_rows(repo))
     rows.extend(parse_windows_g7_rows(repo))
+    rows.extend(parse_quality_full_decode_mass_weight_rows(repo))
     rows.extend(parse_windows_g7_failure_rows(repo))
     rows.extend(parse_stage0_rows(repo))
     rows.extend(parse_k91_rows(repo))

@@ -1,0 +1,222 @@
+```html
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Build Monitor (compact)</title>
+<style>
+  /* minimal reset + layout */
+  * { margin: 0; padding: 0; box-sizing: border-box; font-family: system-ui, 'Segoe UI', Roboto, sans-serif; }
+  body { background: #f4f6f9; padding: 16px; }
+  .container { max-width: 960px; margin: auto; }
+  nav { background: #1e293b; color: #f8fafc; padding: 10px 20px; border-radius: 10px; margin-bottom: 16px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap; }
+  nav h1 { font-size: 1.3rem; font-weight: 600; margin-right: auto; }
+  nav a { color: #cbd5e1; text-decoration: none; font-size: 0.9rem; padding: 4px 8px; border-radius: 6px; }
+  nav a:hover { background: #334155; color: white; }
+  .hero { background: linear-gradient(135deg, #0f172a, #1e293b); color: white; padding: 24px 20px; border-radius: 12px; margin-bottom: 20px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 12px; }
+  .hero h2 { font-size: 1.5rem; font-weight: 500; }
+  .hero .status { background: #22c55e; padding: 6px 16px; border-radius: 40px; font-weight: 600; font-size: 0.9rem; letter-spacing: 0.5px; }
+  .hero .status.warning { background: #eab308; }
+  .hero .status.error { background: #ef4444; }
+  .toolbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 16px; align-items: center; }
+  .toolbar input { flex: 1; min-width: 180px; padding: 8px 12px; border: 1px solid #cbd5e1; border-radius: 40px; font-size: 0.9rem; background: white; }
+  .toolbar button { background: #0f172a; color: white; border: none; padding: 8px 18px; border-radius: 40px; font-weight: 500; cursor: pointer; font-size: 0.85rem; transition: background 0.1s; }
+  .toolbar button:hover { background: #1e293b; }
+  .toolbar .add-btn { background: #2563eb; }
+  .toolbar .add-btn:hover { background: #1d4ed8; }
+  table { width: 100%; border-collapse: collapse; background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 2px 6px rgba(0,0,0,0.05); }
+  th, td { padding: 10px 14px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+  th { background: #f1f5f9; font-weight: 600; color: #334155; font-size: 0.85rem; }
+  td { font-size: 0.9rem; }
+  .job-name { font-weight: 500; }
+  .badge { display: inline-block; padding: 2px 10px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; background: #e2e8f0; color: #1e293b; }
+  .badge.success { background: #22c55e; color: white; }
+  .badge.fail { background: #ef4444; color: white; }
+  .badge.running { background: #3b82f6; color: white; }
+  .action-btn { background: transparent; border: 1px solid #94a3b8; border-radius: 20px; padding: 4px 12px; font-size: 0.75rem; cursor: pointer; transition: 0.1s; }
+  .action-btn:hover { background: #e2e8f0; border-color: #0f172a; }
+  .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); align-items: center; justify-content: center; z-index: 1000; }
+  .modal-box { background: white; padding: 24px 28px; border-radius: 20px; max-width: 380px; width: 90%; text-align: center; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
+  .modal-box h3 { margin-bottom: 12px; font-weight: 600; }
+  .modal-actions { margin-top: 20px; display: flex; gap: 12px; justify-content: center; }
+  .modal-actions button { padding: 8px 20px; border-radius: 40px; border: none; font-weight: 500; cursor: pointer; }
+  .modal-confirm { background: #ef4444; color: white; }
+  .modal-cancel { background: #e2e8f0; color: #1e293b; }
+  .form-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 16px 0; background: white; padding: 12px 16px; border-radius: 40px; box-shadow: 0 1px 4px rgba(0,0,0,0.05); align-items: center; }
+  .form-row input { flex: 1; min-width: 120px; border: 1px solid #e2e8f0; border-radius: 30px; padding: 6px 14px; font-size: 0.9rem; }
+  .form-row button { background: #2563eb; color: white; border: none; padding: 6px 18px; border-radius: 40px; font-weight: 500; cursor: pointer; }
+  .form-row button:hover { background: #1d4ed8; }
+  .hidden { display: none; }
+  .mb-1 { margin-bottom: 8px; }
+</style>
+</head>
+<body>
+<div class="container" id="app">
+  <!-- NAV -->
+  <nav>
+    <h1>⚡ BuildBoard</h1>
+    <a href="#">Dashboard</a>
+    <a href="#">Jobs</a>
+    <a href="#">Logs</a>
+  </nav>
+
+  <!-- HERO con stato generale -->
+  <div class="hero" id="hero">
+    <div>
+      <h2>Build status</h2>
+      <span style="font-size:0.9rem; opacity:0.8;">ultimi 5 job</span>
+    </div>
+    <div class="status" id="heroStatus">✅ stable</div>
+  </div>
+
+  <!-- FILTER + pulsante rilancio + add job -->
+  <div class="toolbar">
+    <input type="text" id="filterInput" placeholder="🔍 filtro job (nome / stato)" value="">
+    <button id="restartBtn" title="rilancia tutte le build fallite">⟳ rilancia falliti</button>
+    <button id="addJobBtn" class="add-btn">➕ aggiungi job</button>
+  </div>
+
+  <!-- modulo aggiunta job (appare con pulsante) -->
+  <div id="addForm" class="hidden form-row">
+    <input type="text" id="newJobName" placeholder="nome job (es: backend-test)">
+    <input type="text" id="newJobStatus" placeholder="stato (success/fail/running)" value="running">
+    <button id="confirmAddJob">aggiungi</button>
+  </div>
+
+  <!-- TABELLA -->
+  <table id="jobTable">
+    <thead>
+      <tr><th>Job</th><th>Stato</th><th>Ultima run</th><th></th></tr>
+    </thead>
+    <tbody id="tableBody">
+      <!-- popolato da JS -->
+    </tbody>
+  </table>
+
+  <!-- POPUP CONFERMA (javascript) -->
+  <div class="modal-overlay" id="confirmModal">
+    <div class="modal-box">
+      <h3>⚠️ Conferma azione</h3>
+      <p id="modalMessage">Vuoi rilanciare le build fallite?</p>
+      <div class="modal-actions">
+        <button class="modal-cancel" id="modalCancel">Annulla</button>
+        <button class="modal-confirm" id="modalConfirm">Conferma</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  (function() {
+    // ---------- DATI INIZIALI (simulazione build) ----------
+    let jobs = [
+      { id: 'j1', name: 'frontend-ci', status: 'success', lastRun: '2 min ago' },
+      { id: 'j2', name: 'api-gateway', status: 'fail', lastRun: '15 min ago' },
+      { id: 'j3', name: 'worker-email', status: 'running', lastRun: 'ora' },
+      { id: 'j4', name: 'auth-service', status: 'success', lastRun: '1h ago' },
+      { id: 'j5', name: 'cron-backup', status: 'fail', lastRun: '3h ago' },
+    ];
+    let nextId = 100;
+
+    // riferimenti DOM
+    const tbody = document.getElementById('tableBody');
+    const filterInput = document.getElementById('filterInput');
+    const heroStatus = document.getElementById('heroStatus');
+    const restartBtn = document.getElementById('restartBtn');
+    const addJobBtn = document.getElementById('addJobBtn');
+    const addForm = document.getElementById('addForm');
+    const newJobName = document.getElementById('newJobName');
+    const newJobStatus = document.getElementById('newJobStatus');
+    const confirmAddBtn = document.getElementById('confirmAddJob');
+
+    // modale
+    const modal = document.getElementById('confirmModal');
+    const modalMsg = document.getElementById('modalMessage');
+    const modalConfirm = document.getElementById('modalConfirm');
+    const modalCancel = document.getElementById('modalCancel');
+    let pendingCallback = null;  // funzione da eseguire dopo conferma
+
+    // helper: mostra modale con messaggio e callback
+    function showConfirm(message, onConfirm) {
+      modalMsg.textContent = message;
+      modal.style.display = 'flex';
+      pendingCallback = onConfirm;
+    }
+
+    function hideModal() {
+      modal.style.display = 'none';
+      pendingCallback = null;
+    }
+
+    modalCancel.addEventListener('click', hideModal);
+    modalConfirm.addEventListener('click', function() {
+      if (pendingCallback) pendingCallback();
+      hideModal();
+    });
+
+    // aggiornamento hero (stato generale: se almeno un fail => warning, se tutti success => stable, se running misto => running)
+    function updateHero() {
+      const hasFail = jobs.some(j => j.status === 'fail');
+      const hasRunning = jobs.some(j => j.status === 'running');
+      const allSuccess = jobs.every(j => j.status === 'success');
+      let text = '✅ stable';
+      let cls = 'status';
+      if (hasFail) { text = '⚠️ failures'; cls += ' warning'; }
+      else if (hasRunning) { text = '⏳ running'; cls += ''; } // default blue? ma usiamo running badge
+      else if (allSuccess) { text = '✅ all green'; cls += ''; }
+      heroStatus.textContent = text;
+      heroStatus.className = cls;
+    }
+
+    // render tabella con filtro attivo
+    function renderTable() {
+      const filterVal = filterInput.value.toLowerCase();
+      const filtered = jobs.filter(j => {
+        if (!filterVal) return true;
+        return j.name.toLowerCase().includes(filterVal) || j.status.toLowerCase().includes(filterVal);
+      });
+
+      let html = '';
+      filtered.forEach(j => {
+        let badgeClass = 'badge';
+        if (j.status === 'success') badgeClass += ' success';
+        else if (j.status === 'fail') badgeClass += ' fail';
+        else if (j.status === 'running') badgeClass += ' running';
+        else badgeClass += ''; // default
+
+        html += `<tr>
+          <td class="job-name">${j.name}</td>
+          <td><span class="${badgeClass}">${j.status}</span></td>
+          <td>${j.lastRun}</td>
+          <td><button class="action-btn" data-id="${j.id}" data-action="restart">⟳ rilancia</button></td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+
+      // assegna event ai bottoni "rilancia" (per singolo job)
+      document.querySelectorAll('[data-action="restart"]').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+          const id = this.dataset.id;
+          const job = jobs.find(j => j.id === id);
+          if (!job) return;
+          // chiedere conferma per rilancio singolo
+          showConfirm(`Rilanciare build "${job.name}" ?`, function() {
+            job.status = 'running';
+            job.lastRun = 'ora';
+            renderTable();
+            updateHero();
+          });
+        });
+      });
+    }
+
+    // rilancio tutte le build fallite (conferma)
+    restartBtn.addEventListener('click', function() {
+      const failed = jobs.filter(j => j.status === 'fail');
+      if (failed.length === 0) {
+        alert('Nessuna build fallita da rilanciare.');
+        return;
+      }
+      const names = failed.map(j => j.name).join(', ');
+      showConfirm(`Rilanciare ${failed.length} build: ${names
