@@ -1,8 +1,9 @@
 # Native Windows coding bake campaign - 2026-07-15
 
-Status: full-decode K0 learn, held-out routing, and virtual-mask quality gates
-complete. Physical K60/K75 mass-ranked packs are being streamed to R2. This
-file separates measured facts from pending gates.
+Status: full-decode K0 learn, held-out routing, virtual-mask quality gates, and
+physical K60/K75 mass-ranked R2 packs complete. Windows downloads and end-to-end
+pack verification are in progress. This file separates measured facts from
+pending gates.
 
 ## Provenance
 
@@ -155,6 +156,19 @@ R2 runner records separate packer/uploader exits and requires the remote object
 size to match the emitted byte count. This avoids a 54-64 GiB temporary file on
 the 50 GiB-free pod disks.
 
+Both requested mass-ranked packs completed with packer exit `0`, uploader exit
+`0`, and exact equality between producer and R2 object sizes:
+
+| Pack | R2 object | Total bytes | Full pack SHA-256 | Payload SHA-256 |
+|---|---|---:|---|---|
+| K60 mass | `ds4-models/windows-native-bakes/20260715/ds4-2bit-k60-mass-full-decode-5b6d9850.ds4pack` | 57,842,530,728 | `3b464ee43514c8caa841be61da70190a4a7ba3c760c22849d2d723e5da5b7d71` | `5cb4bf69d7c6ef2aadfc8760069c3a7a89fc40504ce80b7b3735b10f9539e4b5` |
+| K75 mass | `ds4-models/windows-native-bakes/20260715/ds4-2bit-k75-mass-full-decode-e4b6059f.ds4pack` | 68,600,895,205 | `f1dbb64e1c8261928b56b4fa154238559444f70e8a1796875b22e42abf455dd2` | `9b8f67ad4f69bfcd3a2369839c936371c8a433e53ed951582d0ad491c718aa3d` |
+
+Producer receipts are committed under `bake_k60_mass_20260715/` and
+`bake_k75_mass_20260715/`. R2 size equality proves a complete byte count, not
+content identity. The full-pack SHA-256 must still be recomputed after each
+Windows download before unpacking.
+
 ## Functional A/B
 
 The first attempted A/B used a 1,600-token budget and was stopped after K0 run
@@ -251,14 +265,12 @@ held-out routing coverage. The bake candidates remain the mass-ranked masks.
 
 ## Pending gates
 
-1. Finish and verify the K60/K75 mass pack streams on R2; reject any pipeline or
-   remote-size mismatch.
-2. Download each pack and verify its complete SHA-256 against the producer
+1. Download each pack and verify its complete SHA-256 against the producer
    receipt before unpacking.
-3. Assemble and inspect the NTFS sparse artifacts on Windows.
-4. Apply and build the native Windows embedded-mask loader patch.
-5. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
+2. Assemble and inspect the NTFS sparse artifacts on Windows.
+3. Apply and build the native Windows embedded-mask loader patch.
+4. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
    cache misses, and throughput. Zero SSD during measured inference is a
    separate fail-closed gate.
-6. Keep K60 as the primary candidate; promote K75 only if measured host-memory
+5. Keep K60 as the primary candidate; promote K75 only if measured host-memory
    residency leaves sufficient runtime headroom.

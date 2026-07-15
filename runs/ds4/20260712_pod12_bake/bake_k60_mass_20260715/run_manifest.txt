@@ -1,0 +1,16 @@
+2026-07-15T17:49:06Z
+model=/root/models/ds4-2bit.gguf
+mask=/root/k60_coding.txt
+dest=r2:ds4-models/windows-native-bakes/20260715/ds4-2bit-k60-mass-full-decode-5b6d9850.ds4pack
+source_sha256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+model_size=86720111488 model_mtime=2026-07-06 15:08:48.350470787 +0000
+5b6d98504ba830c1a50945a93d1a6017b1956bd17c56df8c0b1bdf92c1564e97  /root/k60_coding.txt
+474232c38661a783e01e5b0314854877eda7e8bc1718cb59223072e6b206083e  /root/ds4_windows_sparse_bake.py
+34defcd9a6fda7865e4c1ed6a3213b8d432628255a5d86df0abbfd7661c063f6  /root/run_pack_stream_r2.sh
+Python 3.12.3
+rclone v1.58.1
+- os/version: ubuntu 24.04 (64 bit)
+packer_exit=0
+rclone_exit=0
+expected_bytes=57842530728
+remote_bytes=57842530728
