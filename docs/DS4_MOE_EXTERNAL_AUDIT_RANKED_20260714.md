@@ -756,6 +756,72 @@ The next ranked lever is direct resident slots and hit/miss separation, not more
 first-copy scheduling. Full report: `G44_SOURCE_PARTS_RESULTS.md`, native
 implementation commit `48234f31ec5828ae094496e42eb01f498e4b87c8`.
 
+### Rank 1/6 capacity checkpoint: G45 raises protected residents to 320
+
+G45 keeps the G44 source-parts closed snapshot and changes only
+`DS4_CUDA_STREAMING_EXPERT_CACHE_N=256 -> 320`, with the same 0.125 GiB cache
+reserve, 30 GiB pinned host snapshot, mass/LFRU policy, prompt, context, binary
+and expected output hash
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+
+The requested capacity is protocol-critical under WDDM. Two consecutive
+336-slot attempts were not reproducible: one process received effective 336 and
+the next received 321, so 336 is rejected as a default-capacity candidate. Other
+exploratory capacity probes are retained only as mechanism evidence, not mixed
+into the throughput verdict.
+
+The accepted A/B used three independent processes per arm, ordered 256 A,
+320 A, 320 B, 256 B, 256 C, 320 C. All runs were exact, SSD-free and retained a
+closed snapshot: snapshot misses, SSD bytes and tier/route failures were zero in
+both arms.
+
+| Metric | 256 protected | 320 protected | Delta |
+|---|---:|---:|---:|
+| Server decode mean | 4.4367 t/s | 4.4767 t/s | +0.90% |
+| Server decode median | 4.44 t/s | 4.48 t/s | +0.04 t/s |
+| Decode seconds mean | 14.4247 s | 14.2963 s | -0.89% |
+| Pinned-RAM H2D mean | 75.0344 GiB | 71.5803 GiB | -3.4541 GiB (-4.60%) |
+| VRAM route hits mean | 5,129 | 5,653 | +524 |
+| Pinned-RAM route hits mean | 11,383 | 10,859 | -524 (-4.60%) |
+| Worker time | 1.6853 ms/job | 1.6207 ms/job | -3.84% |
+| Worker-ready wait | 1.6727 ms/call | 1.6047 ms/call | -4.07% |
+| Peak VRAM mean | 11,076.0 MiB | 11,517.3 MiB | +441.3 MiB |
+| TTFT median | 44.604 s | 44.754 s | +0.150 s |
+| WRAP median | 23.084 s | 24.640 s | +1.556 s |
+
+Per-run decode was tightly grouped: 256 measured 4.44, 4.44 and 4.43 t/s;
+320 measured 4.48, 4.48 and 4.47 t/s. The 64 extra slots replaced exactly 524
+pinned-RAM routes with VRAM hits over 64 generated tokens and removed 3.454 GiB
+of H2D traffic. This is a small but replicated decode win and a clearer direct
+mechanism win, at about 441 MiB additional peak VRAM.
+
+One 256 run reported a 377.736 s TTFT while decode stayed 4.43 t/s and the
+source-parts WRAP interval was only 23.084 s. The stall is an unlocalized
+prefill/WDDM event before first token, so TTFT mean is not used for the cache
+verdict. The 64-token output is a deterministic prefix transport test only; it
+does not claim complete HTML or L0-L3 quality.
+
+Provenance: measured parent
+`a8e48d7c4872e406f5f5a3764d45660315a0f687`; executable SHA-256
+`801ea8ff8531245ff3083d71cdc5b5b55b93f0b1dc4904bee30d24d0dd653026`;
+`ds4_cuda.cu` SHA-256
+`be4103d78f05d0f565cf2103b0d93b2c04f517e1ac7ebd057951c6db67d34063`; build
+manifest SHA-256
+`100abc59ee94c04a4399a91f567235c7f341f5fca004985290a74e53c99a5fd6`; harness
+SHA-256 `235d4220e3903425ae55c32cec950a01a58bf601f6b55d80c2784995aa069533`;
+runner SHA-256
+`23699ea6251ad4bffb5e03d077de0fdfa9be9095c55ac15171e680463132a31d`;
+corrected summary runner SHA-256
+`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`.
+
+Verdict: 320 protected expert slots are the best measured reproducible capacity
+for the current RTX 3060 configuration. Keep 336 rejected for default use. The
+next isolated gate should remove the redundant default-stream synchronization in
+the GPU-resident route handoff, relying on the mapped request sequence and
+worker-ready publication. It must remain opt-in, no-default-sync, exact-safe
+first, and only then run an `n>=3` A/B. Full report:
+`G45_DIRECT_RESIDENT_CACHE_RESULTS.md`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -838,20 +904,24 @@ commit `63ba10d`.
 15. **First-copy source-parts done, G44:** global source-offset ordering cut
     WRAP median 31.947 -> 25.829 s and TTFT median 52.508 -> 46.184 s with
     exact output, unchanged zero SSD and no decode claim.
-16. **Direct resident slots / hit-miss separation next:** return to Rank 1/2
-    with the G44 closed snapshot as baseline. Preserve the 1,024 MiB reserve,
-    measured hot-weight cache, zero-SSD closure, explicit phase telemetry and
-    permanent `n>=3` requirement for throughput verdicts.
-17. **P4-D next:** restore tile-capable wave kernels without changing G39's
+16. **Protected resident cache capacity done, G45:** cache320 versus cache256
+    measured decode 4.4367 -> 4.4767 t/s and pinned-RAM H2D 75.0344 ->
+    71.5803 GiB, with exact output, zero snapshot misses and zero SSD. The
+    336-slot candidate failed reproducible capacity and is not a default.
+17. **No-default-sync route handoff next:** keep the G45 cache320 closed
+    snapshot as baseline, remove only the redundant default-stream sync in the
+    GPU-resident handoff behind an opt-in gate, then require exact safety before
+    any `n>=3` throughput verdict.
+18. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-18. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+19. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-19. Only then return to physical REAP rotation and SPEX transfer composition.
+20. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 

@@ -1365,3 +1365,92 @@ not a decode result.
 Verdict: exact positive startup optimization for the measured closed snapshot.
 The next ranked lever is direct resident slots and hit/miss separation, not more
 first-copy scheduling. Native report: `G44_SOURCE_PARTS_RESULTS.md`.
+
+## 2026-07-15 Native Windows G45 Protected Direct-Resident Cache 320
+
+Question: does increasing the protected direct-resident expert set reduce
+pinned-RAM H2D traffic and improve longer decode while preserving exact output,
+the request-scoped closed snapshot and zero SSD traffic?
+
+Protocol: exact G44 source-parts closed snapshot on native Windows RTX 3060
+12 GiB, 64 GiB RAM, driver 596.21, `ds4-2bit.gguf`, context 256, 64 generated
+tokens, deterministic server path, 30 GiB dynamic arena with 4,551 entries,
+source-parts WRAP with eight workers, 1,024 MiB startup reserve, 0.125 GiB
+expert-cache reserve in both arms, Q8-F16 off, tiering enforce with mass/LFRU
+clock 430, replacement budget 16, minimum frequency 3 and hysteresis 1.25.
+The only accepted A/B change was
+`DS4_CUDA_STREAMING_EXPERT_CACHE_N=256 -> 320`. Order was 256 A, 320 A, 320 B,
+256 B, 256 C, 320 C, with three independent processes per arm.
+
+Capacity gate: requested capacity is not always effective capacity under WDDM,
+so mismatches are failed protocol, not samples. Exploration measured 336 with
+0.5 GiB reserve as effective 284, 384 with 0.125 GiB reserve as effective 341,
+one 336/0.125 safety candidate as effective 336, then 336 A as effective 336
+and 336 B as effective 321. The two consecutive 336 attempts were therefore
+not reproducible. A 320/0.125 safety gate and all three 320 candidate replicas
+were effective 320. Rejected 336 artifacts are mechanism evidence only.
+
+Expected output SHA-256:
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+The 64-token output is a deterministic transport prefix; it is not a complete
+HTML quality result and carries no L0-L3 verdict.
+
+| Metric | 256 protected | 320 protected | Delta |
+|---|---:|---:|---:|
+| Server decode mean | 4.4367 t/s | 4.4767 t/s | +0.90% |
+| Server decode median | 4.44 t/s | 4.48 t/s | +0.04 t/s |
+| Decode seconds mean | 14.4247 s | 14.2963 s | -0.89% |
+| Pinned-RAM H2D mean | 75.0344 GiB | 71.5803 GiB | -3.4541 GiB (-4.60%) |
+| VRAM route hits mean | 5,129 | 5,653 | +524 |
+| Pinned-RAM route hits mean | 11,383 | 10,859 | -524 (-4.60%) |
+| All-hit route calls mean | 14 | 19 | +5 |
+| Worker time | 1.6853 ms/job | 1.6207 ms/job | -3.84% |
+| Worker-ready wait | 1.6727 ms/call | 1.6047 ms/call | -4.07% |
+| Peak VRAM mean | 11,076.0 MiB | 11,517.3 MiB | +441.3 MiB |
+| TTFT median | 44.604 s | 44.754 s | +0.150 s |
+| WRAP median | 23.084 s | 24.640 s | +1.556 s |
+| Snapshot misses sum | 0 | 0 | exact closed snapshot |
+| SSD bytes sum | 0 | 0 | unchanged |
+| Tier/route failures sum | 0 | 0 | unchanged |
+
+Per-run decode was 256: 4.44, 4.44, 4.43 t/s; 320: 4.48, 4.48, 4.47 t/s. The
+64 extra slots replaced exactly 524 pinned-RAM routes with VRAM hits over
+64 generated tokens and removed 3.454 GiB of H2D traffic.
+
+TTFT caveat: `g45_stable_cache256_c` reported 377.736 s TTFT while decode
+remained 4.43 t/s. Its source-parts WRAP interval was only 23.084 s, so the
+stall is outside WRAP and before first token. Current telemetry localizes it
+only as an unlocalized prefill/WDDM stall; TTFT mean is not used for the cache
+verdict.
+
+Provenance: measured parent
+`a8e48d7c4872e406f5f5a3764d45660315a0f687`; executable SHA-256
+`801ea8ff8531245ff3083d71cdc5b5b55b93f0b1dc4904bee30d24d0dd653026`;
+`ds4_cuda.cu` SHA-256
+`be4103d78f05d0f565cf2103b0d93b2c04f517e1ac7ebd057951c6db67d34063`; build
+manifest SHA-256
+`100abc59ee94c04a4399a91f567235c7f341f5fca004985290a74e53c99a5fd6`; build
+input fingerprint
+`752b0f3035f44c205e1cdf104b07c078b79a29594100481c7d60f90762b130c8`; harness
+SHA-256 `235d4220e3903425ae55c32cec950a01a58bf601f6b55d80c2784995aa069533`;
+execution runner SHA-256
+`23699ea6251ad4bffb5e03d077de0fdfa9be9095c55ac15171e680463132a31d`;
+corrected summary runner SHA-256
+`c9ceca6fc95467bd76ec65ecf9c4644a7470fb6108cf93da25214b7980629ad7`.
+The first summary had a PowerShell median-index bug; the corrected summary was
+regenerated from the same six per-run JSON files without repeating runtime
+measurement.
+
+Verdict: cache320 is the best measured reproducible protected capacity for the
+current RTX 3060 configuration. It is exact, replicated and SSD-free, with a
+small consistent decode gain and a larger direct mechanism improvement at about
+441 MiB additional peak VRAM. Do not use 336 as the default. The next isolated
+gate should remove only the redundant default-stream synchronization in the
+GPU-resident route handoff, relying on the existing mapped request sequence and
+worker-ready publication. It must be opt-in, no-default-sync, exact-safe first,
+and promoted only after an `n>=3` A/B.
+
+Native report: `G45_DIRECT_RESIDENT_CACHE_RESULTS.md`; primary artifacts:
+`g45_direct_resident_cache_ab.ps1`,
+`g7_runs/g45_direct_resident_cache_ab_result.json` and
+`g7_runs/g7_g45_stable_cache{256,320}_{a,b,c}_result.json`.
