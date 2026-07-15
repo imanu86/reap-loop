@@ -805,3 +805,47 @@ measured, but it does not repay the extra masked launches and final ordered
 sum at the current 42.24% route-hit distribution. Verdict: exact mechanism
 checkpoint, negative throughput result, keep opt-in. Native-Windows commit:
 `e4d669e`; full report: `G33_SPLIT_HIT_MISS_RESULTS.md` in that repo.
+
+## 2026-07-15 Native Windows G34 SPEX IQ2XXS CPU Sidecar
+
+Question: can SPEX-predicted next-layer experts start useful IQ2XXS work on CPU
+before exact GPU transport needs them, without changing routing or output?
+
+Setup: native Windows RTX 3060 12 GB, model
+`C:\ds4-models\ds4-2bit.gguf`, prompt `Hi`, context 256, max 12 (EOS after 9),
+cache336 LRU with GPU-resident routes, 2 GiB stream window, Q8-F16 cache off,
+embedding-row staging on, REAP/dynamic arena/G33 split off. Controls retained the
+same SPEX score/topK width. Each counter-ordered run used one discarded warmup
+and `n=3` measured requests.
+
+The observe-only sidecar uses an eight-slot pinned D2H ring and one CPU worker to
+quantize the predicted hidden state to Q8_K and evaluate IQ2XXS gate/up plus
+SwiGLU. It records timing/checksum only; exact GPU routing remains authoritative.
+
+| Width | Control server t/s | CPU server t/s | Delta | Control client t/s | CPU client t/s | Delta |
+|---|---:|---:|---:|---:|---:|---:|
+| K1 | 3.1650 | 3.0583 | -3.37% | 2.1124 | 2.0667 | -2.16% |
+| K2 | 3.1200 | 3.0900 | -0.96% | 2.1012 | 2.0955 | -0.27% |
+
+| Metric | K1 | K2 |
+|---|---:|---:|
+| possible jobs | 3,024 | 3,024 |
+| submitted / dropped | 3,020 / 4 | 2,478 / 546 |
+| exact-match predictions | 53.68% | 47.28% |
+| useful and ready predictions | 20.40% | 0.18% |
+| CPU time / submitted job | 4.58 ms | 8.95 ms |
+| queue time / submitted job | 2.21 ms | 47.76 ms |
+| page-fault multiplier vs control | 2.66x | 4.46x |
+
+All 24 measured outputs and all warmups matched exact content hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+The harness hash (`d33d764b...`), executable hash (`44fdcbaa...`), build input
+fingerprint (`02f87221...`) and expected/observed SPEX hash (`a86288c3...`) are
+recorded in every result JSON.
+
+Verdict: exact negative result. K1 loses throughput despite keeping up with the
+queue; K2 drops 18.06% of jobs and almost never finishes a correct prediction in
+time. Do not promote unconditional CPU IQ2XXS speculation. Retain the probe and
+test SPEX as a high-confidence RAM staging/pinning signal after real tier states
+exist. Native-Windows commit: `63ba10d`; full report:
+`G34_SPEX_CPU_OBSERVE_RESULTS.md` in that repo.

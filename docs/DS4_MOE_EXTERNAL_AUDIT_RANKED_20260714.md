@@ -461,14 +461,39 @@ enough to reduce measured foreground wait, and CPU contention does not erase the
 gain. A mechanism/exactness probe may use `n=1`; any performance verdict requires
 `n>=3`.
 
+### Rank 8 measured checkpoint: G34
+
+Native-Windows commit `63ba10d` implements an observe-only SPEX CPU sidecar for
+`k=1|2`. It copies the predicted target-layer hidden state to an eight-slot
+pinned ring, quantizes it to Q8_K on one CPU worker, and evaluates predicted
+IQ2XXS gate/up plus SwiGLU. The result is checksummed but never consumed; the
+exact GPU router remains authoritative. The harness also pins the SPEX model
+SHA-256 and fails closed on provenance or output mismatch.
+
+The counter-ordered matrix used one discarded warmup and `n=3` measured requests
+per run. All 24 outputs matched exact hash
+`fda564ba3f7a0f028106d468420f674898ed99ac5bf2765ac9586206e39d73c5`.
+
+| Width | Control server | CPU server | Delta | Dropped jobs | Useful-ready / prediction |
+|---|---:|---:|---:|---:|---:|
+| K1 | 3.1650 | 3.0583 | -3.37% | 0.13% | 20.40% |
+| K2 | 3.1200 | 3.0900 | -0.96% | 18.06% | 0.18% |
+
+Verdict: unconditional speculative IQ2XXS CPU execution is exact but rejected as
+a throughput lever. K1 adds CPU/page-fault pressure and loses throughput; K2
+overloads the single-worker queue. Keep the opt-in probe, but use SPEX next for
+high-confidence RAM staging/pinning rather than unconditional CPU execution.
+Full protocol and artifacts are in `G34_SPEX_CPU_OBSERVE_RESULTS.md` at native
+commit `63ba10d`.
+
 ## Execution sequence
 
 1. **P0 measurement commit (done, G29):** standalone warm-tier benchmark and ledger schema.
 2. **P1 code commit (done, G32):** direct resident slots, old miss fallback unchanged.
 3. **P1 A/B commit (done, G32):** `n>=3` primed state, exact hashes and route counters.
 4. **P2 code/A-B commit (done, G33; exact, no speed win):** mixed hit/miss scheduler.
-5. **P2-SPEX measurement commit (next):** speculative CPU miss `off/k=1/k=2`, after
-   the exact mixed scheduler exists and before any placement policy is combined.
+5. **P2-SPEX measurement commit (done, G34; exact, negative):** speculative CPU
+   miss `off/k=1/k=2`; keep opt-in, do not compose into the runtime policy.
 6. **P3 code commit:** cold-to-RAM admission invariant plus mass/LFRU telemetry.
 7. **P4 code commit:** prefill union and then waves as separate toggles.
 8. Only then return to physical REAP rotation and SPEX transfer composition.
