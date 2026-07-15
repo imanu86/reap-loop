@@ -1,0 +1,4 @@
+[mask] out=/root/reap-loop/runs/ds4/20260712_pod12_bake/coding_mass_prefill_seed_20260715/masks/k60_coding.txt
+[mask] keep=154 (60.2%) fixed per layer, 40 MoE layers
+[mask] blocked_lines=4080 (expected 4080)
+[mask] per-layer keep: min=154 max=154 (should both == 154 for the fixed-K scheme)

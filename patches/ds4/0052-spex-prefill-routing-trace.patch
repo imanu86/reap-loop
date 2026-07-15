@@ -1,0 +1,91 @@
+diff --git a/ds4.c b/ds4.c
+--- a/ds4.c
++++ b/ds4.c
+@@ -17501,6 +17501,18 @@ static bool metal_graph_spex_trace_routing_weights_enabled(void) {
+     return cached == 1;
+ }
+ 
++/* Measurement-only prefill routing trace. The batch path performs one
++ * selected-id/weight readback per layer, then emits one CSV row per token.
++ * Disabled by default so production prefill has no extra synchronization. */
++static bool metal_graph_spex_trace_prefill_routing_enabled(void) {
++    static int enabled = -1;
++    if (enabled == -1) {
++        const char *v = getenv("DS4_SPEX_TRACE_PREFILL_ROUTING");
++        enabled = v && *v && strcmp(v, "0") != 0;
++    }
++    return enabled;
++}
++
+ static FILE *metal_graph_spex_trace_routing_file(void) {
+     if (g_spex_trace_routing_failed) return NULL;
+     const char *path = getenv("DS4_SPEX_TRACE_ROUTING");
+@@ -23373,6 +23385,68 @@ static bool metal_graph_encode_layer_ffn_batch(
+                 il);
+         }
+     }
++    if (ok && metal_graph_spex_trace_prefill_routing_enabled()) {
++        FILE *fh = metal_graph_spex_trace_routing_file();
++        const uint64_t count = (uint64_t)n_tokens * DS4_N_EXPERT_USED;
++        int32_t *ids = fh ? malloc(count * sizeof(*ids)) : NULL;
++        float *weights = (fh && metal_graph_spex_trace_routing_weights_enabled())
++            ? malloc(count * sizeof(*weights)) : NULL;
++        bool ids_ok = ids &&
++            ds4_gpu_tensor_read(g->batch_router_selected,
++                                0,
++                                ids,
++                                count * sizeof(*ids)) != 0;
++        bool weights_ok = !metal_graph_spex_trace_routing_weights_enabled();
++        if (weights) {
++            weights_ok = ds4_gpu_tensor_read(g->batch_router_weights,
++                                              0,
++                                              weights,
++                                              count * sizeof(*weights)) != 0;
++        }
++        if (!ids_ok || !weights_ok) {
++            if (g_spex_trace_routing_weight_read_fail++ == 0) {
++                fprintf(stderr,
++                        "ds4: SPEX prefill routing trace: batch readback "
++                        "failed (reported once)\n");
++            }
++        } else if (fh) {
++            for (uint32_t t = 0; t < n_tokens; t++) {
++                const uint64_t base = (uint64_t)t * DS4_N_EXPERT_USED;
++                bool valid = true;
++                for (uint32_t i = 0; i < DS4_N_EXPERT_USED; i++) {
++                    const int32_t eid = ids[base + i];
++                    if (eid < 0 || (uint32_t)eid >= DS4_N_EXPERT) {
++                        valid = false;
++                        break;
++                    }
++                }
++                if (!valid) continue;
++                fprintf(fh,
++                        "%u,%u,%u",
++                        pos0 + t,
++                        il,
++                        (unsigned)DS4_N_EXPERT_USED);
++                for (uint32_t i = 0; i < DS4_MAX_EXPERT_USED; i++) {
++                    const int32_t eid = i < DS4_N_EXPERT_USED
++                        ? ids[base + i]
++                        : -1;
++                    fprintf(fh, ",%d", eid);
++                }
++                if (metal_graph_spex_trace_routing_weights_enabled()) {
++                    for (uint32_t i = 0; i < DS4_MAX_EXPERT_USED; i++) {
++                        if (i < DS4_N_EXPERT_USED) {
++                            fprintf(fh, ",%.9g", weights[base + i]);
++                        } else {
++                            fprintf(fh, ",nan");
++                        }
++                    }
++                }
++                fputc('\n', fh);
++            }
++        }
++        free(weights);
++        free(ids);
++    }
+     DS4_METAL_PROFILE_FFN_STAGE("router");
+ 
+     if (ok) {
