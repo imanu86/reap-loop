@@ -1775,3 +1775,101 @@ Native report: `G50_WRAP_WORKING_SET_TRIM_RESULTS.md`; runner:
 [`30f864b`](https://github.com/imanu86/ds4-win/commit/30f864ba6b351f1fc621ea272c3f36e4c7e6e000);
 matrix SHA-256:
 `a6dcb05492aaf6917eb366b096a6f961d58a17901f235bc661dec8a0ca61ad21`.
+
+## 2026-07-15 Native Windows G51 Prefill VRAM Seed Safety
+
+Question: after the request-scoped 30 GiB snapshot is published, can the 320
+highest-mass prefill experts be copied into the protected VRAM cache before
+decode without changing exact output?
+
+One safety process completed exactly with the canonical cyberpunk 64-token
+hash. It seeded 320 entries in 0.385 s and decoded at 4.49 t/s. TTFT was
+48.225 s and WRAP was 26.169 s. This is mechanism evidence only: n=1 cannot
+support a throughput verdict, and the pre-hardening telemetry reached only
+0.033 GiB minimum available RAM.
+
+Decision: keep G51 default-off and do not run its n=3 matrix until the WRAP
+source path no longer duplicates pageable mmap source pages.
+
+Native commit:
+[`621fbe9`](https://github.com/imanu86/ds4-win/commit/621fbe9);
+local artifact:
+`g7_runs/g7_g51_prefill_vram_seed_safety_n1_result.json`.
+
+## 2026-07-15 Native Windows G52 Direct Sequential-File WRAP
+
+G52 replaced the 30 GiB `memcpy` from the model mmap into
+`cudaHostAlloc` memory with direct Win32 file reads into the pinned arena.
+This removes the simultaneous mmap-page-cache plus pinned-destination
+duplication. The source path is opt-in and reports
+`arena_wrap_source_observed=sequential-file`.
+
+Two exact n=1 safety processes kept about 17.5 GiB minimum available RAM and
+zero snapshot misses, SSD bytes or tier failures:
+
+| Run | WRAP | TTFT | Decode | Aggregate disk read | Read rate |
+|---|---:|---:|---:|---:|---:|
+| safety2 | 50.248 s | 69.204 s | 4.51 t/s | telemetry predates aggregate field | n/a |
+| safety3 | 176.082 s | 198.048 s | 4.56 t/s | 52.430 GiB | 238.6 MiB/s |
+
+The 3.5x WRAP spread is a measured negative/variability finding, not a
+performance verdict. It proves the memory duplication fix while showing that
+the one-worker direct-read path still depends strongly on I/O state.
+
+Native commits:
+[`4d3e36d`](https://github.com/imanu86/ds4-win/commit/4d3e36d),
+[`91a1b50`](https://github.com/imanu86/ds4-win/commit/91a1b50).
+
+## 2026-07-15 Native Windows G53 Sequential Worker-Depth Safety
+
+G53 made the sequential-file copy worker count measurable. A workers=4 safety
+process remained in WRAP after 315 s at roughly 56-70 MiB/s with disk queue
+around 8-12, while available RAM remained near 17.5 GiB. It was manually
+stopped and produced no result JSON.
+
+Decision: this is an aborted negative safety signal, not an n=3 verdict. Do not
+run the six-process workers1-versus-workers4 matrix. Shared concurrent sparse
+reads plus the sequential file hint are not a viable next default.
+
+Native commit:
+[`e31f663`](https://github.com/imanu86/ds4-win/commit/e31f663).
+
+## 2026-07-15 Native Windows G54 File-Source A/B
+
+Question: does one-worker `FILE_FLAG_RANDOM_ACCESS` improve direct-file WRAP
+over the one-worker sequential-file baseline?
+
+Protocol: n=3 independent processes per arm, counterbalanced order
+`random,sequential,sequential,random,random,sequential`, cyberpunk prompt,
+context 256, 64 generated tokens, cache 320, 30 GiB request-scoped closed
+snapshot, mass/LFRU, GPU-resident routes and no-default-sync. Every run
+required the same expected output hash, source request/observation, cache
+capacity and per-run launch sidecar. All six runs were exact with zero
+contamination, snapshot misses, SSD bytes and tier failures.
+
+| Arm | WRAP mean / median | TTFT mean / median | Decode mean | Disk read mean | Read rate mean |
+|---|---:|---:|---:|---:|---:|
+| sequential-file | 50.195 / 50.255 s | 72.117 / 72.073 s | 4.553 t/s | 51.128 GiB | 539.6 MiB/s |
+| random-file | 50.793 / 50.526 s | 73.130 / 72.913 s | 4.533 t/s | 49.734 GiB | 517.8 MiB/s |
+
+Random-file is 1.19% slower in mean WRAP and 1.40% slower in mean TTFT.
+Reject it as a performance lever and retain sequential-file workers1.
+
+An initial attempt correctly refused its second process because the quiescence
+gate saw sustained disk activity. The contaminant was measured as Visual
+Studio Installer `BackgroundDownload.exe` reading about 30 MiB/s. It was
+stopped, disk queue returned to zero, and the matrix resumed; the refused
+launch is not a result row.
+
+Architectural conclusion: the file hint is not the remaining wall. One
+publication still issues 13,653 source-part reads for 4,551 experts and copies
+32,211,468,288 bytes. G55 should first measure adjacency/gap amplification,
+then test bounded range coalescing or batched overlapped I/O without restoring
+mmap duplication.
+
+Native commits:
+[`c81ff7d`](https://github.com/imanu86/ds4-win/commit/c81ff7d),
+[`d1d2771`](https://github.com/imanu86/ds4-win/commit/d1d2771),
+[`e4ba9ec`](https://github.com/imanu86/ds4-win/commit/e4ba9ec).
+Native summary:
+`g7_runs/g54_wrap_file_source_ab_result.json`.
