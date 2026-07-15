@@ -897,6 +897,28 @@ unknown. G47 is accepted as low-overhead diagnostic instrumentation, not as a
 throughput lever. Full report: `G47_REQUEST_PHASE_TRACE_RESULTS.md`, native
 commit `134a984`.
 
+### Rank 1/6 promotion and long-tail checkpoint: G48
+
+G48 tests G46 default-sync versus no-default-sync on three distinct prompt
+shapes at 64 tokens: Italian explanation, C function and PostgreSQL query. This
+is exactness-only `n=1` per arm and prompt, with no throughput verdict. All
+three pairs matched full content, completion count and SHA-256 exactly. Every
+run had effective cache 320, complete route accounting, zero snapshot misses,
+zero SSD and zero failures. G46 therefore passes the requested cross-prompt
+exactness gate and remains opt-in.
+
+The first Italian default process exposed TTFT 332.473 s. Three required
+rechecks reproduced a second long event at 262.228 s, while the other two were
+47.327 and 45.348 s. Source-parts WRAP copy measured 267.330 and 145.234 s in
+the long runs versus 27.112 and 25.076 s in normal runs. Output, 6,669 VRAM
+routes, 9,843 pinned-RAM routes and 64.8831 GiB H2D were identical in all four.
+
+This establishes a reproducible prefill/WRAP long tail, not a post-WRAP or
+decode stall. Similar total process reads and page-fault counts do not identify
+the cause. The next diagnostic should measure per-worker WRAP progress and
+latency alongside Windows memory-pressure and I/O counters. Full report:
+`G48_NO_DEFAULT_SYNC_CROSS_PROMPT_RESULTS.md`, native commit `aeb839a`.
+
 ### Rank 8 SPEX CPU speculation test
 
 This is a separate test from GPU/RAM prefetch. SPEX predicts expert identity;
@@ -989,21 +1011,25 @@ commit `63ba10d`.
 18. **TTFT phase diagnostic done, G47:** exact combined `n=6` per arm measured
     trace overhead below one percent. Normal post-WRAP-to-sync-return time is
     about 12 ms; the intermittent 200-370 s event was not reproduced.
-19. **G46 cross-prompt promotion next:** run no-default-sync on multiple prompt
-    shapes with exact hashes. Use G47 only in paired diagnostic arms.
-20. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
+19. **G46 cross-prompt exactness done, G48:** three distinct prompt pairs were
+    byte-identical with complete route accounting and zero SSD. The `n=1`
+    values make no throughput claim.
+20. **WRAP long-tail diagnosis next:** instrument per-worker source-parts
+    progress/latency and concurrent Windows memory-pressure/I/O counters. G48
+    reproduced two long prefill/WRAP runs among four identical processes.
+21. **Pinned-RAM route reduction next:** attack the measured 10,859 RAM routes
     and 71.58 GiB H2D with true hit/miss separation or amortized physical
     rotation. Preserve the request-scoped closed snapshot and zero SSD.
-21. **P4-D next:** restore tile-capable wave kernels without changing G39's
+22. **P4-D next:** restore tile-capable wave kernels without changing G39's
     full-union, ordered-sum or parity-ownership contracts.
-22. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
+23. **Prompt-intent closed-arena follow-on:** split one request into semantic router-only
     probes, aggregate unbiased per-layer mass into a RAM/VRAM preload prior, then
     build a request-scoped closed set whose complete payload fits pinned RAM plus
     VRAM. Outside experts become ineligible only for that request. Account probe,
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-23. Only then return to physical REAP rotation and SPEX transfer composition.
+24. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 

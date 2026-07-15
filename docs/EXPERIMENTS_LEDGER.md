@@ -1607,3 +1607,61 @@ Native report: `G47_REQUEST_PHASE_TRACE_RESULTS.md`; runner:
 `g7_runs/g47_phase_trace_overhead_ab_result.json` and
 `g7_runs/g47_phase_trace_outlier_recheck_result.json`; native commit:
 `134a984`.
+
+## 2026-07-15 Native Windows G48 No-Default-Sync Cross-Prompt Exactness
+
+Question: does the exact G46 no-default-sync route handoff remain byte-identical
+outside the cyberpunk HTML prefix used for its `n=3` throughput A/B?
+
+Protocol: exactness-only `n=1` pairs on three prompt shapes: Italian
+explanation, C overflow-safe parser and PostgreSQL aggregate query. Each pair
+ran default-sync first, then passed its full-content SHA-256 to the no-sync arm
+as `ExpectedContentSHA256`. Both arms used context 256, 64 generated tokens,
+30 GiB request-scoped closed snapshot, cache request/effective 320, reserve 0,
+mass/LFRU tiering, source-parts WRAP and no request-phase trace. This gate makes
+no throughput or L0-L3 quality verdict.
+
+| Case | Content SHA-256 | Default t/s | No-sync t/s | Exact |
+|---|---|---:|---:|---:|
+| Italian | `c592c46ecb710dcd9eeb0f01dde6a47c09690e3c62543f40e3c25f5880ecdbab` | 4.55 | 4.66 | yes |
+| C function | `0f0d1665eecb3e1266f95cf331266b0683a0f4afc2296abf083badf5e30b2944` | 4.43 | 4.58 | yes |
+| PostgreSQL | `3ed0b67ec5f801b5ff6c05f5e3a755f109d1470bae0eae7947724eadf76a521b` | 4.34 | 4.42 | yes |
+
+All six authoritative processes matched full content and token count, had
+2,752 route calls, effective cache 320, zero snapshot misses, zero SSD bytes,
+zero failures and complete default/no-sync accounting. The t/s values are
+observations only. A context-512 C attempt reached only 315/320 VRAM slots under
+WDDM and was excluded before its candidate arm.
+
+The first Italian default process produced TTFT 332.473 s, triggering three
+additional identical processes. All four outputs and transport counts remained
+identical. TTFT/WRAP timeline was:
+
+```text
+reference: 332.473 / 267.347 s
+recheck A:  47.327 /  27.128 s
+recheck B: 262.228 / 145.254 s
+recheck C:  45.348 /  25.093 s
+```
+
+Both long logs stop after `[arena] begin`; the source-parts profile attributes
+267.330 and 145.234 s to WRAP copy. `TTFT - WRAP` also rises to 65.126 and
+116.974 s versus about 20.2 s in normal runs, so slowdown is not confined to
+the WRAP workers. Decode remains 4.32-4.55 t/s after publication.
+
+The four processes read 22.210-23.485 GiB and reported 17.1-18.5 million page
+faults; simple byte/fault totals do not explain the elapsed multiplier. Two long
+events in four identical processes establish reproducibility, not a population
+rate or a causal attribution.
+
+Verdict: G46 passes the requested three-shape exactness gate and may remain
+opt-in for broader use. Separately, the long-TTFT finding is now localized to
+prefill plus source-parts WRAP rather than post-WRAP or decode. The next
+diagnostic needs per-worker WRAP progress/latency and concurrent Windows memory
+pressure/I/O telemetry.
+
+Native report: `G48_NO_DEFAULT_SYNC_CROSS_PROMPT_RESULTS.md`; runner:
+`g48_no_default_sync_cross_prompt.ps1`; summaries:
+`g7_runs/g48_no_default_sync_cross_prompt_result.json` and
+`g7_runs/g48_italian_default_outlier_recheck_result.json`; native commit:
+`aeb839a`.
