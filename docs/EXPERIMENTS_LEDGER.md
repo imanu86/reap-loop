@@ -1932,6 +1932,12 @@ Measured no-GPU verification:
 - `git diff --check` passed apart from line-ending warnings;
 - independent read-only call-path review reported no finding.
 
+Commit `31342db` adds explicit guard-install/route-validation telemetry and a
+fail-closed K60/K75 safety runner. The first safety deliberately omits
+WRAP/dynamic arena and checks footer/manifest, CRC32, mask/payload SHA-256,
+positive selected-route counters, zero rejected selections, and a non-empty
+coherent temp0/nothink output. It remains n=1 functional only.
+
 These are build/parser/safety-structure results only. They establish no K60
 startup correctness, quality, TTFT, decode throughput, or SOTA result. The
 first K60 n=1 functional safety remains blocked until the external verifier
@@ -1944,4 +1950,5 @@ Native commits:
 [`3edaaff`](https://github.com/imanu86/ds4-win/commit/3edaaff),
 [`068b4b3`](https://github.com/imanu86/ds4-win/commit/068b4b3),
 [`4368674`](https://github.com/imanu86/ds4-win/commit/4368674),
-[`0423df5`](https://github.com/imanu86/ds4-win/commit/0423df5).
+[`0423df5`](https://github.com/imanu86/ds4-win/commit/0423df5),
+[`31342db`](https://github.com/imanu86/ds4-win/commit/31342db).
