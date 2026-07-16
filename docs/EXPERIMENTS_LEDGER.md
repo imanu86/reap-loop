@@ -2517,3 +2517,53 @@ the original context-256/64-token exact workload, then remove repeated H2D via
 direct resident slots, explicit hit/miss execution and dynamic REAP tiering.
 No G46 performance comparison is valid until both arms pass with comparable
 preflight memory and `n>=3` independent processes.
+
+## 2026-07-16 Native Windows G70 Full-Model Reclaim Cohort
+
+Question: on the original G46 context-256/64-token workload, can 4 GiB waved
+source reclaim preserve exact G46-class decode while making the complete
+30 GiB / 4551-slot arena viable under the current host-memory state?
+
+The legacy no-reclaim safety started with about 38 GiB available but reached
+three consecutive low-memory/deep-queue samples and was terminated before
+token one. Its last samples reported 6,344,704, 423,350,272 and 740,655,104
+available bytes. No legacy throughput value exists; this is measured capacity
+asymmetry, not a performance comparison.
+
+The reclaim candidate passed safety and an exact candidate-only cohort. A
+runner/outlier-summary repair split the raw rows across two docs-only HEADs
+without changing executable, CUDA source, harness, model or launch arguments.
+The authoritative same-HEAD extension `x1/x2/x3` is therefore summarized as
+`n=3`; the earlier `a/b/c` rows remain diagnostic and are not pooled.
+
+| Run | Decode t/s | TTFT | WRAP | Min available | Exact |
+|---|---:|---:|---:|---:|---|
+| x1 | 4.59 | 52.644 s | 29.103 s | 2.585 GiB | yes |
+| x2 | 4.56 | 53.111 s | 29.911 s | 2.514 GiB | yes |
+| x3 | 4.59 | 52.247 s | 28.937 s | 2.940 GiB | yes |
+| mean | 4.58 | 52.667 s | 29.317 s | - | 3/3 |
+| median | 4.59 | 52.644 s | 29.103 s | - | 3/3 |
+
+Every primary run measured 5653 VRAM route hits, 10,859 pinned-RAM route hits,
+71.580322 GiB RAM H2D, zero snapshot misses, zero SSD bytes, zero tier/route
+failures and zero default-sync calls. Waved reclaim completed three phases and
+nine waves with zero failures.
+
+The excluded diagnostic run `c` remained exact and decoded at 4.51 t/s, but
+WRAP took 354.613 seconds versus 28.737 and 28.571 seconds in `a/b`. Phase logs
+localized the delay inside source-parts WRAP during mmap page-in, not decode or
+post-WRAP work. Three subsequent extension runs returned to 28.937-29.911
+seconds. This is a real intermittent source-page startup problem; its cause is
+not inferred from this cohort.
+
+Historical G46 was 4.563333 mean / 4.58 median t/s. G70's 4.58 / 4.59 is a
+valid absolute full-model result and a measured capacity improvement, but the
+small descriptive timing delta is not a causal reclaim claim because the
+contemporary legacy arm could not run. Windows result commit:
+[`1895e8a`](https://github.com/imanu86/ds4-win/commit/1895e8a).
+
+Decision: retain waved reclaim as the full-model capacity mechanism. The next
+isolated experiment keeps G70 fixed and compares mass/LFRU replacement budget
+16 versus 32. Only a measured reduction below 10,859 RAM hits / 71.580322 GiB
+H2D justifies implementing adaptive RAM-pressure tier control. Sparse K60/K75
+bakes remain outside the active roadmap.
