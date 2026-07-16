@@ -2273,3 +2273,64 @@ Native commits: telemetry
 [`b887b41`](https://github.com/imanu86/ds4-win/commit/b887b41), safety
 [`ed074d3`](https://github.com/imanu86/ds4-win/commit/ed074d3), n=3 results
 [`810cdb9`](https://github.com/imanu86/ds4-win/commit/810cdb9).
+
+## 2026-07-16 Native Windows G63 K60 Sparse Bake + Complete G46 Composite
+
+Question: can the K60 sparse bake run the complete measured G46 composition
+without addressing absent experts, while preserving deterministic execution
+and restoring the embedded sparse-bake mask after each request?
+
+Protocol: K60 sparse bake, cyberpunk HTML prompt, context 256, 64 generated
+tokens, temp0/nothink, n=3 independent processes. G63 enabled the exact G46
+composition: 30 GiB DynamicArena, source-parts WRAP with trusted worker
+checksum, PrefillMassWrap, sparse-aware ComposePrefillMassTiering, GPU-only
+cache 320 LRU with 0.125 GiB reserve, GPU-resident routes,
+RouteNoDefaultSync, mass-LFRU tiering (`clock=430`, replacement budget `16`,
+minimum frequency `3`, hysteresis `1.25`), Q8/F16 cache disabled, embedded-row
+staging and eight REAP prefetch threads. SPEX, external masks, stripes,
+FileQD greater than one and full-model copy were off.
+
+| Arm | Decode mean / median | TTFT mean / median | WRAP mean | Output exactness |
+|---|---:|---:|---:|---:|
+| G63 K60 + G46 composite | 4.553333 / 4.55 t/s | 42.652 / 42.792 s | 23.720000 s | 3/3 |
+| G46 full-model composite | 4.563333 / 4.58 t/s | 45.211667 / 46.295 s | 24.086333 s | 3/3 |
+| G61 K60 arena-only | 2.38 / 2.35 t/s | 38.043333 / 38.541 s | 17.155667 s | 3/3 |
+| G62 K60 cache-only | 2.123333 / 2.13 t/s | 18.171 / 18.173 s | n/a | 3/3 |
+
+Measured G63 deltas versus G46: decode mean `-0.010000` t/s
+(`-0.219138%`), TTFT mean `-2.559667` s (`-5.661519%`), TTFT median
+`-3.503000` s (`-7.566692%`) and WRAP mean `-0.366333` s
+(`-1.520916%`). All three G63 rows produced content SHA-256
+`4aaf0f0813f4cb15ac21a88f195f4f7d2c2af797e81524935e22eea60603c6b1`.
+The output was coherent at the 64-token cutoff but differs from the frozen
+G58 K60 hash because the request-scoped G46 mask is a different execution
+path. No L0-L3 quality claim is made from this short gate.
+
+Transport and safety telemetry was exact across all rows: `4551` arena slots,
+`1579` non-retained ranked candidates skipped/replaced per request, one
+successful embedded-mask restore per request, zero restore failures, zero
+snapshot backing misses, zero forbidden cold SSD-to-VRAM transfers, zero tier
+failures and zero tier SSD bytes. The executable SHA-256 was
+`63f1a24285bac089df1db6ecd2024f812b6905b7e7d31a49d95e7b2dcd983399`;
+the build-input fingerprint was
+`f349bb401be5f804db2ff8bfc1387744ce288dcbdeb4044286f0d934f34cbb4a`.
+
+Decision: G63 is a positive transport/composition result. It recovers the G46
+decode rate on the physically sparse K60 candidate within the exact measured
+delta above and slightly improves the measured short-run TTFT. It is not yet a
+quality SOTA: promotion requires a separate long-output n>=3 L0-L3 comparison
+against G46 with identical prompts, context and stopping rules.
+
+The failed gates are retained as part of the protocol history: absent sparse
+candidate rejection, low-memory contamination abort, embedded-router-bias
+rejection, candidate exactness mismatch and two stale harness guards. Runtime
+and results commits:
+[`74bc9d4`](https://github.com/imanu86/ds4-win/commit/74bc9d4),
+[`9066f36`](https://github.com/imanu86/ds4-win/commit/9066f36),
+[`7bee760`](https://github.com/imanu86/ds4-win/commit/7bee760),
+[`c43d91a`](https://github.com/imanu86/ds4-win/commit/c43d91a),
+[`2a58934`](https://github.com/imanu86/ds4-win/commit/2a58934),
+[`eb9c6c0`](https://github.com/imanu86/ds4-win/commit/eb9c6c0),
+[`b3f0a62`](https://github.com/imanu86/ds4-win/commit/b3f0a62),
+[`caaffcf`](https://github.com/imanu86/ds4-win/commit/caaffcf) and n=3
+[`11c5fb1`](https://github.com/imanu86/ds4-win/commit/11c5fb1).

@@ -154,7 +154,7 @@ claim is permitted.
 - Commit raw summaries and the ledger interpretation before implementing the
   next lever.
 
-## Execution Status Through G62 (2026-07-16)
+## Execution Status Through G63 (2026-07-16)
 
 The frozen sequence has now been executed. These rows supersede the earlier
 "not yet measured" status but do not change the fail-closed rules above.
@@ -211,10 +211,24 @@ The frozen sequence has now been executed. These rows supersede the earlier
   `-10.784328%` mean and `-9.361702%` median. Cache-only pays versus bake-only,
   but the LRU rotates heavily and does not beat arena-only. It is not SOTA and
   makes no L0-L3 quality claim from 64 tokens.
+- G63 applied the complete measured G46 composition to the K60 sparse bake:
+  30 GiB DynamicArena, source-parts WRAP, PrefillMassWrap, sparse-aware
+  ComposePrefillMassTiering, cache 320 LRU, GPU-resident routes,
+  RouteNoDefaultSync and mass-LFRU tiering. The n=3 exact rows measured
+  `4.553333` mean / `4.55` median t/s versus G46 full-model `4.563333` /
+  `4.58` t/s. The measured mean delta was `-0.010000` t/s (`-0.219138%`).
+  TTFT measured `42.652` mean / `42.792` median s versus G46 `45.211667` /
+  `46.295` s; WRAP mean was `23.720000` versus `24.086333` s. All rows were
+  deterministic at SHA-256
+  `4aaf0f0813f4cb15ac21a88f195f4f7d2c2af797e81524935e22eea60603c6b1`,
+  restored the embedded K60 base mask once, skipped/replaced `1579` absent
+  ranked candidates, and reported zero restore failures, snapshot misses,
+  forbidden SSD-to-VRAM transfers, tier failures or tier SSD bytes. This is a
+  positive transport/composition result, not a long-output quality verdict.
 
-The next experiment is G63: compose against the G46 baseline path, keeping
-provenance explicit and continuing to separate short functional/exact gates
-from any long-output L0-L3 quality claims.
+The next experiment is a long-output n>=3 L0-L3 quality gate comparing G63 and
+G46 under identical prompts, context and stopping rules. Do not promote G63 as
+quality SOTA before that gate passes.
 
 Native result commits:
 
@@ -237,3 +251,9 @@ Native result commits:
   [`b887b41`](https://github.com/imanu86/ds4-win/commit/b887b41),
   [`ed074d3`](https://github.com/imanu86/ds4-win/commit/ed074d3),
   [`810cdb9`](https://github.com/imanu86/ds4-win/commit/810cdb9)
+- G63 sparse-aware runtime/runner/safety/n3:
+  [`74bc9d4`](https://github.com/imanu86/ds4-win/commit/74bc9d4),
+  [`9066f36`](https://github.com/imanu86/ds4-win/commit/9066f36),
+  [`b3f0a62`](https://github.com/imanu86/ds4-win/commit/b3f0a62),
+  [`caaffcf`](https://github.com/imanu86/ds4-win/commit/caaffcf),
+  [`11c5fb1`](https://github.com/imanu86/ds4-win/commit/11c5fb1)
