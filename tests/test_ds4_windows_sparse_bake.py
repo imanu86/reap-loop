@@ -137,6 +137,63 @@ class Ds4WindowsSparseBakeTests(unittest.TestCase):
             self.assertEqual(file_result.manifest_sha256, expected_status["manifest_sha256"])
             self.assertEqual(file_result.full_pack_sha256, expected_status["full_pack_sha256"])
 
+    @unittest.skipUnless(os.name == "nt", "requires Windows sparse-file controls")
+    def test_verify_payload_accepts_exact_retained_extents(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.bin"
+            source.write_bytes(bytes(range(32)))
+            plan = fake_plan(source)
+            pack = root / "model.pack"
+            bake = root / "model.gguf"
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                packed = ds4_windows_sparse_bake.write_pack(source, pack, plan)
+                ds4_windows_sparse_bake.unpack(pack, bake)
+
+            result = ds4_windows_sparse_bake.verify_payload(bake)
+            self.assertTrue(result["verified"])
+            self.assertEqual(result["expected_sha256"], packed.payload_sha256)
+            self.assertEqual(result["measured_sha256"], packed.payload_sha256)
+            self.assertEqual(result["payload_bytes"], plan["payload_bytes"])
+            self.assertEqual(result["extent_count"], len(plan["extents"]))
+            self.assertGreaterEqual(result["elapsed_seconds"], 0.0)
+
+    @unittest.skipUnless(os.name == "nt", "requires Windows sparse-file controls")
+    def test_verify_payload_cli_rejects_corrupted_retained_extent(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.bin"
+            source.write_bytes(bytes(range(32)))
+            plan = fake_plan(source)
+            pack = root / "model.pack"
+            bake = root / "model.gguf"
+
+            with contextlib.redirect_stdout(io.StringIO()):
+                ds4_windows_sparse_bake.write_pack(source, pack, plan)
+                ds4_windows_sparse_bake.unpack(pack, bake)
+            with bake.open("r+b") as stream:
+                stream.seek(plan["extents"][0][0])
+                stream.write(b"X")
+
+            argv = [
+                "ds4_windows_sparse_bake.py",
+                "verify-payload",
+                "--bake",
+                str(bake),
+            ]
+            stdout = io.StringIO()
+            stderr = io.StringIO()
+            with mock.patch.object(sys, "argv", argv), \
+                    contextlib.redirect_stdout(stdout), \
+                    contextlib.redirect_stderr(stderr):
+                self.assertEqual(ds4_windows_sparse_bake.main(), 1)
+
+            self.assertEqual(stdout.getvalue(), "")
+            failure = json.loads(stderr.getvalue())
+            self.assertFalse(failure["verified"])
+            self.assertIn("retained payload checksum mismatch", failure["error"])
+
     def test_pack_stream_cli_writes_only_pack_bytes_to_stdout_and_status_on_success(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)

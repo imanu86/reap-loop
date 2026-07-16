@@ -24,6 +24,7 @@ import pathlib
 import re
 import struct
 import sys
+import time
 import zlib
 from dataclasses import dataclass
 
@@ -438,7 +439,10 @@ def unpack(pack_path: pathlib.Path, output_path: pathlib.Path) -> None:
     manifest, expected_payload_hash, manifest_bytes = read_pack_manifest(pack_path)
     original_size = int(manifest["source_model_size"])
     mask_blob, n_layers = retained_mask_blob(manifest)
-    extents = [Extent(int(offset), int(length)) for offset, length in manifest["extents"]]
+    extents = [
+        Extent(int(offset), int(length))
+        for offset, length in manifest["extents"]
+    ]
     payload_bytes = int(manifest["payload_bytes"])
     payload_end = len(PACK_MAGIC) + payload_bytes
     digest = hashlib.sha256()
@@ -528,6 +532,38 @@ def sparsify_bake(path: pathlib.Path) -> dict:
     }
 
 
+def verify_payload(path: pathlib.Path) -> dict:
+    started = time.perf_counter()
+    inspection = inspect_bake(path, include_manifest=True)
+    manifest = inspection["_manifest"]
+    extents = [Extent(int(offset), int(length)) for offset, length in manifest["extents"]]
+    expected_payload_hash = manifest.get("payload_sha256")
+    if not expected_payload_hash:
+        raise ValueError("embedded manifest has no payload SHA-256")
+    measured_payload_hash = hash_extents(path, extents)
+    payload_bytes = sum(extent.length for extent in extents)
+    manifest_payload_bytes = int(manifest["payload_bytes"])
+    if payload_bytes != manifest_payload_bytes:
+        raise ValueError(
+            "embedded manifest payload byte count mismatch: "
+            f"expected {manifest_payload_bytes}, measured {payload_bytes}"
+        )
+    result = {
+        "expected_sha256": expected_payload_hash,
+        "measured_sha256": measured_payload_hash,
+        "payload_bytes": payload_bytes,
+        "extent_count": len(extents),
+        "elapsed_seconds": time.perf_counter() - started,
+        "verified": measured_payload_hash == expected_payload_hash,
+    }
+    if not result["verified"]:
+        raise ValueError(
+            "retained payload checksum mismatch: "
+            f"expected {expected_payload_hash}, measured {measured_payload_hash}"
+        )
+    return result
+
+
 def inspect_bake(path: pathlib.Path, include_manifest: bool = False) -> dict:
     size = path.stat().st_size
     if size < FILE_FOOTER.size:
@@ -602,6 +638,8 @@ def parse_args() -> argparse.Namespace:
     cmd.add_argument("--bake", type=pathlib.Path, required=True)
     cmd = sub.add_parser("sparsify")
     cmd.add_argument("--bake", type=pathlib.Path, required=True)
+    cmd = sub.add_parser("verify-payload")
+    cmd.add_argument("--bake", type=pathlib.Path, required=True)
     return parser.parse_args()
 
 
@@ -612,6 +650,17 @@ def main() -> int:
         return 0
     if args.command == "sparsify":
         print(json.dumps(sparsify_bake(args.bake), indent=2))
+        return 0
+    if args.command == "verify-payload":
+        try:
+            result = verify_payload(args.bake)
+        except ValueError as exc:
+            print(
+                json.dumps({"error": str(exc), "verified": False}, indent=2),
+                file=sys.stderr,
+            )
+            return 1
+        print(json.dumps(result, indent=2))
         return 0
     if args.command == "unpack":
         unpack(args.pack, args.out)
