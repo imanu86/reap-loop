@@ -2334,3 +2334,60 @@ and results commits:
 [`b3f0a62`](https://github.com/imanu86/ds4-win/commit/b3f0a62),
 [`caaffcf`](https://github.com/imanu86/ds4-win/commit/caaffcf) and n=3
 [`11c5fb1`](https://github.com/imanu86/ds4-win/commit/11c5fb1).
+
+## 2026-07-16 Native Windows G64-G66 Context-8192 Capacity Gates
+
+Question: why does the K60 sparse bake not outperform the adaptive G46 path,
+and can the preregistered long quality gate run at context 8192 without
+weakening the memory contamination guard?
+
+All rows below are `n=1` structural/capacity evidence. They carry no
+performance or L0-L3 quality verdict unless an explicitly measured progress
+value is shown. The common composition was the complete G46/G63 path. No SPEX,
+external mask, layer stripe, FileQD greater than one or full-model copy was
+enabled.
+
+| Gate | Model/lever | Arena/slots | Measured result |
+|---|---|---:|---|
+| G64 | G46 full, ctx8192 | 30 GiB / 4551 | WRAP abort before token 1; 0.251 GiB available at abort |
+| G64 | G63 K60, ctx8192 | 30 GiB / 4551 | WRAP abort before token 1; 0.254 GiB available at abort |
+| G65 | G46 full + process-wide phase trim | 30 GiB / 4551 | WRAP published, but token 50 only 0.08 t/s after 590.099 s; operator stop |
+| G66 | G46 full fixed smaller arena | 28 GiB / 4247 | WRAP abort before token 1; minimum available 7,385,088 bytes |
+
+G64 established that the physical K60 bake did not reduce runtime arena
+cardinality: both arms still built `4551` slots. Full and K60 therefore failed
+at the same stage. K60 read `33,894,227,872` process bytes versus
+`36,265,349,863` for full, but that reduction was insufficient to preserve the
+unchanged guard. The later missing RouteNoDefaultSync assertion in both rows is
+secondary because no route call completed.
+
+G65 enabled the existing `ArenaWrapTrimBetweenPhases`. Both working-set trim
+calls succeeded in `3.700502` s and WRAP published `4551` loads in `32.312` s.
+This was only a capacity pass. The process-wide trim evicted useful model pages:
+by operator stop the process had read `491,538,829,532` bytes, the server had
+reported token 50 at `0.08 t/s`, and peak disk queue was `52`. Process-wide
+`SetProcessWorkingSetSize(...,-1,-1)` is rejected for the next composite.
+
+G66 reduced the arena by 2 GiB and 304 slots with trim disabled. Its host
+preflight had only `43.520 GiB` available, about `5.72 GiB` below the G64 full
+preflight, so the fixed reduction was not robust and the guard still aborted.
+This does not establish that arena 28 would fail from the G64 host state; it
+rejects a fixed GiB value as a generally safe policy on this machine.
+
+Measured conclusion: K60 removes absent expert payload from disk but still pays
+nearly the same WRAP/H2D cardinality as G46. The next implementation requires
+(1) a runtime arena upper bound derived from measured available RAM and an
+explicit post-allocation reserve, and (2) range-scoped reclamation of consumed
+source-mmap expert pages rather than process-wide working-set trimming. Any
+successful safety must be followed by n>=3 before a timing claim and by the
+original long-output n>=3 L0-L3 matrix before quality promotion.
+
+Native Windows commits: G64 runner
+[`4b4f64d`](https://github.com/imanu86/ds4-win/commit/4b4f64d), full abort
+[`f136603`](https://github.com/imanu86/ds4-win/commit/f136603), isolated-arm
+runner [`ac518c7`](https://github.com/imanu86/ds4-win/commit/ac518c7), K60 abort
+[`c19c88a`](https://github.com/imanu86/ds4-win/commit/c19c88a), G65 protocol
+[`aa83016`](https://github.com/imanu86/ds4-win/commit/aa83016), G65 result
+[`8b25645`](https://github.com/imanu86/ds4-win/commit/8b25645), G66 protocol
+[`fae58d6`](https://github.com/imanu86/ds4-win/commit/fae58d6) and G66 result
+[`46a9650`](https://github.com/imanu86/ds4-win/commit/46a9650).
