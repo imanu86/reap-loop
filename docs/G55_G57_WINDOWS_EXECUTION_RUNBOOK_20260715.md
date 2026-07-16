@@ -154,7 +154,7 @@ claim is permitted.
 - Commit raw summaries and the ledger interpretation before implementing the
   next lever.
 
-## Execution Status Through G60 (2026-07-16)
+## Execution Status Through G61 (2026-07-16)
 
 The frozen sequence has now been executed. These rows supersede the earlier
 "not yet measured" status but do not change the fail-closed rules above.
@@ -183,13 +183,24 @@ The frozen sequence has now been executed. These rows supersede the earlier
   mass coverage fell from `0.5874` to `0.5272` (`-10.248553%`). It is not
   promoted; long-output n>=3 L0-L3 grading is still required before any quality
   decision.
+- G61 K60 embedded-bake plus `DynamicArenaGiB=30` and `PrefillMassWrap`
+  completed one safety row and n=3 performance rows. It used the embedded K60
+  mask only, with no cache, tiering, SPEX, ComposePrefillMassTiering,
+  RouteNoDefaultSync or external mask. The performance rows matched the frozen
+  G58 K60 output SHA-256
+  `ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7` with
+  `rejected=0`. Decode improved versus frozen G58 K60 from `1.863333` to `2.38`
+  mean t/s (`+27.728109%`) and from `1.86` to `2.35` median t/s
+  (`+26.344086%`), but TTFT median increased from `18.863` to `38.541` s
+  (`+104.320628%`) and disk read mean increased from `34.323854` to
+  `36.453855` GiB (`+6.205600%`). WRAP mean was `17.155667` s. The resident path
+  accelerates decode but is not promoted as end-to-end SOTA.
 
-The next composed experiment must keep the bake identity fixed and add only
-one resident transport mechanism. Start with K60 plus the current
-request-scoped resident arena/cache, retaining embedded-mask guards and all
-G58 provenance checks. Compare it against G58 K60, not against a different
-mask. Do not add SPEX, PACE, dynamic compression or a second transport change
-in the same first composition.
+The next experiment is G62: keep K60 fixed and add only sparse-safe GPU-resident
+slots/cache. Retain embedded-mask guards and all G58/G61 provenance checks.
+Compare against frozen G58 K60 and G61 K60 arena, not against a different mask.
+Do not add SPEX, PACE, dynamic compression or another transport change in the
+same run.
 
 Native result commits:
 
@@ -203,3 +214,6 @@ Native result commits:
   [`2a9c47b`](https://github.com/imanu86/ds4-win/commit/2a9c47b),
   [`8acaf32`](https://github.com/imanu86/ds4-win/commit/8acaf32),
   [`63c8dd6`](https://github.com/imanu86/ds4-win/commit/63c8dd6)
+- G61 Windows runner/safety: [`27e0545`](https://github.com/imanu86/ds4-win/commit/27e0545),
+  [`20ef2b7`](https://github.com/imanu86/ds4-win/commit/20ef2b7),
+  [`ba545be`](https://github.com/imanu86/ds4-win/commit/ba545be)

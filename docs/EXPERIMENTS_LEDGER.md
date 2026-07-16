@@ -2191,3 +2191,43 @@ receipts:
 [`2a9c47b`](https://github.com/imanu86/ds4-win/commit/2a9c47b),
 [`8acaf32`](https://github.com/imanu86/ds4-win/commit/8acaf32),
 [`63c8dd6`](https://github.com/imanu86/ds4-win/commit/63c8dd6).
+
+## 2026-07-16 Native Windows G61 K60 Sparse Bake + Arena
+
+Question: does the frozen K60 embedded sparse bake accelerate when the retained
+experts are published into a 30 GiB request-scoped DynamicArena from prefill
+mass, while keeping all other transport levers off?
+
+Protocol: K60 candidate only, cyberpunk HTML prompt, context 256, 64 generated
+tokens, temp0/nothink. G61 first ran a separate n=1 safety row, then n=3
+independent performance processes in order `A,B,C`. The only resident lever was
+`DynamicArenaGiB=30` plus `PrefillMassWrap`; cache, tiering, SPEX,
+ComposePrefillMassTiering, RouteNoDefaultSync, GPU-resident routes and external
+REAP masks were off. The embedded K60 bake mask was observed and applied.
+
+Safety row: `g7_g61_sparse_bake_k60_arena_safety_result.json`, native head
+`27e0545`, output SHA-256
+`ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7`, and
+`rejected=0`. This row is functional safety only and is not included in the
+n=3 performance mean/median.
+
+| Arm | Decode mean / median | TTFT mean / median | WRAP mean | Disk read mean | Arena resident / capacity | Arena hit rate | H2D |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| G61 K60 arena | 2.38 / 2.35 t/s | 38.043333 / 38.541 s | 17.155667 s | 36.453855 GiB | 2322 / 4551 (`0.5102175`) | 12343 / 4169 (`0.747516957`) | 81.36 GiB |
+| Frozen G58 K60 | 1.863333 / 1.86 t/s | 18.858667 / 18.863 s | n/a | 34.323854 GiB | n/a | n/a | n/a |
+
+Measured deltas versus frozen G58 K60: decode mean `+0.516667` t/s
+(`+27.728109%`), decode median `+0.49` t/s (`+26.344086%`), TTFT median
+`+19.678` s (`+104.320628%`), and disk read mean `+2.130001` GiB
+(`+6.205600%`). Every performance row produced the exact frozen G58 K60 output
+SHA-256 `ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7`,
+reported `rejected=0`, loaded `2322` prefill candidates, and ended with
+`2322` arena residents. The run makes no L0-L3 quality claim.
+
+Decision: the resident path accelerates decode relative to bake-only K60, but
+the prefill publication cost and higher TTFT prevent promotion as SOTA
+end-to-end. G62 should add exactly one next lever: sparse-safe GPU-resident
+slots/cache, keeping K60 and embedded-mask provenance fixed. Native runner and
+safety commits: [`27e0545`](https://github.com/imanu86/ds4-win/commit/27e0545),
+[`20ef2b7`](https://github.com/imanu86/ds4-win/commit/20ef2b7). Performance
+results: [`ba545be`](https://github.com/imanu86/ds4-win/commit/ba545be).
