@@ -153,3 +153,53 @@ claim is permitted.
 - Never resume rows produced by a different runner/executable/build hash.
 - Commit raw summaries and the ledger interpretation before implementing the
   next lever.
+
+## Execution Status Through G60 (2026-07-16)
+
+The frozen sequence has now been executed. These rows supersede the earlier
+"not yet measured" status but do not change the fail-closed rules above.
+
+- G55 clean QD1/QD8 completed with n=3 per arm. QD8 was retained because it
+  improved both mean and median WRAP/TTFT; it did not promote a new decode
+  SOTA.
+- G56 metadata profiling completed. Exact-contiguous coalescing projects
+  `13,653 -> 7,185` reads (`-47.37%`) at byte amplification `1.0`. Threshold
+  over-read adds no structural benefit and remains rejected.
+- G51 VRAM seed completed with n=3 per arm. The seed saved net route H2D but
+  changed decode by only `+0.145652%`; it is not promoted.
+- G57 K60 and K75 each passed n=1 functional safety. Both installed the
+  embedded mask, produced coherent non-empty temp0/nothink output, reported
+  `route_calls=301`, `route_slots=4,902`, `rejected=0`, and left no DS4 process
+  or VRAM allocation behind. These remain safety rows, not performance or
+  quality claims.
+- G58 bake-only performance completed with n=3 independent processes per
+  bake. K60 measured `1.863333` mean / `1.86` median t/s; K75 measured `1.79`
+  mean / `1.76` median t/s. The path read `34.323854` / `37.397406` GiB from
+  disk on average for 64 generated tokens. Bake-only is therefore rejected as
+  a SOTA transport path. It proves that physical pruning alone does not make
+  the retained experts resident.
+- G60 budget-preserving full/partial layer stripes completed with n=3 per arm.
+  Stripe changed decode from `4.513333` to `4.53` mean t/s (`+0.369284%`) while
+  mass coverage fell from `0.5874` to `0.5272` (`-10.248553%`). It is not
+  promoted; long-output n>=3 L0-L3 grading is still required before any quality
+  decision.
+
+The next composed experiment must keep the bake identity fixed and add only
+one resident transport mechanism. Start with K60 plus the current
+request-scoped resident arena/cache, retaining embedded-mask guards and all
+G58 provenance checks. Compare it against G58 K60, not against a different
+mask. Do not add SPEX, PACE, dynamic compression or a second transport change
+in the same first composition.
+
+Native result commits:
+
+- G57 K60: [`2d9cb0a`](https://github.com/imanu86/ds4-win/commit/2d9cb0a)
+- G57 K75: [`2773f5b`](https://github.com/imanu86/ds4-win/commit/2773f5b)
+- G58 runner/fix/results: [`40cb7a4`](https://github.com/imanu86/ds4-win/commit/40cb7a4),
+  [`7bb6a9d`](https://github.com/imanu86/ds4-win/commit/7bb6a9d),
+  [`f9ba227`](https://github.com/imanu86/ds4-win/commit/f9ba227)
+- G60 implementation/safety/matrix/results:
+  [`ea683f6`](https://github.com/imanu86/ds4-win/commit/ea683f6),
+  [`2a9c47b`](https://github.com/imanu86/ds4-win/commit/2a9c47b),
+  [`8acaf32`](https://github.com/imanu86/ds4-win/commit/8acaf32),
+  [`63c8dd6`](https://github.com/imanu86/ds4-win/commit/63c8dd6)

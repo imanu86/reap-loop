@@ -2097,3 +2097,97 @@ Decision: the seed transport works and amortizes, but has no material speed
 win. Do not promote it as a SOTA lever yet. The summary correction is native
 commit [`9793349`](https://github.com/imanu86/ds4-win/commit/9793349); raw
 summary is in [`b80a285`](https://github.com/imanu86/ds4-win/commit/b80a285).
+
+## 2026-07-16 Native Windows G57 K60/K75 Functional Safety
+
+Both physically sparse Windows bakes passed the frozen n=1 functional safety
+protocol. These rows validate the sparse container/runtime boundary only; no
+timing or generalized quality verdict is admitted.
+
+| Bake | Retained experts | Route calls / slots | Rejected | Output |
+|---|---:|---:|---:|---|
+| K60 | 6,928 (`256` in layers 0-2, `154` in layers 3-42) | 301 / 4,902 | 0 | coherent, non-empty, temp0/nothink |
+| K75 | 8,448 (`256` in layers 0-2, `192` in layers 3-42) | 301 / 4,902 | 0 | coherent, non-empty, temp0/nothink |
+
+Each run validated the footer, manifest and CRCs, the logical source-mask SHA,
+the embedded bitset SHA and the payload SHA after NTFS hole punching. The
+embedded mask was observed, no external mask/WRAP/arena/cache/tiering/SPEX path
+was active, process exit was zero, and VRAM returned to baseline.
+
+Native result commits:
+[`2d9cb0a`](https://github.com/imanu86/ds4-win/commit/2d9cb0a) (K60) and
+[`2773f5b`](https://github.com/imanu86/ds4-win/commit/2773f5b) (K75).
+
+## 2026-07-16 Native Windows G58 Sparse-Bake Performance Matrix
+
+Question: can the physically closed K60/K75 model, without any resident arena,
+expert cache, tiering, SPEX or external mask, beat the realistic G46 closed
+snapshot SOTA?
+
+Protocol: cyberpunk HTML prompt, context 256, 64 generated tokens, temp0,
+nothink, six independent processes in order `K60,K75,K75,K60,K60,K75`.
+Payload/manifest/mask authorization was performed once per bake before launch.
+Every run required embedded-mask installation, sparse runtime guards, positive
+route calls/slots, `rejected=0`, clean system gates and deterministic output
+within its bake. No L0-L3 quality verdict is drawn from 64-token prefixes.
+
+| Bake | Decode mean / median | TTFT mean / median | Load mean / median | Disk read mean | Dedicated GPU peak mean |
+|---|---:|---:|---:|---:|---:|
+| K60 | 1.863333 / 1.86 t/s | 18.858667 / 18.863 s | 9.370999 / 9.225430 s | 34.323854 GiB | 8.653736 GiB |
+| K75 | 1.790000 / 1.76 t/s | 19.058333 / 19.035 s | 7.964992 / 7.672232 s | 37.397406 GiB | 8.653736 GiB |
+
+Relative to G46 (`4.563333` mean t/s), K60 is `-59.167280%` and K75 is
+`-60.774285%`. K60 was deterministic at content SHA-256
+`ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7`;
+K75 at
+`2a8ac795075b184c59260bddfe5ab2064b733fd44a4cd82243edf3ff5534dc6f`.
+All six processes exited zero with no contamination.
+
+Decision: reject bake-only as a performance path. Physical pruning reduces the
+allowed set and improves startup scope, but the selected experts are not made
+resident. For only 64 generated tokens the runtime still measured roughly
+34-37 GiB of disk reads and about 134-135 GiB of process read transfer, so the
+transport wall remains. The next experiment is K60 plus exactly one resident
+arena/cache mechanism, with the embedded allowed set kept fixed.
+
+The first G58 launch attempt failed before opening either model because the
+PowerShell receipt array used a comma after a function invocation. The runner
+bug is recorded in [`7bb6a9d`](https://github.com/imanu86/ds4-win/commit/7bb6a9d);
+it produced no measurement row. Runner and complete receipts are
+[`40cb7a4`](https://github.com/imanu86/ds4-win/commit/40cb7a4) and
+[`f9ba227`](https://github.com/imanu86/ds4-win/commit/f9ba227).
+
+## 2026-07-16 Native Windows G60 Budget-Preserving Layer Stripe
+
+G60 tested a runtime full/partial layer profile without changing the total
+30 GiB request-scoped arena budget. Layers 0-2 stayed full. Among routed layers
+3-42, every fifth layer was full (8 layers) and the other 32 layers used K54 or
+K55, preserving exactly 4,551 total resident slots. The control used the
+normal mass-ranked distribution under the same G55 QD8/SOTA transport.
+
+Protocol: counterbalanced n=3 per arm, cyberpunk prompt, context 256, 64
+generated tokens, temp0/nothink. Every arm was deterministic internally;
+control and stripe intentionally had different candidate fingerprints and
+output hashes because the selected set changed. All runs had zero snapshot
+misses, SSD bytes, file failures and tier failures.
+
+| Arm | Decode mean / median | TTFT mean / median | WRAP mean / median | Mass coverage | RAM H2D mean |
+|---|---:|---:|---:|---:|---:|
+| control | 4.513333 / 4.51 t/s | 85.174 / 55.764 s | 62.612667 / 32.955 s | 0.5874 | 71.580322 GiB |
+| stripe | 4.530000 / 4.52 t/s | 54.791667 / 54.852 s | 32.432667 / 32.418 s | 0.5272 | 70.868408 GiB |
+
+Measured stripe deltas: decode mean `+0.369284%`, median `+0.221729%`; TTFT
+median `-1.635464%`; WRAP median `-1.629495%`; RAM H2D `-0.994567%`; mass
+coverage `-10.248553%`. Control-C was a valid internal cold-I/O outlier: its
+result file predates the Visual Studio updater that later blocked the next
+preflight. The refused preflight was not counted and the remaining row resumed
+only after the disk returned to quiescence.
+
+Decision: technically valid, not SOTA and not promoted. The small decode and
+transport change does not justify the measured coverage loss without a
+separate long-output n>=3 L0-L3 quality matrix. Native implementation and
+receipts:
+[`ea683f6`](https://github.com/imanu86/ds4-win/commit/ea683f6),
+[`2a9c47b`](https://github.com/imanu86/ds4-win/commit/2a9c47b),
+[`8acaf32`](https://github.com/imanu86/ds4-win/commit/8acaf32),
+[`63c8dd6`](https://github.com/imanu86/ds4-win/commit/63c8dd6).
