@@ -15,6 +15,7 @@ Implementation commits:
 
 - [69faac4 - validate IQ1_S transport on a real expert](https://github.com/imanu86/ds4-win/commit/69faac4)
 - [c9d91bc - add the fail-closed IQ1_S expert sidecar](https://github.com/imanu86/ds4-win/commit/c9d91bc)
+- [6054076 - native-Windows mixed-route structural checkpoint](https://github.com/imanu86/ds4-win/commit/6054076)
 
 ## Claim Rules
 
@@ -38,7 +39,9 @@ Implementation commits:
 |---|---|---|---|---|---|
 | G75 | MEASURED | Real IQ1_S expert component | One real layer-3 routed expert, `n=3`; 200 timing iterations per repetition; RTX 3060 | Numerical validation PASS; real size and H2D/kernel measurements below | Component correctness and transport reduction only |
 | G75b | MEASURED | IQ1_S runtime patch with sidecar disabled | G73 prompt and settings; `n=1`; system quiescence skipped | Exit 0; sidecar not observed; expected output SHA equals observed output SHA | Env-off exactness for this deterministic invocation only |
+| G74c | MEASURED | Env-off frozen G74 control exactness | `g77_env_off_g74_control_exact`; `n=1`; IQ1/mixed path disabled | Exact historical output SHA matches; no IQ1/mixed telemetry; result SHA recorded below | Regression exactness for this deterministic invocation only; no SOTA claim |
 | G76 | PLANNED | First end-to-end IQ1_S sidecar safety | `n=1`, temp 0, nothink; short hello prompt; sidecar enabled | Provenance, runtime markers, nonzero route counters, coherent counters, zero failures, minimal output-health predicate | Structural safety only; no quality or SOTA claim |
+| G76b | MEASURED | Native-Windows mixed-route structural smokes | `n=1` layer-3-only and all-layer mixed-route runs; short hello prompt | Mixed calls, hot-main, cold-IQ1, selected-load and failure counters recorded below | Structural mixed-calculation safety only; no quality or SOTA claim |
 | G77 | PLANNED | Matched quality A/B | Main 2-bit vs IQ1_S sidecar; same build, prompt and settings; `n>=3` per arm; temp 0, nothink | Quiescent host, preserved raw outputs, recorded L0-L3 grade for every sample | Prompt-scoped quality comparison only after grading |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
@@ -97,6 +100,82 @@ compiled but the sidecar disabled.
 Interpretation: env-off behavior is bit-exact for this deterministic `n=1`
 invocation. The recorded 0.943499 t/s is deliberately excluded because the run
 was contaminated and cannot be compared with G73 or any SOTA result.
+
+### G74c: Env-Off Frozen G74 Control Exactness
+
+The `g77_env_off_g74_control_exact` control kept IQ1 and mixed routing disabled
+and checked the frozen historical G74 output exactly.
+
+| Field | Measured value |
+|---|---|
+| Gate kind | `benchmark` with `n=1` |
+| Repetitions | 1 |
+| Tag | `g77_env_off_g74_control_exact` |
+| Historical output SHA-256 | `31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8` |
+| IQ1 / mixed telemetry | none |
+| Observed decode | 4.89 t/s |
+| Result SHA-256 | `42a57333dbce70cf20df8651fe1de81e7da9109e0e90b5459289d53682aef4f5` |
+| Quality eligible | false |
+| SOTA eligible | false |
+
+Interpretation: this is an env-off exactness control for one deterministic
+invocation. The observed decode rate is descriptive only because `n=1`; it does
+not support a SOTA claim.
+
+### G76b: Native-Windows Mixed-Route Structural Smokes
+
+Commit `6054076` adds native-Windows mixed-route checkpoint evidence. These
+runs prove mixed calculation and fail-closed counter behavior only. They are
+not quality-eligible, not SOTA-eligible, and do not replace the G77 `n>=3`
+quality A/B with recorded L0-L3 grading.
+
+| Tag | Scope | Output | Mixed calls | Hot main | Cold IQ1 | Sidecar selected loads | Failures | Result SHA-256 | Claim allowed |
+|---|---|---|---:|---:|---:|---:|---:|---|---|
+| `g77_mixed_iq1_cold1_layer3_n1` | Layer-3-only `n=1` structural smoke | `Hello!` | 2 | 10 | 2 | 2 | 0 | n/a | Structural mixed-calculation safety only |
+| `g77_mixed_iq1_cold1_all_layers_n1` | All-layer 0..42 `n=1` structural smoke | `Hello! How can I assist you today?` | 387 | 1935 | 387 | 387 | 0 | `9de63ea52caf541b1868bbe20f53e2f0bd610ddc0d020facd4a8f582c6d0f00e` | Structural mixed-calculation safety only |
+
+Honesty limitation: commit `6054076` fixture zeroes cold primary weight but
+still launches and loads six primary routes, then one IQ1 route. It proves
+mixed calculation, not transport reduction. The immediate next patch physically
+compacts to five primary routes plus one IQ1 route and one join.
+
+The packed-copy candidate refusal for unequal G74 gate/down sizes is
+pre-existing. The historical G74 summary was already stopped, so this is not an
+IQ1 regression.
+
+### G86-G93: Cache and GPU-Planner Checkpoint
+
+Commits `9ff7bc4` and `c8f8678` on
+`imanu86/ds4-win:port/windows-dynamic-arena-0051` add the opt-in GPU
+cold-route planner and its fail-closed runner contract. The planner preserves
+the CPU fixture's first-minimum tie break, queues the five hot IQ2 routes, and
+stages the one IQ1_S cold route without a second router readback.
+
+| Gate | Protocol | Total t/s | Server decode t/s | TTFT | Cache/transport | Exactness and eligibility |
+|---|---|---:|---:|---:|---|---|
+| G86 control | clean benchmark `n=3`, arena 20 GiB | 3.460 | 5.417 | 6.965 s | IQ1_S disabled | Baseline for this prompt/setup; no L0-L3 grade |
+| G86 IQ1_S | clean benchmark `n=3`, IQ1 RAM cache 8 GiB | 2.194 | 3.430 | 10.505 s | 87.71% RAM hits; 41.112 GiB SSD avoided | Performance/transport eligible; no L0-L3 grade |
+| G89 | structural profile `n=1`, IQ1 VRAM cache 1/layer | invalid | invalid | invalid | 53/640 hits; 587 misses | Exact structural smoke only |
+| G90 | structural profile `n=1`, IQ1 VRAM cache 2/layer | invalid | invalid | invalid | 78/640 hits; 562 misses | Exact structural smoke only |
+| G91 | structural profile `n=1`, explicit main sync removed | invalid | invalid | invalid | main-sync approximately zero; stall moves to cold submit | Exact structural smoke only |
+| G93 | structural profile `n=1`, GPU planner | invalid | invalid | invalid | planner 640/640; wait 0.085 ms; router D2H 6.302 ms; metadata 3.624 ms; failures 0 | Output SHA `c7c8e02137fd31de53dc88a5645b3c6a92ab98d844e42ddcc00c52257d63823d`, identical to G87/G91 |
+
+G89-G93 were not used for a speed verdict. In particular, G92/G93 ran while
+Windows `ScheduledDefrag` kept physical disk `D:` above 90 percent busy. Their
+SSD, H2D, submit, TTFT, throughput, and total-latency measurements are
+contaminated and excluded from SOTA. G93 proves only output exactness, planner
+counter reconciliation, and elimination of most router/metadata readback.
+
+The G86 outputs contain only 64 generated tokens and have no recorded human
+L0-L3 grading. Neither arm establishes quality equivalence or lossless IQ1_S
+behavior. The clean next measurement is an otherwise identical `n>=3` A/B of
+the mixed IQ1_S path with the planner disabled/enabled, followed by a separate
+current-build G74 env-off exactness gate and the long cyberpunk L0-L3 quality
+A/B.
+
+Deferred authoritative 2-bit promotion and next-token publication remain
+unimplemented. Therefore no current run closes the final residency invariant
+`forbidden_cold_ssd_to_vram=0` end to end.
 
 ## Planned End-to-End Gates
 
