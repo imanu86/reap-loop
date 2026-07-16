@@ -2621,3 +2621,50 @@ improvement story. Adaptive policy work is justified only as a follow-up to
 this measured pressure signal, with WRAP startup stability guarded separately.
 Result summary:
 `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g71_tier_budget_ab_result.json`.
+
+## 2026-07-16 Native Windows G72 Adaptive Tier Budget A/B
+
+Question: can the G71 mass/LFRU policy start with replacement budget 16 and
+raise it to 32 only under measured budget pressure, while preserving G71's
+exactness and transport result against a contemporary static-32 control?
+
+G72 kept the G70/G71 workload frozen: the same model and cyberpunk HTML
+prompt, context 256, max 64, temperature zero, 30 GiB / 4551-slot arena,
+cache320, source-parts WRAP, 4 GiB waved reclaim, composed prefill mass
+tiering, GPU-resident routes and no-default-sync. The only experimental
+variable was replacement-budget control. The adaptive arm used base/min 16,
+max 32, step 8 and pressure threshold 64. It reached 32 through exactly two
+upward steps in every accepted process.
+
+The preregistered matrix completed with three independent exact processes per
+arm. Every accepted run had identical provenance and expected content SHA,
+three reclaim phases / nine waves, zero reclaim failures, zero snapshot
+misses, zero SSD bytes, zero tier failures and zero default-sync calls.
+
+| Arm | n | Decode mean / median | RAM hits | RAM H2D | Promotions | Replacements | Route wait | Worker ms/job |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| static32 | 3 | 4.613333 / 4.62 t/s | 10,692 | 70.479492 GiB | 512 | 192 | 4.309000 ms | 1.587333 ms |
+| adaptive16->32 | 3 | 4.606667 / 4.62 t/s | 10,668 | 70.321289 GiB | 488 | 168 | 4.302333 ms | 1.583667 ms |
+
+Measured adaptive effect: mean decode `-0.144%`, median tied; RAM hits and H2D
+`-0.224%`; promotions `-4.688%`; replacements `-12.5%`; route wait
+`-0.155%`; worker time `-0.231%`. Mean TTFT/WRAP were higher in the adaptive
+cohort, but the adaptive policy does not execute until after WRAP, so this
+matrix does not assign a causal startup effect to the policy.
+
+One first attempt at `static32_c` terminated during WRAP before decode and was
+excluded. A clean retry passed. The retry reused the tag and overwrote the
+first stderr; that artifact limitation is explicitly preserved in
+`g7_runs/g72_static32_c_infrastructure_retry_incident.json`. No root cause is
+claimed.
+
+Decision: adaptive 16->32 is mechanism-valid but is not throughput SOTA on
+this short workload. Retain static32 as the active default because it is
+simpler and at least as fast. Keep the adaptive implementation available for
+longer or changing-domain workloads, but move the active roadmap to a larger
+transport lever: eliminate remaining per-route wait/copy work through direct
+resident hit execution and explicit hit/miss separation, then address repeated
+WRAP/prefill work. Sparse K60/K75 bakes remain an advanced fallback only.
+
+Canonical Windows summary:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g72_adaptive_tier_budget_ab_result.json`.
