@@ -2668,3 +2668,54 @@ WRAP/prefill work. Sparse K60/K75 bakes remain an advanced fallback only.
 
 Canonical Windows summary:
 `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g72_adaptive_tier_budget_ab_result.json`.
+
+## 2026-07-16 Native Windows G73 Split-Fused Route A/B
+
+Question: on the exact G72 static32 workload, can split-fused hit/miss route
+execution reduce per-route work while preserving the same transport, exact
+content and full G70/G71/G72 safety contract?
+
+G73 kept the workload frozen: the same model and exact 64-token cyberpunk HTML
+prompt, context 256, max 64, temperature zero, 30 GiB / 4551-slot arena,
+cache320, source-parts WRAP, 4 GiB waved reclaim, composed prefill mass
+tiering, budget32, GPU-resident routes and no-default-sync. The only
+experimental variable was split-fused route execution. The candidate first
+passed an exact safety process; the preregistered matrix then completed with
+three independent exact processes per arm and no outlier extension.
+
+Every accepted run preserved the required contract: exact expected content
+SHA-256, same provenance, 4551 arena slots, cache capacity 320, three reclaim
+phases, nine waves, zero reclaim failures, zero snapshot misses, zero SSD
+bytes, zero tier failures and zero default-sync calls. Split-fused accounting
+was complete in the candidate: split-fused calls equaled route calls, and
+split-fused hits plus misses equaled selected experts in every accepted
+process.
+
+| Arm | n | Decode mean / median | RAM hits | RAM H2D | Split-fused calls | Route wait | Worker ms/job |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| static32 | 3 | 4.61 / 4.62 t/s | 10,692 | 70.479492 GiB | 0 | 4.314333 ms | 1.581000 ms |
+| static32_split_fused | 3 | 4.986667 / 4.98 t/s | 10,692 | 70.479492 GiB | 2,752 | 3.940667 ms | 1.522667 ms |
+
+Measured split-fused effect: mean decode `+8.17%` and median decode
+`+7.79%` against the contemporary static32 control. Transport was intentionally
+unchanged: both arms had 5,820 VRAM hits, 10,692 RAM hits and 70.479492 GiB RAM
+H2D. Candidate avoided counters were positive and stable in every accepted
+process: `175177728` split-fused miss scratch bytes avoided and `175177728`
+split-fused sum-read bytes avoided. Mean route wait fell by `0.373666 ms/call`
+and mean worker time fell by `0.058333 ms/job`.
+
+This is a positive native-Windows result for the exact 64-token prompt only. It
+does not claim general quality or broader workload quality. The result supports
+keeping static32 plus split-fused routing as the current short-workload
+performance candidate, with longer prompts and L0-L3 quality gates still
+separate follow-ups.
+
+Native Windows commits: implementation
+[`4c08683`](https://github.com/imanu86/ds4-win/commit/4c08683), protocol
+[`3912e7b`](https://github.com/imanu86/ds4-win/commit/3912e7b), fail-closed
+telemetry gate
+[`21c3aac`](https://github.com/imanu86/ds4-win/commit/21c3aac), and results
+[`580e29b`](https://github.com/imanu86/ds4-win/commit/580e29b).
+
+Canonical Windows summary:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_split_fused_ab_result.json`.
