@@ -2567,3 +2567,57 @@ isolated experiment keeps G70 fixed and compares mass/LFRU replacement budget
 16 versus 32. Only a measured reduction below 10,859 RAM hits / 71.580322 GiB
 H2D justifies implementing adaptive RAM-pressure tier control. Sparse K60/K75
 bakes remain outside the active roadmap.
+
+## 2026-07-16 Native Windows G71 Tier Budget A/B
+
+Question: on the exact G70 full-model workload, does increasing the static
+mass/LFRU replacement budget from 16 to 32 reduce pinned-RAM pressure without
+breaking exactness, capacity, no-default-sync routing or source-reclaim
+provenance?
+
+Protocol: G71 used the G46 cyberpunk HTML prompt, context 256, max 64,
+temperature zero, dynamic arena 30 GiB / 4551 slots, cache320,
+source-parts WRAP with trusted checksums, 4 GiB waved source reclaim,
+`ComposePrefillMassTiering`, GPU-resident routes and `RouteNoDefaultSync`.
+The only experimental variable was `ExpertTierReplacementBudget`: control
+16 versus candidate 32. Candidate32 first passed an exact safety process. The
+primary matrix then triggered the preregistered outlier extension, so the
+accepted performance summary is six independent processes per arm.
+
+Every accepted run preserved the required contract: exact expected content
+SHA-256, same provenance, 4551 arena slots, cache capacity 320, three reclaim
+phases, nine waves, zero reclaim failures, zero snapshot misses, zero SSD
+bytes, zero tier failures and zero default-sync calls. Provenance head was
+`e8aded23b503c5b62ad2b219dcbb21d71390f8ae`; executable SHA-256 was
+`9bbcbc57714611bd3873beedc7fc4f0829ee463e0499793b86295eb085cca501`.
+
+| Arm | Budget | n | Decode mean / median | TTFT mean | WRAP mean | TTFT-WRAP mean | RAM hits mean | RAM H2D mean | Route wait | Worker ms/job |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| control | 16 | 6 | 4.565 / 4.56 t/s | 53.192667 s | 29.811833 s | 23.380833 s | 10,859 | 71.580322 GiB | 4.397 ms | 1.6245 ms |
+| candidate | 32 | 6 | 4.611667 / 4.615 t/s | 88.683167 s | 65.070667 s | 23.6125 s | 10,692 | 70.479492 GiB | 4.336833 ms | 1.586667 ms |
+
+Measured effect: candidate32 improved decode by `+0.046667 t/s`
+(`+1.022278%`) mean and `+0.055 t/s` (`+1.206140%`) median. It reduced
+pinned-RAM pressure by `167` RAM hits and `1.100830 GiB` H2D
+(`-1.537895%`), reduced route wait by `0.060167 ms/call` (`-1.368365%`) and
+reduced worker time by `0.037833 ms/job` (`-2.328901%`). Policy replacements
+rose from 96 to 192 as designed, with 320 free promotions in both arms and no
+RAM evictions.
+
+Outlier separation: the candidate `b` process decoded normally at `4.62 t/s`
+with `13.858 s` decode time, but WRAP took `244.670 s` and TTFT took
+`269.093 s`. Its `TTFT-WRAP` value was `24.423 s`, close to the rest of the
+matrix. The delay is therefore localized to the measured source-parts WRAP
+interval rather than decode; its underlying cause is not established by this
+cohort. The WRAP/TTFT mean for candidate32 is therefore
+outlier-contaminated; decode, RAM hits, H2D, route wait and tier counters are
+still valid primary metrics under the preregistered six-process summary.
+
+Decision: budget32 is the current measured static tier-budget candidate on the
+G70 workload because it passes the full safety/provenance contract and lowers
+RAM hits/H2D while slightly improving decode. Do not claim a clean TTFT/WRAP
+win from this matrix, and do not pool the WRAP outlier into a startup
+improvement story. Adaptive policy work is justified only as a follow-up to
+this measured pressure signal, with WRAP startup stability guarded separately.
+Result summary:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g71_tier_budget_ab_result.json`.
