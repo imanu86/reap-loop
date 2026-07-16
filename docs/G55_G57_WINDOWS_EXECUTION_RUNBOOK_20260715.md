@@ -128,6 +128,7 @@ $g57 = @{
     BakeId = "K60"
     ExpectedPackSHA256 = "3b464ee43514c8caa841be61da70190a4a7ba3c760c22849d2d723e5da5b7d71"
     ExpectedMaskSHA256 = "5b6d98504ba830c1a50945a93d1a6017b1956bd17c56df8c0b1bdf92c1564e97"
+    ExpectedEmbeddedMaskSHA256 = "14ea7c79b0f4f0dcc59830a9877b8e76541e66dd7371b4c3781559639f0def71"
     ExpectedPayloadSHA256 = "5cb4bf69d7c6ef2aadfc8760069c3a7a89fc40504ce80b7b3735b10f9539e4b5"
 }
 if ($k60Pack) { $g57.PackPath = $k60Pack }
@@ -135,8 +136,9 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass `
     -File .\g57_sparse_bake_safety.ps1 @g57
 ```
 
-G57 is n=1 functional safety only. It must verify footer/manifest/CRC,
-mask/payload SHA, positive selected-route calls/slots, zero rejected routes,
+G57 is n=1 functional safety only. It must verify footer/manifest/CRC, the
+logical source-mask SHA separately from the embedded bitset SHA, payload SHA,
+positive selected-route calls/slots, zero rejected routes,
 non-empty coherent temp0/nothink output, and absence of full-model WRAP, arena,
 cache/tiering, SPEX or external mask options. No timing or quality-generalization
 claim is permitted.
