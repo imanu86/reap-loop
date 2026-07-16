@@ -2231,3 +2231,45 @@ slots/cache, keeping K60 and embedded-mask provenance fixed. Native runner and
 safety commits: [`27e0545`](https://github.com/imanu86/ds4-win/commit/27e0545),
 [`20ef2b7`](https://github.com/imanu86/ds4-win/commit/20ef2b7). Performance
 results: [`ba545be`](https://github.com/imanu86/ds4-win/commit/ba545be).
+
+## 2026-07-16 Native Windows G62 K60 Sparse Bake + Cache GPU-Only
+
+Question: does the frozen K60 embedded sparse bake accelerate when the next
+single lever is GPU-only expert cache residency, without the G61 arena path?
+
+Protocol: K60 sparse bake only, cyberpunk HTML prompt, context 256, 64
+generated tokens, temp0/nothink, n=3 exact independent performance rows. G62
+enabled cache GPU-only 320 LRU and GPU-resident routes. Arena, tiering, SPEX
+and external REAP masks were off; the embedded K60 bake mask remained the only
+selection authority. The run is a short exactness/performance gate only and
+does not support any L0-L3 quality claim.
+
+| Arm | Decode mean / median | TTFT mean / median | Load mean / median | Disk read mean | Process read mean | Dedicated GPU peak |
+|---|---:|---:|---:|---:|---:|---:|
+| G62 K60 cache-only | 2.123333 / 2.13 t/s | 18.171 / 18.173 s | 10.528771 / 10.197356 s | 33.801597 GiB | 91.819531 GiB | 10.76321 GiB |
+| Frozen G58 K60 | 1.863333 / 1.86 t/s | 18.858667 / 18.863 s | 9.370999 / 9.225430 s | 34.323854 GiB | 134.203713 GiB | 8.653736 GiB |
+| G61 K60 arena-only | 2.38 / 2.35 t/s | 38.043333 / 38.541 s | n/a | 36.453855 GiB | n/a | 8.712559 GiB |
+
+Measured deltas: versus frozen G58 K60, decode mean improved `+13.953491%`
+and median improved `+14.516129%`. Versus G61 arena-only, decode mean was
+`-10.784328%` and median was `-9.361702%`. Per run the cache reported `6430`
+hits, `12835` misses and `12515` evictions, for a direct hit rate of
+`33.3765897%`. Worker telemetry reported `2734` jobs, `10082` miss experts and
+`7.385333` ms/call wait. Disk read mean decreased slightly versus G58
+(`33.801597` versus `34.323854` GiB), while process read mean fell to
+`91.819531` GiB and dedicated GPU peak rose to `10.76321` GiB.
+
+All three rows produced exact content SHA-256
+`ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7` with
+`contamination=0`, `rejected=0` and `errors=0`.
+
+Decision: cache-only pays versus bake-only, but the LRU rotates heavily and
+does not beat the G61 arena-only decode result. G62 is a valid measured
+lever/gate, not a SOTA result. The next experiment is G63 composite against the
+G46 path, with no quality claim until a separate long-output n>=3 L0-L3 gate.
+Native commits: telemetry
+[`21d785b`](https://github.com/imanu86/ds4-win/commit/21d785b), runner
+[`068c522`](https://github.com/imanu86/ds4-win/commit/068c522) and
+[`b887b41`](https://github.com/imanu86/ds4-win/commit/b887b41), safety
+[`ed074d3`](https://github.com/imanu86/ds4-win/commit/ed074d3), n=3 results
+[`810cdb9`](https://github.com/imanu86/ds4-win/commit/810cdb9).

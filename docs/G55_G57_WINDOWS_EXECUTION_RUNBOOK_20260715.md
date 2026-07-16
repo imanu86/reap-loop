@@ -154,7 +154,7 @@ claim is permitted.
 - Commit raw summaries and the ledger interpretation before implementing the
   next lever.
 
-## Execution Status Through G61 (2026-07-16)
+## Execution Status Through G62 (2026-07-16)
 
 The frozen sequence has now been executed. These rows supersede the earlier
 "not yet measured" status but do not change the fail-closed rules above.
@@ -195,12 +195,26 @@ The frozen sequence has now been executed. These rows supersede the earlier
   (`+104.320628%`) and disk read mean increased from `34.323854` to
   `36.453855` GiB (`+6.205600%`). WRAP mean was `17.155667` s. The resident path
   accelerates decode but is not promoted as end-to-end SOTA.
+- G62 K60 sparse bake plus cache-only GPU residency completed n=3 exact
+  temp0/nothink rows on the same cyberpunk64, ctx256 protocol. It used K60
+  sparse bake, cache GPU-only 320 LRU and GPU-resident routes, with no arena,
+  tiering, SPEX or external mask. The rows matched SHA-256
+  `ceced6c1b481bb2c6f68bd116c06e554502017a44b40b4e5e6bc9fc5d710edc7` with
+  `contamination=0`, `rejected=0` and `errors=0`. Decode measured `2.123333`
+  mean / `2.13` median t/s; TTFT `18.171` mean / `18.173` median s; load
+  `10.528771` mean / `10.197356` median s; disk read mean `33.801597` GiB;
+  process read mean `91.819531` GiB; dedicated GPU peak `10.76321` GiB. The
+  cache reported `6430` hits, `12835` misses and `12515` evictions per run
+  (`33.3765897%` direct hit rate), with `2734` worker jobs, `10082` miss
+  experts and `7.385333` ms/call wait. Versus frozen G58 K60, decode improved
+  `+13.953491%` mean and `+14.516129%` median; versus G61 arena-only it was
+  `-10.784328%` mean and `-9.361702%` median. Cache-only pays versus bake-only,
+  but the LRU rotates heavily and does not beat arena-only. It is not SOTA and
+  makes no L0-L3 quality claim from 64 tokens.
 
-The next experiment is G62: keep K60 fixed and add only sparse-safe GPU-resident
-slots/cache. Retain embedded-mask guards and all G58/G61 provenance checks.
-Compare against frozen G58 K60 and G61 K60 arena, not against a different mask.
-Do not add SPEX, PACE, dynamic compression or another transport change in the
-same run.
+The next experiment is G63: compose against the G46 baseline path, keeping
+provenance explicit and continuing to separate short functional/exact gates
+from any long-output L0-L3 quality claims.
 
 Native result commits:
 
@@ -217,3 +231,9 @@ Native result commits:
 - G61 Windows runner/safety: [`27e0545`](https://github.com/imanu86/ds4-win/commit/27e0545),
   [`20ef2b7`](https://github.com/imanu86/ds4-win/commit/20ef2b7),
   [`ba545be`](https://github.com/imanu86/ds4-win/commit/ba545be)
+- G62 Windows telemetry/runner/safety/n3:
+  [`21d785b`](https://github.com/imanu86/ds4-win/commit/21d785b),
+  [`068c522`](https://github.com/imanu86/ds4-win/commit/068c522),
+  [`b887b41`](https://github.com/imanu86/ds4-win/commit/b887b41),
+  [`ed074d3`](https://github.com/imanu86/ds4-win/commit/ed074d3),
+  [`810cdb9`](https://github.com/imanu86/ds4-win/commit/810cdb9)
