@@ -2391,3 +2391,43 @@ runner [`ac518c7`](https://github.com/imanu86/ds4-win/commit/ac518c7), K60 abort
 [`8b25645`](https://github.com/imanu86/ds4-win/commit/8b25645), G66 protocol
 [`fae58d6`](https://github.com/imanu86/ds4-win/commit/fae58d6) and G66 result
 [`46a9650`](https://github.com/imanu86/ds4-win/commit/46a9650).
+
+## 2026-07-16 Native Windows G67 Full-Model Adaptive Arena Reserve
+
+Question: can the full G46 runtime derive its arena capacity from actual host
+memory instead of a fixed GiB value, preserving an explicit reserve and the
+unchanged contamination guard?
+
+Implementation: requested arena 30 GiB remains an upper bound. New opt-in
+`DS4_CUDA_DYNAMIC_ARENA_MIN_AVAILABLE_GIB` subtracts the requested reserve from
+`GlobalMemoryStatusEx.ullAvailPhys` before `cudaHostAlloc`, rounds down to whole
+expert slots and logs requested/chosen bytes and slots. Default zero preserves
+all prior behavior. Native implementation commit:
+[`5df6c8e`](https://github.com/imanu86/ds4-win/commit/5df6c8e).
+
+G67 full-model safety used context 8192, max 8 tokens, reserve 22 GiB and the
+otherwise complete G46 composition. Available-before-arena was `38.285 GiB`, so
+the runtime selected `17,482,383,360` bytes and `2470` slots. The request passed
+all structural gates: WRAP published in `10.628 s`, server exit was zero,
+RouteNoDefaultSync observed `344/344`, and tier backing misses, forbidden
+SSD-to-VRAM, SSD bytes and failures were all zero. Minimum available host
+memory remained `4.625 GiB`.
+
+This was only a safety pass. Decode measured `0.13 t/s`, process reads were
+`87.493 GiB` and aggregate disk-read estimate was `93.285 GiB` for eight
+tokens. The narrow `2470`-slot arena therefore avoids the capacity abort but
+does not preserve G46 performance. No n>=3 timing or quality verdict is made.
+Result commit:
+[`93c2078`](https://github.com/imanu86/ds4-win/commit/93c2078).
+
+Project decision: K60/K75 sparse bakes are de-prioritized as an advanced
+fallback. They were built to test whether a physically reduced static model
+could beat the full dynamic runtime; G63 only matched G46 decode within
+`-0.219138%`, while G64 showed that K60 still constructed the same 4551-slot
+arena and failed the same context-8192 capacity gate. No further bake run is
+part of the active roadmap.
+
+Active roadmap returns to the full model: keep the adaptive cap as fail-closed
+safety, reclaim only consumed source-mmap expert ranges (never the whole
+working set), then continue direct resident slots, hit/miss separation,
+dynamic REAP tiering and n>=3 performance/long L0-L3 quality gates.
