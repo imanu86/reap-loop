@@ -2431,3 +2431,45 @@ Active roadmap returns to the full model: keep the adaptive cap as fail-closed
 safety, reclaim only consumed source-mmap expert ranges (never the whole
 working set), then continue direct resident slots, hit/miss separation,
 dynamic REAP tiering and n>=3 performance/long L0-L3 quality gates.
+
+## 2026-07-16 Native Windows G68 Selective Source-Mmap Reclaim
+
+Question: can full G46 retain its complete 30 GiB / 4551-slot arena at context
+8192 by removing only already-consumed expert source pages from the working set
+after the `gate` and `up` phase barriers?
+
+The new default-off `DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1` path coalesces
+successful source-part ranges and calls `VirtualUnlock` only after phase
+workers join. It requires source-parts plus trusted worker checksums, is
+incompatible with process-wide trim and file-source modes, and fails closed on
+every result except `TRUE` or documented `FALSE/ERROR_NOT_LOCKED`. Native
+implementation commit:
+[`b1eacea`](https://github.com/imanu86/ds4-win/commit/b1eacea).
+
+G68 was one preregistered full-model safety run, context 8192 and max 8 tokens.
+The complete `32,211,468,288`-byte arena allocated all `4551` slots. Selective
+reclaim then measured:
+
+| Phase | Source ranges | Requested bytes | Available before -> after | Failures |
+|---|---:|---:|---:|---:|
+| gate | 2395 | 9,852,203,008 | 68,747,264 -> 9,432,907,776 | 0 |
+| up | 2395 | 9,852,203,008 | 873,553,920 -> 10,421,305,344 | 0 |
+
+All `4790` calls returned `ERROR_NOT_LOCKED`, the documented outcome that also
+removed the pages from the process working set. Gate and up working-set deltas
+were each exactly `9,852,194,816` bytes. Unlike G65, no unrelated process-wide
+working-set trim ran.
+
+The safety still failed before token one during the final `down` copy. G68 had
+no reclaim point until that 12,526,682,112-byte phase completed. The unchanged
+guard observed available memory `1,708,126,208`, `240,553,984`, then
+`65,990,656` bytes on three consecutive samples and terminated the server at
+67.510 s. WRAP never published; missing route telemetry was secondary. No
+throughput or quality verdict is made. Result commit:
+[`5f89e3d`](https://github.com/imanu86/ds4-win/commit/5f89e3d).
+
+Measured decision: range-scoped reclamation is effective, but a whole-phase
+barrier is too late. The next isolated full-model change is source-sorted copy
+waves with join plus selective reclaim after every completed wave across
+`gate`, `up` and `down`. The arena remains 4551 slots; no bake, smaller arena or
+second performance lever is composed into that gate.
