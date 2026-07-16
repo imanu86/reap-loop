@@ -1108,7 +1108,17 @@ commit `63ba10d`.
     build and preload time inside TTFT; compare exact output, L0-L3 quality, cold
     misses, SSD-to-RAM and RAM-to-VRAM bytes. Do not generate separate shard
     continuations or attempt to merge their KV caches.
-30. Only then return to physical REAP rotation and SPEX transfer composition.
+30. **Dynamic 1-bit cold tier (runtime, not bake):** on the normal full-model
+    runtime, compress experts demoted by REAP into an experimental 1-bit RAM
+    representation and dequantize/promote them only when measured demand makes
+    them useful again. Start with an isolated single-expert gate against the
+    current IQ2XXS path: bytes per expert, CPU/GPU quantize and dequantize time,
+    promotion latency, H2D bytes, break-even reuse count and numerical error.
+    Only if that gate amortizes may the runtime prototype compare end-to-end
+    decode, TTFT, misses, RAM headroom and L0-L3 quality at n>=3. The exact router
+    remains authoritative; this is neither a static domain mask nor a baked
+    1-bit model, and no feasibility or speed claim exists before measurement.
+31. Only then return to physical REAP rotation and SPEX transfer composition.
 
 Stop conditions:
 
@@ -1129,8 +1139,10 @@ Stop conditions:
 - Q8-F16 cache: exact tested `256 MiB / 1280 MiB reserve` configuration failed
   closed with 2.05 -> 0.38 t/s and a changed output hash; other budgets remain
   unmeasured, not globally disproved.
-- Further cold-expert compression and mixed quantization: remains a later TODO,
-  after direct residency and exact tier transitions work.
+- Further cold-expert compression and mixed quantization: the first explicit
+  gate is the runtime dynamic 1-bit cold tier in item 30, after direct residency
+  and exact tier transitions work. Static whole-model or domain-baked 1-bit
+  quantization is outside that experiment.
 
 ## Bottom line
 
