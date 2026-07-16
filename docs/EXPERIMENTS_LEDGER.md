@@ -2473,3 +2473,47 @@ barrier is too late. The next isolated full-model change is source-sorted copy
 waves with join plus selective reclaim after every completed wave across
 `gate`, `up` and `down`. The arena remains 4551 slots; no bake, smaller arena or
 second performance lever is composed into that gate.
+
+## 2026-07-16 Native Windows G69 Waved Source-Mmap Reclaim
+
+Question: can bounded source-copy waves reclaim consumed mmap pages early
+enough for the full G46 30 GiB / 4551-slot arena to finish WRAP under the same
+strict context-8192 host-memory gate that stopped G68?
+
+The default-off `DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4` path sorts source
+parts, copies each bounded page-aligned wave with all workers joined, and only
+then applies the G68 range-scoped reclaim. It preserves gate/up/down checksum
+order and fails closed if one part exceeds the cap. Native implementation:
+[`be6f1fe`](https://github.com/imanu86/ds4-win/commit/be6f1fe).
+
+One preregistered full-model safety run passed the structural and capacity
+gate. This was `n=1`, context 8192, max 8 tokens, temp 0 and nothink; its timing
+is diagnostic only.
+
+| Phase | Waves | Maximum wave | Parts | Ranges | Reclaimed bytes | Unlock time |
+|---|---:|---:|---:|---:|---:|---:|
+| gate | 3 | 4,293,894,144 | 4551 | 2395 | 9,852,203,008 | 1.107160 s |
+| up | 3 | 4,293,894,144 | 4551 | 2395 | 9,852,203,008 | 0.903053 s |
+| down | 3 | 4,293,083,136 | 4551 | 2397 | 12,536,500,224 | 1.437156 s |
+
+All nine waves completed, reclaiming `32,240,906,240` requested bytes through
+7187 coalesced ranges in `3.447369 s`, with zero failures. WRAP published all
+4551 loads in `29.089 s`. Runtime available memory never fell below
+`2,776,780,800` bytes, so the unchanged 2 GiB guard did not fire. Route calls
+were GPU-resident (`344`), default-sync calls were zero, and snapshot backing
+misses, SSD bytes and tier failures were all zero. Result commit:
+[`e18dd6e`](https://github.com/imanu86/ds4-win/commit/e18dd6e).
+
+This is a capacity result, not a performance promotion. The eight-token safety
+measured `0.13 t/s`, `11,975,786,496` RAM-to-GPU bytes and
+`93,810,879,312` process-read bytes. It proves that the complete full-model
+arena can be built under the constrained host state; it also shows that the
+long safety workload still destroys too much non-expert hot residency and
+repeats too much transport.
+
+Active decision: sparse K60/K75 bakes remain an advanced fallback only. The
+main roadmap stays on the full-model G46/0051 runtime: compare waved reclaim on
+the original context-256/64-token exact workload, then remove repeated H2D via
+direct resident slots, explicit hit/miss execution and dynamic REAP tiering.
+No G46 performance comparison is valid until both arms pass with comparable
+preflight memory and `n>=3` independent processes.
