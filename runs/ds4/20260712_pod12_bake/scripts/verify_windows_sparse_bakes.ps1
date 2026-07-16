@@ -3,7 +3,7 @@ param(
     [int[]]$DownloadProcessId = @(18200, 23836),
     [string]$PackRoot = 'D:\ds4-models',
     [string]$BakeRoot = 'C:\ds4-models',
-    [string]$Python = 'python',
+    [string]$Python = '',
     [string]$ReceiptRoot = ''
 )
 
@@ -12,6 +12,21 @@ $ErrorActionPreference = 'Stop'
 $campaignRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
 $repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..\..\..\..')).Path
 $packer = Join-Path $repoRoot 'scripts\ds4_windows_sparse_bake.py'
+if (-not $Python) {
+    $command = Get-Command python -ErrorAction SilentlyContinue
+    if ($command) {
+        $Python = $command.Source
+    }
+    else {
+        $bundled = Join-Path $env:USERPROFILE '.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+        if (Test-Path -LiteralPath $bundled -PathType Leaf) {
+            $Python = $bundled
+        }
+        else {
+            throw 'No Python interpreter found; pass -Python explicitly'
+        }
+    }
+}
 if (-not $ReceiptRoot) {
     $ReceiptRoot = Join-Path $campaignRoot 'windows_sparse_verification_20260715'
 }
@@ -159,6 +174,16 @@ try {
         $sparseQuery = (& fsutil sparse queryflag $bakePath 2>&1 | Out-String).Trim()
         $logicalBytes = (Get-Item -LiteralPath $bakePath).Length
         $allocatedBytes = Get-AllocatedBytes $bakePath
+        if ($allocatedBytes -ge $logicalBytes) {
+            throw "Sparse allocation gate failed for $($spec.name): allocated=$allocatedBytes logical=$logicalBytes"
+        }
+
+        $ranges = @(& fsutil sparse queryrange $bakePath 2>&1 | Where-Object {
+            $_ -match 'Offset:\s+0x([0-9a-fA-F]+)\s+(?:Lunghezza|Length):\s+0x([0-9a-fA-F]+)'
+        })
+        if ($ranges.Count -lt 2) {
+            throw "Sparse range gate failed for $($spec.name): range_count=$($ranges.Count)"
+        }
 
         $receipt.results += [ordered]@{
             name = $spec.name
@@ -168,6 +193,8 @@ try {
             bake_path = $bakePath
             bake_logical_bytes = $logicalBytes
             bake_allocated_bytes = $allocatedBytes
+            sparse_range_count = $ranges.Count
+            sparse_gap_count = $ranges.Count - 1
             payload_sha256 = $unpack.payload_sha256
             retained_layer_count = $retained.Count
             retained_min = ($retained | Measure-Object -Minimum).Minimum

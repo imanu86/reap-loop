@@ -142,6 +142,8 @@ currently defined.
 - `plan`: exact retained extent and payload calculation;
 - `pack`: compact portable payload with SHA-256-verified manifest and data;
 - `unpack`: NTFS sparse GGUF reconstruction at original tensor offsets;
+- `sparsify`: in-place repair of legacy bakes with physical-hole and retained-
+  payload verification;
 - `inspect`: trailer, bitset, CRC, and manifest consistency validation.
 
 The unpacked file appends the audit JSON, a retained-expert bitset, and a fixed
@@ -166,8 +168,57 @@ Both requested mass-ranked packs completed with packer exit `0`, uploader exit
 
 Producer receipts are committed under `bake_k60_mass_20260715/` and
 `bake_k75_mass_20260715/`. R2 size equality proves a complete byte count, not
-content identity. The full-pack SHA-256 must still be recomputed after each
-Windows download before unpacking.
+content identity. K60 was downloaded and its full-pack SHA-256 matched the
+producer receipt. K75 was rebuilt locally from the byte-identical source model;
+its full-pack SHA-256 also matched the producer receipt before unpacking.
+
+## Native Windows materialization
+
+The local source model is `C:\ds4-models\ds4-2bit.gguf`. Its measured SHA-256
+is `efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668`,
+identical to the pod source. Hashing its 86,720,111,488 bytes took 498.56 s.
+
+This proved that downloading both packs was unnecessary: the masks and source
+were already local. Rebuilding K75 locally took 342.45 s, and hashing the
+68,600,895,205-byte pack took 77.15 s. The full hash was
+`f1dbb64e1c8261928b56b4fa154238559444f70e8a1796875b22e42abf455dd2`.
+K60's downloaded pack hash was verified in 194.77 s as
+`3b464ee43514c8caa841be61da70190a4a7ba3c760c22849d2d723e5da5b7d71`.
+
+The first Windows unpack exposed a critical physical-layout bug. Both files had
+the NTFS `SparseFile` attribute, but `fsutil sparse queryrange` returned one
+allocated range from offset zero to EOF, and `GetCompressedFileSizeW` equalled
+the logical length. `FSCTL_SET_SPARSE` plus `truncate` did not create physical
+holes on this machine. The two sequential unpacks saturated `C:` (measured
+queue depth average 4.4, peak 8) and caused RDP instability; CPU was only 20.6%
+and 46 GiB of RAM remained available.
+
+The repair uses `FSCTL_SET_ZERO_DATA` on every complement of the retained
+extent set, then re-hashes every retained extent. Future `unpack` runs zero the
+entire initialized source range before restoring retained extents. A Windows
+integration test covers both fresh unpack and repair of a fully allocated
+legacy bake.
+
+Legacy artifacts can be repaired in place with:
+
+```powershell
+python scripts/ds4_windows_sparse_bake.py sparsify --bake C:\path\to\bake.gguf
+```
+
+The consolidated machine-readable receipt is
+`windows_sparse_verification_20260715/final_verification_status.json`.
+
+Final measured artifacts:
+
+| Bake | Windows path | Logical bytes | Allocated bytes | Allocated ranges | Physical gaps | Payload SHA-256 |
+|---|---|---:|---:|---:|---:|---|
+| K60 mass | `C:\ds4-models\ds4-2bit-k60-mass-full-decode.gguf` | 86,720,315,096 | 58,311,376,896 | 7,155 | 7,154 | `5cb4bf69d7c6ef2aadfc8760069c3a7a89fc40504ce80b7b3735b10f9539e4b5` |
+| K75 mass | `C:\ds4-models\ds4-2bit-k75-mass-full-decode.gguf` | 86,720,289,813 | 68,975,394,816 | 5,715 | 5,714 | `9b8f67ad4f69bfcd3a2369839c936371c8a433e53ed951582d0ad491c718aa3d` |
+
+Post-repair `inspect` validated both embedded manifests, masks, and CRCs. K60
+retains 154 experts per routed layer 3-42; K75 retains 192. Layers 0-2 remain
+full. The final preflight measured 55.1 GiB free on `C:`, disk queue zero, no
+Python/rclone/DS4 process, and GPU utilization zero.
 
 ## Functional A/B
 
@@ -265,12 +316,12 @@ held-out routing coverage. The bake candidates remain the mass-ranked masks.
 
 ## Pending gates
 
-1. Download each pack and verify its complete SHA-256 against the producer
-   receipt before unpacking.
-2. Assemble and inspect the NTFS sparse artifacts on Windows.
-3. Apply and build the native Windows embedded-mask loader patch.
-4. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
+1. Run the clean G55 QD1/QD8 matrix, G56 profile, and G51 prefill-mass matrix
+   before allowing the K60 safety run.
+2. Run the fail-closed K60 safety with physical-hole, CRC, mask/payload SHA,
+   and runtime rejection gates enabled.
+3. Measure native Windows quality, VRAM/RAM tier residency, routed SSD bytes,
    cache misses, and throughput. Zero SSD during measured inference is a
    separate fail-closed gate.
-5. Keep K60 as the primary candidate; promote K75 only if measured host-memory
+4. Keep K60 as the primary candidate; promote K75 only if measured host-memory
    residency leaves sufficient runtime headroom.

@@ -1,0 +1,58 @@
+{
+  "status": "complete",
+  "completed_local": "2026-07-16T00:30:50.8309364+02:00",
+  "completed_utc": "2026-07-15T22:30:50.8446529Z",
+  "source_model": {
+    "path": "C:\\ds4-models\\ds4-2bit.gguf",
+    "bytes": 86720111488,
+    "sha256": "efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668",
+    "hash_elapsed_seconds": 498.56
+  },
+  "host_preflight": {
+    "c_free_gib": 55.1,
+    "c_disk_queue_average": 0.0,
+    "c_disk_queue_peak": 0.0,
+    "gpu_utilization_percent": 0,
+    "active_python_processes": 0,
+    "active_rclone_processes": 0,
+    "active_ds4_processes": 0
+  },
+  "results": [
+    {
+      "name": "K60 mass full-decode",
+      "bake_path": "C:\\ds4-models\\ds4-2bit-k60-mass-full-decode.gguf",
+      "source_pack_path": "D:\\ds4-models\\ds4-2bit-k60-mass-full-decode-5b6d9850.ds4pack",
+      "logical_bytes": 86720315096,
+      "allocated_bytes": 58311376896,
+      "sparse_range_count": 7155,
+      "sparse_gap_count": 7154,
+      "hole_bytes": 28877783040,
+      "payload_sha256": "5cb4bf69d7c6ef2aadfc8760069c3a7a89fc40504ce80b7b3735b10f9539e4b5",
+      "pack_sha256": "3b464ee43514c8caa841be61da70190a4a7ba3c760c22849d2d723e5da5b7d71",
+      "manifest_crc32": "0fe74cd6",
+      "mask_crc32": "1f759d0e",
+      "retained_experts_layers_0_2": 256,
+      "retained_experts_layers_3_42": 154,
+      "sparsify_elapsed_seconds": 72.11
+    },
+    {
+      "name": "K75 mass full-decode",
+      "bake_path": "C:\\ds4-models\\ds4-2bit-k75-mass-full-decode.gguf",
+      "source_pack_path": "D:\\ds4-models\\ds4-2bit-k75-mass-full-decode-e4b6059f.ds4pack",
+      "logical_bytes": 86720289813,
+      "allocated_bytes": 68975394816,
+      "sparse_range_count": 5715,
+      "sparse_gap_count": 5714,
+      "hole_bytes": 18119393280,
+      "payload_sha256": "9b8f67ad4f69bfcd3a2369839c936371c8a433e53ed951582d0ad491c718aa3d",
+      "pack_sha256": "f1dbb64e1c8261928b56b4fa154238559444f70e8a1796875b22e42abf455dd2",
+      "manifest_crc32": "32e5281b",
+      "mask_crc32": "8102eb6b",
+      "retained_experts_layers_0_2": 256,
+      "retained_experts_layers_3_42": 192,
+      "pack_elapsed_seconds": 342.45,
+      "pack_hash_elapsed_seconds": 77.15,
+      "sparsify_elapsed_seconds": 85.78
+    }
+  ]
+}

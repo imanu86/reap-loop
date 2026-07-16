@@ -5,6 +5,8 @@ import hashlib
 import importlib.util
 import io
 import json
+import os
+import shutil
 import sys
 import tempfile
 import unittest
@@ -96,6 +98,22 @@ def expected_pack_bytes(source_bytes: bytes, plan: dict) -> tuple[bytes, dict[st
 
 
 class Ds4WindowsSparseBakeTests(unittest.TestCase):
+    def test_complement_extents_rejects_overlap_and_returns_exact_holes(self) -> None:
+        extents = [
+            ds4_windows_sparse_bake.Extent(0, 4),
+            ds4_windows_sparse_bake.Extent(10, 3),
+            ds4_windows_sparse_bake.Extent(18, 2),
+        ]
+        holes = ds4_windows_sparse_bake.complement_extents(extents, 0, 20)
+        self.assertEqual([(hole.offset, hole.length) for hole in holes], [(4, 6), (13, 5)])
+        with self.assertRaisesRegex(ValueError, "overlapping"):
+            ds4_windows_sparse_bake.complement_extents(
+                [ds4_windows_sparse_bake.Extent(0, 5),
+                 ds4_windows_sparse_bake.Extent(4, 2)],
+                0,
+                8,
+            )
+
     def test_pack_file_and_stream_are_byte_identical_with_exact_hashes(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -181,6 +199,45 @@ class Ds4WindowsSparseBakeTests(unittest.TestCase):
 
             self.assertEqual(json.loads(status.read_text(encoding="utf-8")), {"old": True})
             self.assertEqual(list(root.glob(f".{status.name}.tmp.*")), [])
+
+    @unittest.skipUnless(os.name == "nt", "requires Windows sparse-file controls")
+    def test_unpack_and_legacy_sparsify_create_physical_holes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            source = root / "source.bin"
+            source_size = 16 << 20
+            source.write_bytes(b"A" * 4096 + b"\0" * (source_size - 8192) + b"Z" * 4096)
+            plan = fake_plan(source)
+            plan.update(
+                {
+                    "source_model_size": source_size,
+                    "payload_bytes": 8192,
+                    "payload_gib": 8192 / (1 << 30),
+                    "logical_savings_bytes": source_size - 8192,
+                    "logical_savings_gib": (source_size - 8192) / (1 << 30),
+                    "extents": [[0, 4096], [source_size - 4096, 4096]],
+                }
+            )
+            pack = root / "model.pack"
+            bake = root / "model.gguf"
+            with contextlib.redirect_stdout(io.StringIO()):
+                result = ds4_windows_sparse_bake.write_pack(source, pack, plan)
+                ds4_windows_sparse_bake.unpack(pack, bake)
+
+            inspection = ds4_windows_sparse_bake.inspect_bake(bake)
+            self.assertLess(inspection["allocated_bytes"], inspection["logical_bytes"])
+            self.assertEqual(ds4_windows_sparse_bake.hash_extents(
+                bake, [ds4_windows_sparse_bake.Extent(*item) for item in plan["extents"]]
+            ), result.payload_sha256)
+
+            legacy = root / "legacy.gguf"
+            shutil.copyfile(bake, legacy)
+            before = ds4_windows_sparse_bake.allocated_bytes_windows(legacy)
+            self.assertIsNotNone(before)
+            repaired = ds4_windows_sparse_bake.sparsify_bake(legacy)
+            self.assertEqual(repaired["payload_sha256"], result.payload_sha256)
+            self.assertLess(repaired["allocated_bytes_after"], repaired["allocated_bytes_before"])
+            self.assertGreater(repaired["hole_count"], 0)
 
 
 if __name__ == "__main__":

@@ -8,8 +8,10 @@ GGUF logical end; a compatible ds4-win loader must validate and apply it before
 routing. Expert ids therefore remain the original DS4 ids.
 
 The ``plan``, ``pack``, and ``pack-stream`` commands require the ``gguf``
-Python package. The ``unpack`` command uses only the standard library and marks
-the output sparse through FSCTL_SET_SPARSE on Windows.
+Python package. The ``unpack``, ``sparsify``, and ``inspect`` commands use only
+the standard library. On Windows, unpack explicitly deallocates the initialized
+file range with FSCTL_SET_ZERO_DATA before restoring retained extents; merely
+setting FSCTL_SET_SPARSE is not sufficient to guarantee physical holes.
 """
 
 from __future__ import annotations
@@ -118,6 +120,24 @@ def merge_extents(extents: list[Extent], max_gap: int) -> list[Extent]:
         previous = merged[-1]
         previous.length = max(previous.end, current.end) - previous.offset
     return merged
+
+
+def complement_extents(extents: list[Extent], start: int, end: int) -> list[Extent]:
+    if start < 0 or end < start:
+        raise ValueError("invalid complement range")
+    holes: list[Extent] = []
+    cursor = start
+    for extent in sorted(extents):
+        if extent.offset < start or extent.end > end:
+            raise ValueError("extent outside complement range")
+        if extent.offset < cursor:
+            raise ValueError("overlapping extents")
+        if extent.offset > cursor:
+            holes.append(Extent(cursor, extent.offset - cursor))
+        cursor = extent.end
+    if cursor < end:
+        holes.append(Extent(cursor, end - cursor))
+    return holes
 
 
 def build_plan(
@@ -332,7 +352,8 @@ def mark_sparse_windows(stream) -> None:
     fsctl_set_sparse = 0x000900C4
     handle = msvcrt.get_osfhandle(stream.fileno())
     returned = ctypes.c_ulong(0)
-    ok = ctypes.windll.kernel32.DeviceIoControl(
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ok = kernel32.DeviceIoControl(
         ctypes.c_void_p(handle),
         fsctl_set_sparse,
         None,
@@ -344,6 +365,73 @@ def mark_sparse_windows(stream) -> None:
     )
     if not ok:
         raise ctypes.WinError()
+
+
+def zero_sparse_range_windows(stream, offset: int, length: int) -> None:
+    if os.name != "nt" or length <= 0:
+        return
+    import ctypes
+    import msvcrt
+
+    class FileZeroDataInformation(ctypes.Structure):
+        _fields_ = [
+            ("file_offset", ctypes.c_longlong),
+            ("beyond_final_zero", ctypes.c_longlong),
+        ]
+
+    fsctl_set_zero_data = 0x000980C8
+    handle = msvcrt.get_osfhandle(stream.fileno())
+    info = FileZeroDataInformation(offset, offset + length)
+    returned = ctypes.c_ulong(0)
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    ok = kernel32.DeviceIoControl(
+        ctypes.c_void_p(handle),
+        fsctl_set_zero_data,
+        ctypes.byref(info),
+        ctypes.sizeof(info),
+        None,
+        0,
+        ctypes.byref(returned),
+        None,
+    )
+    if not ok:
+        raise ctypes.WinError()
+
+
+def allocated_bytes_windows(path: pathlib.Path) -> int | None:
+    if os.name != "nt":
+        return None
+    import ctypes
+
+    kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
+    get_size = kernel32.GetCompressedFileSizeW
+    get_size.argtypes = [ctypes.c_wchar_p, ctypes.POINTER(ctypes.c_ulong)]
+    get_size.restype = ctypes.c_ulong
+    high = ctypes.c_ulong(0)
+    ctypes.set_last_error(0)
+    low = get_size(str(path), ctypes.byref(high))
+    if low == 0xFFFFFFFF:
+        error = ctypes.get_last_error()
+        if error:
+            raise ctypes.WinError(error)
+    return (high.value << 32) | low
+
+
+def hash_extents(path: pathlib.Path, extents: list[Extent]) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as stream:
+        for extent in extents:
+            stream.seek(extent.offset)
+            remaining = extent.length
+            while remaining:
+                block = stream.read(min(8 << 20, remaining))
+                if not block:
+                    raise EOFError(
+                        f"bake ended in extent offset={extent.offset} length={extent.length}"
+                    )
+                digest.update(block)
+                remaining -= len(block)
+    return digest.hexdigest()
 
 
 def unpack(pack_path: pathlib.Path, output_path: pathlib.Path) -> None:
@@ -358,6 +446,7 @@ def unpack(pack_path: pathlib.Path, output_path: pathlib.Path) -> None:
     with pack_path.open("rb") as source, output_path.open("w+b") as target:
         mark_sparse_windows(target)
         target.truncate(original_size)
+        zero_sparse_range_windows(target, 0, original_size)
         source.seek(len(PACK_MAGIC))
         copied = 0
         for extent in extents:
@@ -397,11 +486,49 @@ def unpack(pack_path: pathlib.Path, output_path: pathlib.Path) -> None:
 
     print(json.dumps({"output": str(output_path), "logical_bytes": output_path.stat().st_size,
                       "payload_sha256": digest.hexdigest(),
+                      "allocated_bytes": allocated_bytes_windows(output_path),
                       "embedded_mask_bytes": len(mask_blob),
                       "embedded_mask_crc32": f"{zlib.crc32(mask_blob):08x}"}, indent=2))
 
 
-def inspect_bake(path: pathlib.Path) -> dict:
+def sparsify_bake(path: pathlib.Path) -> dict:
+    inspection = inspect_bake(path, include_manifest=True)
+    manifest = inspection.pop("_manifest")
+    original_size = int(manifest["source_model_size"])
+    extents = [Extent(int(offset), int(length)) for offset, length in manifest["extents"]]
+    expected_payload_hash = manifest.get("payload_sha256")
+    if not expected_payload_hash:
+        raise ValueError("embedded manifest has no payload SHA-256")
+
+    before = allocated_bytes_windows(path)
+    holes = complement_extents(extents, 0, original_size)
+    with path.open("r+b") as stream:
+        mark_sparse_windows(stream)
+        for hole in holes:
+            zero_sparse_range_windows(stream, hole.offset, hole.length)
+        stream.flush()
+        os.fsync(stream.fileno())
+
+    measured_payload_hash = hash_extents(path, extents)
+    if measured_payload_hash != expected_payload_hash:
+        raise ValueError(
+            "retained payload checksum mismatch after sparsify: "
+            f"expected {expected_payload_hash}, measured {measured_payload_hash}"
+        )
+    after = allocated_bytes_windows(path)
+    if os.name == "nt" and (after is None or before is None or after >= before):
+        raise ValueError(f"sparsify did not reduce allocation: before={before}, after={after}")
+    return {
+        **inspection,
+        "hole_count": len(holes),
+        "hole_bytes": sum(hole.length for hole in holes),
+        "allocated_bytes_before": before,
+        "allocated_bytes_after": after,
+        "payload_sha256": measured_payload_hash,
+    }
+
+
+def inspect_bake(path: pathlib.Path, include_manifest: bool = False) -> dict:
     size = path.stat().st_size
     if size < FILE_FOOTER.size:
         raise ValueError("bake is too small")
@@ -435,8 +562,10 @@ def inspect_bake(path: pathlib.Path) -> dict:
         base = layer * MASK_BYTES_PER_LAYER
         retained.append(sum(mask_blob[base + e // 8] >> (e % 8) & 1
                             for e in range(N_EXPERT)))
-    return {
+    result = {
         "path": str(path),
+        "logical_bytes": size,
+        "allocated_bytes": allocated_bytes_windows(path),
         "version": version,
         "source_model_size": source_size,
         "manifest_bytes": manifest_len,
@@ -445,6 +574,9 @@ def inspect_bake(path: pathlib.Path) -> dict:
         "mask_crc32": f"{mask_crc32:08x}",
         "retained_by_layer": retained,
     }
+    if include_manifest:
+        result["_manifest"] = manifest
+    return result
 
 
 def parse_args() -> argparse.Namespace:
@@ -468,6 +600,8 @@ def parse_args() -> argparse.Namespace:
     cmd.add_argument("--out", type=pathlib.Path, required=True)
     cmd = sub.add_parser("inspect")
     cmd.add_argument("--bake", type=pathlib.Path, required=True)
+    cmd = sub.add_parser("sparsify")
+    cmd.add_argument("--bake", type=pathlib.Path, required=True)
     return parser.parse_args()
 
 
@@ -475,6 +609,9 @@ def main() -> int:
     args = parse_args()
     if args.command == "inspect":
         print(json.dumps(inspect_bake(args.bake), indent=2))
+        return 0
+    if args.command == "sparsify":
+        print(json.dumps(sparsify_bake(args.bake), indent=2))
         return 0
     if args.command == "unpack":
         unpack(args.pack, args.out)
