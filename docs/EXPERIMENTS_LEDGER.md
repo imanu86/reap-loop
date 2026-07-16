@@ -1967,9 +1967,9 @@ can therefore neither be inherited silently nor summarized as sparse safety.
 
 These are build/parser/safety-structure results only. They establish no K60
 startup correctness, quality, TTFT, decode throughput, or SOTA result. The
-first K60 n=1 functional safety remains blocked until the external verifier
-reports exact size/SHA, NTFS sparse unpack, manifest inspection, and the
-explicit handoff `GPU/DISCO LIBERI`.
+external verifier has now emitted `GPU/DISCO LIBERI` after proving physical
+NTFS holes and post-punch payload integrity. K60 G57 n=1 functional safety is
+the next run; no K60 runtime claim exists yet.
 
 Native commits:
 [`b86ef4c`](https://github.com/imanu86/ds4-win/commit/b86ef4c),
@@ -2032,3 +2032,68 @@ Decision order after the external `GPU/DISCO LIBERI` gate:
 
 Exact commands, promotion rules and stop conditions are frozen in
 `docs/G55_G57_WINDOWS_EXECUTION_RUNBOOK_20260715.md`.
+
+## 2026-07-16 Native Windows G55 Clean File-QD A/B
+
+G55 completed the counterbalanced order `QD1,QD8,QD8,QD1,QD1,QD8`, with
+three independent processes per arm. Protocol: cyberpunk prompt, context 256,
+64 generated tokens, 30 GiB closed arena, cache320, sequential-file source,
+one copy worker, exact candidate fingerprint `c59a437fe9c6c376`. Native HEAD
+was `93cb193`; executable SHA-256 was
+`18b8e53627690d950ad37329fb32354a2b278a30b30df012df56b99d374419e1`.
+
+| Arm | WRAP mean / median s | TTFT mean / median s | Decode mean / median t/s |
+|---|---:|---:|---:|
+| QD1 | 186.412 / 52.203 | 209.446667 / 75.497 | 4.293333 / 4.56 |
+| QD8 | 94.245667 / 33.057 | 117.278 / 56.237 | 4.533333 / 4.55 |
+
+All six outputs matched the expected SHA. QD1 reported zero async operations;
+QD8 reported `40,959/40,959/0` submit/complete/failure. Contamination aborts,
+snapshot misses, SSD bytes and tier failures were all zero. Both arms had a
+cold-I/O outlier, but QD8 improved both mean and median WRAP and TTFT while
+memory pressure stayed effectively unchanged. Decision: promote `winningQD=8`.
+
+Raw summary:
+`g7_runs/g55_wrap_file_qd_ab_result.json` in native commit
+[`b80a285`](https://github.com/imanu86/ds4-win/commit/b80a285).
+
+## 2026-07-16 Native Windows G56 WRAP Layout Profile
+
+The single G56 metadata profile passed exactness, provenance, candidate-mask,
+no-default-sync, quiescence, zero-miss, zero-SSD and zero-failure gates. It is
+not a throughput benchmark.
+
+Across gate/up/down there were 13,653 parts. Exact contiguous coalescing reduces
+the projected reads to 7,185, a 47.37% operation reduction with byte
+amplification exactly 1.0. The layout contains 6,468 zero-length gaps and 7,182
+gaps larger than 1 MiB; no gaps fall in the 1 B through 1 MiB buckets. The
+4 KiB, 64 KiB and 1 MiB thresholds therefore produce no additional merge.
+Decision: implement only exact-contiguous coalescing, with no threshold
+over-read.
+
+Raw summary:
+`g7_runs/g56_wrap_layout_profile_result.json` in native commit
+[`b80a285`](https://github.com/imanu86/ds4-win/commit/b80a285).
+
+## 2026-07-16 Native Windows G51 Prefill VRAM Seed A/B
+
+The first G51 attempt was aborted by the disk-quiescence preflight and is
+excluded. After a 90-second drain, the complete counterbalanced n=3-per-arm
+matrix passed using QD8. Control and seed outputs were exact and used the same
+candidate fingerprint and build provenance.
+
+| Arm | WRAP mean / median s | TTFT mean / median s | Decode mean / median t/s |
+|---|---:|---:|---:|
+| control | 32.410667 / 32.327 | 54.548333 / 54.538 | 4.576667 / 4.57 |
+| seed 8/layer | 87.906333 / 32.210 | 121.940667 / 54.469 | 4.583333 / 4.58 |
+
+One seeded run had a cold-I/O outlier. The corrected summary derives route H2D
+from tier RAM H2D minus the explicit one-shot seed because direct route-H2D
+profiling was intentionally disabled. The seed moved 490 hits from RAM to
+VRAM, saved 3.229980 GiB of route H2D, cost 2.109375 GiB once, and netted
+1.120605 GiB within 64 tokens. Decode changed by only +0.145652%.
+
+Decision: the seed transport works and amortizes, but has no material speed
+win. Do not promote it as a SOTA lever yet. The summary correction is native
+commit [`9793349`](https://github.com/imanu86/ds4-win/commit/9793349); raw
+summary is in [`b80a285`](https://github.com/imanu86/ds4-win/commit/b80a285).
