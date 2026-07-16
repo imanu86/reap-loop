@@ -143,7 +143,7 @@ The packed-copy candidate refusal for unequal G74 gate/down sizes is
 pre-existing. The historical G74 summary was already stopped, so this is not an
 IQ1 regression.
 
-### G86-G93: Cache and GPU-Planner Checkpoint
+### G86-G95: Cache, GPU Planner, and Quality Checkpoint
 
 Commits `9ff7bc4` and `c8f8678` on
 `imanu86/ds4-win:port/windows-dynamic-arena-0051` add the opt-in GPU
@@ -159,6 +159,8 @@ stages the one IQ1_S cold route without a second router readback.
 | G90 | structural profile `n=1`, IQ1 VRAM cache 2/layer | invalid | invalid | invalid | 78/640 hits; 562 misses | Exact structural smoke only |
 | G91 | structural profile `n=1`, explicit main sync removed | invalid | invalid | invalid | main-sync approximately zero; stall moves to cold submit | Exact structural smoke only |
 | G93 | structural profile `n=1`, GPU planner | invalid | invalid | invalid | planner 640/640; wait 0.085 ms; router D2H 6.302 ms; metadata 3.624 ms; failures 0 | Output SHA `c7c8e02137fd31de53dc88a5645b3c6a92ab98d844e42ddcc00c52257d63823d`, identical to G87/G91 |
+| G94 planner off | clean benchmark `n=3`, arena 20 GiB, IQ1 RAM cache 4 GiB | 1.543 | 2.073 | 10.588 s | 54.03% RAM hits; planner disabled | Every repeat SHA `e856d9ea88cd1c04f38cecee8b2ecb185f382a35b62495f3bc309fc339c1c004`; clean short performance gate |
+| G94 planner on | clean benchmark `n=3`, otherwise identical | 1.630 | 2.223 | 10.458 s | 54.03% RAM hits; planner 10240/10240; wait 1.363 ms; failures 0 | Same repeat SHA as planner-off; decode `+7.23%`, harness `+5.68%`; no L0-L3 grade |
 
 G89-G93 were not used for a speed verdict. In particular, G92/G93 ran while
 Windows `ScheduledDefrag` kept physical disk `D:` above 90 percent busy. Their
@@ -166,12 +168,22 @@ SSD, H2D, submit, TTFT, throughput, and total-latency measurements are
 contaminated and excluded from SOTA. G93 proves only output exactness, planner
 counter reconciliation, and elimination of most router/metadata readback.
 
-The G86 outputs contain only 64 generated tokens and have no recorded human
-L0-L3 grading. Neither arm establishes quality equivalence or lossless IQ1_S
-behavior. The clean next measurement is an otherwise identical `n>=3` A/B of
-the mixed IQ1_S path with the planner disabled/enabled, followed by a separate
-current-build G74 env-off exactness gate and the long cyberpunk L0-L3 quality
-A/B.
+G94 closes the clean short planner A/B: the GPU planner is faster on this
+declared surface and preserves deterministic output. The cache-8 attempt was
+aborted when the runtime monitor measured less than 0.5 GiB available Windows
+memory; it contributes no timing result. The 64-token G86/G94 outputs still
+have no recorded human L0-L3 grading and do not establish quality equivalence
+or lossless IQ1_S behavior.
+
+The first G95 protocol (`max_tokens=2048`, context 4096) was stopped during the
+control arm at generation 100 after observing 0.47 t/s and only 276/320
+resident expert-cache slots. It is an incomplete protocol probe, not a quality
+or performance result. The bounded replacement uses `max_tokens=768`, context
+1024, `stop="</html>"`, cache 4 GiB, and `n=3` per arm. It is pending after
+Windows retained the terminated DS4 process and its memory inside driver
+cleanup. The current-build full G74 environment-off exactness rerun also
+remains pending because its 30-GiB arena requires at least 32 GiB available
+host memory.
 
 Deferred authoritative 2-bit promotion and next-token publication remain
 unimplemented. Therefore no current run closes the final residency invariant
@@ -213,13 +225,24 @@ only intended difference is the routed-expert source.
 
 - Prompt: complete single-file cyberpunk AI programming-shop HTML page.
 - Repetitions: at least 3 per arm.
-- Maximum generation: 2,048 tokens; context: 4,096.
+- Maximum generation: 768 tokens; context: 1,024; stop on `</html>`.
 - Host quiescence is mandatory.
 - Every raw output is retained and receives a recorded L0-L3 grade.
 - The runner may preserve throughput descriptively, but it declares no
   performance winner.
 - The result remains `pending-recorded-human-l0-l3-grading` until all grades
   exist.
+
+## IQ1_S Capacity Arithmetic
+
+- Layers 3-42: `40 * 256 = 10,240` eligible routed experts.
+- Measured IQ1_S footprint: 4,915,200 bytes per expert.
+- Eligible pool: 50,331,648,000 bytes = 46.875 GiB.
+- Hypothetical 43-layer pool at the same footprint: 54,106,521,600 bytes =
+  50.391 GiB.
+- Real complete sidecar: 61,540,805,344 bytes = 57.310 GiB, including
+  non-routed tensors, metadata, and layer-specific layout.
+- Saving against the corresponding 67.5-GiB IQ2 pool: 20.625 GiB (`30.56%`).
 
 ## Dynamic Tier Target
 
