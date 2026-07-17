@@ -67,6 +67,7 @@ Relevant existing evidence:
 | G97 | PASS, `n=1` structural only. Earlier closed-router run had no true cold promotions; forced eviction proved fail-closed on snapshot miss; two open-router attempts were refused before launch by quiescence because Windows `ScheduledDefrag` saturated `D:`. The final raw arena12 4+8 open-router/probation run completed with zero failures/forbidden/ram skips, mixed 5+1 promotion counters, 56 backing-RAM reclaims, and 141 `cold_to_2bit` stages in measured execution. |
 | G98/G99 | G98 fixed-order `n=3` completed cleanly with exact 64-token output SHA across both arms, but the candidate was much slower; because order was fixed, the parent final performance verdict is withheld. No quality, SOTA, default-readiness, or long-form L0-L3 claim may be inferred. G99 is deferred until promotion churn is fixed. |
 | G100 | Structural `n=1` promotion gate isolation sweep only. Five arms completed with identical output SHA, zero failures, zero forbidden/direct cold-to-VRAM transitions, and exact per-arm IQ2 SSD bytes recorded. The combined gate reduced IQ2 promotion SSD bytes by 94.87% versus legacy, while `min_weight=0.02` alone filtered zero candidates. No performance, quality, SOTA, or default-readiness claim. |
+| G101 | No verdict. First combined `n=3` attempt completed its combined arm, but the suite stopped on a deduplicated binding-hash bug before producing any combined-vs-legacy verdict; fixed in ds4-win `876b4b3`. A second receipt attempt was stopped because `ComputeHash` used 4 KiB reads and drove `D:` to 3-6 MiB/s; fixed in `2a5e696` with 8 MiB `SequentialScan`/`IncrementalHash`, a 1 GiB `D:` microbench at 97.5 MiB/s with 128 reads, and receipt tests passing. A third full-hash attempt completed hashing, but the benchmark was correctly rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was active on `D:`; no timing data is valid. Fix `91f1445` preserves preflight and retries quiescence without rehash, while failing closed on other errors. |
 
 ## Runtime contract
 
@@ -278,7 +279,7 @@ Known final counters from existing evidence that 0053 must preserve as context:
 | G98 promotion-off after packed-copy removal | failed at token 4 with `ram-required admitted=0`, `ram_admit_skips=1`, and `forbidden=1`; no claim. Root cause: reserve reclaim remained coupled to IQ1 promotion. |
 | G98 shared open-router smoke | structural `n=1` PASS only with the shared 16-slot open-router pool; output `Hello! How can I assist you today`; content SHA `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`; `general_backing_reclaims=54`, `ram_evictions=787`, `ram_admit_skips=0`, `failures=0`, `forbidden=0`, `cold_to_vram=0`; IQ1 promotion absent; `quality_eligible=false`, `sota=false`. The recorded `0.2895 t/s` is invalid structural timing and not a performance datum. |
 | G98 fixed-order `n=3` | clean quiescent fixed-order measurement; both arms exact within-arm and cross-arm for 64 tokens with SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness and `-52.451029%` server decode. Raw harness marked quality/SOTA eligible, but parent verdict withholds final performance judgment due fixed order and makes no long-form L0-L3 quality claim. |
-| G100 gate sweep | structural `n=1` only; prompt `Hi`, temp 0, no think, 16-token warmup plus 16-token measured request, context 256, arena 12 GiB, IQ1_S RAM cache 1 GiB, layers 3..42, open router, GPU planner on, 16 promotion slots, route packed copy off. All five arms produced SHA `cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`, with zero promotion failures, zero direct SSD-to-VRAM rejects, zero forbidden cold-to-VRAM transitions, zero tier failures, and zero RAM-admit skips. `min_weight=0.02` alone skipped zero candidates; the combined gate read 113,246,208 IQ2 SSD bytes versus 2,208,301,056 legacy bytes, a 94.87% reduction. No performance, quality, SOTA, or default-readiness claim. |
+| G100 gate sweep | structural `n=1` only; prompt `Hi`, temp 0, no think, 16-token warmup plus 16-token measured request, context 256, arena 12 GiB, IQ1_S RAM cache 1 GiB, layers 3..42, open router, GPU planner on, 16 promotion slots, route packed copy off. All five arms produced SHA `cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`, with zero promotion failures, zero direct SSD-to-VRAM rejects, zero forbidden cold-to-VRAM transitions, zero tier failures, and zero RAM-admit skips. `min_weight=0.02` alone skipped zero candidates; the combined gate promoted 16 of 312 candidates and read 113,246,208 IQ2 SSD bytes in 0.1327447 s versus 2,208,301,056 legacy bytes, a 94.87% byte reduction with identical output. No t/s, performance, quality, SOTA, or default-readiness claim. |
 
 ## Capacity arithmetic
 
@@ -441,7 +442,7 @@ Only after structural and clean perf/exactness gates:
 
 No verdict comes from `n=1`, repeat flags, exact hashes, or route counters.
 
-## Gates G98-G100
+## Gates G98-G101
 
 G98/G99 are reserved for clean `n>=3` follow-up evidence after G97 structural
 wiring is accepted. The first G98 control attempt failed closed before emitting
@@ -569,8 +570,32 @@ All arms had `promotion_failures=0`,
 Interpretation: G100 shows the admission levers can reduce structural IQ2 SSD
 promotion traffic without breaking the fail-closed counters on this short
 surface. It also shows that `min_weight=0.02` alone filtered zero candidates in
-this run. This is not a benchmark: there is no performance claim, no quality or
-L0-L3 claim, no SOTA claim, and no default-readiness claim.
+this run. The combined arm promoted 16 of 312 candidates, read 113,246,208
+IQ2 SSD bytes in 0.1327447 s, and produced identical output. This remains a
+structural `n=1` result only: there is no t/s claim, no performance claim, no
+quality or L0-L3 claim, no SOTA claim, and no default-readiness claim.
+
+### G101: combined-vs-legacy receipt attempts
+
+G101 has no combined-vs-legacy verdict and no timing data that can be used.
+The ledger records the failure modes and fixes only:
+
+- First attempt: the combined `n=3` arm completed, but the suite stopped before
+  a combined-vs-legacy verdict because of a deduplicated binding-hash bug.
+  This invalidates any cross-arm conclusion. Fix: ds4-win commit `876b4b3`.
+- Second attempt: the receipt run stopped because `ComputeHash` performed 4 KiB
+  reads and reduced `D:` throughput to roughly 3-6 MiB/s. Fix: commit
+  `2a5e696`, using 8 MiB `SequentialScan`/`IncrementalHash` reads. The
+  follow-up 1 GiB `D:` microbench measured 97.5 MiB/s with 128 reads, and the
+  receipt tests passed.
+- Third attempt: full hashing completed, but the benchmark was correctly
+  rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was
+  active on `D:`. There is no valid timing result. Fix: commit `91f1445`
+  preserves the preflight and retries quiescence without rehash; other errors
+  remain fail-closed.
+
+Do not infer a G101 performance, quality, SOTA, default-readiness, or
+combined-vs-legacy verdict from these attempts.
 
 ## Non-goals
 

@@ -46,6 +46,7 @@ Implementation commits:
 | G97 | MEASURED | Native-Windows DS4 structural route gate | `n=1` structural invocation on commit `3f6dab1` | 208 stages, 65 reclaims, zero failures, zero forbidden events; executable SHA recorded below | Structural safety for this invocation only; no performance, quality, or SOTA claim |
 | G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
 | G100 | MEASURED | IQ1 promotion gate isolation sweep | Five structural `n=1` arms; prompt `Hi`; 16-token warmup and 16-token measured request; GPU planner on; 16 promotion slots; route packed copy off | All arms identical output SHA; zero failures, zero forbidden/direct cold-to-VRAM transitions, zero RAM-admit skips; combined gate reduced IQ2 SSD bytes 94.87% vs legacy; weight `.02` alone filtered zero | Structural lever isolation only; no performance, quality, SOTA, or default-readiness claim |
+| G101 | STOPPED | Combined-vs-legacy receipt attempts | Three attempted follow-ups after G100 | First combined `n=3` attempt completed its combined arm but suite stopped on a deduplicated binding-hash bug; second receipt attempt stopped by 4 KiB `ComputeHash` reads on `D:`; third full-hash attempt was quiescence-rejected for active `ScheduledDefrag`/`Defrag.exe` | Failure/fix ledger only; no combined-vs-legacy verdict, timing, performance, quality, SOTA, or default-readiness claim |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -194,7 +195,7 @@ preserve the final residency invariant `forbidden_cold_ssd_to_vram=0`, but they
 do not establish a performance win, SOTA result, or long-form L0-L3 quality
 verdict.
 
-### G97-G100: Structural Gates and Promotion Churn Checks
+### G97-G101: Structural Gates and Promotion Churn Checks
 
 G97 is a native-Windows DS4 structural `n=1` gate on ds4-win commit `3f6dab1`.
 It is not a performance, quality, or SOTA run.
@@ -296,8 +297,30 @@ Interpretation: G100 proves only that these admission levers can reduce
 structural IQ2 promotion SSD traffic while preserving zero-failure
 fail-closed counters on this short surface. `min_weight=0.02` alone filtered
 zero candidates, so the byte reduction came from confirmation and budget/window
-gating, not from weight alone. There is no performance claim, no quality or
-L0-L3 claim, no SOTA claim, and no default-readiness claim.
+gating, not from weight alone. The combined arm promoted 16 of 312 candidates,
+read 113,246,208 IQ2 SSD bytes in 0.1327447 s, and produced identical output.
+There is no t/s claim, no performance claim, no quality or L0-L3 claim, no SOTA
+claim, and no default-readiness claim.
+
+G101 attempted to turn the G100 combined gate into a combined-vs-legacy receipt
+comparison, but it produced no verdict:
+
+- First attempt: the combined `n=3` arm completed, but the suite stopped before
+  a combined-vs-legacy verdict because of a deduplicated binding-hash bug. Fix:
+  ds4-win commit `876b4b3`.
+- Second attempt: the receipt run stopped because `ComputeHash` used 4 KiB
+  reads and drove `D:` to roughly 3-6 MiB/s. Fix: commit `2a5e696`, which moved
+  receipt hashing to 8 MiB `SequentialScan`/`IncrementalHash` reads. The
+  1 GiB `D:` microbench measured 97.5 MiB/s with 128 reads, and receipt tests
+  passed.
+- Third attempt: the full hash completed, but the benchmark was correctly
+  rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was
+  active on `D:`. There is no valid timing result. Fix: commit `91f1445`
+  preserves preflight and retries quiescence without rehash; all other errors
+  remain fail-closed.
+
+G101 therefore has no combined-vs-legacy result and must not be used for
+timing, throughput, performance, quality, SOTA, or default-readiness claims.
 
 ## Planned End-to-End Gates
 
