@@ -67,7 +67,7 @@ Relevant existing evidence:
 | G97 | PASS, `n=1` structural only. Earlier closed-router run had no true cold promotions; forced eviction proved fail-closed on snapshot miss; two open-router attempts were refused before launch by quiescence because Windows `ScheduledDefrag` saturated `D:`. The final raw arena12 4+8 open-router/probation run completed with zero failures/forbidden/ram skips, mixed 5+1 promotion counters, 56 backing-RAM reclaims, and 141 `cold_to_2bit` stages in measured execution. |
 | G98/G99 | G98 fixed-order `n=3` completed cleanly with exact 64-token output SHA across both arms, but the candidate was much slower; because order was fixed, the parent final performance verdict is withheld. No quality, SOTA, default-readiness, or long-form L0-L3 claim may be inferred. G99 is deferred until promotion churn is fixed. |
 | G100 | Structural `n=1` promotion gate isolation sweep only. Five arms completed with identical output SHA, zero failures, zero forbidden/direct cold-to-VRAM transitions, and exact per-arm IQ2 SSD bytes recorded. The combined gate reduced IQ2 promotion SSD bytes by 94.87% versus legacy, while `min_weight=0.02` alone filtered zero candidates. No performance, quality, SOTA, or default-readiness claim. |
-| G101 | No verdict. First combined `n=3` attempt completed its combined arm, but the suite stopped on a deduplicated binding-hash bug before producing any combined-vs-legacy verdict; fixed in ds4-win `876b4b3`. A second receipt attempt was stopped because `ComputeHash` used 4 KiB reads and drove `D:` to 3-6 MiB/s; fixed in `2a5e696` with 8 MiB `SequentialScan`/`IncrementalHash`, a 1 GiB `D:` microbench at 97.5 MiB/s with 128 reads, and receipt tests passing. A third full-hash attempt completed hashing, but the benchmark was correctly rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was active on `D:`; no timing data is valid. Fix `91f1445` preserves preflight and retries quiescence without rehash, while failing closed on other errors. |
+| G101 | No verdict. First combined `n=3` attempt completed its combined arm, but the suite stopped on a deduplicated binding-hash bug before producing any combined-vs-legacy verdict; fixed in ds4-win `876b4b3`. A second receipt attempt was stopped because `ComputeHash` used 4 KiB reads and drove `D:` to 3-6 MiB/s; fixed in `2a5e696` with 8 MiB `SequentialScan`/`IncrementalHash`, a 1 GiB `D:` microbench at 97.5 MiB/s with 128 reads, and receipt tests passing. A third full-hash attempt completed hashing, but the benchmark was correctly rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was active on `D:`. A fourth attempt passed a transient quiescence window while `Defrag.exe` remained active, then measured 38.180 s prefill versus about 13.7 s previously; it is contaminated and carries no verdict. Commit `91f1445` preserves preflight and retries quiescence without rehash. Commit `779c8e7` additionally blocks `Defrag.exe` for benchmark/quality gates independently of instantaneous counters, preserves structural-safety behavior, and emits process-isolation receipt v2. Unit tests, AST checks, and a real-process probe passed; the probe exited nonzero with one maintenance conflict (`Defrag.exe`, PID 16604) and launched zero DS4 processes. |
 
 ## Runtime contract
 
@@ -593,6 +593,19 @@ The ledger records the failure modes and fixes only:
   active on `D:`. There is no valid timing result. Fix: commit `91f1445`
   preserves the preflight and retries quiescence without rehash; other errors
   remain fail-closed.
+- Fourth attempt: the retry loop passed a transient quiescence window while
+  Windows `ScheduledDefrag`/`Defrag.exe` was still active. Disk activity then
+  resumed and prefill took 38.180 s versus about 13.7 s in the preceding
+  attempt. This run is contaminated and produces no timing, performance,
+  quality, or combined-vs-legacy verdict.
+
+Ds4-win commit `779c8e7` closes that gate hole. For benchmark and quality gates,
+an active `Defrag.exe` now vetoes launch independently of instantaneous disk
+counters. Structural-safety behavior is preserved, and the preflight emits
+process-isolation receipt v2. Unit tests and AST checks passed. A real-process
+probe also passed: it exited nonzero, recorded
+`maintenance_conflict_count=1` for `Defrag.exe` PID 16604, and launched zero
+DS4 processes.
 
 Do not infer a G101 performance, quality, SOTA, default-readiness, or
 combined-vs-legacy verdict from these attempts.

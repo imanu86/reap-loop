@@ -46,7 +46,7 @@ Implementation commits:
 | G97 | MEASURED | Native-Windows DS4 structural route gate | `n=1` structural invocation on commit `3f6dab1` | 208 stages, 65 reclaims, zero failures, zero forbidden events; executable SHA recorded below | Structural safety for this invocation only; no performance, quality, or SOTA claim |
 | G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
 | G100 | MEASURED | IQ1 promotion gate isolation sweep | Five structural `n=1` arms; prompt `Hi`; 16-token warmup and 16-token measured request; GPU planner on; 16 promotion slots; route packed copy off | All arms identical output SHA; zero failures, zero forbidden/direct cold-to-VRAM transitions, zero RAM-admit skips; combined gate reduced IQ2 SSD bytes 94.87% vs legacy; weight `.02` alone filtered zero | Structural lever isolation only; no performance, quality, SOTA, or default-readiness claim |
-| G101 | STOPPED | Combined-vs-legacy receipt attempts | Three attempted follow-ups after G100 | First combined `n=3` attempt completed its combined arm but suite stopped on a deduplicated binding-hash bug; second receipt attempt stopped by 4 KiB `ComputeHash` reads on `D:`; third full-hash attempt was quiescence-rejected for active `ScheduledDefrag`/`Defrag.exe` | Failure/fix ledger only; no combined-vs-legacy verdict, timing, performance, quality, SOTA, or default-readiness claim |
+| G101 | STOPPED | Combined-vs-legacy receipt attempts | Four attempted follow-ups after G100 | First combined `n=3` attempt completed its combined arm but suite stopped on a deduplicated binding-hash bug; second receipt attempt stopped by 4 KiB `ComputeHash` reads on `D:`; third full-hash attempt was quiescence-rejected for active `ScheduledDefrag`/`Defrag.exe`; fourth passed a transient quiescence window while `Defrag.exe` remained active, then showed 38.180 s prefill versus about 13.7 s previously and was invalidated as contaminated. Ds4-win `779c8e7` now vetoes `Defrag.exe` for benchmark/quality gates, preserves structural-safety behavior, and emits process-isolation receipt v2; unit/AST checks and a real-process fail-closed probe passed with one conflict, PID 16604, and zero DS4 launches | Failure/fix ledger only; no combined-vs-legacy verdict, timing, performance, quality, SOTA, or default-readiness claim |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -318,6 +318,18 @@ comparison, but it produced no verdict:
   active on `D:`. There is no valid timing result. Fix: commit `91f1445`
   preserves preflight and retries quiescence without rehash; all other errors
   remain fail-closed.
+- Fourth attempt: the retry path passed a transient quiescence window even
+  though Windows `ScheduledDefrag`/`Defrag.exe` remained active. Disk activity
+  resumed and prefill took 38.180 s versus about 13.7 s previously. The run is
+  contaminated and has no timing, performance, quality, or cross-arm verdict.
+
+Ds4-win commit `779c8e7` closes the process-isolation gap for future runs.
+Benchmark and quality gates now veto an active `Defrag.exe` independently of
+instantaneous disk counters; structural-safety behavior is unchanged, and the
+preflight emits process-isolation receipt v2. Unit tests and AST checks passed.
+A real-process probe exited nonzero as required, recorded
+`maintenance_conflict_count=1` for `Defrag.exe` PID 16604, and confirmed that
+zero DS4 processes were launched.
 
 G101 therefore has no combined-vs-legacy result and must not be used for
 timing, throughput, performance, quality, SOTA, or default-readiness claims.
