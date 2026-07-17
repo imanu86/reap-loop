@@ -2917,3 +2917,64 @@ not support it yet; no quality or runtime claim exists. The CPU-only Q1_0
 layout and dot-product smoke is documented in
 [`0a38d94`](https://github.com/imanu86/moe-aggressive-commit/commit/0a38d94)
 with 10 focused tests passing.
+
+### G107 IQ1_S cold-only residency gate
+
+G107 implemented the fail-closed policy requested after G106: preserve every
+selected IQ2 route already resident in VRAM, the prefill snapshot arena, or the
+tiering RAM tier; permit an IQ1_S substitution only when the authoritative IQ2
+expert is classified as SSD cold and the exact IQ1_S representation is already
+present in the RAM cache. Unknown residency, an IQ1 cache miss, or any failure
+falls back to all six main IQ2 routes. The runtime, harness, raw HTTP checkpoint
+and focused contract were committed in native Windows as
+[`83aec83`](https://github.com/imanu86/ds4-win/commit/83aec83).
+
+The validated structural run used the cyberpunk HTML prompt, temp 0, no-think,
+64 generated tokens, three requests in one process, the 30 GiB / 4,551-slot
+prefill-mass WRAP arena, request-scoped closed mass mask, 320-entry VRAM expert
+cache, split-fused routes and enforced mass-LFRU tiering. All three outputs were
+byte-identical to the expected baseline SHA
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+Server decode measured `4.47 / 4.48 / 4.50` t/s. End-to-end request times were
+`63.944 / 22.568 / 19.330` seconds because the first request paid the one-time
+25.682-second 30 GiB arena WRAP while the later requests reused it. This is an
+`n=3` structural exactness result, not an L0-L3 quality grade and not a SOTA
+throughput claim.
+
+Across 7,680 routed calls and 46,080 selected routed-expert uses, measured
+residency was 17,439 VRAM and 28,641 prefill-snapshot RAM. SSD-cold, tier-RAM,
+IQ1 RAM hits, IQ1 substitutions, uncertain classifications and failures were
+all zero. The 6 GiB IQ1 cache was therefore not materialized and the receipt
+records `iq1_s_ram_cache_deferred_unused=true`. The three tier summaries also
+reported zero cold routes, zero SSD bytes and zero forbidden direct
+SSD-to-VRAM transitions. Aggregate IQ2 snapshot-to-VRAM transport was
+227,030,335,488 bytes.
+
+This is not an isolated zero caused by the three-request lifecycle. The prior
+G73 SOTA aggregate contains three independent clean processes; each reports
+2,752 tier calls, 16,512 selected routes, 10,692 snapshot-RAM hits, 5,820 VRAM
+hits, zero cold routes, zero IQ2 SSD bytes and zero forbidden direct
+SSD-to-VRAM transitions. Their validated decode rates were `4.98 / 4.97 /
+5.01` t/s. G46 and G70 also measured zero tier-cold routes in each of their
+three processes, although G46 predates the modern contamination contract and
+G70 is descriptive rather than performance-claim eligible. Thus the closed
+SOTA stack already supplies independent `n>=3` evidence that the IQ2 cold-SSD
+path is not its decode bottleneck.
+
+Decision: the cold-only rule is mechanically correct, exact and fail closed,
+but this SOTA-like closed-mask protocol gives it no work. The measured remaining
+transport target is RAM-to-VRAM, not SSD-to-RAM. Do not spend an `n>=3` matrix
+on larger IQ1_S SSD/RAM caches under the same closed mask. The next active
+representation experiment is a resident Q1_0 base or equivalent compact RAM
+representation that reduces the bytes for the 28,641 snapshot-RAM routes,
+while IQ2 remains authoritative for hot experts and promotion.
+
+The complete native result and receipts are committed as
+[`2fc99c1`](https://github.com/imanu86/ds4-win/commit/2fc99c1). In parallel,
+Q1_0 runtime step 1 (type 41, 128 weights / 18 bytes, dot/dequant and fail-closed
+dispatch) is committed as
+[`9251e5e`](https://github.com/imanu86/moe-aggressive-commit/commit/9251e5e),
+and step 2 (separate binder metadata/offsets plus compiling qwarp32 gate/up/down
+kernels, still not runtime-dispatched) as
+[`2c32417`](https://github.com/imanu86/moe-aggressive-commit/commit/2c32417).
+Neither Q1_0 commit supports a speed or quality claim yet.
