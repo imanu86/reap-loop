@@ -1,8 +1,14 @@
 # Design 0053: IQ1_S probation promotion, runtime opt-in
 
 **Status:** runtime candidate implemented on an experimental branch,
-2026-07-17; structural and quality gates are still pending. This file makes
-no quality, SOTA, or 10 t/s claim.
+2026-07-17; G97 has a structural PASS with final telemetry preserved, but
+quality and performance gates are still pending. The current measured
+architecture is a composed prefill snapshot plus open router with a pre-reserved
+separate 16-slot pinned probation pool. The measured structural route shape is
+mixed 5+1: five exact IQ2/Q2 routes plus one IQ1_S minimum route per eligible
+routed layer/token. G97 `n=1` is structural only; G98/G99 harnesses are ready
+for clean `n>=3` follow-up but remain pending. This file makes no runtime
+verdict, quality, SOTA, or 10 t/s claim.
 
 0053 is the next runtime-only step after the IQ1_S sidecar and GPU planner
 checks in `docs/IQ1_S_WINDOWS_TEST_MATRIX_20260716.md`. It is not a bake, not
@@ -17,16 +23,16 @@ already measured IQ1_S sidecar shape:
 
 ```text
 current token:
-  router computes 6 selected routes
-  5 higher-weight routes execute from IQ2/Q2
-  1 minimum-weight route executes from IQ1_S sidecar
+  open router computes 6 selected routes
+  5 higher-weight routes remain exact via SSD -> pinned RAM -> GPU if absent
+  1 minimum-weight route executes from the IQ1_S sidecar
 
 after that compute is queued:
   exact IQ2/Q2 source for the same expert is staged into pinned RAM probation
   the staged slot cannot enter VRAM for this token
 
 next token or later:
-  if the expert gains weight and exits the minimum route, use the staged IQ2/Q2
+  if the expert gains weight and exits the minimum route, exact IQ2 is eligible
   if it remains the minimum route, continue using IQ1_S
 ```
 
@@ -47,12 +53,15 @@ Relevant existing evidence:
 
 | Gate | Use in 0053 |
 |---|---|
+| G74 | Guardrail evidence only: use for fail-closed/contamination discipline, not as promotion, performance, or quality evidence for 0053. |
 | G75 | Real expert IQ1_S component validation and transport measurement only. |
 | G76b | Structural mixed-route counters for current-token mixed IQ2/IQ1 execution. |
-| G86 | Clean `n=3` transport/perf baseline for IQ1 RAM cache, no L0-L3 grade. |
+| G86 | Clean `n=3` transport/perf baseline for IQ1 RAM cache and a guardrail for cache/host-state reporting, no L0-L3 grade and no 0053 promotion verdict. |
 | G89-G93 | Structural planner/cache profiling only; G92/G93 timing contaminated by `ScheduledDefrag`. |
 | G94 | Clean short `n=3` planner mechanical/perf comparison with exact repeated outputs, no L0-L3 grade. |
 | G95 | Quality campaign not complete; first attempt/probe contaminated or invalidated by Defrag/cleanup state. |
+| G97 | PASS, `n=1` structural only. Earlier closed-router run had no true cold promotions; forced eviction proved fail-closed on snapshot miss; two open-router attempts were refused before launch by quiescence because Windows `ScheduledDefrag` saturated `D:`. The final raw arena12 4+8 open-router/probation run completed with zero failures/forbidden/ram skips, mixed 5+1 promotion counters, 56 backing-RAM reclaims, and 141 `cold_to_2bit` stages in measured execution. |
+| G98/G99 | Harnesses ready for clean `n>=3`; pending execution/evidence, so no performance, exactness beyond measured scope, or quality verdict may be inferred. |
 
 ## Runtime contract
 
@@ -62,22 +71,25 @@ accepted main IQ2/Q2 runtime.
 
 Per routed layer and token:
 
-1. The router computes the normal 6 selected routes and keeps their exact IDs
+1. The open router computes the normal 6 selected routes and keeps their exact IDs
    and gate weights.
 2. The route with the minimum weight is marked `cold_iq1_current_token`.
    Ties follow the same deterministic first-minimum rule as the existing CPU
    fixture and GPU planner evidence.
-3. The other five routes are `hot_iq2_current_token` and use the main exact
-   IQ2/Q2 path.
+3. The other five routes are `hot_iq2_current_token` and remain exact. If an
+   exact hot-lane expert is absent from GPU, it may load through the same
+   exact SSD-to-pinned-RAM-to-GPU route as other open-router exact misses.
 4. The IQ1_S route reads from the sidecar for this token only. It does not
    rewrite the selected IDs, gate weights, or hot route count.
 5. After the IQ1_S compute for that expert has been queued, the corresponding
-   exact IQ2/Q2 expert is staged from the authoritative primary source into a
-   pinned RAM probation slot.
+   exact IQ2/Q2 expert is staged from the authoritative primary source into
+   the pinned RAM probation pool. Backing RAM reclaim is allowed only for an
+   exact expert copy that is already resident in VRAM; reclaim cannot create or
+   imply an approximate exact source.
 6. A probation slot is not eligible for VRAM publication until the next token.
-   There is no same-token format switch.
+   There is no same-token format switch and no direct SSD-to-VRAM promotion.
 7. On a later token, if that expert is selected and is no longer the minimum
-   route, the runtime may use the staged exact IQ2/Q2 copy. If the expert is
+   route, the exact IQ2/Q2 copy becomes next-token eligible. If the expert is
    still the minimum route, it stays IQ1_S for that token.
 
 This gives the minimum route a cheap current-token path while testing whether
@@ -93,7 +105,8 @@ short-term route momentum justifies exact IQ2/Q2 promotion for the next token.
 | `VRAM_IQ2` | exact IQ2/Q2 compute copy | existing VRAM expert cache / selected path | compute copy of exact source |
 
 There is no IQ1_S pinned arena, no IQ1_S VRAM cache, no direct SSD-to-VRAM IQ2
-promotion in compose, and no bake into a mixed model file.
+promotion in compose or open-router publication, and no bake into a mixed
+model file.
 
 The exact IQ2/Q2 source remains authoritative. IQ1_S can execute the cold
 minimum route, but it never becomes the source for an exact promotion. A
@@ -128,6 +141,10 @@ These are release gates:
 10. **Publication is causal.** A probation slot becomes eligible only after the
     token boundary and after its source identity, layer/expert owner,
     generation, and byte count are validated.
+11. **VRAM map miss is fail-closed.** If a would-be exact publication cannot
+    resolve a valid VRAM map entry for the target expert, publication is
+    rejected rather than falling back through stale host state or silently
+    treating the route as exact.
 
 ## Probation slots
 
@@ -141,21 +158,28 @@ Initial meaning:
 
 - unset or `0`: disabled;
 - positive integer: number of exact IQ2/Q2 pinned RAM probation slots;
-- first structural point: `16`.
+- implemented structural point: `16`.
 
-The first point is intentionally small. One exact routed expert triplet is
+The implemented point is intentionally small. One exact routed expert triplet is
 6.75 MiB, so 16 slots are:
 
 ```text
 16 * 6.75 MiB = 108 MiB
 ```
 
-This is only the first mechanism point, not a proposed final cache size.
+This is only the first mechanism point, not a proposed final cache size. The
+16-slot pool is explicit pinned probation capacity outside the composed
+prefill snapshot. It is pre-reserved before open-router publication and shared
+by open-router exact hot-lane misses and IQ1_S promotion. Candidate capacity is
+reduced before publication so the open router does not publish more exact
+candidates than the composed snapshot plus probation layout can hold.
 
 Implemented first-slot policy:
 
-- reclaim the configured number of lowest-prefill-mass slots from the
-  published exact snapshot, preserving the same pinned-arena allocation;
+- compose the prefill snapshot with the configured number of candidate slots
+  withheld before publication, preserving the same pinned-arena allocation;
+- reserve the withheld capacity as a 16-slot pinned probation pool outside the
+  snapshot;
 - stage only after the current-token IQ1_S route has been enqueued;
 - if no probation slot can be reclaimed, record a promotion failure and
   continue serving the already queued current token; the run then fails the
@@ -163,6 +187,17 @@ Implemented first-slot policy:
 - do not evict a slot that is in-flight to VRAM or under validation;
 - use a deterministic replacement rule among idle probation slots for
   reproducible G97 evidence.
+
+Backing-RAM reclaim policy is telemetry-visible and conservative:
+
+- reclaim only an exact backing-RAM copy whose matching exact expert is already
+  resident in VRAM;
+- never reclaim IQ1_S sidecar bytes and never treat a reclaim as an exact-source
+  reconstruction;
+- count reclaims separately from promotion stages so a structural pass can
+  prove pressure handling without implying a throughput or quality result;
+- fail the structural gate on reclaim bookkeeping mismatch, stale provenance,
+  RAM skip, or any forbidden direct SSD-to-VRAM transition.
 
 ## Telemetry
 
@@ -175,7 +210,8 @@ IQ1 RAM-cache traffic. The new final line is:
 snapshot_evictions=... cold_observed=... cold_existing_2bit=...
 cold_to_2bit_ram=... probation_ram_hits=... next_token_waits=...
 promotion_2bit_ssd_bytes=... promotion_2bit_ssd_seconds=...
-direct_ssd_to_vram_rejected=... failures=...
+promotion_backing_ram_reclaims=... direct_ssd_to_vram_rejected=...
+failures=...
 ```
 
 Together, the final summary must expose at least these facts, split by run and
@@ -197,6 +233,7 @@ arm:
 - cold routes observed, already exact-backed, and newly staged to IQ2 RAM;
 - probation RAM hits and deferred-eligibility waits;
 - exact IQ2 SSD bytes and seconds spent staging;
+- backing-RAM reclaims, reported separately from `cold_to_2bit_ram`;
 - `forbidden_cold_ssd_to_vram`;
 - promotion failures.
 
@@ -229,6 +266,9 @@ Known final counters from existing evidence that 0053 must preserve as context:
 | G93 | planner 640/640; wait 0.085 ms; router D2H 6.302 ms; metadata 3.624 ms; failures 0; output exact to G87/G91; timing contaminated. |
 | G94 planner off | clean `n=3`; IQ1 RAM cache 4 GiB; RAM hits 54.03%; every repeat SHA `e856d9ea88cd1c04f38cecee8b2ecb185f382a35b62495f3bc309fc339c1c004`. |
 | G94 planner on | clean `n=3`; same cache; planner 10240/10240; wait 1.363 ms; failures 0; same repeat SHA as planner off. |
+| G97 closed router | first structural attempt had no true cold promotions. |
+| G97 forced eviction | failed closed on a snapshot miss; useful fail-closed evidence only, not a promotion pass. |
+| G97 open router attempts | two attempts refused before launch by quiescence because Windows `ScheduledDefrag` was saturating `D:`. Final raw arena12 4+8 run completed after warmup with 9 reclaims/67 `cold_to_2bit`; measured structural PASS observed 56 reclaims/141 `cold_to_2bit`, with zero failures, zero forbidden transitions, and zero RAM skips. This is structural `n=1` evidence only and not a runtime, performance, quality, or default-readiness verdict. |
 
 ## Capacity arithmetic
 
@@ -290,8 +330,34 @@ may be used for 0053 promotion.
 
 ## Gate G97
 
-G97 is the first gate for this design. It is not allowed to produce a quality
-or SOTA verdict.
+G97 is the first gate for this design. It is `n=1` structural only and is not
+allowed to produce a runtime, performance, quality, or SOTA verdict.
+
+Current G97 state:
+
+- the first closed-router run had no true cold promotions;
+- a forced-eviction attempt failed closed on a snapshot miss;
+- two open-router attempts were refused before launch by quiescence because
+  Windows `ScheduledDefrag` was saturating `D:`;
+- the final raw arena12 4+8 open-router/probation run completed with the
+  intended mixed 5+1 shape and pre-reserved 16-slot probation pool;
+- warmup observed 9 backing-RAM reclaims and 67 `cold_to_2bit` promotions;
+- measured execution observed 56 backing-RAM reclaims and 141 `cold_to_2bit`
+  promotions;
+- failures, forbidden transitions, and RAM skips were all zero in that raw run;
+- machine-readable final G97 evidence is preserved for the structural pass;
+- the final receipt-locked rerun used ds4-win commit `3f6dab1`, executable
+  SHA-256 `39632000cc6b529948750c0a1ae7ef8ad23201791c4694e462af5055ca25c0fe`,
+  and completed Release build plus CTest `1/1` PASS;
+- the final rerun reconciled `208` exact IQ2/Q2 stages and `65` backing-RAM
+  reclaims, with `0` promotion failures and `0` forbidden direct
+  SSD-to-VRAM transitions; its structural output was
+  `Hello! How can I assist you today`;
+- model and IQ1_S receipt reuse was identity-bound and read-locked for this
+  structural gate only. G98/G99 benchmark and quality gates deliberately use
+  full-file SHA-256 instead of receipt reuse;
+- therefore G97 is a structural `n=1` PASS, but has no runtime, performance,
+  quality, SOTA, or default-readiness verdict.
 
 ### G97a: structural `n=1`
 
@@ -313,7 +379,7 @@ Required:
 - output, logs, source hashes, env, and final telemetry are preserved.
 
 Allowed claim: structural mixed-tier and deferred-promotion safety for this
-single invocation only.
+single invocation only, including the observed reclaim bookkeeping.
 
 Forbidden claims from G97a:
 
@@ -340,6 +406,18 @@ Only after G97a passes:
 Allowed claim: prompt-scoped clean performance/exactness measurement, if the
 run is uncontaminated and counters reconcile.
 
+This clean `n>=3` work is carried forward to G98/G99. The harnesses are ready,
+but execution/evidence remain pending.
+
+### Arena 14 caution
+
+Arena14 is not benchmark-safe for this design state. It can fall below 1 GiB
+available memory, so any run under that condition must not be used for clean
+benchmark timing, throughput, or promotion-readiness claims. Arena12 raw 4+8 is
+the relevant completed structural PASS above, and it remains limited to `n=1`
+structural interpretation even with the machine-readable final G97 record
+preserved.
+
 ### G97c: human L0-L3 grading
 
 Only after structural and clean perf/exactness gates:
@@ -351,6 +429,13 @@ Only after structural and clean perf/exactness gates:
   silent fallback that hides IQ1_S exposure.
 
 No verdict comes from `n=1`, repeat flags, exact hashes, or route counters.
+
+## Gates G98/G99
+
+G98/G99 are reserved for clean `n>=3` follow-up evidence after G97 structural
+wiring is accepted. The harnesses are ready, but evidence remains pending and
+cannot be used to claim performance, exactness beyond the measured scope,
+quality, SOTA, or default-readiness.
 
 ## Non-goals
 
