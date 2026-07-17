@@ -2833,3 +2833,39 @@ Native Windows commits: G103 aggregate/results
 [`1112cf3`](https://github.com/imanu86/ds4-win/commit/1112cf3), G104 protocol
 [`883c43b`](https://github.com/imanu86/ds4-win/commit/883c43b), and G104 result
 [`4854731`](https://github.com/imanu86/ds4-win/commit/4854731).
+
+### G105 full-IQ1 residency attempt
+
+G105 implemented an opt-in 46.875 GiB pageable Windows arena for all 10,240
+routed IQ1 experts. It used deterministic slots for layers 3 through 42,
+preloaded every expert once, froze the mapping, and forbade on-demand IQ1 SSD
+fallback during decode. The implementation, fail-closed harness, protocol and
+static contract were committed as
+[`8580241`](https://github.com/imanu86/ds4-win/commit/8580241). Build Release,
+native ctest and the G103/G104/G105 static contracts passed before launch.
+
+The first structural attempt was stopped after 535.754 seconds because OS
+telemetry disproved physical residency. It reached layer 42 and entered decode,
+but process working set peaked at 53,342,937,088 bytes and later fell to
+33,461,399,552 while private committed bytes stayed near 63,297,142,784.
+Available RAM reached 4,020,531,200 bytes. The system disk queue peaked at 25,
+system disk writes at 682,677,263 B/s, system reads at 1,719,828,058 B/s, and
+process page faults increased by 38,454,456. Process reads increased by
+150,741,854,757 bytes. No final content hash or cache summary exists because
+the invalid run was stopped; it supports no throughput, exactness or quality
+claim.
+
+This is a negative placement result, not an IQ1 compute failure. A decode-side
+counter of zero explicit IQ1 SSD bytes is insufficient when Windows trims or
+pages the pageable arena underneath the runtime. The existing contamination
+monitor also missed the failure because it required both available RAM below
+1 GiB and a high disk queue simultaneously; paging restored available RAM and
+broke that conjunction.
+
+Decision: reject complete 46.875 GiB IQ1 residency on this 64 GiB host. Measure
+the largest physically stable mass-ranked IQ1 arena while preserving the IQ2
+hot placement, then add a dedicated four-slot pinned DMA staging ring
+(18.75 MiB total) between pageable IQ1 RAM and H2D. Keep full-IQ1 preload as a
+research fallback only. The compact native receipt is
+`G105_IQ1_FULL_RESIDENT_ABORT_RECEIPT.json`; its hashes bind the uncommitted raw
+local stderr, telemetry and memory preflight files.
