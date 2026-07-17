@@ -2808,3 +2808,28 @@ without rerunning DS4. Next gate: a structural IQ1 profile separating SSD read,
 H2D enqueue/sync, hot/cold submit and join, followed by one transport lever at
 a time. SPEX cross-entropy surprise may later control probation width and
 promotion urgency, combined with router weight and recent mass.
+
+### G104 structural profile
+
+G104 enabled only the existing IQ1 profile instrumentation on the negative
+G103 candidate. It is `n=1` structural evidence, not a throughput or quality
+verdict. Across 2,560 mixed calls it measured 6,595.827 cumulative ms in 2,382
+SSD reads, 6,805.673 ms enqueueing 7,680 H2D copies, 561.803 ms in 2,560 H2D
+syncs, 12,957.775 ms submitting the five hot IQ2 routes, and 7,724.433 ms
+submitting the cold IQ1 route. Router D2H, metadata H2D and join submit were
+only 7.794, 14.857 and 17.965 cumulative ms. Timers may overlap and profiling
+adds overhead; they identify stages but are not summed into a wall-clock model.
+
+The measured placement conclusion is now explicit: the target is not an IQ1
+SSD cache layered on top of G73. The runtime slot size is 4,915,200 bytes, so
+all 10,240 routed IQ1 experts require 46.875 GiB. The next gate replaces the
+30 GiB IQ2 host arena with a preloaded all-IQ1 host arena, keeps the protected
+IQ2 set in VRAM plus only a small IQ2 RAM probation tier, and leaves IQ2 SSD
+backing for anticipated promotion. Packed IQ1 H2D remains separate because
+full host residency removes SSD reads but not the three copy submissions per
+IQ1 expert.
+
+Native Windows commits: G103 aggregate/results
+[`1112cf3`](https://github.com/imanu86/ds4-win/commit/1112cf3), G104 protocol
+[`883c43b`](https://github.com/imanu86/ds4-win/commit/883c43b), and G104 result
+[`4854731`](https://github.com/imanu86/ds4-win/commit/4854731).
