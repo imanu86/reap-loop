@@ -3004,3 +3004,66 @@ The run reported `8.3 t/s` server decode, `51.241 s` prefill/TTFT and
 or support a performance verdict. The native receipt and explicit exclusion
 are committed as
 [`ee8167c`](https://github.com/imanu86/ds4-win/commit/ee8167c).
+
+### G109 Q1_0 real sidecar and resident transport
+
+G109 converted the authoritative IQ2/Q2 tensors for routed layer 42 to a real
+Q1_0 type-41 sidecar using the reference CPU helper ported from llama.cpp. The
+fixture is explicitly `derived_from_iq2=true` and `not_quality_optimal=true`:
+`C:\ds4-models\ds4-q1-layer42-derived-iq2-84b4ffb.gguf`, `907428832`
+bytes, SHA-256
+`58d537738ac80df504d9954a694703c37cc5f9ee236ca8c06ce94cea1ab8ef26`.
+Its receipt SHA-256 is
+`6a36ae77c20e60f2e8a6be57b64f1f8eb524def9d9d119201c81e92c56312462`.
+The converter provenance/hardening is committed as
+[`f969faa`](https://github.com/imanu86/moe-aggressive-commit/commit/f969faa),
+[`2dd1b0a`](https://github.com/imanu86/moe-aggressive-commit/commit/2dd1b0a) and
+[`84b4ffb`](https://github.com/imanu86/moe-aggressive-commit/commit/84b4ffb).
+
+The native runtime added a pinned host arena for the Q1_0 active layer, a
+receipt-bound selected loader and fail-closed telemetry. The ordered `n=1`
+structural gates measured:
+
+- env-off preserved the known exact content hash and observed no Q1_0 state;
+- a valid sidecar without `DS4_Q1_0_SELECTED_LOAD=1` stopped with the expected
+  fail-closed diagnostic and did not fall back silently;
+- direct-file Q1_0 produced nine selected loads and `251265024` routed pread
+  bytes with zero failures;
+- the first resident attempt failed before serving because generic arena
+  geometry rejected type 41; this negative result led to the explicit Q1-only
+  geometry fix;
+- the fixed resident attempt produced 71 resident hits, zero misses,
+  `251265024` H2D bytes and zero routed direct-file reads.
+
+Runtime, runner and geometry commits are
+[`c6fbb2b`](https://github.com/imanu86/ds4-win/commit/c6fbb2b),
+[`1f661f0`](https://github.com/imanu86/ds4-win/commit/1f661f0) and
+[`eabf03c`](https://github.com/imanu86/ds4-win/commit/eabf03c).
+
+After the structural gates, an isolated transport matrix used six independent
+clean processes in balanced order `C-D-D-C-C-D`, three per arm. Every run used
+the same executable SHA, passed quiescence, generated the same retained output
+SHA `8a17fc0dc61e8520bdbe3a735b000358a6476cbe9f0e3d86c54a51cf26b5d009`
+and moved the same Q1_0 route payload.
+
+| G109 arm | Decode t/s, three processes | Mean / median | HTTP t/s mean | TTFT mean |
+|---|---:|---:|---:|---:|
+| Direct file | `2.45, 2.58, 2.58` | `2.5367 / 2.58` | `1.2845` | `2.7173 s` |
+| Resident arena | `2.61, 2.44, 2.67` | `2.5733 / 2.61` | `1.2895` | `2.7247 s` |
+
+The resident arm eliminated `753795072` routed pread bytes across its three
+processes and served the same byte count from pinned RAM with zero misses. The
+measured mean deltas were only `+1.4455%` process decode, `+0.3923%` HTTP
+throughput and `+0.2699%` TTFT time. Therefore the earlier `n=1` apparent 2x
+decode uplift is rejected as a performance result: it was not reproduced by
+the balanced matrix. The measured positive finding is zero routed pread, not a
+material throughput win on this warm one-layer fixture.
+
+No SOTA or quality claim follows. G109 uses eight output tokens and one
+IQ2-derived Q1_0 layer, so it is not an L0-L3 quality experiment and cannot be
+compared with the complete G46/G73 stack. The current Q1 resident mode owns the
+single global host arena and disables the IQ2 arena. The next gate is a typed
+dual-arena resolver keyed by backing/layer/expert, preserving all Q1 fail-closed
+rules, followed by exact safety and `n>=3` comparison of the complete composite.
+The complete native protocol and result report are committed as
+[`eb85ee4`](https://github.com/imanu86/ds4-win/commit/eb85ee4).
