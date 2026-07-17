@@ -2728,7 +2728,7 @@ slots, cache320, source-parts WRAP with waved reclaim, composed prefill mass
 tiering, static budget32, GPU-resident no-default-sync routes and SplitFused.
 The candidate changes only cold execution: one cold expert per routed layer is
 served from the verified IQ1_S sidecar through the mixed GPU planner and a
-1 GiB pinned IQ1 RAM cache. Promotion, open-router reserve slots,
+0.5 GiB pinned IQ1 RAM cache. Promotion, open-router reserve slots,
 RoutePackedCopy, packed IQ1 H2D and IQ1 VRAM cache are disabled.
 
 The IQ1_S sidecar was copied from archival SATA storage to the benchmark NVMe:
@@ -2745,11 +2745,66 @@ no timing, exactness, quality or SOTA datapoint from this attempt. Available
 memory then remained in the 23.88--23.95 GiB range over eight samples spanning
 107 seconds, so the protocol was not weakened to force a launch.
 
+After a clean Windows reboot, available RAM rose to 54.88 GiB and the original
+1 GiB candidate reached DS4. It then failed closed at decode layer 3 because
+the extra 0.998 GiB `cudaHostAlloc` could not coexist with the unchanged 30 GiB
+G73 arena. This run emitted zero tokens and is not timing or quality evidence.
+A same-stack 0.5 GiB structural probe completed with 109 pinned IQ1 slots and
+zero cache/runtime failures. It measured a 6.95% cache hit rate, 10.904 GiB of
+IQ1 sidecar reads and 2.55 server decode t/s, but remains `n=1` exploratory
+evidence only. The protocol was amended to 0.5 GiB rather than shrinking the
+G73 arena.
+
+The official 0.5 GiB safety then passed: arena30/4551 was not capped, cache320
+and SplitFused accounting were complete, 2,560 mixed calls used one IQ1 expert,
+the IQ1 cache had 109 slots and zero failures, IQ2 tier SSD bytes stayed zero,
+and no cold SSD-to-VRAM path occurred. Its observed 2.70 server decode t/s is
+structural `n=1`, not a performance verdict. The safety receipt SHA-256 is
+`6dbc0fcfd2b3d7a25070b5c106dbc3ae5c138ea468d1b3e0d5fb2fc4d2086e90`.
+
+Three runner defects were exposed fail-closed before the matrix: runtime OOM
+was initially masked by a later route-summary count check; native child stdout
+polluted the PowerShell row pipeline; and path-bound receipt reuse was invalid
+for benchmark members. The final matrix design keeps control sidecar-free and
+full-hashes its IQ2 model, while candidate members reuse one full-hash
+model+IQ1 suite receipt under parent read/deny-write/delete locks.
+
 Native Windows protocol commits:
 [`bebc194`](https://github.com/imanu86/ds4-win/commit/bebc194) and
-[`cbb410c`](https://github.com/imanu86/ds4-win/commit/cbb410c).
-Resume point after a clean reboot: rerun
-`g103_iq1_cold_sota_ab.ps1 -SafetyOnly`; only a passing structural safety may
-unlock the preregistered interleaved n>=3 matrix. Candidate IQ1 output is not
-required to equal the G73 IQ2 hash; quality remains a separate L0-L3 n>=3
-gate, while the control must retain the exact G73 hash.
+[`cbb410c`](https://github.com/imanu86/ds4-win/commit/cbb410c). Post-reboot
+corrections are [`8992865`](https://github.com/imanu86/ds4-win/commit/8992865),
+[`0e84a9f`](https://github.com/imanu86/ds4-win/commit/0e84a9f),
+[`1ca5a5e`](https://github.com/imanu86/ds4-win/commit/1ca5a5e), and
+[`360e065`](https://github.com/imanu86/ds4-win/commit/360e065). Candidate IQ1
+output is not required to equal the G73 IQ2 hash; quality remains a separate
+L0-L3 n>=3 gate, while the control must retain the exact G73 hash.
+
+The preregistered interleaved matrix then completed with three independent
+processes per arm and no outlier extension. G73 control server decode was
+`5.04 / 5.11 / 4.96` t/s, mean `5.0367` and median `5.04`. The candidate with
+one cold IQ1_S expert per routed layer was `2.71 / 2.71 / 2.69` t/s, mean
+`2.7033` and median `2.71`: a measured `-46.32%` regression. Candidate output
+was deterministic across all three processes, all runtime failure counters
+were zero, and the control retained its exact expected content hash. This
+64-token matrix is transport/performance evidence, not an L0-L3 quality
+verdict.
+
+Each candidate process recorded 2,560 mixed calls, 178 IQ1 RAM-cache hits,
+2,382 misses, 2,273 evictions, 10.904 GiB of IQ1 sidecar reads and 11.719 GiB
+of IQ1 H2D. The 109-slot cache therefore hit only 6.95%. The important
+interpretation is that these accesses replace the same class of primary cold
+IQ2 routes that G73 serves from its 30 GiB RAM arena with zero IQ2 SSD bytes;
+G103 turned one RAM-served cold route per layer/token into a mostly SSD-served
+IQ1 route. Exact expert sequences are not assumed identical after output
+divergence. IQ1 calculation is operational, but this storage placement is not
+amortized and is not a SOTA candidate.
+
+The aggregate initially stopped after all six valid members because it checked
+the nonexistent `build_input_fingerprint_sha256` field instead of the emitted
+`build_manifest_input_fingerprint_sha256`. The corrected resume path validates
+the existing full-hash suite receipt against path, bytes, timestamps, file IDs
+and declared hashes under parent locks, then aggregates existing members
+without rerunning DS4. Next gate: a structural IQ1 profile separating SSD read,
+H2D enqueue/sync, hot/cold submit and join, followed by one transport lever at
+a time. SPEX cross-entropy surprise may later control probation width and
+promotion urgency, combined with router weight and recent mass.
