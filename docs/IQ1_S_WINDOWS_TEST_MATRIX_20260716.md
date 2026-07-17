@@ -45,6 +45,7 @@ Implementation commits:
 | G77 | PLANNED | Matched quality A/B | Main 2-bit vs IQ1_S sidecar; same build, prompt and settings; `n>=3` per arm; temp 0, nothink | Quiescent host, preserved raw outputs, recorded L0-L3 grade for every sample | Prompt-scoped quality comparison only after grading |
 | G97 | MEASURED | Native-Windows DS4 structural route gate | `n=1` structural invocation on commit `3f6dab1` | 208 stages, 65 reclaims, zero failures, zero forbidden events; executable SHA recorded below | Structural safety for this invocation only; no performance, quality, or SOTA claim |
 | G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
+| G100 | MEASURED | IQ1 promotion gate isolation sweep | Five structural `n=1` arms; prompt `Hi`; 16-token warmup and 16-token measured request; GPU planner on; 16 promotion slots; route packed copy off | All arms identical output SHA; zero failures, zero forbidden/direct cold-to-VRAM transitions, zero RAM-admit skips; combined gate reduced IQ2 SSD bytes 94.87% vs legacy; weight `.02` alone filtered zero | Structural lever isolation only; no performance, quality, SOTA, or default-readiness claim |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -193,7 +194,7 @@ preserve the final residency invariant `forbidden_cold_ssd_to_vram=0`, but they
 do not establish a performance win, SOTA result, or long-form L0-L3 quality
 verdict.
 
-### G97-G98: Structural Gate and Packed-Copy Fail-Closed Check
+### G97-G100: Structural Gates and Promotion Churn Checks
 
 G97 is a native-Windows DS4 structural `n=1` gate on ds4-win commit `3f6dab1`.
 It is not a performance, quality, or SOTA run.
@@ -263,6 +264,40 @@ fix, Resume validated the summary without rerunning.
 Next design direction: IQ1 probation must not promote every cold route. It
 needs confirmation or a second touch, a mass/weight threshold, and a bounded
 promotion budget.
+
+G100 then isolated those proposed promotion gates as a structural `n=1`
+mechanical sweep. It used prompt `Hi`, temperature 0, no think, one 16-token
+warmup and one 16-token measured request per arm, context 256, dynamic arena
+12 GiB, IQ1_S RAM cache 1 GiB, layers 3..42, mixed cold-one routing, GPU
+planner enabled, open-router prefill compose,
+`DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=16`,
+`DS4_IQ1_PROMOTION_PROBATION_SLOTS=16`, and `RoutePackedCopy` disabled.
+
+Source evidence:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g100_iq1_promotion_gate_sweep_result.json`
+plus each per-arm `result_path` JSON preserved by that summary.
+
+All five arms produced identical output SHA-256
+`cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`.
+Every arm had `promotion_failures=0`,
+`promotion_direct_ssd_to_vram_rejected=0`,
+`tier_forbidden_cold_ssd_to_vram=0`, `tier_cold_to_vram=0`,
+`tier_failures=0`, and `ram_admit_skips=0`.
+
+| Arm | Config | IQ2 SSD bytes | IQ2 SSD GiB | IQ2 SSD GiB/s | `cold_to_2bit` | Skips touches/weight/mass/request/window | Failures | Byte reduction vs legacy |
+|---|---|---:|---:|---:|---:|---|---:|---:|
+| `legacy` | touches=1; weight=0; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.677 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `confirm-only` | touches=2; weight=0; mass=0; request_budget=0; window=0/0 | 424,673,280 | 0.396 | 0.779 | 60 | 252/0/0/0/0 | 0 | 80.77% |
+| `budget-only` | touches=1; weight=0; mass=0; request_budget=16; window=40/1 | 141,557,760 | 0.132 | 0.106 | 20 | 0/0/0/0/292 | 0 | 93.59% |
+| `weight-only` | touches=1; weight=0.02; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.680 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `combined` | touches=2; weight=0.02; mass=0; request_budget=16; window=40/1 | 113,246,208 | 0.105 | 0.794 | 16 | 252/0/0/0/44 | 0 | 94.87% |
+
+Interpretation: G100 proves only that these admission levers can reduce
+structural IQ2 promotion SSD traffic while preserving zero-failure
+fail-closed counters on this short surface. `min_weight=0.02` alone filtered
+zero candidates, so the byte reduction came from confirmation and budget/window
+gating, not from weight alone. There is no performance claim, no quality or
+L0-L3 claim, no SOTA claim, and no default-readiness claim.
 
 ## Planned End-to-End Gates
 

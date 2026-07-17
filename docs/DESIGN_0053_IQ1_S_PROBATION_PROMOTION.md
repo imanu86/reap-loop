@@ -66,6 +66,7 @@ Relevant existing evidence:
 | G95 | Quality campaign not complete; first attempt/probe contaminated or invalidated by Defrag/cleanup state. |
 | G97 | PASS, `n=1` structural only. Earlier closed-router run had no true cold promotions; forced eviction proved fail-closed on snapshot miss; two open-router attempts were refused before launch by quiescence because Windows `ScheduledDefrag` saturated `D:`. The final raw arena12 4+8 open-router/probation run completed with zero failures/forbidden/ram skips, mixed 5+1 promotion counters, 56 backing-RAM reclaims, and 141 `cold_to_2bit` stages in measured execution. |
 | G98/G99 | G98 fixed-order `n=3` completed cleanly with exact 64-token output SHA across both arms, but the candidate was much slower; because order was fixed, the parent final performance verdict is withheld. No quality, SOTA, default-readiness, or long-form L0-L3 claim may be inferred. G99 is deferred until promotion churn is fixed. |
+| G100 | Structural `n=1` promotion gate isolation sweep only. Five arms completed with identical output SHA, zero failures, zero forbidden/direct cold-to-VRAM transitions, and exact per-arm IQ2 SSD bytes recorded. The combined gate reduced IQ2 promotion SSD bytes by 94.87% versus legacy, while `min_weight=0.02` alone filtered zero candidates. No performance, quality, SOTA, or default-readiness claim. |
 
 ## Runtime contract
 
@@ -277,6 +278,7 @@ Known final counters from existing evidence that 0053 must preserve as context:
 | G98 promotion-off after packed-copy removal | failed at token 4 with `ram-required admitted=0`, `ram_admit_skips=1`, and `forbidden=1`; no claim. Root cause: reserve reclaim remained coupled to IQ1 promotion. |
 | G98 shared open-router smoke | structural `n=1` PASS only with the shared 16-slot open-router pool; output `Hello! How can I assist you today`; content SHA `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`; `general_backing_reclaims=54`, `ram_evictions=787`, `ram_admit_skips=0`, `failures=0`, `forbidden=0`, `cold_to_vram=0`; IQ1 promotion absent; `quality_eligible=false`, `sota=false`. The recorded `0.2895 t/s` is invalid structural timing and not a performance datum. |
 | G98 fixed-order `n=3` | clean quiescent fixed-order measurement; both arms exact within-arm and cross-arm for 64 tokens with SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness and `-52.451029%` server decode. Raw harness marked quality/SOTA eligible, but parent verdict withholds final performance judgment due fixed order and makes no long-form L0-L3 quality claim. |
+| G100 gate sweep | structural `n=1` only; prompt `Hi`, temp 0, no think, 16-token warmup plus 16-token measured request, context 256, arena 12 GiB, IQ1_S RAM cache 1 GiB, layers 3..42, open router, GPU planner on, 16 promotion slots, route packed copy off. All five arms produced SHA `cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`, with zero promotion failures, zero direct SSD-to-VRAM rejects, zero forbidden cold-to-VRAM transitions, zero tier failures, and zero RAM-admit skips. `min_weight=0.02` alone skipped zero candidates; the combined gate read 113,246,208 IQ2 SSD bytes versus 2,208,301,056 legacy bytes, a 94.87% reduction. No performance, quality, SOTA, or default-readiness claim. |
 
 ## Capacity arithmetic
 
@@ -439,7 +441,7 @@ Only after structural and clean perf/exactness gates:
 
 No verdict comes from `n=1`, repeat flags, exact hashes, or route counters.
 
-## Gates G98/G99
+## Gates G98-G100
 
 G98/G99 are reserved for clean `n>=3` follow-up evidence after G97 structural
 wiring is accepted. The first G98 control attempt failed closed before emitting
@@ -535,6 +537,40 @@ work.
 Next design direction: IQ1 probation must not promote every observed cold
 route. Promotion needs confirmation or a second touch, a mass/weight threshold,
 and a bounded promotion budget before it can plausibly improve performance.
+
+### G100: promotion gate isolation sweep
+
+G100 is a structural `n=1` mechanical sweep of IQ1 promotion admission levers.
+It used prompt `Hi`, temperature 0, no think, one 16-token warmup and one
+16-token measured request per arm, context 256, dynamic arena 12 GiB, IQ1_S
+RAM cache 1 GiB, layers 3..42, mixed cold-one routing, GPU planner enabled,
+open-router prefill compose, `DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=16`,
+`DS4_IQ1_PROMOTION_PROBATION_SLOTS=16`, and `RoutePackedCopy` disabled.
+
+Source evidence:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g100_iq1_promotion_gate_sweep_result.json`
+plus the per-arm `result_path` JSON files recorded in that summary.
+
+All arms produced identical output SHA-256:
+`cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`.
+All arms had `promotion_failures=0`,
+`promotion_direct_ssd_to_vram_rejected=0`,
+`tier_forbidden_cold_ssd_to_vram=0`, `tier_cold_to_vram=0`,
+`tier_failures=0`, and `ram_admit_skips=0`.
+
+| Arm | Config | IQ2 SSD bytes | IQ2 SSD GiB | IQ2 SSD GiB/s | `cold_to_2bit` | Skips touches/weight/mass/request/window | Failures | Byte reduction vs legacy |
+|---|---|---:|---:|---:|---:|---|---:|---:|
+| `legacy` | touches=1; weight=0; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.677 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `confirm-only` | touches=2; weight=0; mass=0; request_budget=0; window=0/0 | 424,673,280 | 0.396 | 0.779 | 60 | 252/0/0/0/0 | 0 | 80.77% |
+| `budget-only` | touches=1; weight=0; mass=0; request_budget=16; window=40/1 | 141,557,760 | 0.132 | 0.106 | 20 | 0/0/0/0/292 | 0 | 93.59% |
+| `weight-only` | touches=1; weight=0.02; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.680 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `combined` | touches=2; weight=0.02; mass=0; request_budget=16; window=40/1 | 113,246,208 | 0.105 | 0.794 | 16 | 252/0/0/0/44 | 0 | 94.87% |
+
+Interpretation: G100 shows the admission levers can reduce structural IQ2 SSD
+promotion traffic without breaking the fail-closed counters on this short
+surface. It also shows that `min_weight=0.02` alone filtered zero candidates in
+this run. This is not a benchmark: there is no performance claim, no quality or
+L0-L3 claim, no SOTA claim, and no default-readiness claim.
 
 ## Non-goals
 
