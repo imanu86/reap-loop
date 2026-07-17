@@ -16,6 +16,9 @@ Implementation commits:
 - [69faac4 - validate IQ1_S transport on a real expert](https://github.com/imanu86/ds4-win/commit/69faac4)
 - [c9d91bc - add the fail-closed IQ1_S expert sidecar](https://github.com/imanu86/ds4-win/commit/c9d91bc)
 - [6054076 - native-Windows mixed-route structural checkpoint](https://github.com/imanu86/ds4-win/commit/6054076)
+- [927a6aa - counterbalance G101 order](https://github.com/imanu86/ds4-win/commit/927a6aa)
+- [5b7a3ac - require n>=3 members for outer quality](https://github.com/imanu86/ds4-win/commit/5b7a3ac)
+- [cb723a1 - add the G102 long-quality runner](https://github.com/imanu86/ds4-win/commit/cb723a1)
 
 ## Claim Rules
 
@@ -47,6 +50,7 @@ Implementation commits:
 | G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
 | G100 | MEASURED | IQ1 promotion gate isolation sweep | Five structural `n=1` arms; prompt `Hi`; 16-token warmup and 16-token measured request; GPU planner on; 16 promotion slots; route packed copy off | All arms identical output SHA; zero failures, zero forbidden/direct cold-to-VRAM transitions, zero RAM-admit skips; combined gate reduced IQ2 SSD bytes 94.87% vs legacy; weight `.02` alone filtered zero | Structural lever isolation only; no performance, quality, SOTA, or default-readiness claim |
 | G101 | MEASURED | Exploratory fixed-order combined-vs-legacy comparison | Clean `combined -> legacy`, `n=3` per arm, ds4-win `779c8e7` | Clean quiescence, `n>=3`, determinism, provenance, and suite locks PASS; same output hashes. Combined: `0.581112` harness t/s, `0.663333` server t/s, `13.262333 s` TTFT; legacy: `0.468196`, `0.52`, `13.290333 s`. Combined reduced promotions `5,804 -> 64` and IQ2 promotion bytes by `98.897312%` | Exploratory fixed-order measurement only; order not counterbalanced, so final performance claim withheld; no L0-L3, SOTA, quality, or default-readiness claim |
+| G102 | PLANNED | Long-output quality runner | Three independent processes, one request each; temp 0, nothink; cyberpunk HTML prompt; context 8192; max 4000; stop at `</html>`; each child result remains pending for aggregate grading | Preserve each child output and require aggregate human L0-L3 grading; median L>=2 is required for quality eligibility and median L3 is required for SOTA eligibility; no `repeat_flag` verdict | Protocol only; G102 has not executed and no run result is claimed |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -329,6 +333,19 @@ only. They produced the binding-hash fix `876b4b3`, the 8 MiB sequential
 receipt-hashing fix `2a5e696`, quiescence retries without rehash in `91f1445`,
 and the active-`Defrag.exe` benchmark/quality veto included in `779c8e7`.
 Their timings do not contribute to the clean measurement above.
+
+Windows commit `927a6aa` updates the G101 runner to counterbalance arm order
+for future performance protocols. It does not change the measured G101 result
+above, which remains fixed-order exploratory evidence only.
+
+Windows commits `5b7a3ac` and `cb723a1` add the outer-quality member contract
+and G102 long-quality runner. G102 is a planned long-output quality protocol:
+three independent processes, one request each, temp 0, nothink, cyberpunk HTML,
+context 8192, max 4000, stop at `</html>`, and each child remains pending until
+the aggregate is graded. Quality eligibility requires median L>=2 across the
+three preserved outputs; SOTA eligibility requires median L3. `repeat_flag`
+does not create a quality or SOTA verdict. G102 has not executed, so this file
+claims no G102 result.
 
 ## Planned End-to-End Gates
 

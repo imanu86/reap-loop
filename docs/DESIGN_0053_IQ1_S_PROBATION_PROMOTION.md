@@ -69,6 +69,7 @@ Relevant existing evidence:
 | G98/G99 | G98 fixed-order `n=3` completed cleanly with exact 64-token output SHA across both arms, but the candidate was much slower; because order was fixed, the parent final performance verdict is withheld. No quality, SOTA, default-readiness, or long-form L0-L3 claim may be inferred. G99 is deferred until promotion churn is fixed. |
 | G100 | Structural `n=1` promotion gate isolation sweep only. Five arms completed with identical output SHA, zero failures, zero forbidden/direct cold-to-VRAM transitions, and exact per-arm IQ2 SSD bytes recorded. The combined gate reduced IQ2 promotion SSD bytes by 94.87% versus legacy, while `min_weight=0.02` alone filtered zero candidates. No performance, quality, SOTA, or default-readiness claim. |
 | G101 | MEASURED exploratory fixed-order `combined -> legacy`, `n=3` per arm, on ds4-win `779c8e7`. Clean quiescence, determinism, provenance, suite locks, and `n>=3` checks passed; both arms produced the same output hashes. Combined measured `0.581112` harness t/s, `0.663333` server t/s, and `13.262333 s` TTFT versus legacy `0.468196`, `0.52`, and `13.290333 s`. Combined reduced promotions from 5,804 to 64 and IQ2 promotion bytes by `98.897312%`. Because order was not counterbalanced, final performance judgment is withheld; there is no L0-L3, SOTA, quality, or default-readiness claim. |
+| G102 | PLANNED long-output quality runner from ds4-win `cb723a1`, with outer-quality `n>=3` member enforcement from `5b7a3ac`. Protocol: three independent processes, one request each, temp 0, nothink, cyberpunk HTML prompt, context 8192, max 4000, stop at `</html>`, each child pending aggregate grading. Median L>=2 is required for quality eligibility; median L3 is required for SOTA eligibility. No verdict may come from `repeat_flag`. G102 has not executed and no result is claimed. |
 
 ## Runtime contract
 
@@ -282,6 +283,7 @@ Known final counters from existing evidence that 0053 must preserve as context:
 | G98 fixed-order `n=3` | clean quiescent fixed-order measurement; both arms exact within-arm and cross-arm for 64 tokens with SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness and `-52.451029%` server decode. Raw harness marked quality/SOTA eligible, but parent verdict withholds final performance judgment due fixed order and makes no long-form L0-L3 quality claim. |
 | G100 gate sweep | structural `n=1` only; prompt `Hi`, temp 0, no think, 16-token warmup plus 16-token measured request, context 256, arena 12 GiB, IQ1_S RAM cache 1 GiB, layers 3..42, open router, GPU planner on, 16 promotion slots, route packed copy off. All five arms produced SHA `cd153d3c18e782c4f4b3ceec574adccc8e68bc557110b0bc263b01e09bfcc8ef`, with zero promotion failures, zero direct SSD-to-VRAM rejects, zero forbidden cold-to-VRAM transitions, zero tier failures, and zero RAM-admit skips. `min_weight=0.02` alone skipped zero candidates; the combined gate promoted 16 of 312 candidates and read 113,246,208 IQ2 SSD bytes in 0.1327447 s versus 2,208,301,056 legacy bytes, a 94.87% byte reduction with identical output. No t/s, performance, quality, SOTA, or default-readiness claim. |
 | G101 fixed-order `n=3` | clean exploratory `combined -> legacy` measurement on ds4-win `779c8e7`; clean quiescence, `n>=3`, determinism, provenance, and suite-lock checks PASS. Output hashes were identical within and across arms. Combined elapsed `115.386221/107.450725/107.915813 s`, harness `0.581112 t/s`, server `0.663333 t/s`, TTFT `13.262333 s`; legacy elapsed `146.463988/131.988416/132.579096 s`, harness `0.468196 t/s`, server `0.52 t/s`, TTFT `13.290333 s`. Combined deltas: `+24.11725%` harness t/s, `+27.564038%` server t/s, `-18.602694%` median elapsed. Promotions `64` vs `5,804`; IQ2 promotion bytes `452,984,832` vs `41,080,061,952`, or `-98.897312%`; failures and direct cold-to-VRAM transitions were zero in both arms. Fixed-order exploratory evidence only; final performance judgment withheld and no L0-L3/SOTA/default claim. |
+| G102 long-quality runner | planned protocol only. Windows commit `927a6aa` counterbalances G101 order for future performance protocols; `5b7a3ac` requires `n>=3` outer-quality members; `cb723a1` adds the G102 runner. G102 runs three independent processes, one request each, with temp 0, nothink, cyberpunk HTML, context 8192, max 4000, and stop at `</html>`. Each child result is pending until aggregate grading. Median L>=2 is required for quality eligibility and median L3 for SOTA eligibility. `repeat_flag` is not a verdict. G102 is not executed and has no result. |
 
 ## Capacity arithmetic
 
@@ -609,6 +611,16 @@ They led to the deduplicated hash-binding fix (`876b4b3`), 8 MiB sequential
 receipt hashing (`2a5e696`), quiescence retry without rehash (`91f1445`), and
 the `Defrag.exe` maintenance-process veto included in `779c8e7`. None of their
 timings contributes to the measured result above.
+
+Windows commit `927a6aa` counterbalances G101 arm order for future performance
+protocols, but it does not retroactively change the measured G101 result above.
+Windows commits `5b7a3ac` and `cb723a1` define the outer-quality `n>=3` member
+contract and add G102. G102 is planned only: three independent processes, one
+request each, temp 0, nothink, cyberpunk HTML, context 8192, max 4000, stop at
+`</html>`, and every child pending aggregate grading. Median L>=2 is required
+for quality eligibility; median L3 is required for SOTA eligibility. There is
+no `repeat_flag` verdict, and no G102 result is claimed because G102 has not
+executed.
 
 ## Non-goals
 
