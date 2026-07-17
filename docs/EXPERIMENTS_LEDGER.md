@@ -2978,3 +2978,29 @@ and step 2 (separate binder metadata/offsets plus compiling qwarp32 gate/up/down
 kernels, still not runtime-dispatched) as
 [`2c32417`](https://github.com/imanu86/moe-aggressive-commit/commit/2c32417).
 Neither Q1_0 commit supports a speed or quality claim yet.
+
+### G108 Q1_0 foundation env-off safety
+
+G108 is the inertness gate for the corrected native-Windows Q1_0 foundation.
+It used native commit
+[`6a44578`](https://github.com/imanu86/ds4-win/commit/6a44578), the same
+authoritative IQ2 model and the G73 static-32 split-fused configuration, with
+all Q1_0 and IQ1_S sidecar options disabled. A stale build manifest stopped the
+first launch before the model was opened; after `g7_build.ps1` regenerated the
+manifest and executable provenance, the recorded run exited normally.
+
+The one greedy/no-think safety repeat produced the expected content SHA
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`
+exactly. Q1_0/IQ1_S runtime remained unobserved, the prefill-mass candidate set
+and 30 GiB arena both contained 4,551 entries, snapshot backing misses were
+zero and tiering read zero bytes from SSD. The known RAM transport remained:
+75,676,778,496 expert bytes were uploaded to the GPU. This passes the narrow
+env-off exactness gate and shows that the Q1_0 foundation does not alter G73
+when disabled.
+
+The run reported `8.3 t/s` server decode, `51.241 s` prefill/TTFT and
+`26.354 s` WRAP. These numbers are retained only as provenance: `n=1`,
+`quality_eligible=false`, `sota_eligible=false`, so they do not update the SOTA
+or support a performance verdict. The native receipt and explicit exclusion
+are committed as
+[`ee8167c`](https://github.com/imanu86/ds4-win/commit/ee8167c).
