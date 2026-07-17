@@ -43,17 +43,21 @@ probation/promotion policy. It is not the active all-cold resident format:
 
 ## First useful placement
 
-Do not begin with the 33.75 GiB full-domain allocation. The G73/G107 closed
-candidate set contains 4,551 experts. The same set in Q1_0 occupies:
+Do not begin with the 33.75 GiB full-domain allocation. G73/G107 published a
+30 GiB dynamic arena with capacity/residency for 4,551 `(layer, expert)` slots.
+This is not a K4551 mask: `static32` is the VRAM replacement budget, while the
+4,551 value is the measured host-arena slot count. The same slot count in
+Q1_0 occupies:
 
 `4551 * 3.375 MiB = 15,359.625 MiB = 14.9996 GiB`.
 
 The first candidate therefore replaces the 30 GiB IQ2 host snapshot with a
-15 GiB Q1_0 snapshot while preserving:
+15 GiB Q1_0 snapshot populated from the same runtime-observed arena entries,
+while preserving:
 
 - the 320 protected IQ2 experts in the existing 2.11 GiB VRAM cache;
 - router-selected expert IDs and weights;
-- the request-scoped closed mass mask;
+- the same router selection and request-scoped arena-learning protocol;
 - G73 split-fused and no-default-sync route transport;
 - the authoritative IQ2 GGUF for validation and later promotion.
 
@@ -103,7 +107,7 @@ subsequent token. Same-token Q1_0-to-IQ2 switching is not part of 0054.
 3. Dedicated selected-load/file source, real kernel dispatch and counters.
 4. Provenance-bound Q1_0 sidecar converter and validator.
 5. Structural one-expert/layer-range smoke.
-6. Fifteen-GiB candidate-set preload and transport profile.
+6. Fifteen-GiB runtime-observed arena preload and transport profile.
 7. Independent-process A/B and L0-L3 grading.
 8. Only after a positive lever result, segmented full-domain residency.
 
@@ -130,7 +134,9 @@ real Q1_0 routed expert. They support no runtime claim.
 
 - three independent clean processes per arm;
 - same prompt, max tokens, G73 stack and model provenance;
-- control is G73 IQ2 snapshot; candidate is Q1_0 candidate snapshot;
+- control is the G73 30 GiB IQ2 snapshot; candidate is a Q1_0 snapshot built
+  from the same observed arena entries and capped at the equivalent 4,551
+  slots;
 - report server decode, prefill/TTFT, end-to-end time, route bytes, H2D submit
   count, H2D wait, GPU utilization and host residency;
 - any outlier triggers a repeated three-process arm, not selective deletion.
