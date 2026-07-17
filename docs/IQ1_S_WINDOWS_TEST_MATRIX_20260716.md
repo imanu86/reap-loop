@@ -286,11 +286,11 @@ Every arm had `promotion_failures=0`,
 
 | Arm | Config | IQ2 SSD bytes | IQ2 SSD GiB | IQ2 SSD GiB/s | `cold_to_2bit` | Skips touches/weight/mass/request/window | Failures | Byte reduction vs legacy |
 |---|---|---:|---:|---:|---:|---|---:|---:|
-| `legacy` | touches=1; weight=0; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.677 | 312 | 0/0/0/0/0 | 0 | 0.00% |
-| `confirm-only` | touches=2; weight=0; mass=0; request_budget=0; window=0/0 | 424,673,280 | 0.396 | 0.779 | 60 | 252/0/0/0/0 | 0 | 80.77% |
-| `budget-only` | touches=1; weight=0; mass=0; request_budget=16; window=40/1 | 141,557,760 | 0.132 | 0.106 | 20 | 0/0/0/0/292 | 0 | 93.59% |
-| `weight-only` | touches=1; weight=0.02; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.680 | 312 | 0/0/0/0/0 | 0 | 0.00% |
-| `combined` | touches=2; weight=0.02; mass=0; request_budget=16; window=40/1 | 113,246,208 | 0.105 | 0.794 | 16 | 252/0/0/0/44 | 0 | 94.87% |
+| `legacy` | touches=1; weight=0; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.673 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `confirm-only` | touches=2; weight=0; mass=0; request_budget=0; window=0/0 | 424,673,280 | 0.396 | 0.777 | 60 | 252/0/0/0/0 | 0 | 80.77% |
+| `budget-only` | touches=1; weight=0; mass=0; request_budget=16; window=40/1 | 141,557,760 | 0.132 | 0.654 | 20 | 0/0/0/0/292 | 0 | 93.59% |
+| `weight-only` | touches=1; weight=0.02; mass=0; request_budget=0; window=0/0 | 2,208,301,056 | 2.057 | 0.662 | 312 | 0/0/0/0/0 | 0 | 0.00% |
+| `combined` | touches=2; weight=0.02; mass=0; request_budget=16; window=40/1 | 113,246,208 | 0.105 | 0.795 | 16 | 252/0/0/0/44 | 0 | 94.87% |
 
 Interpretation: G100 proves only that these admission levers can reduce
 structural IQ2 promotion SSD traffic while preserving zero-failure
