@@ -46,7 +46,7 @@ Implementation commits:
 | G97 | MEASURED | Native-Windows DS4 structural route gate | `n=1` structural invocation on commit `3f6dab1` | 208 stages, 65 reclaims, zero failures, zero forbidden events; executable SHA recorded below | Structural safety for this invocation only; no performance, quality, or SOTA claim |
 | G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
 | G100 | MEASURED | IQ1 promotion gate isolation sweep | Five structural `n=1` arms; prompt `Hi`; 16-token warmup and 16-token measured request; GPU planner on; 16 promotion slots; route packed copy off | All arms identical output SHA; zero failures, zero forbidden/direct cold-to-VRAM transitions, zero RAM-admit skips; combined gate reduced IQ2 SSD bytes 94.87% vs legacy; weight `.02` alone filtered zero | Structural lever isolation only; no performance, quality, SOTA, or default-readiness claim |
-| G101 | STOPPED | Combined-vs-legacy receipt attempts | Four attempted follow-ups after G100 | First combined `n=3` attempt completed its combined arm but suite stopped on a deduplicated binding-hash bug; second receipt attempt stopped by 4 KiB `ComputeHash` reads on `D:`; third full-hash attempt was quiescence-rejected for active `ScheduledDefrag`/`Defrag.exe`; fourth passed a transient quiescence window while `Defrag.exe` remained active, then showed 38.180 s prefill versus about 13.7 s previously and was invalidated as contaminated. Ds4-win `779c8e7` now vetoes `Defrag.exe` for benchmark/quality gates, preserves structural-safety behavior, and emits process-isolation receipt v2; unit/AST checks and a real-process fail-closed probe passed with one conflict, PID 16604, and zero DS4 launches | Failure/fix ledger only; no combined-vs-legacy verdict, timing, performance, quality, SOTA, or default-readiness claim |
+| G101 | MEASURED | Exploratory fixed-order combined-vs-legacy comparison | Clean `combined -> legacy`, `n=3` per arm, ds4-win `779c8e7` | Clean quiescence, `n>=3`, determinism, provenance, and suite locks PASS; same output hashes. Combined: `0.581112` harness t/s, `0.663333` server t/s, `13.262333 s` TTFT; legacy: `0.468196`, `0.52`, `13.290333 s`. Combined reduced promotions `5,804 -> 64` and IQ2 promotion bytes by `98.897312%` | Exploratory fixed-order measurement only; order not counterbalanced, so final performance claim withheld; no L0-L3, SOTA, quality, or default-readiness claim |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -207,6 +207,7 @@ It is not a performance, quality, or SOTA run.
 | G98 promotion-off after packed-copy removal | invalid fail-closed attempt | n/a | n/a | failed at token 4; `ram-required admitted=0`; `ram_admit_skips=1`; `forbidden=1`; root cause: reserve reclaim coupled to IQ1 | INVALID/FAIL-CLOSED only; no claim |
 | G98 shared open-router smoke | structural `n=1`; shared 16-slot open-router pool | n/a | `87ed7f395f564dd97acaaeea927e39ac2ce72d3fa3181c3734e0b1b6da1e764a` | output `Hello! How can I assist you today`; content SHA `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`; ds4_cuda SHA `668fc9b8284616d81619c3dfe6a5d2e9504be168f8112d4583393518d5d95ff9`; `general_backing_reclaims=54`; `ram_evictions=787`; `ram_admit_skips=0`; `failures=0`; `forbidden=0`; `cold_to_vram=0`; IQ1 promotion absent; `quality_eligible=false`; `sota=false` | Structural PASS for this invocation only; no perf/quality/SOTA |
 | G98 fixed-order `n=3` | clean quiescent fixed-order control then candidate | n/a | n/a | cross-arm SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness, `-52.451029%` server decode | Exactness `n=3` for 64 tokens and fixed-order perf measurement; no long-form L0-L3 quality/SOTA/perf-win claim |
+| G101 fixed-order `n=3` | clean exploratory combined then legacy | `779c8e7` | n/a | same output hashes; combined elapsed `115.386221/107.450725/107.915813 s`, harness `0.581112 t/s`, server `0.663333 t/s`, TTFT `13.262333 s`; legacy elapsed `146.463988/131.988416/132.579096 s`, harness `0.468196 t/s`, server `0.52 t/s`, TTFT `13.290333 s`; deltas `+24.11725%` harness, `+27.564038%` server, `-18.602694%` median elapsed; promotions `64` vs `5,804`; bytes `452,984,832` vs `41,080,061,952` (`-98.897312%`); failures/direct cold-to-VRAM `0` in both arms | Clean measured exploratory fixed-order evidence only; no final performance, L0-L3, quality, SOTA, or default-readiness claim |
 
 Interpretation: G97 establishes only that the recorded structural invocation
 completed with coherent zero-failure and zero-forbidden counters. The first
@@ -302,37 +303,32 @@ read 113,246,208 IQ2 SSD bytes in 0.1327447 s, and produced identical output.
 There is no t/s claim, no performance claim, no quality or L0-L3 claim, no SOTA
 claim, and no default-readiness claim.
 
-G101 attempted to turn the G100 combined gate into a combined-vs-legacy receipt
-comparison, but it produced no verdict:
+G101 then measured the combined promotion gate against legacy on ds4-win
+commit `779c8e7`. The suite ran in the fixed order `combined -> legacy` with
+`n=3` measured repeats per arm. Clean quiescence, `n>=3`, determinism,
+provenance, and suite-lock checks passed. Both arms were clean, produced the
+same output hashes, and recorded zero promotion failures and zero direct
+cold-to-VRAM transitions.
 
-- First attempt: the combined `n=3` arm completed, but the suite stopped before
-  a combined-vs-legacy verdict because of a deduplicated binding-hash bug. Fix:
-  ds4-win commit `876b4b3`.
-- Second attempt: the receipt run stopped because `ComputeHash` used 4 KiB
-  reads and drove `D:` to roughly 3-6 MiB/s. Fix: commit `2a5e696`, which moved
-  receipt hashing to 8 MiB `SequentialScan`/`IncrementalHash` reads. The
-  1 GiB `D:` microbench measured 97.5 MiB/s with 128 reads, and receipt tests
-  passed.
-- Third attempt: the full hash completed, but the benchmark was correctly
-  rejected by quiescence because Windows `ScheduledDefrag`/`Defrag.exe` was
-  active on `D:`. There is no valid timing result. Fix: commit `91f1445`
-  preserves preflight and retries quiescence without rehash; all other errors
-  remain fail-closed.
-- Fourth attempt: the retry path passed a transient quiescence window even
-  though Windows `ScheduledDefrag`/`Defrag.exe` remained active. Disk activity
-  resumed and prefill took 38.180 s versus about 13.7 s previously. The run is
-  contaminated and has no timing, performance, quality, or cross-arm verdict.
+| Arm | Elapsed repeats | Mean harness t/s | Mean server t/s | Mean TTFT | Promotions | IQ2 promotion bytes |
+|---|---|---:|---:|---:|---:|---:|
+| Combined | `115.386221 / 107.450725 / 107.915813 s` | 0.581112 | 0.663333 | 13.262333 s | 64 | 452,984,832 |
+| Legacy | `146.463988 / 131.988416 / 132.579096 s` | 0.468196 | 0.52 | 13.290333 s | 5,804 | 41,080,061,952 |
 
-Ds4-win commit `779c8e7` closes the process-isolation gap for future runs.
-Benchmark and quality gates now veto an active `Defrag.exe` independently of
-instantaneous disk counters; structural-safety behavior is unchanged, and the
-preflight emits process-isolation receipt v2. Unit tests and AST checks passed.
-A real-process probe exited nonzero as required, recorded
-`maintenance_conflict_count=1` for `Defrag.exe` PID 16604, and confirmed that
-zero DS4 processes were launched.
+Measured combined-arm deltas were `+24.11725%` harness t/s,
+`+27.564038%` server t/s, `-18.602694%` median elapsed time, and
+`-98.897312%` IQ2 promotion bytes.
 
-G101 therefore has no combined-vs-legacy result and must not be used for
-timing, throughput, performance, quality, SOTA, or default-readiness claims.
+G101 is measured exploratory evidence only. The fixed order was not
+counterbalanced, so the final performance claim remains withheld. No L0-L3
+grading was performed and there is no quality, SOTA, default-readiness, or
+final performance-win claim.
+
+Earlier stopped or contaminated G101 attempts remain failure/fix provenance
+only. They produced the binding-hash fix `876b4b3`, the 8 MiB sequential
+receipt-hashing fix `2a5e696`, quiescence retries without rehash in `91f1445`,
+and the active-`Defrag.exe` benchmark/quality veto included in `779c8e7`.
+Their timings do not contribute to the clean measurement above.
 
 ## Planned End-to-End Gates
 
