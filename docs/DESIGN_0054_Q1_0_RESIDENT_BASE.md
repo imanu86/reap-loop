@@ -138,10 +138,20 @@ Research patch provenance:
 - step 4 synthetic converter/validator protocol: commit `48fcab4`.
 
 The native Windows integration through step 3 is committed on the dedicated
-branch. Its direct `pread` selected loader is deliberately a structural smoke
-path, not a performance candidate: the steady-state target must serve Q1_0
-from resident host slots. No real Q1_0 routed-expert runtime or quality claim
-exists yet.
+branch: the corrected foundation is
+[`6a44578`](https://github.com/imanu86/ds4-win/commit/6a44578), and the
+fail-closed file source plus selected dispatch is
+[`12e78e0`](https://github.com/imanu86/ds4-win/commit/12e78e0). Its direct
+`pread` selected loader is deliberately a structural smoke path, not a
+performance candidate: the steady-state target must serve Q1_0 from resident
+host slots. No real Q1_0 routed-expert runtime or quality claim exists yet.
+
+The standalone sm_86 geometry benchmark is committed as
+[`a58bab0`](https://github.com/imanu86/ds4-win/commit/a58bab0). It validated
+512 block pairs with zero dot/dequant error, detected the old invalid byte-base
+formula by at least `0.04296875`, and passed Compute Sanitizer with zero errors.
+Its roughly `0.01 ms` kernel timing is kernel-only and is not a DS4 throughput
+claim.
 
 ## Measurement gates
 
