@@ -43,6 +43,8 @@ Implementation commits:
 | G76 | PLANNED | First end-to-end IQ1_S sidecar safety | `n=1`, temp 0, nothink; short hello prompt; sidecar enabled | Provenance, runtime markers, nonzero route counters, coherent counters, zero failures, minimal output-health predicate | Structural safety only; no quality or SOTA claim |
 | G76b | MEASURED | Native-Windows mixed-route structural smokes | `n=1` layer-3-only and all-layer mixed-route runs; short hello prompt | Mixed calls, hot-main, cold-IQ1, selected-load and failure counters recorded below | Structural mixed-calculation safety only; no quality or SOTA claim |
 | G77 | PLANNED | Matched quality A/B | Main 2-bit vs IQ1_S sidecar; same build, prompt and settings; `n>=3` per arm; temp 0, nothink | Quiescent host, preserved raw outputs, recorded L0-L3 grade for every sample | Prompt-scoped quality comparison only after grading |
+| G97 | MEASURED | Native-Windows DS4 structural route gate | `n=1` structural invocation on commit `3f6dab1` | 208 stages, 65 reclaims, zero failures, zero forbidden events; executable SHA recorded below | Structural safety for this invocation only; no performance, quality, or SOTA claim |
+| G98 | MEASURED | Packed-copy remediation, shared-pool smoke, and clean fixed-order `n=3` | Two fail-closed attempts, shared open-router 16-slot pool structural smoke `n=1`, then clean fixed-order `n=3` | Exact 64-token SHA across both arms; candidate `-49.623638%` harness and `-52.451029%` server decode; promotion churn counters recorded below | Exactness and fixed-order measurement only; no long-form L0-L3 quality, SOTA, or performance-win claim |
 | D1 | PLANNED | Dynamic-tier env-off regression | Mixed-tier code present but disabled; clean `n>=3` exactness run against frozen baseline | Expected output hashes and runtime counters match; no IQ1 path observed | Regression safety, not performance |
 | D2 | PLANNED | IQ1_S cache in ordinary RAM | Sidecar cold-read baseline vs persistent IQ1 host-cache A/B | Same outputs; measured SSD reads, host-cache hit rate, bytes moved, latency and memory | Transport effect only |
 | D3 | PLANNED | Mixed hot/cold execution | Hot experts execute as 2-bit VRAM hits; cold experts execute as IQ1_S for the current token | Same selected IDs and gate weights; zero silent fallback; mixed-kernel counters consistent | Structural mixed-format safety only |
@@ -185,9 +187,82 @@ cleanup. The current-build full G74 environment-off exactness rerun also
 remains pending because its 30-GiB arena requires at least 32 GiB available
 host memory.
 
-Deferred authoritative 2-bit promotion and next-token publication remain
-unimplemented. Therefore no current run closes the final residency invariant
-`forbidden_cold_ssd_to_vram=0` end to end.
+Deferred authoritative 2-bit promotion and next-token publication are now
+tracked in the G97/G98 structural and fixed-order gates below. Those gates
+preserve the final residency invariant `forbidden_cold_ssd_to_vram=0`, but they
+do not establish a performance win, SOTA result, or long-form L0-L3 quality
+verdict.
+
+### G97-G98: Structural Gate and Packed-Copy Fail-Closed Check
+
+G97 is a native-Windows DS4 structural `n=1` gate on ds4-win commit `3f6dab1`.
+It is not a performance, quality, or SOTA run.
+
+| Gate | Protocol | Commit | Executable SHA-256 | Structural counters | Eligibility |
+|---|---|---|---|---|---|
+| G97 | structural `n=1` | `3f6dab1` | `39632000cc6b529948750c0a1ae7ef8ad23201791c4694e462af5055ca25c0fe` | 208 stages; 65 reclaims; failures 0; forbidden events 0 | Structural PASS for this invocation only; no perf/quality/SOTA |
+| G98 initial | invalid fail-closed attempt | n/a | n/a | `RoutePackedCopy` rejected heterogeneous gate/down layout `2162688/2752512`; `gen=0` | INVALID/FAIL-CLOSED only; no timing/quality/SOTA |
+| G98 promotion-off after packed-copy removal | invalid fail-closed attempt | n/a | n/a | failed at token 4; `ram-required admitted=0`; `ram_admit_skips=1`; `forbidden=1`; root cause: reserve reclaim coupled to IQ1 | INVALID/FAIL-CLOSED only; no claim |
+| G98 shared open-router smoke | structural `n=1`; shared 16-slot open-router pool | n/a | `87ed7f395f564dd97acaaeea927e39ac2ce72d3fa3181c3734e0b1b6da1e764a` | output `Hello! How can I assist you today`; content SHA `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`; ds4_cuda SHA `668fc9b8284616d81619c3dfe6a5d2e9504be168f8112d4583393518d5d95ff9`; `general_backing_reclaims=54`; `ram_evictions=787`; `ram_admit_skips=0`; `failures=0`; `forbidden=0`; `cold_to_vram=0`; IQ1 promotion absent; `quality_eligible=false`; `sota=false` | Structural PASS for this invocation only; no perf/quality/SOTA |
+| G98 fixed-order `n=3` | clean quiescent fixed-order control then candidate | n/a | n/a | cross-arm SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness, `-52.451029%` server decode | Exactness `n=3` for 64 tokens and fixed-order perf measurement; no long-form L0-L3 quality/SOTA/perf-win claim |
+
+Interpretation: G97 establishes only that the recorded structural invocation
+completed with coherent zero-failure and zero-forbidden counters. The first
+G98 attempt is intentionally invalid because the packed-copy path rejected the
+heterogeneous gate/down layout before generation. It contributes no timing,
+quality, or SOTA evidence. The promotion-off attempt after packed-copy removal
+also contributes no claim: it failed closed at token 4 because reserve reclaim
+was still coupled to IQ1 promotion, producing one RAM-admit skip and one
+forbidden event.
+
+The shared open-router 16-slot pool smoke is a structural `n=1` PASS only. The
+recorded `0.2895 t/s` is invalid structural timing and must not be used for any
+performance, slowdown, speedup, quality, or SOTA verdict.
+
+The final G98 clean fixed-order `n=3` result was run under clean quiescence.
+Both arms were exact within arm and across arm for 64 tokens, with output SHA
+`a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`.
+
+| Arm | Harness t/s | Repeat range / values | Server decode t/s | TTFT |
+|---|---:|---|---:|---:|
+| Control | 0.598759 | 0.592443-0.602928 | 0.68 | 13.164667 s |
+| Candidate | 0.301633 | 0.488288 / 0.250772 / 0.165839 | 0.323333 | 13.164 s |
+
+Measured deltas: `-49.623638%` harness and `-52.451029%` server decode.
+
+Candidate telemetry:
+
+- `cold_observed=10240`;
+- `cold_existing_2bit=4436`;
+- `cold_to_2bit_ram=5804`;
+- primary IQ2 SSD promotion reads: `38.259 GiB` over `61.9473 s`,
+  approximately `632.4 MiB/s`;
+- `general_backing_reclaims=576`;
+- `iq1_backing_reclaims=576`;
+- `failures=0`;
+- `direct_ssd_to_vram_rejected=0`;
+- `forbidden=0`;
+- `cold_to_vram=0`.
+
+Control telemetry:
+
+- `general_backing_reclaims=556`;
+- `ram_admit_skips=0`.
+
+The raw harness marked the run quality-eligible and SOTA-eligible, but the
+parent final performance verdict is withheld because the run was fixed-order.
+There is exactness evidence for this 64-token `n=3` surface, but no long-form
+L0-L3 quality claim. The candidate is so much worse even with warmer second-arm
+cache that no performance-win claim exists, and G99 is deferred until promotion
+churn is fixed.
+
+The wrapper summary initially rejected aggregate `reserved_slots=64` against an
+erroneous expected `16`; the correct expectation was `16 * 4 = 64`. After that
+fix, Resume validated the summary without rerunning.
+
+Next design direction: IQ1 probation must not promote every cold route. It
+needs confirmation or a second touch, a mass/weight threshold, and a bounded
+promotion budget.
 
 ## Planned End-to-End Gates
 

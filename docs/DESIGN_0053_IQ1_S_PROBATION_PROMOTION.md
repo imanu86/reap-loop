@@ -1,14 +1,18 @@
 # Design 0053: IQ1_S probation promotion, runtime opt-in
 
 **Status:** runtime candidate implemented on an experimental branch,
-2026-07-17; G97 has a structural PASS with final telemetry preserved, but
-quality and performance gates are still pending. The current measured
+2026-07-17; G97 has a structural PASS with final telemetry preserved, and G98
+has clean fixed-order `n=3` exactness/performance evidence, but long-form
+quality grading, SOTA, performance-win, and default-readiness gates remain
+unmet. The current measured
 architecture is a composed prefill snapshot plus open router with a pre-reserved
-separate 16-slot pinned probation pool. The measured structural route shape is
-mixed 5+1: five exact IQ2/Q2 routes plus one IQ1_S minimum route per eligible
-routed layer/token. G97 `n=1` is structural only; G98/G99 harnesses are ready
-for clean `n>=3` follow-up but remain pending. This file makes no runtime
-verdict, quality, SOTA, or 10 t/s claim.
+separate 16-slot pinned probation pool. The measured G97 structural route shape
+is mixed 5+1: five exact IQ2/Q2 routes plus one IQ1_S minimum route per
+eligible routed layer/token. G97 `n=1` is structural only; current G98 evidence
+now includes fail-closed attempts, one shared-pool structural smoke, and a
+clean fixed-order `n=3` exactness/performance measurement. Because the
+candidate was much slower even as the warmer second arm, this file makes no
+runtime speed-win, quality, SOTA, or 10 t/s claim.
 
 0053 is the next runtime-only step after the IQ1_S sidecar and GPU planner
 checks in `docs/IQ1_S_WINDOWS_TEST_MATRIX_20260716.md`. It is not a bake, not
@@ -61,7 +65,7 @@ Relevant existing evidence:
 | G94 | Clean short `n=3` planner mechanical/perf comparison with exact repeated outputs, no L0-L3 grade. |
 | G95 | Quality campaign not complete; first attempt/probe contaminated or invalidated by Defrag/cleanup state. |
 | G97 | PASS, `n=1` structural only. Earlier closed-router run had no true cold promotions; forced eviction proved fail-closed on snapshot miss; two open-router attempts were refused before launch by quiescence because Windows `ScheduledDefrag` saturated `D:`. The final raw arena12 4+8 open-router/probation run completed with zero failures/forbidden/ram skips, mixed 5+1 promotion counters, 56 backing-RAM reclaims, and 141 `cold_to_2bit` stages in measured execution. |
-| G98/G99 | Harnesses ready for clean `n>=3`; pending execution/evidence, so no performance, exactness beyond measured scope, or quality verdict may be inferred. |
+| G98/G99 | G98 fixed-order `n=3` completed cleanly with exact 64-token output SHA across both arms, but the candidate was much slower; because order was fixed, the parent final performance verdict is withheld. No quality, SOTA, default-readiness, or long-form L0-L3 claim may be inferred. G99 is deferred until promotion churn is fixed. |
 
 ## Runtime contract
 
@@ -269,6 +273,10 @@ Known final counters from existing evidence that 0053 must preserve as context:
 | G97 closed router | first structural attempt had no true cold promotions. |
 | G97 forced eviction | failed closed on a snapshot miss; useful fail-closed evidence only, not a promotion pass. |
 | G97 open router attempts | two attempts refused before launch by quiescence because Windows `ScheduledDefrag` was saturating `D:`. Final raw arena12 4+8 run completed after warmup with 9 reclaims/67 `cold_to_2bit`; measured structural PASS observed 56 reclaims/141 `cold_to_2bit`, with zero failures, zero forbidden transitions, and zero RAM skips. This is structural `n=1` evidence only and not a runtime, performance, quality, or default-readiness verdict. |
+| G98 packed-copy attempt | fail-closed attempt only: `RoutePackedCopy` refused heterogeneous gate/down byte sizes `2162688/2752512`; decode ended at `gen=0`; no timing, exactness, quality, SOTA, or default-readiness claim. |
+| G98 promotion-off after packed-copy removal | failed at token 4 with `ram-required admitted=0`, `ram_admit_skips=1`, and `forbidden=1`; no claim. Root cause: reserve reclaim remained coupled to IQ1 promotion. |
+| G98 shared open-router smoke | structural `n=1` PASS only with the shared 16-slot open-router pool; output `Hello! How can I assist you today`; content SHA `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`; `general_backing_reclaims=54`, `ram_evictions=787`, `ram_admit_skips=0`, `failures=0`, `forbidden=0`, `cold_to_vram=0`; IQ1 promotion absent; `quality_eligible=false`, `sota=false`. The recorded `0.2895 t/s` is invalid structural timing and not a performance datum. |
+| G98 fixed-order `n=3` | clean quiescent fixed-order measurement; both arms exact within-arm and cross-arm for 64 tokens with SHA `a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`; control `0.598759 t/s` range `0.592443-0.602928`, server decode `0.68`, TTFT `13.164667`; candidate `0.301633 t/s` range `0.165839-0.488288`, repeats `0.488288/0.250772/0.165839`, server decode `0.323333`, TTFT `13.164`; deltas `-49.623638%` harness and `-52.451029%` server decode. Raw harness marked quality/SOTA eligible, but parent verdict withholds final performance judgment due fixed order and makes no long-form L0-L3 quality claim. |
 
 ## Capacity arithmetic
 
@@ -406,8 +414,9 @@ Only after G97a passes:
 Allowed claim: prompt-scoped clean performance/exactness measurement, if the
 run is uncontaminated and counters reconcile.
 
-This clean `n>=3` work is carried forward to G98/G99. The harnesses are ready,
-but execution/evidence remain pending.
+This clean `n>=3` work was carried into G98. G98 now has a clean fixed-order
+exactness/performance measurement, but it does not support a promotion
+performance win. G99 is deferred until promotion churn is fixed.
 
 ### Arena 14 caution
 
@@ -433,9 +442,99 @@ No verdict comes from `n=1`, repeat flags, exact hashes, or route counters.
 ## Gates G98/G99
 
 G98/G99 are reserved for clean `n>=3` follow-up evidence after G97 structural
-wiring is accepted. The harnesses are ready, but evidence remains pending and
-cannot be used to claim performance, exactness beyond the measured scope,
-quality, SOTA, or default-readiness.
+wiring is accepted. The first G98 control attempt failed closed before emitting
+any token: the inherited `RoutePackedCopy` lever rejected the heterogeneous
+gate/down expert byte sizes (`2162688/2752512`) and CUDA decode ended at
+`gen=0`. That attempt is invalid for timing, exactness, quality, SOTA, or
+default-readiness claims. It establishes only that the current packed-copy
+implementation is not composable with this IQ1 promotion layout.
+
+After removing the packed-copy path, the next G98 promotion-off attempt still
+failed closed at token 4. It reported `ram-required admitted=0`,
+`ram_admit_skips=1`, and `forbidden=1`. This is not a usable control,
+exactness, performance, quality, or SOTA result. The measured root cause is
+that reserve reclaim remained coupled to IQ1 promotion, so promotion-off could
+not exercise the intended shared exact-routing path.
+
+The following shared open-router run moved reclaim into the general 16-slot
+open-router pool and is a structural smoke PASS for `n=1` only. It produced:
+
+- output: `Hello! How can I assist you today`;
+- content SHA-256:
+  `474f578084317359f9534bdc03b692d83ba6bd02095731cbfa6988ec7d72230e`;
+- executable SHA-256:
+  `87ed7f395f564dd97acaaeea927e39ac2ce72d3fa3181c3734e0b1b6da1e764a`;
+- ds4_cuda SHA-256:
+  `668fc9b8284616d81619c3dfe6a5d2e9504be168f8112d4583393518d5d95ff9`;
+- `general_backing_reclaims=54`;
+- `ram_evictions=787`;
+- `ram_admit_skips=0`;
+- `failures=0`;
+- `forbidden=0`;
+- `cold_to_vram=0`;
+- IQ1 promotion absent;
+- `quality_eligible=false`;
+- `sota=false`.
+
+The recorded `0.2895 t/s` is invalid structural timing. It must not be used as
+a performance result, slowdown result, speedup result, quality proxy, or SOTA
+ledger entry. This smoke proves only that the shared open-router pool can run
+this one invocation without RAM-admit skips, forbidden transitions, promotion
+failures, or direct cold-to-VRAM publication.
+
+The clean G98 fixed-order `n=3` measurement then completed under quiescent host
+conditions. Both arms produced identical outputs within each arm and across
+arms for the 64-token run, with content SHA-256
+`a90233233708ecfbc8eae0cd4a1edb82997e4257f48f9afd9498780991beb607`.
+
+| Arm | Harness t/s | Repeat range / values | Server decode t/s | TTFT |
+|---|---:|---|---:|---:|
+| Control | 0.598759 | 0.592443-0.602928 | 0.68 | 13.164667 s |
+| Candidate | 0.301633 | 0.488288 / 0.250772 / 0.165839 | 0.323333 | 13.164 s |
+
+Measured deltas:
+
+```text
+harness:       -49.623638%
+server decode: -52.451029%
+```
+
+Candidate telemetry:
+
+- `cold_observed=10240`;
+- `cold_existing_2bit=4436`;
+- `cold_to_2bit_ram=5804`;
+- primary IQ2 SSD promotion reads: `38.259 GiB` over `61.9473 s`,
+  approximately `632.4 MiB/s`;
+- `general_backing_reclaims=576`;
+- `iq1_backing_reclaims=576`;
+- `failures=0`;
+- `direct_ssd_to_vram_rejected=0`;
+- `forbidden=0`;
+- `cold_to_vram=0`.
+
+Control telemetry:
+
+- `general_backing_reclaims=556`;
+- `ram_admit_skips=0`.
+
+The raw harness marked the clean run `quality_eligible=true` and
+`sota_eligible=true`, but the parent final verdict is deliberately narrower:
+this is exactness evidence and a fixed-order performance measurement only.
+There is no long-form L0-L3 quality claim, no quality-equivalence claim, no
+SOTA claim, and no performance-win claim. Because the candidate is much worse
+even with warmer second-arm cache, G99 is deferred until the promotion churn is
+fixed.
+
+The wrapper summary initially rejected the aggregate result because it compared
+`reserved_slots=64` against an erroneous expected `16`; the correct aggregate
+expectation is `16 * 4 = 64`. The summary was fixed to use the aggregate
+expectation, and Resume validated the corrected summary without rerunning GPU
+work.
+
+Next design direction: IQ1 probation must not promote every observed cold
+route. Promotion needs confirmation or a second touch, a mass/weight threshold,
+and a bounded promotion budget before it can plausibly improve performance.
 
 ## Non-goals
 
