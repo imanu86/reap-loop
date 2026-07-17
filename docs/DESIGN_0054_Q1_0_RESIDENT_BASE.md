@@ -82,6 +82,21 @@ is not expected and must not be used as the quality gate. Quality uses the
 existing L0-L3 rubric with at least three independent processes and retained
 raw outputs.
 
+## Quality-source boundary
+
+No BF16/F16, FP16 or richer-than-IQ2 DS4 Flash routed-expert checkpoint has
+been identified in the verified local inventory or the documented R2
+inventory. The current authoritative model is already IQ2_XXS for gate/up and
+Q2_K for down. Therefore a Q1_0 sidecar derived from that file is valid for
+structural binder, kernel, residency and transport measurements, but it is not
+a quality-optimal Q1_0 quantization and cannot support a general quality claim.
+
+The first converter must record `derived_from_IQ2=true` and
+`not_quality_optimal=true`. A quality-grade Q1_0 verdict remains blocked until
+a provenance-bound richer checkpoint is available. This does not block the
+transport A/B: it only prevents confusing an engineering smoke with the best
+quality the representation might achieve.
+
 ## Full-domain placement
 
 If the 15 GiB candidate confirms the H2D lever, extend toward all 10,240 Q1_0
@@ -107,17 +122,26 @@ subsequent token. Same-token Q1_0-to-IQ2 switching is not part of 0054.
 3. Dedicated selected-load/file source, real kernel dispatch and counters.
 4. Provenance-bound Q1_0 sidecar converter and validator.
 5. Structural one-expert/layer-range smoke.
-6. Fifteen-GiB runtime-observed arena preload and transport profile.
+6. Fifteen-GiB runtime-observed arena preload and transport profile. The arena
+   backing map and byte geometry must be Q1_0-specific, while the 320-entry
+   IQ2 VRAM cache remains an independent representation and is never populated
+   with Q1_0 bytes.
 7. Independent-process A/B and L0-L3 grading.
 8. Only after a positive lever result, segmented full-domain residency.
 
 Research patch provenance:
 
 - step 1: `imanu86/moe-aggressive-commit` commit `9251e5e`;
-- step 2: `imanu86/moe-aggressive-commit` commit `2c32417`.
+- step 2: `imanu86/moe-aggressive-commit` commit `2c32417`;
+- blocker fixes and normalized patch chain: commit `0871821`;
+- step 3 file provenance, selected-load and qwarp32 dispatch: commit `31a02a0`;
+- step 4 synthetic converter/validator protocol: commit `48fcab4`.
 
-Both compile for sm_86 in a temporary clone, but neither currently executes a
-real Q1_0 routed expert. They support no runtime claim.
+The native Windows integration through step 3 is committed on the dedicated
+branch. Its direct `pread` selected loader is deliberately a structural smoke
+path, not a performance candidate: the steady-state target must serve Q1_0
+from resident host slots. No real Q1_0 routed-expert runtime or quality claim
+exists yet.
 
 ## Measurement gates
 
