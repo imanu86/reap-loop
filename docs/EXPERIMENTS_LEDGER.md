@@ -2719,3 +2719,37 @@ telemetry gate
 
 Canonical Windows summary:
 `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_split_fused_ab_result.json`.
+
+## 2026-07-17 Native Windows G103 IQ1_S Cold Transport On G73
+
+G103 preregisters the first direct composition of the G73 short-workload SOTA
+with IQ1_S cold transport. The control freezes G73 exactly: arena30 / 4551
+slots, cache320, source-parts WRAP with waved reclaim, composed prefill mass
+tiering, static budget32, GPU-resident no-default-sync routes and SplitFused.
+The candidate changes only cold execution: one cold expert per routed layer is
+served from the verified IQ1_S sidecar through the mixed GPU planner and a
+1 GiB pinned IQ1 RAM cache. Promotion, open-router reserve slots,
+RoutePackedCopy, packed IQ1 H2D and IQ1 VRAM cache are disabled.
+
+The IQ1_S sidecar was copied from archival SATA storage to the benchmark NVMe:
+`C:\ds4-models\DeepSeek-V4-Flash-IQ1_S-XL.gguf`, `61540805344` bytes,
+SHA-256 `b049d1eb34c068f19ab007b33c22a7d758b578bf2b10d9276e79654f85d35047`.
+A path-bound `g7_verified_file_receipt_v2` was generated after a complete
+locked-stream SHA-256 pass. No G103 benchmark reads the D: copy.
+
+The first `-SafetyOnly` attempt stopped before DS4 launch. The memory preflight
+required 32 GiB available for arena30 plus guard, but measured 23.77 GiB before
+and 23.76 GiB after `wsl --shutdown`; standby was 23.67 GiB and no purge tool
+was installed. This is a host-state gate failure, not an IQ1 result. There is
+no timing, exactness, quality or SOTA datapoint from this attempt. Available
+memory then remained in the 23.88--23.95 GiB range over eight samples spanning
+107 seconds, so the protocol was not weakened to force a launch.
+
+Native Windows protocol commits:
+[`bebc194`](https://github.com/imanu86/ds4-win/commit/bebc194) and
+[`cbb410c`](https://github.com/imanu86/ds4-win/commit/cbb410c).
+Resume point after a clean reboot: rerun
+`g103_iq1_cold_sota_ab.ps1 -SafetyOnly`; only a passing structural safety may
+unlock the preregistered interleaved n>=3 matrix. Candidate IQ1 output is not
+required to equal the G73 IQ2 hash; quality remains a separate L0-L3 n>=3
+gate, while the control must retain the exact G73 hash.
