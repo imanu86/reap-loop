@@ -2869,3 +2869,51 @@ hot placement, then add a dedicated four-slot pinned DMA staging ring
 research fallback only. The compact native receipt is
 `G105_IQ1_FULL_RESIDENT_ABORT_RECEIPT.json`; its hashes bind the uncommitted raw
 local stderr, telemetry and memory preflight files.
+
+### G106 pinned IQ1 capacity boundary
+
+G106 first fixed the G105 observability hole. The runtime monitor now records
+system page-in/page-out counters, a private-working-set residency ratio and an
+independent hard available-RAM floor. Requested counters fail closed, and an
+HTTP failure caused by the monitor now reports the exact abort reasons. The
+guard commits are
+[`5634a2b`](https://github.com/imanu86/ds4-win/commit/5634a2b),
+[`461220d`](https://github.com/imanu86/ds4-win/commit/461220d), and
+[`d106c46`](https://github.com/imanu86/ds4-win/commit/d106c46).
+
+The structural capacity probe kept the current 20 GiB IQ2 dynamic arena and
+varied only the pinned IQ1 host cache. All valid arms were `n=1` structural
+safety runs with a 4 GiB hard RAM floor, a 512 pages/s output ceiling and no
+timing or quality eligibility. Results:
+
+| IQ1 request | Evidence | Min available RAM | Peak shared WDDM | Page-out peak | VRAM expert slots | Gate |
+|---:|---|---:|---:|---:|---:|---|
+| 6 GiB | 1259 / 1310 slots used over 64 tokens | 26.236 GiB | 26.373 GiB | 0 | 320 | PASS |
+| 8 GiB | full pinned allocation, 488 / 1747 used | 24.891 GiB | 28.373 GiB | 0 | 296 | PASS |
+| 10 GiB | full pinned allocation, 488 / 2184 used | 22.923 GiB | 30.373 GiB | 0 | 296 | PASS |
+| 11 GiB | first IQ1 selected load | n/a | n/a | n/a | n/a | `cudaHostAlloc` OOM |
+
+The measured boundary for this exact stack is therefore 10 GiB passing and
+11 GiB failing. The initial dynamic-policy candidate is nevertheless 6 GiB:
+it preserves all 320 measured VRAM expert slots, while 8 and 10 GiB reduce the
+cache to 296. This is a capacity decision only; the forced one-IQ1-per-layer
+fixture remains the wrong routing policy and its decode rates are excluded
+from SOTA.
+
+One calibration run is also retained as excluded evidence. A 0.80 residency
+ratio armed after only 8 GiB private bytes killed normal CUDA startup with
+35 GiB still available and zero page-out. The corrected gate arms the 0.70
+ratio only after 40 GiB private bytes. G106 protocol and compact receipt are
+committed in native Windows as
+[`d150535`](https://github.com/imanu86/ds4-win/commit/d150535).
+
+Next runtime gate: preserve every IQ2 VRAM or IQ2 arena/RAM hit and substitute
+IQ1 only when metadata proves that the selected IQ2 route would otherwise read
+from SSD and the IQ1 representation is already resident. Separately, the
+aggressive-quantization survey found existing GGUF `Q1_0` type 41 at 18 bytes
+per 128 weights (1.125 bpw), or 33.75 GiB for all routed experts. It is the
+preferred sub-IQ1 research path, but DS4's routed-expert binder and kernels do
+not support it yet; no quality or runtime claim exists. The CPU-only Q1_0
+layout and dot-product smoke is documented in
+[`0a38d94`](https://github.com/imanu86/moe-aggressive-commit/commit/0a38d94)
+with 10 focused tests passing.
