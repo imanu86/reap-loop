@@ -2683,6 +2683,16 @@ experimental variable was split-fused route execution. The candidate first
 passed an exact safety process; the preregistered matrix then completed with
 three independent exact processes per arm and no outlier extension.
 
+Semantic corrigendum: `static32` names the fixed expert-tier replacement
+budget of 32; it does not mean a static domain/file mask. Prefill derived and
+published a `request-scoped-closed` decode mask backed by a pinned RAM snapshot
+of 4551 experts (`32211468288` bytes, `7077888` bytes/slot, FNV-1a64
+`c59a437fe9c6c376`). The run requested no mask file, observed no embedded bake,
+and composed over `mask_base=none`. Its exact-IQ2 VRAM tier remained dynamic at
+320 states, with 512 promotions and 192 policy replacements in each accepted
+matrix process. G73 was therefore neither static/baked nor full/open during
+decode: experts outside the request-derived snapshot were not decode-eligible.
+
 Every accepted run preserved the required contract: exact expected content
 SHA-256, same provenance, 4551 arena slots, cache capacity 320, three reclaim
 phases, nine waves, zero reclaim failures, zero snapshot misses, zero SSD
@@ -3067,3 +3077,1203 @@ dual-arena resolver keyed by backing/layer/expert, preserving all Q1 fail-closed
 rules, followed by exact safety and `n>=3` comparison of the complete composite.
 The complete native protocol and result report are committed as
 [`eb85ee4`](https://github.com/imanu86/ds4-win/commit/eb85ee4).
+
+### G112-G116 full-router and representation disambiguation
+
+G112 is the first local Q1_0 run in this sequence that actually kept the
+decode router open over all routed experts. It loaded 11,008 sidecar entries
+(including the layout entries for layers 0 through 2), used Q1_0 for all six
+selected experts in every routed layer, and applied no request-scoped mask.
+The 256-token cyberpunk safety process measured 6.76 server decode t/s with
+66,048 Q1_0 routes, zero IQ2 routes, zero misses and zero direct preads. Its
+output was L0. This is an `n=1` transport ceiling and a negative quality gate,
+not a SOTA result.
+
+G113 and G114 kept the full Q1_0 candidate set but added only a small exact-IQ2
+VRAM seed. The measured exact share remained about 1.15 to 1.34 routes out of
+six. Both variants stayed near 6.21-6.22 server decode t/s, had zero storage
+misses and produced L1 output in their single safety samples. They show that a
+small opportunistic IQ2 seed does not repair a Q1-dominant calculation; they do
+not establish a general quality rate.
+
+G115 then implemented a physical five-IQ2 plus one-Q1_0 split. It served
+20,733 exact routes from VRAM, 34,307 from the exact IQ2 host snapshot and
+11,008 from resident Q1_0, with zero IQ2 SSD bytes and zero Q1 misses. However,
+the request-scoped snapshot retained only 4,247 entries total, including the
+768 layout entries for layers 0 through 2. The active routed coverage was
+3,479 / 10,240 entries and gate-mass coverage was 0.5566. The single 256-token
+safety process measured 5.55 server decode t/s and malformed output. It is not
+a full-router 5+1 quality test. Code review also shows that this path invokes
+`routed_moe_launch` twice, requantizes the input for the Q1 sub-launch, disables
+SplitFused for Q1 and joins a second output buffer. Its throughput therefore
+includes avoidable composition overhead and is not a clean precision-only
+contrast.
+
+G116 removed Q1_0 while preserving the same 55.66%-coverage closed mask and
+28 GiB host arena. It measured 8.08 server decode t/s in one safety process,
+zero SSD traffic and invalid long-form output. This isolates a large throughput
+cost in the current mixed Q1 dispatch, but also confirms that the closed mask
+itself is sufficient to invalidate the long document. G116 is neither an
+open-router control nor a SOTA result.
+
+The causal conclusion is now frozen: expert selection and representation must
+not be conflated. The next candidate keeps the original router IDs and weights
+authoritative, avoids a request-scoped closed mask, and uses Q1 only as an
+exactly completable resident base or a separately graded low-weight one-token
+fallback.
+
+### Nested IQ2 base plus exact residual CPU gate
+
+The CPU-only nested-residual lab split the original expert bytes rather than
+requantizing independently. For IQ2_XXS, the base keeps scale/group-scale/sign
+metadata in 34 of 66 bytes and the residual contains the remaining 32 bytes.
+For Q2_K, the base keeps scales/mins and the high quant bitplane in 52 of 84
+bytes; the residual is again 32 bytes. One expert is therefore 3.75 MiB base
+plus 3.00 MiB exact residual, reconstructing the original 6.75 MiB.
+
+Three deterministic sample seeds read 768 real routed-expert blocks each from
+`C:\ds4-models\ds4-2bit.gguf`. All 2,304 joins reproduced the original block
+byte-for-byte. Mean base-only dot nMAE was 0.02978-0.03020 for IQ2_XXS and
+0.02638-0.02724 for Q2_K. The base-only error is not a quality breakthrough;
+its measured value is that an exact cold promotion reads 3.00 rather than 6.75
+MiB per expert. The 10,240 active routed experts require 37.50 GiB resident
+base; all residuals would be 30.00 GiB and remain bounded/cached rather than
+duplicated in RAM.
+
+The implementation and raw reports are in
+`runs/ds4/20260718_nested_residual_lab/`, with the active architecture in
+`docs/FULL_ROUTER_NESTED_RESIDUAL_PLAN_20260718.md`. This is a representation
+and exactness gate only. No decode-speed or generation-quality claim exists
+until the one-layer runtime reconstructs the authoritative IQ2 output and the
+full-router long-form protocol passes `n>=3` L0-L3 grading.
+
+### G117 nested residual one-layer structural safety
+
+G117 measured the first runtime safety check of the nested residual path. It is
+`n=1` structural safety only: full/open router, mask off, prompt `Hi`,
+`max_tokens=8`, `ctx=256`. Control and candidate produced identical output
+SHA-256 `8a17fc0dc61e8520bdbe3a735b000358a6476cbe9f0e3d86c54a51cf26b5d009`.
+
+Structural counters were `router_calls=9`, `cache_hits=9`,
+`cache_misses=62`, `preads=62`, `reconstructed=62`,
+`residual_bytes=195035136`, `h2d_bytes=502530048`, `mismatch=0` and
+`failures=0`. Control server decode was 1.55 t/s; candidate server decode was
+1.40 t/s. `timing_claim_valid=false`, so no performance verdict, no throughput
+claim and no SOTA update are recorded from this run.
+
+The run happened after fixing the pre-test review blockers: pinned slot event
+reuse, hard fail closed, mandatory open router, parser overflow, full sidecar
+hash lock and per-used-expert reconstruction.
+
+### G118-G119 nested residual distributed-layer capacity gate
+
+G118 applied the exact nested representation to layers 3, 16, 29 and 42. It
+matched the control output SHA and measured `router_calls=36`, `misses=268`,
+`preads=268`, `residual_bytes=843055104`, `reconstructed=268`,
+`h2d_bytes=1896873984`, `mismatch=0`, `failures=0`. The candidate pinned
+`4026531840` base bytes but then failed to register the requested 28 GiB source
+window with CUDA `out of memory`; the control registered 28 GiB. Exactness
+passed, but the memory paths were not comparable and timing is invalid.
+
+G119 used the same model, sidecar, prompt, output hash and four covered layers
+with `BudgetGB=24`. Both arms registered the 24 GiB source window; the nested
+candidate also pinned all 3.75 GiB of base with `mapped=0`. All 268 misses were
+reconstructed from 268 residual reads, with zero mismatch and zero failure.
+This fixes the first compatible physical budget at 24 GiB source window plus
+3.75 GiB nested base. G118 and G119 are both `n=1` structural evidence only;
+neither updates quality, throughput or SOTA.
+
+### G120-G121 open-router nested reuse gate
+
+G120 combined the historical G73 transport levers with an explicitly open
+request-scoped router. This corrected the earlier assumption that G73's
+4.986667 t/s result was itself full/open: G73 used a request-scoped closed
+transport set after prefill. The G120 full/open control produced coherent
+output SHA
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510`,
+different from historical G73 SHA
+`31cbc6504dcb57d42aeff9dbceb3aed943bcb32dae19a2edbf552e9fd2f52eb8`.
+
+The single G120 control measured 0.650419 end-to-end t/s, 1.42 server decode
+t/s and 52.864 s prefill/TTFT. The exact four-layer candidate was byte-identical
+with zero mismatch/failure, but its default six-entry exact cache recorded 0
+hits and 1,802 misses. It measured 0.487870 / 0.88 t/s and read
+5,668,601,856 residual bytes. Source review established why: six entries hold
+only one top-six route, so each covered layer evicted the previous layer before
+the next token.
+
+G121 changed only nested exact-cache capacity from 6 to 64. Output stayed
+byte-identical. Hits rose to 817, misses fell to 985 and residual bytes fell to
+3,098,542,080. Derived hit rate and miss reduction were 45.34%.
+End-to-end throughput rose to 0.553980 t/s (+13.55% from the cache-6 arm) and
+server decode to 1.12 t/s (+27.27%), but remained below the single open
+control. Nested H2D remained 12,754,354,176 bytes in both candidates because
+the covered-layer path still bypasses the existing GPU-resident SplitFused
+cache and uploads a full native expert for every use, including host-cache
+hits.
+
+G120 and G121 are `n=1` structural measurements and do not update SOTA or
+generalized quality. The next causal gate is to admit reconstructed exact
+experts to the existing VRAM route cache, require nonzero nested VRAM hits and
+lower H2D at exact output, then run `n>=3`.
+
+### G122 nested exact GPU-resident reuse gate
+
+G122 completed that causal gate with the same full/open output SHA
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510`,
+zero reconstruction mismatch, zero runtime failure and no selected-load
+fallback. Across the four covered layers it measured 256 GPU-route calls,
+541 VRAM hits and 995 VRAM misses. Every miss filled and uploaded exactly one
+native 7,077,888-byte expert: `host_fills=995`,
+`host_bytes=h2d_bytes=7042498560`.
+
+The dedicated route-cache H2D subset was 7,042,498,560 bytes. Including
+prefill selected-load traffic, the comparable total nested H2D counter fell
+from 12,754,354,176 bytes in G121 to 8,925,216,768 bytes in G122, a measured
+30.02% reduction. End-to-end throughput was 0.559345 t/s and server decode
+1.16 t/s versus G121's 0.553980 / 1.12; those +0.97% and +3.57% deltas are
+`n=1` signals only. Prefill/TTFT was 58.849 s and load was 21.9 s. G122 is
+structural evidence, not a SOTA or generalized performance verdict. It
+unlocks a clean equal-host-budget `n>=3` full/open A/B.
+
+### G123 nested exact equal-host-budget n=3 A/B
+
+G123 compared three independent full/open G73-composite controls with three
+independent nested GPU-cache candidates. All six accepted rows reproduced
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510`,
+passed quiescence and had runtime contamination peak zero. Host budget was
+equal: 30 GiB control arena versus 25.828125 GiB candidate arena plus 3.75
+GiB nested base and 0.421875 GiB exact cache.
+
+Control mean/median end-to-end throughput was 0.650261/0.647540 t/s and
+server decode was 1.650000/1.650000 t/s. Candidate mean/median end-to-end was
+0.555497/0.559217 t/s and decode was 1.163333/1.160000 t/s. Mean deltas were
+-14.57% end-to-end and -29.49% decode. Mean TTFT changed from 59.217 s to
+59.803 s; mean load changed from 11.222 s to 29.212 s.
+
+Every candidate recorded 541 nested GPU hits, 995 misses, 995 host fills,
+7,042,498,560 route H2D bytes, 869 residual reads, 2,733,637,632 residual
+bytes, 8,925,216,768 total nested H2D bytes and zero mismatch/failure. The
+35.22% GPU hit rate is insufficient to amortize the current host
+reconstruction and full-expert upload miss path.
+
+An initial control-r3 attempt is explicitly excluded: arena copy expanded
+from about 32 s to 134.654 s and the route worker timed out at sequence 1882.
+The cooled replacement was exact and measured 0.656230 end-to-end / 1.67
+decode. G123 therefore rejects extending the current implementation to all
+layers. SOTA is unchanged; this 64-token exact benchmark is not a generalized
+L3 quality result. Receipt:
+`runs/ds4/20260718_nested_residual_lab/G123_RECEIPT.json`.
+
+### G124 nested residual causal profile
+
+G124 profiles the G123 nested candidate miss path without changing the verdict.
+It is `n=1` causal profile evidence only, with exact output SHA
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510` and
+runtime reconstruction verification enabled. It has no SOTA, performance A/B
+or L0-L3 generation-quality verdict.
+
+The authoritative receipt is
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g7_g124_nested_residual_profile_20260718T172630143Z_ea23d8bd87_receipt.json`;
+the associated result is
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g7_g124_nested_residual_profile_20260718T172630143Z_ea23d8bd87_result.json`.
+
+Measured profile timers were: CPU reconstruct `14.8898841 s` over 869 calls,
+residual pread `1.9070234 s` over 869 calls, reconstruction verification
+`0.4990679 s` over 2,607 calls, host copy `0.3460242 s` over 995 calls,
+H2D enqueue `0.0381582 s` over 995 calls, H2D sync `0.1677010 s` over 254
+calls, H2D enqueue+sync `0.2058592 s`, and route-ready wait `14.6092232 s`
+over 256 calls. These timers overlap across worker, route and transfer paths;
+they identify causal stages and must not be summed into wall-clock time.
+
+The measured next lever was G125 GPU-side exact join, so the miss path could
+avoid host-side reconstruction plus full native expert upload before reuse.
+
+### G125 nested residual GPU-join structural safety
+
+G125 is the `n=1` structural safety gate for GPU-side exact join on the same
+full/open nested-residual fixture. It preserves the open router: no REAP mask,
+no static mask, no bake mask and no request-scoped closed routing are part of
+the run. The output SHA was exactly
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510`.
+
+The authoritative receipt is
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g7_g125_nested_gpu_join_safety_current_build_clean_20260718T182935501Z_eb824ebedb_receipt.json`
+with receipt SHA-256
+`ae15a6d3d3bc35e75b46befd8d18d7886f571e47d93561d146ada3ccf20f58fb`.
+
+Measured G125 counters: GPU join was requested and observed, with 1,261 calls,
+4,958,453,760 base H2D bytes, 3,966,763,008 residual H2D bytes, zero native
+H2D bytes, zero CPU reconstruction calls, 3,783 verification calls, zero
+verification mismatches and zero failures. The existing route cache still
+reported 256 route calls, 541 hits and 995 misses. The GPU-join timer was
+0.1242402 s and wait time was 0.0019319 s, but these are diagnostic timers
+only and may overlap with other stages; G125 is not a performance or quality
+verdict.
+
+### G126 nested residual CPU-join versus GPU-join A/B
+
+G126 is the repeated full/open A/B for the same four-layer nested fixture,
+comparing the previous CPU reconstruction miss path against GPU-side exact
+join. It used three independent processes per arm in order
+`cpu, gpu, gpu, cpu, cpu, gpu`. All six accepted rows were exact,
+uncontaminated and produced the same content SHA
+`fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510`.
+The model SHA was
+`efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668`;
+the sidecar SHA was
+`07199bc5503aa6e2dea10f702c1ca9e8f05a5bf466a56cbed031f6a5fca4bdf9`.
+
+The authoritative aggregate is
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g7_g126_nested_gpu_join_ab_current_build_clean_v2_20260718T183831489Z_b4d8a5d111_result.json`
+with SHA-256
+`c1f7849aa0da33c4b6d8279073954ba39f556fc485215e6d4058e809fbe9eaa6`.
+It references the G125 safety receipt above.
+
+| G126 arm | Server decode t/s | Mean / median | End-to-end t/s mean / median | TTFT mean / median |
+|---|---:|---:|---:|---:|
+| CPU join | `1.15, 1.16, 1.15` | `1.153333 / 1.15` | `0.333719 / 0.241509` | `171.829 / 208.944 s` |
+| GPU join | `1.56, 1.58, 1.57` | `1.570000 / 1.57` | `0.499730 / 0.657202` | `140.836 / 56.204 s` |
+
+The defensible G126 finding is the server decode delta: GPU join improved
+mean decode throughput by 36.1272% over CPU join on this exact batch. The
+end-to-end mean was also higher by 49.7457%, but TTFT and WRAP/request timing
+were wildly noisy in this batch, with request seconds spanning roughly
+96.98 to 351.57 s and WRAP/TTFT behavior not stable enough for a general
+latency claim. Treat E2E as batch-only/noisy.
+
+The CPU arm reconstructed 869 experts in every process. The GPU arm recorded
+1,261 GPU-join calls in every process, positive base and residual H2D, zero
+native H2D, zero CPU reconstruction, zero benchmark verification calls, zero
+mismatches and zero failures. Both arms retained the same 541 nested GPU hits,
+995 misses and 7,042,498,560 nested route-cache H2D bytes per process.
+
+Context: G126 should be compared to G123 as a same-fixture full/open nested
+improvement: G123's nested candidate mean decode was 1.163333 t/s and G126
+GPU join reached 1.57 t/s while preserving exact output. It remains below the
+G123 full/open IQ2 control at 1.65 t/s, and historical G73 at 4.9867 t/s is a
+closed/request-scoped short-workload result, not an absolute full/open target.
+G126 is therefore not absolute SOTA. It is a positive miss-path decode finding
+for GPU-side exact join under the current four-layer nested fixture.
+
+## 2026-07-19 Native Windows G73 Diagnostic Closeout
+
+This is an `n=1` diagnostic and safety closeout on the current G73-derived
+build. It does not update the historical G73 `n=3` result, establish output
+exactness, grade C0-C3 quality, or make a full/open or headline-performance
+claim. Every completed canary response ended with `finish_reason=length`; its
+decode-valid flag only means that the protocol's 48-token minimum was met.
+
+| Record | Status and configuration | Exact receipt measurements | Allowed claim |
+|---|---|---|---|
+| C0 | pass; one request; ctx256/chunk256 | prompt/completion 43/64; wall 79.769711 s; TTFT 10.278 s; prefill 66.318 s at 0.648391 t/s; decode 13.035 s at 4.909858 t/s; runtime tensor progress 0; unsafe tier events 0 | `n=1` baseline canary only; C0 is not workload-comparable to C1-C3 |
+| C1 | pass; dynamic two-request case; ctx1024/chunk256 | request1 43/64, wall 79.309938 s, TTFT 10.051 s, prefill 66.155 s at 0.649989 t/s, decode 12.726 s at 5.029074 t/s; request2 306/64, wall 75.561198 s, TTFT 10.646 s, prefill 62.217 s at 4.918270 t/s, decode 13.331 s at 4.800840 t/s; runtime tensor progress 0; unsafe tier events 0 | request2 dynamic canary passed; no quality, sustained-performance, or full/open verdict |
+| C2 | pass; dynamic two-request case; ctx8192/chunk256 | request1 43/64, wall 272.863275 s, TTFT 9.963 s, prefill 259.776 s at 0.165527 t/s, decode 12.665 s at 5.053296 t/s; request2 306/64, wall 75.391667 s, TTFT 10.412 s, prefill 62.459 s at 4.899214 t/s, decode 12.929 s at 4.950112 t/s; runtime tensor progress 0; unsafe tier events 0 | ctx8192/chunk256 diagnostic canary passed; no quality, sustained-performance, or full/open verdict |
+| C3 | aborted; dynamic two-request case; ctx8192/chunk2048 | one runtime tensor progress event during request1 `request-begin`: `6.22 GiB cached` at server log line 28; no request completed; request1 GPU samples 18, mean/median/max 7.333/4/52%, memory max 10664 MiB | contaminated chunk2048 safety case; no timing or quality evidence |
+| Long Arm A | failed; assigned L0; ctx8192/chunk256/max3000 | request1 only: HTTP 200, prompt/completion 43/3000, wall 508.495548 s, TTFT 10.082 s, prefill 66.045 s at 0.651071 t/s, decode 442.000 s at 6.787330 t/s; `finish=length`; no observed `</html>`; raw prefix and Markdown fence; malformed document without body/nav/form/script; runtime tensor progress 0; unsafe tier events 0 | negative `n=1` long-quality safety; 6.787330 t/s is non-promotable |
+| Long Arm B | not_run | no Arm B receipt and no measurements; request2 was not sent because the shared request1 prerequisite failed before A/B divergence | only the fact of non-execution; no behavior, timing, or quality inference |
+
+Authoritative receipts:
+
+- C0: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_performance_canary\perfC0_final_countfix_20260719T115141Z\summary.json`
+- C1: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_performance_canary\perfC1_dynamic_20260719T1156Z\summary.json`
+- C2: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_performance_canary\perfC2_dynamic_ctx8192_20260719T1202Z\summary.json`
+- C3: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_performance_canary\perfC3_dynamic_ctx8192_chunk2048_20260719T1212Z\summary.json`
+- Long Arm A and the Arm B fail-fast decision: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\G73_LONG_HTML_SAFETY_CLOSEOUT_RESULTS.md` and `g7_runs\g73_long_html_ab_safety\longA_safety_20260719T125754Z\summary.json` in that worktree.
+
+## 2026-07-19 Native Windows G129 Startup Capacity Abort
+
+The post-reboot G129 structural-safety attempt passed its launch preflight with
+`ready_to_launch=true`, a 7.5 GiB minimum-available guard, and
+`59089137664` available bytes. Startup validated and installed the 36.37 GiB
+Q1_0 routed-expert sidecar, prepared 7.21 GiB of startup model-cache spans, and
+allocated a separate pinned exact-IQ2 arena of `5902958592` bytes / 834 slots.
+
+The runtime monitor then aborted the owned server after 53.476 s on three
+consecutive `hard-low-memory` samples. The abort sample recorded PID 3872,
+`661884928` Windows-available bytes, `49352544256` working-set bytes,
+`54035292160` private/paged bytes, `14865493` page faults,
+`106359.27866895513` pages input/s, `1258.2420328094572` page reads/s,
+GPU utilization 1%, and 8534 MiB VRAM used. The failure reason is
+`runtime-contamination-abort`. No HTTP request, output, exactness result,
+quality grade, decode throughput, or proof of full/open runtime routing was
+produced. This receipt supports only a startup capacity/contamination abort for
+that machine state.
+
+Authoritative receipt:
+`C:\Users\imanu\Documents\Codex\2026-07-07\cia\work\ds4-win-publish-g126-20260718-v2\g7_runs\g7_g129_q1_open_dynamic_promotion_safety_postreboot_main_20260719T145402185Z_7e9f63bb00_failure.json`.
+Its memory preflight and runtime telemetry use the same tag in the same
+directory.
+
+Sandbox/no-run note: no sandbox execution receipt is present. The frozen G129
+handoff's earlier statement that no safety run or receipt existed, plus its
+sandbox/approval discussion, is context only. It must not be represented as a
+measured or aborted run. The hard-low-memory receipt above remains a distinct
+earlier execution record from the later control failure below.
+
+## 2026-07-19 Native Windows G129 Full/Open Q1 Control Decode Failure
+
+The later control-only safety attempt
+`g129_control_fullopen_q1_safety_20260719T185343539Z_codex_fg_20260719T185343911Z_c0c84095d9`
+passed process isolation and memory readiness. The server became ready after
+about 92 s. It used source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, Release build input fingerprint
+`f781522ee992aed8c9e0b905f888e7254d3d9730121b75ee34354a411657f53a`,
+and executable SHA-256
+`64353fb5e8b0638e4e4349540802b3570093f324d5e48d47116f9d24c36060dc`.
+The at-run measurement harness SHA-256 was
+`eea29af72f85659b3a036490255037edfc93d922802f7ab1f782c3dac1a167c2`;
+the at-run G129 safety runner SHA-256 was
+`43b4940720c1d2242f8d6166e6abed6798aab6456438502cd9754f1a4bb48b7e`.
+The configuration SHA-256 was
+`ab487f9e535d1da90d818ba2ee1d94f5188904854cf1660681c13d346e376b2f`.
+These, together with the at-run protocol SHA-256
+`eae069fbb1d8d460f78b31208ea1cb806a4f1790ce8e05336e0fad87aeeaafc2`,
+are execution-time identities acquired before later worktree edits; current
+script or protocol hashes must not be substituted retroactively for this run.
+
+The control configured the exact-IQ2 primary arena at 5.50 GiB / 834 slots and
+bootstrapped the complete Q1_0 routed base: 11,008 entries for layers 0..42,
+38,956,695,552 bytes total, 26,304,970,752 pinned bytes / 7,433 slots, and
+12,651,724,800 pageable bytes / 3,575 slots. Prefill published 770 exact-IQ2
+entries in 11.291 s. No closed decode mask was applied: the log reports
+`semantics=request-scoped-open`, `base=none`, and zero kept/pruned mask entries.
+
+Decode nevertheless failed before producing one token. At layer 0 the
+`q1-0-mixed` entry contract rejected six routes with `tier_entries=0`, followed
+by `cuda decode failed` at `gen=0`. This is a fail-closed control NO-GO, not a
+throughput or quality result. Dynamic promotion was OFF in this control, and
+the promotion arm was consequently `not_run` under the protocol gate.
+
+The Windows source-unlock telemetry recorded 129 calls over three ranges per
+layer, with `success=0`, `true=0`, `not_locked=129`, and `failed=0`. It therefore
+did not demonstrate physical release of the mapped Q1_0 source and cannot
+support a claim for that fix. Minimum available memory was 6.694 GiB; peak
+working set was 47.788 GiB and peak private memory was 51.523 GiB.
+Contamination count and contamination-abort count were both zero, and post-run
+cleanup was reported clean.
+
+Because failure preceded final invariant parsing, final SSD bytes, backing
+misses, exactness, forbidden-transition counters, output, and L0-L3 quality are
+not attestable. In particular, zero values must not be inferred from absent
+final telemetry. There is no full/open success, exactness, source-unlock-fix,
+performance, quality, promotion, or SOTA claim from this attempt.
+
+Authoritative manual failure receipt:
+`C:\Users\imanu\Documents\Codex\2026-07-07\cia\work\ds4-win-publish-g126-20260718-v2\g7_runs\g7_g129_control_fullopen_q1_safety_20260719T185343539Z_codex_fg_20260719T185343911Z_c0c84095d9_manual_failure_receipt.json`,
+SHA-256
+`a9b3d6b3fef6ca6b820c3a7812cdccdc0218dde55521e273560046b21f58ce7b`.
+Its process-isolation, memory-preflight, runtime-telemetry, stderr, and stdout
+SHA-256 values are respectively
+`f4e2a2df5ad9f961e8961699ca9e3adb1508f364e979f0bdfdd11ade23ebb1c2`,
+`e0b004d4e865d97f3c2dadb27fdbfe932ff72b7b050a4176457031ca6035609d`,
+`860f2ffca93dd8c0b578903790e5cba789c76447f4fce2b941242f9640d191a6`,
+`da3086a97c4434282d7a4b01afc939c5cd8774d46119f39741513df73eb8c929`,
+and `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+Preceding invocations without a result or failure receipt remain
+infrastructure-only Markdown context and have no CSV evidence row:
+
+| invocation | surviving artifact | exact disposition |
+|---|---|---|
+| `parent_g129_control_fullopen_q1_safety_20260719T184517831Z` | zero-byte parent stdout/stderr, both SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855` | wrapper no-run; no child/preflight/receipt |
+| `g129_control_fullopen_q1_safety_20260719T184648597Z_codex` | zero-byte stdout; 427-byte stderr SHA-256 `e31efaf72f3437db3e8c2af75cb97a28281313caaf19b807d89c95c6a54ead4b` | pre-server parameter failure: unsupported `ExePath`; no runtime/receipt |
+| `g129_control_fullopen_q1_safety_20260719T184804897Z_codex` | process-isolation preflight PASS, SHA-256 `e0a62fea31c5f7725c84e87e610742de3d41ece1cfd708418e6f70b5fa03f093`; zero-byte parent logs | stopped after process-isolation preflight; no memory/runtime/result/failure receipt |
+| `g129_control_fullopen_q1_safety_20260719T185041132Z_codex2` | process-isolation preflight PASS, SHA-256 `3176e6e2524c7c189f3dcfac19411780663b13515223ee4319dc786918548d6b`; 150-byte parent log SHA-256 `796427ac870db0572838c19550345d2e075806a114a42d1b882bc0480ef546ae` | stopped during pre-launch memory handling; no DS4 request/runtime receipt |
+
+## 2026-07-19 Native Windows G129 Entry-Fix Control: Runtime PASS, Harness FAIL
+
+Run
+`g129_control_fullopen_q1_safety_entryfix_fg_20260719T194543063Z_20260719T194543443Z_1d6d439708`
+is an official fail-closed control result. The HTTP request completed, produced
+64 tokens in 332.664134 s, and the owned server exited 0 after a clean shutdown.
+The raw output SHA-256 is
+`920bddf1a1dea9cb85583d297d394107f34abe2fec3bf30c690b1debdc75581b`.
+This short structural output is not assigned an L0-L3 grade and its observed
+0.192386 client t/s is not a performance result.
+
+Execution identity was source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, build-manifest SHA-256
+`36f9b48aff62765770108df9efd184e949e063ae4419e107fa7e9ac95a3fd92e`,
+Release input fingerprint
+`d71dd9405badd833a0c49efdf0548cd3740d10b7699a995d510d90dd4ff42d16`,
+and executable SHA-256
+`262159830d5628795ff79eabd8da415aab6b8a4d049d8f7f2c8b01fcef437580`.
+The at-run measurement harness, runtime monitor, G129 safety runner, and
+protocol SHA-256 values were respectively
+`2b0fb688a159d2333327958d4129000e5589312818f44cb1873aaa0e690d8182`,
+`bd5be0ac80594a6866137e44cffbd58f1c3707eedcd8cbf246620eebdd9e9b29`,
+`1e7962b2c040b8cde827c17ff840cb1fe96982d1f05787ba6c1fff3c5486b832`,
+and `5d75da4de0e7fa3ef7088952b7c3cfde68256192014f9bef0116203fa4cde03b`.
+The control configuration SHA-256 remained
+`ab487f9e535d1da90d818ba2ee1d94f5188904854cf1660681c13d346e376b2f`.
+The harness, safety runner, and protocol were edited later at 20:07-20:08 UTC;
+their current hashes are not retroactively attributed to this run.
+
+The entry-contract fix reached and completed mixed decode. Runtime structural
+telemetry is internally complete and consistent:
+
+- full/open routing was preserved with no mask (`request-scoped-open`,
+  `base=none`, zero kept/pruned entries);
+- the Q1_0 arena contained all 11,008 entries for layers 0..42, with
+  26,304,970,752 pinned and 12,651,724,800 pageable bytes;
+- the exact-IQ2 arena contained 834 slots / 5.50 GiB and published 770 prefill
+  entries in 12.107 s; cache320 seeding completed with zero failures;
+- tiering exposed 11,008 entries and recorded 16,512 route entries;
+- mixed routing recorded 9,834 Q1-resident, 5,680 IQ2-VRAM, 998 IQ2 snapshot-RAM,
+  and zero IQ2 tier-RAM routes, totaling exactly 16,512;
+- `trace_rows=16512` equals `tier_route_entries=16512`; mixed failures,
+  snapshot-backing misses, Q1 resident misses, direct-pread fallbacks,
+  SSD bytes/violations, tier failures, and forbidden cold SSD-to-VRAM events
+  were all zero;
+- dynamic promotion was OFF and no promotion event was claimed.
+
+The official failure is solely the harness SplitFused accounting gate. Runtime
+reported `split_fused_hits=5680` and `split_fused_misses=998`, totaling 6,678,
+which exactly equals the real IQ2 route population `5680 + 998 + 0`. The
+harness instead compared this with `6 * calls = 6 * 2498 = 14988`, implicitly
+including routes that legitimately used Q1 fallback. The failure receipt thus
+says `SplitFused route accounting does not match the primary-model route
+population`, although the complete mixed-route partition itself balances.
+The official harness verdict remains FAIL; this analysis does not rewrite it
+as a passing run.
+
+Runtime telemetry contains 423 samples. Minimum Windows-available memory was
+4.190941 GiB (4,499,988,480 bytes), with zero samples below 2 GiB or 1 GiB;
+contamination and contamination-abort counts were zero. Peak working set and
+private memory were 49.931679 GiB and 53.723179 GiB. Source unlock again
+reported 129 calls with `success=0`, `not_locked=129`, and `failed=0`, so this
+run does not prove physical source release.
+
+The authoritative failure JSON SHA-256 is
+`fd960616313d8d21f429c8903e325623e210e2b63f05a9c5bc86d75ae0252be0`;
+the G129 safety failure receipt SHA-256 is
+`82a8cf68b57c7dfd3acb4479b797d04f049957d4688f17f2ab5cb38e98c798af`.
+The raw-output, runtime-telemetry, and stderr SHA-256 values are
+`1579d3a1b0db0537f1ade8e55076b00399e9fb3ed073ad4c4296c388b4a38da7`,
+`89f9ee5e6348502fe31a7652aa8a09e4e5d629371656ccab7b966826d239a91a`,
+and `0aaf3eadd4d78d43dc93a87beadb893acdd7ed44b2702b5397ebabc420a21e51`.
+The planned promotion arm is `not_run`. No performance, quality, exact-output,
+physical-source-release, promotion, n>=3, or SOTA claim follows.
+
+## 2026-07-19 Native Windows G129 Confirmed SplitFused Control: Structural PASS n=1
+
+Run
+`g129_control_fullopen_q1_safety_confirm_splitfused_fg_20260719T201956114Z_20260719T201956487Z_0a22b47cb8`
+is the first official G129 control receipt with status
+`pass_structural_n1_no_performance_or_quality_verdict`. The request completed
+64 tokens in 332.769602 s, produced output SHA-256
+`920bddf1a1dea9cb85583d297d394107f34abe2fec3bf30c690b1debdc75581b`,
+and the owned server exited 0. These timing and output facts are diagnostic
+only: the run was not quality-eligible or SOTA-eligible, has no L0-L3 grade,
+and supplies no performance claim.
+
+Execution identity was source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, build-manifest SHA-256
+`36f9b48aff62765770108df9efd184e949e063ae4419e107fa7e9ac95a3fd92e`,
+Release input fingerprint
+`d71dd9405badd833a0c49efdf0548cd3740d10b7699a995d510d90dd4ff42d16`,
+executable SHA-256
+`262159830d5628795ff79eabd8da415aab6b8a4d049d8f7f2c8b01fcef437580`,
+and `ds4_cuda.cu` SHA-256
+`e0fd2aa8f043c66f9199f65783cc764c232d89d9fd4003a4666d1fc5b733625c`.
+The at-run measurement harness, G129 safety runner, protocol, and runtime
+monitor SHA-256 values were respectively
+`43123e850c871b3d61bbd932e7c1d2232a084aefd1dcab653a9fa7ee0bc3499c`,
+`33ac97d1c426171eb7113a667356a77f1c55b8ab116a60e66cc7771f0bacc43b`,
+`e7b8315ea67ae6323c8d85846ac898632c9e1cc42a565b130a0f545aefea658a`,
+and `bd5be0ac80594a6866137e44cffbd58f1c3707eedcd8cbf246620eebdd9e9b29`.
+The control configuration SHA-256 was
+`ab487f9e535d1da90d818ba2ee1d94f5188904854cf1660681c13d346e376b2f`.
+
+The corrected harness accepted the runtime's complete structural partition:
+
+- routing remained full/open with no decode mask (`request-scoped-open`,
+  `base=none`, zero kept/pruned entries);
+- Q1_0 covered all 11,008 entries for layers 0..42: 7,433 pinned slots /
+  26,304,970,752 B and 3,575 pageable slots / 12,651,724,800 B;
+- the exact-IQ2 arena allocated 834 pinned slots / 5,902,958,592 B and
+  published 770 prefill entries / 5,449,973,760 B in 11.751 s; the 320-entry
+  VRAM seed completed with zero failures;
+- `trace_rows=16512` equaled `tier_route_entries=16512`; the route partition
+  was 9,834 Q1-resident + 5,680 IQ2-VRAM + 998 IQ2 snapshot-RAM + zero IQ2
+  tier-RAM = 16,512;
+- SplitFused hits/misses were 5,680/998 = 6,678 against expected/observed
+  6,678, using the corrected `q1-0-mixed-iq2-routes` basis and explicitly
+  excluding the 9,834 Q1-resident routes;
+- mixed failures, Q1 resident misses, snapshot-backing misses, direct-pread
+  fallbacks, tier failures, SSD bytes/violations, current-token/direct
+  SSD-to-VRAM transitions, and forbidden cold SSD-to-VRAM events were zero;
+- dynamic promotion was not requested; attempts, successes, events, direct
+  rejections, backing reclaims, and promotion failures were all zero.
+
+Structural exactness and provenance were complete. The IQ2 model was
+86,720,111,488 B with SHA-256
+`efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668`
+and receipt SHA-256
+`a1a6626088489743628165692d32870f083cfe74386469176d0b333a2c95eb55`.
+The Q1_0 sidecar was 39,048,344,416 B with SHA-256
+`05040393f5e94bf054a593e4d2d021ff44a6f446f2328a75e4f833a1fbe20207`,
+receipt SHA-256
+`9a4dc6e6a86523a3df4bf88681c83819b0eac2dc9d36c5ff78800d7025c9b2d5`,
+and `provenance_verified=true`. Prompt SHA-256 was
+`38f6ec5ee5403f59dd2418eb5d9a5a94a0f0da19df015060383bb1ae46003bb6`.
+No expected-output oracle was requested, so this is not a quality or
+exact-output claim.
+
+Runtime telemetry contained 422 samples. Minimum Windows-available memory was
+4,449,619,968 B / 4.144 GiB, with zero samples below 2 GiB or 1 GiB and zero
+contamination/abort observations. Source unlock reported 129 calls with
+`success=0`, `not_locked=129`, and `failed=0`; it still does not prove physical
+source release.
+
+The authoritative result, receipt, runtime-telemetry, and stderr SHA-256 values
+are respectively
+`795b65609c1826129e2467493a90f6998bad2176e2eff7e7e89c110b05ac6b63`,
+`0f4aeb6e8b38a03e7ba0c943abbbce1009c53b2c55bfec04c8668b5da2b65017`,
+`8669b0b06db15427ae95e8f85e630d8abb1cada1451776b51baaa2c4e1b93935`,
+and `3492e7befa373440856f01810216d780c4a9ce2d8acab71adac5380815ef8a9f`.
+The raw-output, process-isolation preflight, memory preflight, system-quiescence
+preflight, and empty stdout SHA-256 values are
+`a70101599565e6630f2cbad4999376e29eaf3b0c912e7e8510af27d9ba27951f`,
+`492c75a3d3a452a9a357a9cbeac5f0a11515807adb25dc1e8614918dd199158e`,
+`7ae4ec9a538abeb3f26fb4400ee5b3fe4d9904e117c453efc998f1ecd7dd4ea7`,
+`9b74e234252d9821896bcae41b9345e48c86f34dbd60c98ad84d904bbb244b41`,
+and `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+This is a control-only structural `n=1` PASS, not a quality, performance,
+physical-release, promotion, `n>=3`, or SOTA result.
+
+## 2026-07-19 Native Windows G129 Promotion: Pre-Server Quiescence Abort
+
+Promotion tag
+`g129_promotion_fullopen_q1_safety_confirm_fg_20260719T204336000Z_20260719T204205331Z_069895af73`
+has a failure receipt but no DS4 runtime. The wrapper receipt records
+`failed_structural_n1_no_performance_or_quality_verdict` /
+`child-exit-nonzero`, while the evidence disposition is
+`inconclusive; runtime not_run`: the child stopped before `ds4_server` launch
+because system quiescence returned `disk-median-above-threshold`. There was no
+readiness probe, HTTP request, output, runtime telemetry, or server exit code.
+No promotion gate is evaluable. Although `failure.json` contains
+`completed_results=1`, it also has `http_ok=null` and `server_exit_code=null`,
+and none of the result/raw-output artifacts exists; that counter is therefore
+not evidence of a completed request.
+
+Process isolation passed with zero conflicts. Memory preflight also passed:
+Windows-available memory moved from 59,657,281,536 B / 55.560 GiB to
+59,629,735,936 B / 55.535 GiB against a 7.5 GiB minimum. After the 10.003 s
+cooldown, quiescence collected all five requested samples. Its medians and
+thresholds were:
+
+| signal | observed median | launch threshold | result |
+|---|---:|---:|---|
+| CPU | 10.855744% | <=60% | pass |
+| GPU | 0% | <=85% | pass |
+| disk I/O | 28.727630 MiB/s | <=64 MiB/s | pass |
+| disk busy | 100% in all 5/5 samples | <=30% | fail |
+
+The promotion configuration requested full/open routing, no mask, and
+`Q1_0DynamicPromotion` with probation 64, minimum touches 2, minimum weight
+0.02, request budget 64, window 40 calls, and window budget 1. Those are only
+requested settings: no promotion attempt, success, event, storage transition,
+exactness check, or quality/performance observation occurred. The postflight
+process check was clean.
+
+Preflight identity was source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, executable SHA-256
+`262159830d5628795ff79eabd8da415aab6b8a4d049d8f7f2c8b01fcef437580`,
+measurement harness SHA-256
+`43123e850c871b3d61bbd932e7c1d2232a084aefd1dcab653a9fa7ee0bc3499c`,
+runtime-monitor SHA-256
+`bd5be0ac80594a6866137e44cffbd58f1c3707eedcd8cbf246620eebdd9e9b29`,
+build-manifest SHA-256
+`36f9b48aff62765770108df9efd184e949e063ae4419e107fa7e9ac95a3fd92e`,
+and promotion configuration SHA-256
+`9b20307e3135382306cebd63cb23e0c9197eb54d71a05c10c4fa242e93c45744`.
+The prompt SHA-256 was
+`38f6ec5ee5403f59dd2418eb5d9a5a94a0f0da19df015060383bb1ae46003bb6`;
+Q1_0 sidecar preflight provenance was verified, but no runtime exactness or
+provenance gate ran.
+
+The failure, safety-receipt, system-quiescence, memory-preflight, and
+process-isolation SHA-256 values are respectively
+`b9a4b751a604ab44679cac08eae478bed32fd1536a0274e71d52d05e0e953615`,
+`ba71b58821cbca7fb7da1b231d92c0570b7a862ab03d80e41ae86ee782b6271b`,
+`81a421d43acfa5f44c5c50a0f8b5c268a10263afb11fef79572b9d7a2874eb0d`,
+`9ff38381ec0c121d630a381e44ef57effbe3b20b998800c43c70ca3f00473333`,
+and `234ee834617d57bf4298679ae715f46b13b9fe1faf2939e356c6094296efd3ca`.
+The result, runtime-telemetry, raw-output, stderr, and stdout paths named by the
+failure schema do not exist. This row carries no runtime, promotion, exactness,
+quality, performance, `n>=3`, or SOTA claim.
+
+## 2026-07-19 Native Windows G129 Promotion Retry: Structural PASS n=1
+
+Run
+`g129_promotion_fullopen_q1_safety_retry_quiet3_fg_20260719T205248000Z_20260719T205242553Z_4c5d7def20`
+has receipt status `pass_structural_n1_no_performance_or_quality_verdict`.
+It is a promotion-arm mechanism result only: full/open routing remained active
+with no mask, the server exited 0, and the aggregate structural harness passed.
+It is not quality-eligible, performance-eligible, or SOTA-eligible, has no
+L0-L3 grade, and does not authorize `n>=3` while the promotion lineage caveat
+below remains open.
+
+### Quiet launch evidence
+
+The dedicated read-only quiet3 preflight collected three consecutive windows,
+five samples per window, with zero process conflicts. All three passed the
+unchanged thresholds: CPU <=60%, disk busy <=30%, disk I/O <=64 MiB/s, GPU
+<=85%, and available memory >=7.5 GiB.
+
+| window | samples | duration ms | CPU median | disk median | disk I/O median MiB/s | GPU median | available min GiB | committed max GiB | result |
+|---:|---:|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | 5/5 | 5,345.879 | 3.437823% | 0.016890% | 0.552498 | 0% | 55.823 | 10.784 | PASS |
+| 2 | 5/5 | 4,557.373 | 3.970328% | 0.037008% | 0.813430 | 0% | 55.813 | 10.735 | PASS |
+| 3 | 5/5 | 4,542.220 | 1.602687% | 0.025040% | 0.246094 | 0% | 55.840 | 10.677 | PASS |
+
+The owned harness then repeated its normal five-sample quiescence gate after a
+9,992.654 ms cooldown and also passed: CPU median 0.577411%, disk median
+0.006396%, disk I/O median 0.018646 MiB/s, GPU median 0%, with no failures.
+Process isolation and memory preflight passed with zero process or maintenance
+conflicts; available memory moved from 59,941,191,680 B to 59,870,720,000 B.
+
+### Timing and output
+
+All timing values below are retained as diagnostics from the result artifact;
+they are not a performance claim:
+
+| field | observed value |
+|---|---:|
+| model/server load | 91.089035 s |
+| client request wall | 331.310314 s |
+| server total | 330.932 s |
+| server prefill / TTFT | 39.179 s |
+| server decode | 64 tokens / 291.753 s / 0.22 t/s |
+| client completion rate | 64 tokens / 0.193172 t/s |
+| finish reason | `length` |
+| prefill rows per routed MoE layer | 43 minimum / 43 maximum |
+| prefill routed slots / unique entries | 10,320 / 10,240 |
+| prefill snapshot WRAP | 770 loads, 8 workers, 11.502 s |
+| prefill VRAM seed | 320 entries, 2,264,924,160 B, 4.559 s, 0 failures |
+
+The server artifact does not expose a separate prefill-token-rate field. The
+reported TTFT and the 43-row-per-layer prefill trace are preserved without
+deriving an unsupported prefill t/s value.
+
+The complete 273-byte output had SHA-256
+`4f24448486ef3b1fabc3395f0e0d945246e8f869805bb0b74034bc6c4a9c13bf`:
+
+````text
+Here is a complete single-file HTML landing page for a cyberpunk AI programming shop. It includes a styled theme, navigation, hero section, a request form, and a JavaScript confirmation popup.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <c
+````
+
+It is a 64-token length-limited structural output, not a completed-page quality
+sample; no raw-only, rendering, form, popup, or L0-L3 verdict is assigned.
+
+### Structural and promotion accounting
+
+- full/open routing was preserved with `request-scoped-open`, `base=none`, and
+  zero kept/pruned mask entries;
+- Q1_0 covered all 11,008 entries: 7,433 pinned slots / 26,304,970,752 B and
+  3,575 pageable slots / 12,651,724,800 B;
+- the exact-IQ2 arena allocated 834 slots / 5,902,958,592 B and published 770
+  resident entries / 5,449,973,760 B;
+- `trace_rows=16512` equaled `tier_route_entries=16512`; routes partitioned as
+  9,608 Q1-resident + 5,831 IQ2-VRAM + 1,019 IQ2 snapshot-RAM + 54 IQ2
+  tier-RAM = 16,512;
+- SplitFused hits/misses were 5,831/1,073 = 6,904 against expected/observed
+  6,904 on the `q1-0-mixed-iq2-routes` basis, excluding 9,608 Q1 routes;
+- mixed failures, Q1 resident misses, snapshot-backing misses, general backing
+  reclaims, probation backing reclaims, direct pread fallbacks, IQ2 decode SSD
+  bytes/violations, direct SSD-to-VRAM rejection, forbidden cold SSD-to-VRAM,
+  and promotion failures were zero.
+
+G129 promotion was requested with 64 pre-reserved probation slots, minimum
+touches 2, minimum weight 0.02, request budget 64, window 40 calls, and window
+budget 1. Aggregate telemetry reported 64 Q1_0 stage attempts, 64 successes,
+64 next-call guards, 64 `cold_to_2bit_ram` admissions, 54 probation-RAM hits,
+zero next-token waits, and zero failures. Staging read exactly 452,984,832 B
+(0.421875 GiB) from SSD in 0.7869478 s into RAM; it did not move a current-token
+expert directly from SSD to VRAM. The tiering summary's 493 generic
+`vram_promotions` are a separate cache-policy counter and are not the 64 G129
+Q1_0-to-IQ2 RAM promotions.
+
+An independent sequential parse of all 16,512 route lines found 54/54
+`iq2_tier_ram` uses with an earlier `q1_resident` route for the same
+`(layer, expert)` pair, and zero missing pairs. This supports causal use for the
+54 promoted experts that were actually hit.
+
+The remaining provenance gate is material and blocking. The result contains
+one aggregate `iq1_promotion_requests` object and stderr contains one final
+`[iq1-promotion]` summary line, with zero promotion lines carrying an epoch.
+It does not enumerate all 64 successful stages individually with request epoch,
+layer, expert, prior Q1 touch, source, stage completion, and next-call
+eligibility. Therefore the aggregate promotion gate passes, but complete
+per-expert provenance is not materialized. No next promotion, quality,
+performance, or SOTA claim may rely on this run until that sub-gate is emitted
+and validated.
+
+Runtime telemetry contained 420 samples. Minimum Windows-available memory was
+4,301,701,120 B / 4.006 GiB; GPU utilization median/peak was 26/75%, peak VRAM
+was 11,746 MiB, and contamination/abort counts were zero. Peak working set and
+private memory were 49.931694 GiB and 53.721672 GiB. Source unlock again
+reported 129 calls with `success=0`, `not_locked=129`, and `failed=0`, so no
+physical source release is proven.
+
+### Identity and artifacts
+
+Execution identity was source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, build-manifest SHA-256
+`36f9b48aff62765770108df9efd184e949e063ae4419e107fa7e9ac95a3fd92e`,
+Release input fingerprint
+`d71dd9405badd833a0c49efdf0548cd3740d10b7699a995d510d90dd4ff42d16`,
+executable SHA-256
+`262159830d5628795ff79eabd8da415aab6b8a4d049d8f7f2c8b01fcef437580`,
+measurement harness SHA-256
+`43123e850c871b3d61bbd932e7c1d2232a084aefd1dcab653a9fa7ee0bc3499c`,
+`ds4_cuda.cu` SHA-256
+`e0fd2aa8f043c66f9199f65783cc764c232d89d9fd4003a4666d1fc5b733625c`,
+and `ds4-server.c` SHA-256
+`44eefebac4af4672bb245f14806ecaef4a2df06403fc2875e5c4d05dc2ff2bec`.
+Configuration SHA-256 was
+`9b20307e3135382306cebd63cb23e0c9197eb54d71a05c10c4fa242e93c45744`.
+
+The IQ2 model SHA-256/receipt SHA-256 were
+`efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668` /
+`a1a6626088489743628165692d32870f083cfe74386469176d0b333a2c95eb55`.
+The Q1_0 sidecar SHA-256/receipt SHA-256 were
+`05040393f5e94bf054a593e4d2d021ff44a6f446f2328a75e4f833a1fbe20207` /
+`9a4dc6e6a86523a3df4bf88681c83819b0eac2dc9d36c5ff78800d7025c9b2d5`,
+with preflight and runtime provenance verification true. No expected output
+oracle was requested.
+
+The result, receipt, runtime-telemetry, stderr, and quiet3 SHA-256 values are
+respectively
+`b3f636901e75cec9809b733a8663a5b087faac1a54b171af904ee32dbe5e40e6`,
+`5b95cb31b5b5fff9cd03b250e90b6523bd61195cf1249ac21c29a86d7f2b67a6`,
+`143160a8958ebb480a4433488f7ad25750d7ae61cea865f15836801103ea9fc7`,
+`ebb4abbc6b58425ff3af5a872d7f8f22474fb46decc24825c6f4738414f37a25`,
+and `83c77ed313763bb3f64ec0103f298f3fa869b53ac3255d9d36d470bd412fe8f8`.
+Raw-output, owned system-quiescence, memory-preflight, process-isolation, and
+empty stdout SHA-256 values are
+`20254cd20ef89e39b56adf95ff67e4cd5ca1cd4a6accd025a5a98f580fca46df`,
+`7f5bf81241dc320844bac43f2158d79ce4d5d41ef536c5936f8d21c5e57d98b7`,
+`e18741fbe83de88466e4ab048a5b2f1bae34676390fcf86990f7dd3ebc5a9a77`,
+`092ff4870f41b60fb41de1af146597ce02e6baf0bc2c8f1168fe02cc77127116`,
+and `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+## 2026-07-20 Native Windows G129 Hegel-Direct Promotion: Structural FAIL n=1
+
+Run
+`g7_g129_promotion_structural_hegel_direct_20260720T000041186Z_codex_20260720T000041553Z_64b579e1e8`
+is classified exactly as `structural_fail_n1 / non_sota /
+router_contract_and_artifact_materialization_blocked`. The HTTP request completed
+and `ds4_server` exited 0, but the owned harness failed closed because the
+expected Q1 mixed router was `open` while the final summary remained
+`unchanged`. This is not a quality, performance, `n>=3`, or SOTA result.
+
+### Lifecycle, timing, and output
+
+The three-window read-only preflight passed before launch with no matching DS4,
+build, test, or file-copy processes. Its unchanged thresholds were CPU <=60%,
+disk busy <=30%, disk I/O <=64 MiB/s, GPU <=85%, and available memory >=7.5
+GiB.
+
+| window | samples | CPU median | disk median | disk I/O median MiB/s | GPU median | available min GiB | result |
+|---:|---:|---:|---:|---:|---:|---:|---|
+| 1 | 5/5 | 6.876% | 0.031% | 0.209 | 3% | 55.747 | PASS |
+| 2 | 5/5 | 6.030% | 0.013% | 0.153 | 3% | 55.695 | PASS |
+| 3 | 5/5 | 5.527% | 0.009% | 0.116 | 0% | 55.704 | PASS |
+
+Readiness completed in about 92 s. The single request then completed HTTP with
+64 tokens, finish reason `length`, and server exit code 0:
+
+| field | observed diagnostic |
+|---|---:|
+| client request wall | 1,780.083583 s |
+| server total | 1,779.714 s |
+| server prefill / TTFT | 38.719 s |
+| server decode | 64 tokens / 1,740.982 s |
+| server logged rate | 0.04 t/s average; 0.03 t/s final chunk |
+| client completion rate | 0.035953 t/s |
+| prefill rows per routed MoE layer | 43 / 43 |
+| prefill routed slots / unique entries | 10,320 / 10,240 |
+| prefill snapshot WRAP | 770 loads / 8 workers / 11.018 s |
+| prefill VRAM seed | 320 entries / 2,264,924,160 B / 5.075 s / 0 failures |
+
+These timings are deliberately retained only as diagnostics. Stderr contains
+9,672 per-record promotion markers: 64 attempts, 64 successes, and 9,544
+rejects. The marker lines occupy 16,073,629 B (16.074 decimal MB / 15.329 MiB)
+of an 18,602,065 B stderr log. This synchronous per-record instrumentation
+dominates the 1,780 s observation, so the reported 0.04/0.035953 t/s values are
+not comparable to any benchmark.
+
+The raw checkpoint is incomplete only because the post-run gate failed before
+final result materialization. It preserves one 273-byte, length-limited output
+with SHA-256
+`4f24448486ef3b1fabc3395f0e0d945246e8f869805bb0b74034bc6c4a9c13bf`:
+
+````text
+Here is a complete single-file HTML landing page for a cyberpunk AI programming shop. It includes a styled theme, navigation, hero section, a request form, and a JavaScript confirmation popup.
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <c
+````
+
+No L0-L3 grade is assigned: the output is a 64-token structural checkpoint, not
+a completed-page quality sample.
+
+### Runtime structure and failure
+
+- route accounting balanced: `trace_rows=16512` and
+  `tier_route_entries=16512`;
+- the partition was 9,608 Q1-resident + 5,831 IQ2-VRAM + 1,019 IQ2
+  snapshot-RAM + 54 IQ2 tier-RAM = 16,512;
+- SplitFused was 5,831 hits + 1,073 misses = 6,904 real IQ2 routes;
+- Q1 covered all 11,008 entries; the exact-IQ2 arena retained 834 slots / 5.50
+  GiB and the prefill snapshot published 770 entries;
+- Q1 mixed, tier, backing, resident, direct-pread, current-token, overflow, and
+  forbidden SSD-to-VRAM failure counters were zero;
+- final IQ2 decode SSD bytes were zero. Separately, the promotion stage read
+  452,984,832 B from SSD into RAM; this was SSD-to-RAM, not SSD-to-VRAM;
+- promotion diagnostics recorded request epoch 1, 64 attempts, 64 successes,
+  zero failures, 9,544 rejects, and 64 next-call guards;
+- all 64 success records were unique `(layer, expert)` pairs and unique record
+  IDs. Their first eligible call was later than both current and observation
+  calls, source/destination hashes matched the authoritative Q1/IQ2 artifacts,
+  and no record declared same-call eligibility, direct current-token transfer,
+  or overflow.
+
+This raw diagnostic evidence does not make the run a pass. The router contract
+failed (`expected=open`, `summary=unchanged`), the dedicated promotion JSONL was
+not materialized, and neither the automatic result JSON nor automatic
+safety-failure receipt exists. The later
+`g129_codex_postrun_failure_receipt_v1` is explicitly supplemental and
+non-automatic. The artifact-materialization gate therefore remains blocking.
+
+Runtime telemetry has 1,853 samples. Minimum available memory was
+4,190,031,872 B / 3.902 GiB; GPU utilization median/peak was 3/80%; peak VRAM
+was 11,751 MiB; peak working set/private memory were 49.932/53.723 GiB; process
+read delta was 27.354277 GiB; contamination triggers and aborts were zero.
+`VirtualUnlock` again reported 129 calls, 0 successes, 129
+`ERROR_NOT_LOCKED`, and 0 failures, so it does not prove physical release.
+
+### Identity and provenance
+
+Source head was
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`; the worktree was dirty at build
+start. Build-manifest SHA-256, Release input fingerprint, executable SHA-256,
+measurement harness SHA-256, runtime-monitor SHA-256, safety-runner SHA-256,
+and configuration SHA-256 were respectively:
+
+- `f4934c834fadd9921392bf24e0787856f99b1d041406082ecd6bbf352e158d44`;
+- `4a6d152dafb5596936c92fdf0cb92b3c3f5185977663cab0d0bd96f05f4bfa27`;
+- `154b430ac742d52dce504a45de10d38e331d5c5e9841c2ec4cd6315aebbea533`;
+- `a4251594bdff49b2751a41e56359787ddf0055785251832d95fe2bd6b5813f51`;
+- `bd5be0ac80594a6866137e44cffbd58f1c3707eedcd8cbf246620eebdd9e9b29`;
+- `445a21d08f1da76daf4284a7bf5be8d66ca880e870e72c197b41f696b224c81e`;
+- `9b20307e3135382306cebd63cb23e0c9197eb54d71a05c10c4fa242e93c45744`.
+
+The build manifest is the authoritative complete input-hash inventory. Its 45
+input SHA-256 values are:
+
+```text
+CMakeLists.txt ba629659ec622a8755c76832fe80dfcb3d4c2108f75fca3813c7f652799839e4
+ds4.c 48db9abf9bd5aa3d26f3fca6c29cf300667a7a75d5e8ddcc98365139414ecc01
+ds4.h 98dfdad193cb45c59cf7b244e3a0f26fb13734ce4e62662ac069a0e94d3c28fe
+ds4_bake.c 6b3a28e2c1e8dc9142de5a7e804ad336a8bd2dc137bf4539b9eefb0292be1009
+ds4_bake.h ae0c41adb96cb4cdf502c80a4359869789a1b69675b3aaced6e0074978a71191
+ds4_bench.c 5ff4af34c921ac4be24e2fd2f7e6c8f55c27461635b2ca04bc36c4b99e3ace6b
+ds4_cli.c b74ad531965d65a95a8dacc184cc20b7b36512039ac447b2c297700c2d9ce792
+ds4_cuda.cu 843b13a898918914f4335936676d04384857d7c95219a7f3f23f094063f7372e
+ds4_gpu.h c779567247f6b58ca01bd7a8e20f0ce3d1136c33c2b01e714a830f41bd65d781
+ds4_inspect.c e86415e88b455b872278b4814b1048b5f6b44695d58563797d19293f1aeda978
+ds4_iq1_s_bench.cu e3d9af0c6d9f812190137307e18a369579c434c4b74dc350185d11cf41ccde30
+ds4_moe_gate_bench.c 574420a7ee6364f09424bb5068d1d2126632c07b5c63223f2afab6458af48098
+ds4_q1_0_bench.cu b86954a301abca622c00453e3ab2a3876c48fa724b9b6e1df2fc74d4e50bce88
+ds4_server.c 44eefebac4af4672bb245f14806ecaef4a2df06403fc2875e5c4d05dc2ff2bec
+ds4_spex_predict.c 49186a1b724e1507d73934e5a7ba5db1b41437972e1ca212003c359cfd50994e
+ds4_spex_predict.h d7bdd5ed4988dfd5e9f946150098d110046f703295ff602ddf3eef398b61c253
+ds4_spex_queue.h 5ab1720324a7fce194ffd7cece7da41b1e47feb376060d3dd02b1f6dbb07cff8
+g17_arena_probe.cu 654f929fd4db8afa873bbc53e5e42af7ae45860c2289415d42d80b5b48ffcb34
+g17_segmented_arena_probe.cu ac8a770b4cc93d9b63e63604ac27c59fb19d40cbeb58dfaaeaec68cee61817a8
+gguf-tools/deepseek4-quantize.c 00a1f882a8233c1b5c2a7f4d4e31129dce6695a89b95c4c0d971c41870db6627
+gguf-tools/quality-testing/score_official.c 317fbddd7654d8d623c8417550b25beaccef38b0ca8c34846940b993dbdb06f3
+gguf-tools/quants.c 4661b8150181a53c53c7c342419b55c84dde60c3b052d7d6e117ff3afac34f45
+gguf-tools/quants.h 2aa6e29a248144f9b5b36faef80d90830c210216570db99cf2a1bb49cd2266e1
+linenoise.c 254418684ccde08e0d225c15b8eea06c26c054d75e48515cbb2871f36370c1a5
+linenoise.h e0c1415d3f88d86546d076c271c55009861a90f0a5329f912533d44e88fbdf75
+rax.c d10efe432cf8b1308523d2a782347bb1c9a2528ff9057ffe46188eb3f1f4e3fe
+rax.h 017a8d397bb01f2c15f002a729ac534bb9b63e34f9a03118dae623839b1e7040
+rax_malloc.h 07897d67ef82b2229509866ac1aae5f7b476d7ae473bb0ac7d3acfb031c3356b
+src/platform/os_clock.h 2384a293d18a381e5f2b99e12b49ea8e3f188f1e6612ea8c8663f02ee97818bb
+src/platform/os_console.h 0445e688d91201a99f38b8f29120ec37ed2d56189b1e24f828498c8ffcea0a7c
+src/platform/os_file.c 941b1ba241fc6265989b39b77b3b5babfdfec5c607293e7113227fefc56b45f8
+src/platform/os_file.h 230365a4496de2a680a00939a7f2d8b05ceb5755848726ac97950a6476ccdf5e
+src/platform/os_mmap.c 8c87196e0605ea04f3f56652662b908ad056f425dae8205c57638ecfbf199755
+src/platform/os_mmap.h 60201a5cfcd6a4ab8d6525d838236a0c077c1ee242b6b7a6b2147286c2e85d5a
+src/platform/os_path.h 8ba47ecbee22b5edf52ba761cc321888c0261439c666c387f511a405680df15c
+src/platform/os_random.h e4191f861d1de6e884c8697e3ed2cfbe5f6ec7ec5fc04cc7d152f299f2c071f0
+src/platform/os_thread.c 2c1762763d25d03d351abaa4d3861406b7d4aa6b0ab4197047cd010dee749fec
+src/platform/os_thread.h 1e8ceedb5ff5c1d2c9f564c94f9d6266ebed970ca0b11fb9db2d510322317f91
+src/win32/win_dirent.h a566312468f7ab64aaeefad40ddd24c9fe905e0c22199e392b0ea9e5996c00a1
+tests/CMakeLists.txt 9e91a3758df572920b7056e8462fc995d2bfb7684a8f1ed9d31d8c096418ef01
+tests/cuda_long_context_smoke.c 947b3b898d3b71786d702033ef9440cb0386d6c1762b796facef018ad217492b
+tests/ds4_bake_test.c b6e439dae4bb16452a5a6cfaa976ad6b5f904bfd96e0bc1a1c5f071ea1918433
+tests/ds4_test.c dfc1806c8912702ea6df8768faef8e9f72ad73aa126aeabe6107bb0a83320299
+tools/mapviewoffile_register_probe_win.cpp 8f8036e1e2a3efc48a88ab0fa01bf275dbc8aa61d7ed0e45e03ddd35d8277a21
+tools/os_layer_test.c 441045d5948ad38f181d07c7eb1a79d257d91839c56bdc7035d275b8e668544d
+```
+
+The authoritative IQ2 model SHA-256 was
+`efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668`;
+the Q1_0 sidecar SHA-256 was
+`05040393f5e94bf054a593e4d2d021ff44a6f446f2328a75e4f833a1fbe20207`.
+
+### Artifact receipts
+
+- failure JSON:
+  `753af14917dd33bde899fdcbe416f8e625162af57c3fe032d2b79cd20f8e0f70`;
+- runtime telemetry:
+  `72ef0277368fb825c81a3d843e3b91f8ac18cf7e1c33dbcf805ac392305d8090`;
+- stderr:
+  `82925443e8fc7a768fa6824d745e7483ab7cfd257ef67ba2e87efe4bb083f5d2`;
+- supplemental non-automatic receipt:
+  `2230d241f2eb45769445ed8e66faadf5b80059c82b336bb8d4a1ce13225da248`;
+- quiet3 preflight:
+  `fb7b989029fefc30d3b98c2e28cc88c2e3b24cf8c10b264e0e4c7d9faa2f3436`;
+- raw-output checkpoint:
+  `c56d343e9f9c23e2bcf637a8e4cbed3d7dbefde08dd698e4b794759c801e8d17`;
+- memory preflight:
+  `adc03c9892ea706eb97d42d08980e16223329bc116f5db6e3b6c1202bfc7eb61`;
+- process-isolation preflight:
+  `e8702b08d080ea4e537ac54ea9212ae3bf14abf5d9eacdf4b9d52c55cb617968`;
+- empty stdout:
+  `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`.
+
+No automatic result or automatic safety-failure receipt exists. The
+supplemental receipt does not substitute for either required artifact.
+
+## 2026-07-20 Native Windows G129 Final Promotion Pair
+
+These two independent-process, 64-token structural safeties used the same
+full/open Q1_0 plus exact-IQ2 promotion configuration. They are recorded
+separately because the first runtime completed but the parent runner failed
+after runtime, while the second reached the authoritative validator PASS.
+Neither run is quality-eligible, performance-eligible, `n>=3`, or SOTA.
+
+Common identity was source head
+`dc52ec05ec2636a09fbf59fe9a21460e23621501`, build manifest
+`c8867e210889c4c13dacd91986ad97adbeeccb5675873922bef3a6d21d5bdd20`,
+input fingerprint
+`d52c6f10baeae0e6f7b0ab08c5af5d5c0c5a7d68395182e03c922bfe8f71e02c`,
+executable
+`798c24d3d836cb22bdf14656d543e958acdae385df5bc2c9ad1dc7ef0e672fcc`,
+measurement harness
+`3581448fa75fe3b7df946e07e461ff7685a844e136deb709b852f4278388c3e2`,
+and configuration
+`9b20307e3135382306cebd63cb23e0c9197eb54d71a05c10c4fa242e93c45744`.
+
+### Structural-final wrapper failure
+
+Run
+`g129_promotion_structural_final_20260720T020905751Z_foreground_codex_20260720T020906193Z_0538a73d4d`
+has official status
+`failed_structural_n1_no_performance_or_quality_verdict`, reason
+`child-exception`. `ds4_server` exited 0 and wrote its result plus complete
+promotion JSONL, but the parent cast the multi-item PowerShell return from
+`Invoke-G129BootstrapChild` from `System.Object[]` to `System.Int32`. This is
+a post-runtime runner failure, not a model/runtime failure, but the official
+FAIL remains authoritative.
+
+The completed runtime evidence showed `router_mode=open`, balanced
+`trace_rows=tier_route_entries=16512`, and the exact route partition 9,608
+Q1-resident + 5,831 IQ2-VRAM + 1,019 IQ2 snapshot-RAM + 54 IQ2 tier-RAM.
+SplitFused was 6,904/6,904 on the IQ2-only basis, excluding 9,608 Q1 routes.
+Promotion materialized 128 strict JSONL records: 64 attempts, 64 successes,
+zero failures, request epoch 1, window epochs 1..64, zero unpaired or same-call
+records, and zero direct current-token SSD-to-VRAM transitions. Per-expert
+offset/range and source/destination SHA provenance validated. Mixed, backing,
+resident, promotion, IQ2 SSD, forbidden-transition, and contamination counters
+were zero.
+
+Diagnostic-only timing was TTFT 38.884 s, server decode rounded to 0.2 t/s,
+and client completion 0.180956 t/s. Q1 H2D was 34,002,173,952 B. Promotion
+read 452,984,832 B from SSD to RAM. `VirtualUnlock` reported 129 calls, zero
+successes and 129 `ERROR_NOT_LOCKED` in 80.890085 s, so no physical-memory
+release is claimed.
+
+The automatic failure receipt SHA-256 is
+`5afff38a44b12b9923b4fb71838d3128ca98d9a719c05c3364a9bbaa5688b381`;
+result, runtime telemetry, stderr, raw-output, and promotion-JSONL SHA-256 values
+are respectively
+`770ef2b50a315d9a0ef6e98ef002eb85a492513a169ec8d7a0b32e41fc29675a`,
+`f9e30a6902584bd285db9b36d3d0132b57849d6aee405d55b5a4a1764e261423`,
+`dd0cdcbb7814ae3442afe248eeb023a1dd52d1ef2591910d36749068786164d5`,
+`f0cfbc96f5cbaa4ef2dbe4c821d91693682d86d6eca3db8c3edf8dea5257315b`,
+and `5c5dfe0b379fe9dc1d6deefeadfc64632f796e72835ed70d34c7586e4c86b457`.
+The at-run runner SHA-256 was
+`853a241dd7d1ef0a12877770a77b27cce4e65903bb90d782861a147de0f0bc69`.
+
+### Official structural confirmation
+
+After the runner-only scalar-return fix, run
+`g129_promotion_confirm_final_20260720T025308987Z_foreground_codex_20260720T025309391Z_e3ef656d25`
+repeated the same structural workload and reached official status
+`pass_structural_n1_no_performance_or_quality_verdict`.
+
+All route, SplitFused, promotion, request-epoch, JSONL pairing/budget,
+offset/range/SHA provenance, next-call causality, storage, backing, forbidden,
+and contamination gates repeated the values and zeros above. The dedicated
+JSONL again contained 128 physical records with the same SHA-256, representing
+64 unique attempt-terminal pairs. `router_mode=open` is the authoritative
+routing state; the separate `router=unchanged` field describes only transition
+state. Postflight found no `ds4_server`, and GPU returned idle/P8.
+
+Diagnostic-only timing was TTFT 39.630 s, server decode rounded to 0.2 t/s,
+and client completion 0.181705 t/s. Minimum available memory was 3.763 GiB.
+Q1 H2D was again 34,002,173,952 B; the 452,984,832 B exact-IQ2 promotion read
+took 9.2210697 s. `VirtualUnlock` again reported 129/0/129 calls/successes/
+`ERROR_NOT_LOCKED` in 80.250202 s, so memory release remains unproved.
+
+Receipt, result, runtime telemetry, stderr, and raw-output SHA-256 values are
+`8d3898bc37fd7552489e991c4466d9e303a303b08d144efa321d5193cb06d1f4`,
+`5714c13d781c0f86a3b33dfff1fc9e5811dd704d854126bb1545afe4547b9567`,
+`89490740967c79401ca14bf64a145634f3aecc23b0894a8af32f6f88467b3314`,
+`5d80c237a2abaea0a277c19f7e20ad5a6fbcd4b1b13fc3a6ae69c9759fec82bd`,
+and `ca2826d2f29e93dc60d87a534fd9fe3d4740b04e8bc597ba35f140dc21b0f353`.
+The fixed runner SHA-256 was
+`1d040fcd0de28678c6ac98e073c0389509216a0ebd0c1f3105fb9744651e2860`.
+
+This closes the G129 structural/provenance prerequisite at `n=1`. It does not
+promote the observed roughly 0.2 t/s decode, does not grade output, and does
+not authorize a long or `n>=3` matrix before the memory and Q1 transport
+bottlenecks are corrected.
+
+## 2026-07-19 Native Windows G73 Two-Turn Replay A/B
+
+This cycle used the exact-IQ2 G73 runtime and `C:\ds4-models\ds4-2bit.gguf`,
+not G129 and not the Q1_0 RAM fallback. It is a long `ctx8192`, chunk-256,
+two-turn mechanism safety, not the canonical short G73 benchmark. G73 remains
+a prefill-derived `request-scoped-closed` decode-eligibility design with a
+dynamic cache and dynamic promotion/replacement policy; it is neither a
+static/baked mask nor full/open routing.
+
+Both valid arms used independent server processes, temperature 0, `think=false`,
+the same 8,811-byte assistant replay fixture, the same request payloads, and
+the same full-conversation request-2 transcript. Request 2 used 2,566 prompt
+tokens, `full-conversation-reprefill`, and `kv_reuse=0` in both arms. The exact
+prompt-2 UTF-8 SHA-256 was
+`44d75b9687aafaca4d1312bb2516e25a44df250a367f094b7d9bea730292dfe1`;
+request-2 payload SHA-256 was
+`a6cc61c2817d203cac09f500f0636dfc4a4f941057859359c08b61c1c12d89aa`;
+and request-2 messages SHA-256 was
+`6ae7d64b131720c9dfb290fa11507263359806b6d2c0dc6dcbdcb1c149daf6cb`.
+
+### Attempt inventory
+
+| Attempt | Files and lifecycle disposition | Runtime/mechanism result | Quality and allowed claim |
+|---|---|---|---|
+| `g73_replayA_mech_n1_20260719T183918Z` | 13 files / 1,751,904 bytes. Runtime completed two HTTP-200 requests, but the original post-run parser crashed on `ContainsKey` against a `PSCustomObject`. CPU-only reparse later wrote `summary.json` but failed `server_exit_zero` because the historical exit code was unavailable and failed `existing_artifact_provenance` on `request2:content2`. The request file bytes themselves hash to the later canonical payload, while the reparse decoded/reconstructed messages as `4bb607...` rather than expected `6ae7d6...`; therefore the receipt is non-promotable. | Diagnostic stale mechanics only: no request-2 candidate; effective mask stayed 4,551 entries / FNV `c59a437fe9c6c376`, generation 1; seed stayed 320 entries / FNV `d65ec394cf596cfb`, overlap 320, Jaccard 1.0. Request 2: server finish 584.027 s, prefill 90.298 s at 28.42 t/s, decode 2,319 tokens / 493.618 s at 4.70 t/s. GPU request-2 samples 1,080, mean/median/max 94.48/95/100%, VRAM max 10,955 MiB. Backing misses, SSD bytes, failures, forbidden SSD-to-VRAM events, unsafe events and runtime model-progress events were all zero. | Independent raw audit: L1, because structure was recoverable but the fenced document, CSS and JavaScript were broken and the requested dark restyle was not achieved. Failed provenance/reparse gates prohibit an A/B, performance, exactness or quality-recovery claim. |
+| `g73_replayA_utf8_mech_n1_20260719T1727Z` | 6 files / 40,025 bytes; native failed summary exists. The first `Start-Process` wrapper hit duplicate process-environment keys `Path` and `PATH`; the foreground runner then hit the same lifecycle error before server start. No request, response, GPU sampler CSV or DS4 runtime log content exists. Summary SHA-256 `7ee9d3d0931417662d92012d0b197f594d4de00cf5237cffc98c8885635bdcf1`. | Pre-server infrastructure failure. Requests=0, server exit unavailable, GPU baseline P8 only; no DS4/GPU run occurred. | Context only; no mechanism, timing, exactness or quality evidence. |
+| wrapper `g73_replayA_utf8_mech_n1_20260719T1735Z` | No run directory. `_wrappers` contains only zero-byte stdout/stderr logs, each with empty-file SHA-256 `e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855`. Wrapper PID 6848 exited; no summary, request, response or server log was produced. | Infrastructure no-run, so there is deliberately no CSV evidence row. | No inference. |
+| `g73_replayA_utf8_mech_n1_20260719T1736Z` | 14 files / 1,773,050 bytes. Native summary `status=pass`, server exit 0. Independent server process. | Valid stale control. Request 2: wall 563.255346 s; prefill 83.068 s at 30.89 t/s; decode 2,296 tokens / 480.051 s at 4.78 t/s. GPU request-2 samples 1,038, mean/median/max 95.34/95/100%, VRAM max 10,991 MiB. | Official L0: Markdown fenced output failed raw-only HTML; visual grading blocked. Diagnostic in-memory fence removal only: L1, with severely corrupted CSS/JS. Mechanism-only `n=1`; no performance or `n>=3` claim. |
+| `g73_replayB_utf8_mech_n1_20260719T1746Z` | 14 files / 2,236,899 bytes. Native summary `status=pass`, server exit 0. Independent server process. | Valid request-epoch rebuild. Request 2: wall 990.054970 s; prefill 459.306 s at 5.59 t/s; decode 2,660 tokens / 527.075 s at 5.05 t/s. GPU request-2 samples 1,806, mean/median/max 70.49/94/100%, VRAM max 10,938 MiB. | Official L0: Markdown fenced output failed raw-only HTML; visual grading blocked. Diagnostic in-memory fence removal only: L2 (37/37 braces, 12/12 class selectors, dark palette, `node --check` PASS, form/popup DOM-stub PASS); one CSS parenthesis, invalid gradients and insufficient CTA contrast remain. Material quality recovery over stale A at `n=1` only; no `n>=3` until raw-only and visual gates pass. |
+
+For old A, the exact on-disk request-2 SHA-256 is
+`a6cc61c2817d203cac09f500f0636dfc4a4f941057859359c08b61c1c12d89aa`.
+The failed reparse mojibake path reconstructed request/messages SHA-256 values
+`5c88cfb730640e9c42dc7461306a88b96bf19e192a9d708dd51e1a2f86ffca6a` /
+`4bb607933d02f46cbe646c45709e5c00c9cf5db51cc1ee1cd9c3e40e5968a493`,
+versus expected messages SHA-256
+`6ae7d64b131720c9dfb290fa11507263359806b6d2c0dc6dcbdcb1c149daf6cb`.
+
+The `_wrappers` directory contains exactly four zero-byte logs: stdout and
+stderr for tags `1727Z` and `1735Z`. The `1727Z` run directory contains
+`assistant_replay_fixture.html`, `gpu_sampler.stop`, `preflight.json`, empty
+server stdout/stderr logs, and `summary.json`. Each completed run directory
+contains the fixture, stop marker, GPU CSV, preflight, request/response/raw
+artifacts for both turns, server stdout/stderr and summary; valid A/B also
+contain `request2.extracted_script.js`. The old `183918Z` directory lacks only
+that extracted-script artifact. This is the complete directory/artifact set
+observed under `g7_runs\g73_two_turn_html_replay_ab` at closeout.
+
+### Valid A/B mechanism comparison
+
+| Property | Arm A, stale control | Arm B, request-epoch rebuild |
+|---|---|---|
+| Request-1 candidate/effective | 4,551 / FNV `c59a437fe9c6c376`; effective generation 1 | Same |
+| Request-2 candidate | none | 4,551 / FNV `4a752556bccde274` |
+| Request-2 effective | `mode=stale`; same request-1 FNV and generation 1 | `mode=candidate`; FNV `4a752556bccde274`, generation 4,553 |
+| Mask overlap | effective set unchanged | overlap 3,212; Jaccard 0.54533106960950761; 1,339 entered and 1,339 exited |
+| Request-1 seed | 320 / FNV `d65ec394cf596cfb` | Same |
+| Request-2 seed | stale reseed 320 / same FNV; request-1 snapshot provenance; overlap 320, Jaccard 1.0 | 320 / FNV `32fb4c7102950965`; dynamic-seed provenance generation 4,553; overlap 90, Jaccard 0.16363636363636364; 230 entered and 230 exited |
+| Request-2 WRAP | no new arena publication; first publication loaded 4,551 in 25.107 s | turnover-in-place retained 3,212 and loaded/entered/exited 1,339 in 3.522 s; planned 9,477,292,032 bytes (9.477 GB decimal, 8.826 GiB binary) |
+| Final tier counters | RAM/VRAM hits 459,762/132,606; H2D 3,256,408,866,816 B; promotions/demotions 7,680/7,360 | RAM/VRAM hits 514,674/171,606; H2D 3,645,069,852,672 B; promotions/demotions 8,835/8,515 |
+| Safety counters | backing miss=0; SSD B=0; failure=0; forbidden=0; unsafe=0; runtime model progress=0 | Same zeros |
+
+The causal mechanism result is positive and narrow: the B path reset request
+scores, observed the complete new transcript prefill, published a different
+4,551-entry snapshot atomically and reseeded a materially different 320-entry
+VRAM set before follow-up decode. A deliberately retained request-1 provenance.
+This proves request-epoch rebuilding structurally at `n=1`; it does not prove
+full/open routing, losslessness against a complete IQ2 control, or performance.
+
+The official grades remain L0 under the runner's current static contract:
+both outputs are fenced, violate raw-only HTML, and could not pass the visual
+gate. A separate diagnostic that removed only the fences in memory does not
+change those grades: A is L1 because its CSS/JavaScript remain severely
+corrupted; B is L2, with 37/37 braces and 12/12 class selectors recovered, a
+dark palette, `node --check` PASS, and form/popup DOM-stub PASS. B still has one
+CSS parenthesis defect, invalid gradients, and insufficient CTA contrast.
+
+The rebuild therefore recovered material quality over stale A at `n=1`, but
+this is not a statistical claim. No `n>=3` matrix is authorized until the
+raw-only and visual gates pass.
+
+### Provenance
+
+- Canonical G73 runner SHA-256 remained `977ac73114bcdb883d06c123e3c33e467f230eea96235406c87d29f951b58470`.
+- Final replay runner SHA-256 was `942797c5da95cb56597f9a688fe5f013b58cc50bdf76003186e6345ccf41dc85`; protocol SHA-256 was `ad871d5443deb4b8e4a16952710d1cf39cb74a024069906ea1ad782eb5025ac0`; contract SHA-256 was `036b6acfa89ff67d4c33bf039030e4706b96b37c7ef77b9555b1eea7c1c538c2`.
+- Executable SHA-256 was `f703f53246331cd632e81eadba9892b8184645cc0b714ad6005ad87d2899dcfa`; build input fingerprint was `c8698dc4f5ba0dcd4e29f50c84545704140875d653f122f1a8136d82c5444daa`.
+- IQ2 model SHA-256/bytes were `efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668` / `86720111488`; model receipt SHA-256 was `a1a6626088489743628165692d32870f083cfe74386469176d0b333a2c95eb55`.
+- Valid A summary/raw/request-2/log SHA-256 values were `d4452a5071791ca9a25be7b72a7663f7978e4efac1491b6a9b3f77e6faafc69a`, `90f2e0a02ee5fd9dafc820c25b57856e410eff30db130dc8734ac23d57d587d8`, `a6cc61c2817d203cac09f500f0636dfc4a4f941057859359c08b61c1c12d89aa`, and `9f68eb04860c1ba995be3373730330ebaa2bf438ca12189b97cfbcd4cd46ffc5`.
+- Valid B summary/raw/request-2/log SHA-256 values were `a11aad816d0d5389cd0428c0933355d9f2c63b963f8517f08780d9dc138b19d4`, `70de59844406c68cb9fd5561cfc7f384a41c64363a9cbc9b695df1341f3434df`, `a6cc61c2817d203cac09f500f0636dfc4a4f941057859359c08b61c1c12d89aa`, and `40ea0c78a6ff72e160880e7f1445cf7564f6db0edcd8371e4cbf1457c54e5621`.
+- Authoritative run root: `C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_two_turn_html_replay_ab`.
+
+## 2026-07-20 G73 Live Arm B End-to-End Failed Start
+
+Run `g73_liveB_e2e_20260720T053105Z` was intended to exercise one live Arm B
+conversation in a single server process: generate turn 1, reinsert its exact
+bytes into the chat history, then issue the dark-theme follow-up. It produced
+no request and no transcript. `ds4_server` PID 3880 disappeared during initial
+CUDA model loading, before readiness. `server.stderr.log` contains only CUDA
+backend initialization and the initial model-tensor cache-load line.
+
+The official disposition is `failed-start/pre-request NO-RUN`. Request count,
+HTTP-200 count, raw outputs and transcript count are all zero. This record is
+not quality or performance evidence and is not a result for the G73 request-
+epoch mechanism. The failure is attributed to the live runner's launcher,
+readiness and PID-ownership lifecycle: its wrapper and discovered server PID
+were not reconciled, the normal summary path did not execute, and a fail-closed
+summary plus receipt had to be recovered from the on-disk artifacts. No retry
+and no Arm A run were performed.
+
+Authoritative artifact root:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\g7_runs\g73_live_html_b_end_to_end\g73_liveB_e2e_20260720T053105Z`.
+Recovered summary, failure receipt, stderr and preflight SHA-256 values are
+`8100f87dc2bc4e076e17bb29aeebb5712103de5629be2b8c39d8c68eb806a54d`,
+`c8b5286d3907fe9dc281c838c19bd0365a3611e305f2d8eac7bacf52830fa21f`,
+`4b7aaefb5816739058fc3da17d9e0677d8c30fe6dc8b296f26416d47b14f4778`,
+and `ea59542caab3e384fe4aeb0f456daf687e8edd0c3fe8a17c56eef2e9ec30a096`.
+The live runner, canonical G73 runner and executable SHA-256 values are
+`8a69314f80441561c2f31157b4bd1cfd216a6ac616edf3c2b1bcbe55c91b531c`,
+`977ac73114bcdb883d06c123e3c33e467f230eea96235406c87d29f951b58470`,
+and `f703f53246331cd632e81eadba9892b8184645cc0b714ad6005ad87d2899dcfa`.
