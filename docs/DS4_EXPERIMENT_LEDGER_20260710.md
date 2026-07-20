@@ -605,3 +605,23 @@ lineage remains the next mandatory gate.
 | run_id | source_head | planned workload | observed lifecycle | requests / transcript | verdict | evidence boundary |
 |---|---|---|---|---|---|---|
 | g73_liveB_e2e_20260720T053105Z | 5b3d08ac92aa5f5001da8943be3907c466d9ef0d | Arm B live two-turn, same server, ctx8192/chunk256, exact turn-1 output reinserted before dark follow-up | PID 3880 vanished during initial CUDA model load before readiness; runner native summary missing and recovered fail-closed | 0 / absent | failed-start/pre-request NO-RUN | Not quality/performance evidence and not a G73 mechanism result. Summary/receipt/stderr/preflight SHA-256: `8100f87d...` / `c8b5286d...` / `4b7aaefb...` / `ea59542c...`; live/canonical runner `8a69314f...` / `977ac731...`; exe `f703f532...`. |
+
+## CPU-Only Low-Bit Mechanism and Design Evidence, 2026-07-20
+
+| evidence_id | scope | result | disposition |
+|---|---|---|---|
+| G73-LIVE-B-MOCK-E2E | CPU mock HTTP only | Request roles `system,user` then `system,user,assistant,user`; assistant 1 reinserted byte-identically, SHA `f5a6c675...`; failure scenarios fail closed. Summary/receipt `5545cf8f...` / `7491e0ea...`. | PASS runner construction only; no DS4/GPU/mask/quality/performance evidence. |
+| LOWBIT-BUDGET-1125BPW | Arithmetic/inventory | 11,008 experts x 25,165,824 weights = 277,025,390,592 routed weights; 1.125 bpw payload 38,956,695,552 B; sidecar file 39,048,344,416 B. A 27B model at identical density is about 3.80 GB / 3.54 GiB. | Context only; Bonsai/DS4 size difference is parameter count. |
+| LOWBIT-MICROPROBE-BLK3-E0 | CPU weight-domain probe | Q1/IQ2 cosine 0.811377, NMSE 0.341667; binary L2 refit matches Q1; ternary 1.296875 bpw cosine 0.758266, NMSE 0.425033. | Weight-only quality fix NO-GO; no end-to-end claim. |
+| LOWBIT-ACTIVATION-TRAINER-SCAFFOLD | CPU synthetic tests | Fail-closed reader plus streaming binary/ternary g128 trainer; 6 tests and py_compile PASS. | Mechanism ready for bounded real trace; no recovery-quality claim. |
+| G129-ROUTE-CAPACITY-REPLAY | CPU replay/simulation | Observed Q1 route/mass about 58%/52%. Oracle fallback mass at 606/910/1213 slots: 24.0/18.0/13.5%; LFRU pass1 to pass2: 37.1->31.5, 32.1->24.5, 28.6->19.2%. | Prefer resident binary base plus duplicated bounded IQ2 arena; not runtime evidence. |
+| G129-PACKED-Q1-KERNEL-AUDIT | Read-only source audit | Q1_0 is already consumed packed at 18 B/128 weights. DP4A/MMVQ may improve arithmetic, not representation bytes. | Conditional optimization only; no measured gain. |
+| G129-ACTIVATION-TRACE-CPU-CERT | CPU implementation/build | OFF-default input-only trace, max 256, strict binary/JSONL/atomic manifest; parse/tests/WhatIf/build sm86/CTest1/1/diff-check PASS. Manifest/fingerprint/exe `ba819fee...` / `2c382328...` / `51ff6dad...`. | CPU certification only; no trace, GPU, quality or performance result. |
+
+### Active design, excluded from PASS evidence
+
+SSD-WRAP and the pinned/pageable exact-IQ2 host split remain in progress. The
+target is bounded/deduplicated asynchronous SSD-to-RAM staging with next-call
+causality and no current-token SSD-to-VRAM transition. No CSV evidence row is
+valid until implementation gates and a separately authorized runtime receipt
+exist.

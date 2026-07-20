@@ -4277,3 +4277,109 @@ The live runner, canonical G73 runner and executable SHA-256 values are
 `8a69314f80441561c2f31157b4bd1cfd216a6ac616edf3c2b1bcbe55c91b531c`,
 `977ac73114bcdb883d06c123e3c33e467f230eea96235406c87d29f951b58470`,
 and `f703f53246331cd632e81eadba9892b8184645cc0b714ad6005ad87d2899dcfa`.
+
+## 2026-07-20 CPU-Only Low-Bit and Conversation-Runner Evidence
+
+This section records mechanism, design, simulation and build evidence only.
+None of the entries below is a DS4 GPU runtime, quality, throughput, `n>=3`,
+full/open success or SOTA result.
+
+### G73 live two-turn runner mock
+
+The dedicated live Arm B runner passed its CPU mock integration scenario. The
+first request roles were exactly `system,user`; the second were exactly
+`system,user,assistant,user`. Assistant turn 1 was inserted byte-identically
+into request 2 with SHA-256
+`f5a6c675058c5f6a2ed0ea9d42515388756c827ce59d0dcf30f85ac1739a8e0e`.
+The controls were temperature 0, `think=false` and completion stop `</html>`.
+Exit-before-readiness failed closed and malformed turn 1 prevented request 2.
+This proves runner lifecycle and conversation construction only: Python mock
+responses were used, no DS4 server/model/CUDA/GPU was accessed, and no G73 mask,
+quality or performance claim follows. Success summary and validation receipt
+SHA-256 values were
+`5545cf8f5101a08778acb0cec5386a2d972a1dfe98b86dcfe5472ce63537057d`
+and `7491e0ea41a255960c07509483f6c23be012bea1bb81c09934a7ee79f1332ce8`.
+
+### Binary/Bonsai-equivalent density budget
+
+The current DS4 Q1_0 representation already has nominal density 1.125 bpw:
+3,538,944 bytes for 25,165,824 weights per routed expert. Across 11,008
+experts this is 277,025,390,592 routed weights and 38,956,695,552 payload
+bytes. The authoritative sidecar file is 39,048,344,416 bytes including file
+overhead. A 27B model at the same density is 3,796,875,000 bytes, about 3.54
+GiB; DS4 has about 10.26 times as many routed weights. Thus the apparent
+Bonsai 3.5-3.9 GB versus DS4 39 GB difference is parameter count, not poorer
+packing density. This is arithmetic/design context, not a model-quality result.
+
+### One-expert weight-domain micro-probe
+
+The deterministic CPU-only probe used `blk.3`, expert 0. Current Q1_0 versus
+the decoded IQ2 teacher measured cosine 0.811377 and NMSE 0.341667. A binary
+sign plus L2-scale g128 refit reproduced current Q1_0 to numerical precision.
+The 1.296875-bpw ternary candidate measured cosine 0.758266 and NMSE 0.425033.
+The weight-only path is therefore NO-GO as a quality fix; activation-aware
+recovery remains an experiment. No end-to-end quality inference is allowed.
+Report SHA-256:
+`a9e910d488c14cfc5614e7f861786856b0f38898229023af4c9975a60fcbdb9a`.
+
+### Activation-aware trainer scaffold
+
+The CPU-only scaffold implements a fail-closed trace reader and streaming
+binary/ternary g128 trainer with expert-output and gate-weighted losses,
+bounded updates and delta-only checkpoints. Six synthetic tests and Python
+bytecode compilation passed. It consumed no real activation trace and makes
+no recovery-quality claim. Report SHA-256:
+`0c6fb2aa64c35441f169377fae678843761e682a262004f4091f8b47fb274069`.
+
+### G129 route replay and host-capacity simulation
+
+The structural G129 trace showed that Q1 fallback was not rare: approximately
+58% of routes and 52% of router mass. CPU replay of exact-IQ2 host capacities
+produced the following fallback-mass estimates:
+
+| exact-IQ2 slots | oracle | LFRU pass 1 | LFRU pass 2 |
+|---:|---:|---:|---:|
+| 606 | 24.0% | 37.1% | 31.5% |
+| 910 | 18.0% | 32.1% | 24.5% |
+| 1213 | 13.5% | 28.6% | 19.2% |
+
+Exclusive low-bit/IQ2 replacement implied high recovery I/O. The current
+candidate is therefore a complete resident binary base plus a duplicated,
+bounded exact-IQ2 arena. These are replay/design findings, not measured runtime
+quality or speed.
+
+### Packed Q1 kernel audit
+
+Read-only source audit found that G129 already transfers and consumes Q1_0 in
+packed 18-byte/128-weight form; it does not globally expand the representation
+to FP16 or INT8. A new binary container therefore cannot reduce transport
+bytes at the same density. DP4A/MMVQ-style arithmetic remains a conditional
+kernel optimization, but no measured end-to-end gain or quality evidence
+exists.
+
+### G129 input-only activation trace certification
+
+G129 now contains an OFF-default, single-expert input trace capped at 256
+samples. It records input vectors plus request epoch, call, token, rank, gate
+weight and resolved representation; exact-IQ2 teacher outputs are reconstructed
+offline. Strict binary/JSONL validation and manifest-last atomic publication
+are required. With tracing OFF there is no trace file, D2H copy or added sync.
+
+CPU-only certification passed PowerShell parsing, positive and negative parser
+tests, Python tests, control/promotion/trace WhatIf, Release Ninja `sm_86`
+build, CTest 1/1 and diff check. Build manifest, input fingerprint and
+executable SHA-256 values were respectively
+`ba819fee217ba5c2eddca6894a8b012e35560aa3ed2c6a216115e7671157bf5a`,
+`2c382328f8f1327b613f449f3ebdd85f2c7a32143339f77a5bb504182de5ea40`
+and `51ff6dad1e0bab5d3a0c6e145d767e5a0dc0f8e2f99660b68aaf4f4fb8adb9a8`.
+No trace was acquired and no GPU/runtime/recovery-quality claim is made.
+
+### Work in progress, not evidence
+
+SSD-WRAP and the fixed-budget split between pinned and pageable exact-IQ2 host
+pools are design/implementation work in progress. Intended properties include
+bounded queueing, deduplication, safe source-range coalescing, asynchronous
+SSD-to-RAM staging, next-call eligibility, no current-token SSD-to-VRAM path,
+and no OFF-mode threads/allocations/writes. They must not be recorded as PASS
+or inserted into the evidence CSV until CPU gates and a separately authorized
+runtime safety produce receipts.
