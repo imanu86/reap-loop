@@ -29,10 +29,13 @@ Repo `https://github.com/imanu86/reap-loop.git`:
 |---|---|---|
 | g130/spec-restore | 1fad675 | Restores fail-open + telemetry requirements and ledger admission rule deleted by 2fd6a5f, dated notes |
 
-## In flight (uncommitted, in scratchpad clones — if lost, relaunch from the instructions below)
+## Final wave — ALL LANDED (board complete, 14 branches on ds4-win + 1 on reap-loop)
 
-1. **g130/u1-attribution-v2** (worktree exists locally; round-2 fix by gpt-5.6-sol in progress). Round-1 review PROVED: zero added CUDA sync (full API call-site inventory unchanged), closure arithmetic sound, blocking-site coverage complete, wire format matches g130/u1-attrib-tests. Round-2 blockers being fixed: (a) OFF-path must be single predicted branch on a cached global — no TLS loads when disabled, lazy TLS alloc, plus compile-out macro DS4_G130_ATTRIB_COMPILED_OUT; (b) emission must be inside the measured window (span_attrib_emit_ms in sum; request summary reconciles decode_total vs wall with loop_overhead_s); (c) every failure return restores the saved span. Acceptance: re-prove the API inventory + nvcc/MSVC compile.
-2. **g130/ssdwrap-semantics** (round-3 fix done by gpt-5.6-sol, round-3 re-review in progress). History: R1 caught terminal-stale/refund/dead-counter; R2 caught commit-after-terminal via poll_internal, refund-before-charge race (charge was outside submit's mutex), first-terminal-only counter. R3 claims: poll_internal early-out on state.failed; charge moved into submit under mutex (charge_applied gates refund); per-event structural counter.
+- **g130/ssdwrap-semantics @ ab42e16** — APPROVED round 4 (escalated 5.5→5.6-sol). All invariants proven: stale = accounted non-terminal drop; terminal teardown sweeps+refunds in-flight jobs; charge inside submit's mutex (charge_applied gates refund — refund-before-charge impossible); poll early-out on state.failed (no commit-after-terminal); structural events counted in every interleaving; budget counters uniformly synchronized; OFF-path no-op.
+- **g130/u1-attribution-v2 @ 7492440** — APPROVED round 3 (5.6-sol). Zero-sync PROVEN (CUDA API inventory 785→785 sites, kernels 175→175); OFF-path = one predicted branch on cached global, zero TLS loads, DS4_G130_ATTRIB_COMPILED_OUT; per-token closure + request wall closure via wall_total_s/loop_overhead_s; **real-validator cross-check exit 0** against g130/u1-attrib-tests @ abe6db4 (contract amended: optional summary fields 6–7).
+- **g130/u1-attrib-tests updated @ abe6db4** — validator amendment (both-or-neither wall/loop fields, closure loop == wall − decode_total).
+
+**THE U1 RUN IS NOW UNBLOCKED**: merge u1-neutrality → u1-attribution-v2 → u1-attrib-tests (+ watchdog-manifest, m4, portability, utf8 for the harness side) into feature/q1-0-resident-base, build with g7_build.ps1, then run plan §5 P0-U1 via g130_u1_q1_profile.ps1 with DS4_G130_U1_ATTRIBUTION=1 and all tracing off. The 4.5 s/token residual becomes measurable without observer distortion.
 
 ## Integration notes for whoever merges
 
