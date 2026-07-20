@@ -4374,12 +4374,26 @@ executable SHA-256 values were respectively
 and `51ff6dad1e0bab5d3a0c6e145d767e5a0dc0f8e2f99660b68aaf4f4fb8adb9a8`.
 No trace was acquired and no GPU/runtime/recovery-quality claim is made.
 
-### Work in progress, not evidence
+### G129 SSD-WRAP CPU-only certification
 
-SSD-WRAP and the fixed-budget split between pinned and pageable exact-IQ2 host
-pools are design/implementation work in progress. Intended properties include
-bounded queueing, deduplication, safe source-range coalescing, asynchronous
-SSD-to-RAM staging, next-call eligibility, no current-token SSD-to-VRAM path,
-and no OFF-mode threads/allocations/writes. They must not be recorded as PASS
-or inserted into the evidence CSV until CPU gates and a separately authorized
-runtime safety produce receipts.
+The OFF-default G129 SSD-WRAP implementation passed PowerShell parsing, strict
+parser positives/negatives, runner SelfTest, both Python suites, control/legacy/
+SSD-WRAP WhatIf, Release `sm_86`, CTest 1/1 and diff-check. No DS4 server or GPU
+was started. The immutable exact-IQ2 host budget remains 5,902,958,592 bytes:
+834 slots, four used by the transition ring. The proposed first split is 299
+pinned plus 531 pageable stable slots.
+
+The current call remains on resident Q1. Exact IQ2 is published only for a
+later call after SSD-to-RAM completion and validation; current-token
+SSD-to-VRAM is forbidden. OFF creates no thread, handle, ring, allocation or
+write. Build manifest, fingerprint and executable SHA-256 values are
+`1893258c8406e8c668eaf1856527ba0b5aba9ea2169e7d53525ca7257686a66b`,
+`f80f32087ed9d7716651ea661846a4ed50082aae0746700c8fc3c5c0a75a106a`
+and `e258a4fd60c7dc4dfb98cd0ec8b168f4a06e3f3f435adbe8ef89540cd2d307e5`.
+
+This is `context_only` CPU implementation evidence. No runtime, quality,
+throughput, `n>=3` or SOTA claim follows. The next gate is one separately
+authorized `promotion_ssd_2_0` structural safety. Runtime, harness and branch
+tip commits are `16273d4a1d9b648a5878223e7d3ecd3a8d233672`,
+`415ed980da69bad304d98e77b1851076a7ae06a6` and
+`801a6d8fee17d1fd18fa4fe83fec3f750501fd7e`.

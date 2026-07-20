@@ -215,30 +215,45 @@ The SSD is allowed to work. It must not be on the decode critical path. At one
 42.5 MB/s. The main risks are serialized reads, pageable-to-pinned copies,
 per-upload synchronization, churn and unused promotions.
 
-## 10. SSD-WRAP work in progress
+## 10. SSD-WRAP CPU implementation result
 
-SSD-WRAP is an implementation task in progress, not a result.
+SSD-WRAP is now implemented and has passed CPU-only build and static gates. It
+has not yet passed a runtime safety and is not performance or quality evidence.
 
-Required behavior:
+Implemented behavior:
 
 - bounded admission queue using the existing ranking/policy;
 - deduplication by layer/expert;
-- source-range validation, ordering and safe coalescing;
-- large prefill/rebuild waves and small decode micro-waves;
-- explicit REQUESTED -> SSD_INFLIGHT -> RAM_READY -> H2D_INFLIGHT or
-  ARENA_READY -> ELIGIBLE states;
-- no decode wait and fail-open continuation through the low-bit base;
-- fixed pinned pool or staging ring, no dynamic host registration on hot path;
-- a fixed 5.5 GiB IQ2 host budget split between pinned and pageable pools for
-  the first comparison;
-- QueryWorkingSetEx telemetry so pageable-resident is not confused with
-  paged-out memory;
-- separate VRAM, pinned, pageable and SSD hit counters;
-- first-use, useful-promotion, stale/drop, queue-depth and byte/time metrics;
-- OFF must not add threads, allocation, writes or policy changes.
+- source-range validation, ordering and provenance-safe coalescing;
+- large prefill/rebuild waves and bounded decode micro-waves;
+- explicit REQUESTED -> SSD_INFLIGHT -> RAM_READY -> RAM_COMMITTING ->
+  PINNED_READY or PAGEABLE_READY -> later-call ELIGIBLE states;
+- current-call Q1 continuation and no current-token SSD-to-VRAM transition;
+- fixed 5.5 GiB IQ2 host budget: 834 slots, with four transition-ring slots;
+- 2.0/3.5 GiB initial split: 299 pinned and 531 pageable stable slots;
+- fixed pinned bounce ring for pageable-to-VRAM H2D, with no dynamic host
+  registration on the hot path;
+- QueryWorkingSetEx only at init, flush and release, never per token;
+- fail-closed partial-read, range, provenance, stale-age and pairing gates;
+- OFF creates no thread, handle, ring, allocation or write.
 
-Do not call SSD-WRAP implemented, safe or faster until its CPU gates and a
-separately authorized structural runtime safety pass.
+CPU-only gates passed PowerShell parsing, parser positives/negatives, runner
+SelfTest, both Python suites, three WhatIf variants, Release `sm_86`, CTest 1/1
+and diff-check. Frozen manifest, fingerprint and executable SHA-256 values are:
+
+- `1893258c8406e8c668eaf1856527ba0b5aba9ea2169e7d53525ca7257686a66b`;
+- `f80f32087ed9d7716651ea661846a4ed50082aae0746700c8fc3c5c0a75a106a`;
+- `e258a4fd60c7dc4dfb98cd0ec8b168f4a06e3f3f435adbe8ef89540cd2d307e5`.
+
+At 6 t/s, one promotion per token requires about 45.65 MB/s. The recorded
+SplitFused miss count could instead imply about 712 MB/s host-to-device, so
+ring wait and promotion utility remain hard runtime gates. Full details are in
+`runs/ds4/20260720_lowbit_recovery/g129_ssd_wrap_cpu_implementation_report.md`.
+
+Published DS4 branch tip is
+`801a6d8fee17d1fd18fa4fe83fec3f750501fd7e`. The runtime and G129 harness
+commits are respectively `16273d4a1d9b648a5878223e7d3ecd3a8d233672` and
+`415ed980da69bad304d98e77b1851076a7ae06a6`.
 
 ## 11. Kernel conclusion
 
@@ -249,17 +264,16 @@ for activation-aware quality recovery and it has no measured end-to-end gain.
 
 ## 12. Next ordered actions
 
-1. Complete and audit the CPU-only SSD-WRAP implementation.
-2. Commit and push runtime, runner/protocol and ledger changes separately.
-3. Run one separately authorized G129 control trace n=1 to obtain activation
+1. Run one separately authorized G129 control trace n=1 to obtain activation
    samples from an exact-IQ2 teacher path.
-4. Train/recover binary weights for one expert and compare route-weighted expert
+2. Train/recover binary weights for one expert and compare route-weighted expert
    output error against current Q1.
-5. Use replay to choose the first fixed-budget pinned/pageable split.
-6. Run one structural SSD-WRAP safety n=1 only after all CPU gates pass.
-7. Run a long quality safety immediately; stop on L0/L1.
-8. Only after L2/L3 run balanced independent n>=3 processes.
-9. Compare against a full/open exact-IQ2 control. Use G73 only as the historical
+3. Run one `promotion_ssd_2_0` structural SSD-WRAP safety n=1.
+4. Stop unless it proves waves, pairing, working-set accounting, next-call
+   causality and zero stale/drop/failure/current-token SSD-to-VRAM.
+5. Run a long quality safety immediately; stop on L0/L1.
+6. Only after L2/L3 run balanced independent n>=3 processes.
+7. Compare against a full/open exact-IQ2 control. Use G73 only as the historical
    closed reference.
 
 ## 13. Permanent run rules

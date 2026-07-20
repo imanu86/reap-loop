@@ -556,6 +556,33 @@ lineage remains the next mandatory gate.
 | 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache258 | html | 258 | 3.23 | 3.33 | 12/0 |  | 1 | repeat_proxy=1; doctype=1; popup |
 | 20260709_local_cache_sweep_k23_html320_rev | local_k23_cache64 | html | 64 | 1.85 | 2.87 | 99072/98944 |  | 1 | repeat_proxy=1; doctype=1; popup |
 
+## G129 SSD-WRAP CPU-only certification - 2026-07-20
+
+The OFF-default SSD-WRAP implementation for causal Q1_0 -> exact-IQ2
+promotion passed all CPU gates: PowerShell parsing, strict parser cases,
+runner SelfTest, both Python suites, three WhatIf variants, Release `sm_86`,
+CTest 1/1 and diff-check. No DS4 server or GPU was started.
+
+The exact-IQ2 host budget remains 5,902,958,592 bytes (834 slots of 7,077,888
+bytes). Four slots form the bounded transition ring; the proposed first split
+has 299 pinned and 531 pageable stable slots. The current call stays on Q1 and
+exact IQ2 can become eligible only on a later call after SSD-to-RAM completion
+and validation. OFF creates no worker, handle, ring, allocation or write.
+
+Frozen identities:
+
+- manifest `1893258c8406e8c668eaf1856527ba0b5aba9ea2169e7d53525ca7257686a66b`;
+- fingerprint `f80f32087ed9d7716651ea661846a4ed50082aae0746700c8fc3c5c0a75a106a`;
+- executable `e258a4fd60c7dc4dfb98cd0ec8b168f4a06e3f3f435adbe8ef89540cd2d307e5`.
+
+This is context-only CPU implementation evidence. The next gate is one
+separately authorized `promotion_ssd_2_0` structural safety `n=1`; it must not
+be interpreted as throughput, quality, `n>=3` or SOTA evidence. Published
+runtime, harness and branch-tip commits are
+`16273d4a1d9b648a5878223e7d3ecd3a8d233672`,
+`415ed980da69bad304d98e77b1851076a7ae06a6` and
+`801a6d8fee17d1fd18fa4fe83fec3f750501fd7e`.
+
 ## Legacy / Claude Evidence Index
 
 | row_id | source_kind | benchmark_usable | category | experiment | result_text | source_artifacts |
