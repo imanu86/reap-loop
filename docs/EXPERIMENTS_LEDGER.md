@@ -4374,6 +4374,14 @@ executable SHA-256 values were respectively
 and `51ff6dad1e0bab5d3a0c6e145d767e5a0dc0f8e2f99660b68aaf4f4fb8adb9a8`.
 No trace was acquired and no GPU/runtime/recovery-quality claim is made.
 
+Ledger admission rule: do not insert a CSV evidence row until CPU gates pass and
+a separately-authorized runtime safety produces receipts.
+
+Restored 2026-07-20: removed in 2fd6a5f without a waiver; conformance must be judged against this original text. The G130 branches g130/ssdwrap-semantics and g130/ssdwrap-fault-injection implement/prove conformance.
+
+Note: the `20260720_lowbit_recovery` CSV row predates its runtime safety receipt
+and is DESIGN/CPU-EVIDENCE only.
+
 ### G129 SSD-WRAP CPU-only certification
 
 The OFF-default G129 SSD-WRAP implementation passed PowerShell parsing, strict

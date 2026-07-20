@@ -210,6 +210,11 @@ On a current-token miss:
    call;
 5. never wait for SSD on the current token.
 
+Stale work is a non-fatal outcome: stale work is dropped and never makes decode
+wait.
+
+Restored 2026-07-20: removed in 2fd6a5f without a waiver; conformance must be judged against this original text. The G130 branches g130/ssdwrap-semantics and g130/ssdwrap-fault-injection implement/prove conformance.
+
 The SSD is allowed to work. It must not be on the decode critical path. At one
 7,077,888-byte promotion per token and 6 t/s, average SSD demand is only about
 42.5 MB/s. The main risks are serialized reads, pageable-to-pinned copies,
@@ -236,6 +241,13 @@ Implemented behavior:
 - QueryWorkingSetEx only at init, flush and release, never per token;
 - fail-closed partial-read, range, provenance, stale-age and pairing gates;
 - OFF creates no thread, handle, ring, allocation or write.
+
+Required telemetry:
+
+- separate per-tier hit counters;
+- first-use, useful-promotion, stale-drop, queue-depth and byte-time metrics.
+
+Restored 2026-07-20: removed in 2fd6a5f without a waiver; conformance must be judged against this original text. The G130 branches g130/ssdwrap-semantics and g130/ssdwrap-fault-injection implement/prove conformance.
 
 CPU-only gates passed PowerShell parsing, parser positives/negatives, runner
 SelfTest, both Python suites, three WhatIf variants, Release `sm_86`, CTest 1/1
