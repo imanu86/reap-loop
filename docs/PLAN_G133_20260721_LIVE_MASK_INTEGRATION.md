@@ -257,9 +257,29 @@ the exact transient path (built in M1 fix round 2 for admission denial) — neve
 a stall. M1's heat tier is re-roled: not bootstrap but MASK MAINTENANCE across chat turns
 (re-entries, domain drift, where pure request-scoping ages). Quality gets graded AT LAST.
 
+**THE ARENA ROTATOR (owner: 'il punto è portarli nell'arena pinnata')** — the mechanical core,
+built ENTIRELY from existing hardened primitives:
+1. Pinned arena allocated ONCE at startup (G73 already does); rotation never allocates —
+   slots are REUSED (overwrite the coldest mask member's slot).
+2. Load path = the existing async SSD-wrap (`ssd_wrap_submit/finish`): pread from C: NVMe
+   directly INTO the pinned slot, LOW I/O priority, writer claim held across the async read.
+3. Decode safety = M1's transactional writer claims + lane-A reader reservations: never
+   overwrite a slot being read.
+4. VRAM coherence = the keyed cache `(layer, expert, generation)`: bump generation on swap,
+   stale copies become unreachable — no global flush.
+5. RACE-TOLERANT BY CONSTRUCTION: evicting an expert that routes next token is NOT corruption
+   — it is out-of-mask, the elastic valve serves it. Rotation mistakes cost milliseconds,
+   never correctness -> the rotator may be aggressive.
+Budget: measured escapes ~4-5/tok => ~1-2k distinct rotations over a long response = ~66 MB/s
+staging (trivial vs 1.5 GB/s; wrap path ceiling ~200 exp/s vs ~10-20 needed, 10x margin).
+Signal: heat (baseline) or the Q1 CPU shadow (H-SHADOW probe pending — routing agreement is
+the gate). Mask coverage is a SPEED dial, never a quality bet: quality is exact by
+construction (nobody is denied; escapes are served).
+
 **Gates**: decode >= 4.5 t/s (near closed-G73); full-length output quality graded PASS (the
 CSS-collapse check); out-of-mask demand served exact with join impact bounded (<15% of token
-time); n>=3. **Ledger**: `WIN-G133-G73-OPEN-*`. Sequencing: after M1 clears review (its
+time); rotation live (mask mutates in-flight, no thrash, no stalls attributable to the
+rotator); n>=3. **Ledger**: `WIN-G133-G73-OPEN-*`. Sequencing: after M1 clears review (its
 transient path + telemetry are prerequisites), G73-OPEN becomes the first measured engine
 milestone, ahead of generic-tier bootstrapping.
 
