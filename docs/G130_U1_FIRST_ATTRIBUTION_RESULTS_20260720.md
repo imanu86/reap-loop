@@ -94,3 +94,22 @@ Next per plan: T3 quality probe (512+ tokens, rendered grading), then F1 (select
 4. Strategic consequence: the mandate (>6 t/s AND >=L2) cannot be met by tuning THIS design. The evidence now points at the P3 architectural exit — **CPU-GEMV for cold experts serving EXACT IQ2 from host RAM** — which attacks BOTH failures at once: quality (exact weights everywhere, Q1 retired) and transport (~432x less PCIe traffic per cold route). Alternative paths (activation-aware Q1 recovery; replay-guided IQ2 split) remain but are slower to validate.
 
 Runs: diagnostic n=1, short prompt, ctx 4096, temp 0. NEGATIVE results recorded per protocol (T3 stop rule).
+
+---
+
+# ADDENDUM 3: first real-trace recovery POC — NO-GO (2026-07-21)
+
+First-ever real activation trace captured (17 samples x 4096d, layer 3 expert 0, 8 heterogeneous prompts,
+tracer `result=complete`, SHA-receipted). Activation-aware refit POC (codex gpt-5.6-sol, split 12 fit / 5 held-out):
+
+- Weight-domain cosine reproduced EXACTLY (0.811377) — decode pipeline validated end-to-end.
+- **Real-activation held-out baseline: cosine 0.550, NMSE 0.699** — Q1's true output error on real inputs is far
+  worse than weight-domain suggested. The T3 quality collapse is overdetermined.
+- Recovery (scale refit + bounded sign flips): fit improves, **held-out WORSENS** (0.475 / +18% NMSE) → overfits
+  at 17 samples. **NO-GO** for scaling as-is. A hot-expert 256-sample retry remains possible but the direction is
+  discouraging: the information loss is structural (confirms the weight-only NO-GO from the microprobe).
+- Full report: runs/ds4/20260720_lowbit_recovery/recovery_poc_real_trace_report_20260721.md
+
+Consequence: **CPU-GEMV (exact IQ2 for cold experts) is now the primary exit** — feasibility spike launched.
+Tracer operational notes: ctx>256 fails seed contract (cache_capacity 134 < 320) — reduce cache/seed for long-ctx;
+OUTPUT_PREFIX must be a full path under ROOT; expert 0 is lukewarm (17 samples/8 requests) — target hot experts.
