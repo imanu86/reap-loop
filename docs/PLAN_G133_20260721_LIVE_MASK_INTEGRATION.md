@@ -91,6 +91,21 @@ references.** But M0b starts decode COLD — the real engine has PREFILL routes 
 (free causal signal, unused by the sim) -> **M0c launched**: prefill-seeded staging (+
 prompt-conditioned prior = the owner's SPEX idea) through the same finite-LRU held-out harness.
 Engine work (M1+M2) stays BLOCKED until M0c passes the same gates.
+**M0c RESULT (ledger WIN-G133-M0C-PREFILL-SEED-NOGO-20260721): NO-GO on purity gates, VIABLE
+on ms-economics — M0 PHASE CLOSED.** Prefill seeding kills its slice (prefill-seen FIRST
+stalls 0.685 -> 0.001/tok) and staging BW passes (0.341 GB/s p90). Residual must-stall 4.7-4.9
+exp/tok decomposes: TRUE RE-ENTRIES (finite RAM: LRU ~5.9k of ~11k experts) > prompt-unseen
+FIRSTs > CPU burst overflow. **The purity gate (0.2) was the wrong metric.** ms translation:
+~4.8 residual stalls x 2-4ms parallel NVMe = ~10-19 ms/token — affordable, not a wall.
+**OWNER'S PRINCIPLE (2026-07-21, adopted as design law): even CPU-computing "at random" at 90%
+load beats one true miss — a CPU worker's cost hides under GPU time; a stall's cost is fully
+exposed. Therefore: NO TOKEN EVER WAITS FOR A BYTE.** Revised M2/M3 mandate: lane-A/B are
+ELASTIC — per expert per layer choose CPU-compute (warm OR cold: the worker eats the fault
+off-path) or async pinned-H2D (0.55ms DMA), under a layer deadline; synchronous stall is the
+fail-open of last resort, never the design path. CPU sizing: ~122 warm-served/tok = ~70%
+CPU busy @5.6 tok/s, bursts to ~90% (overflow 0.5/tok at p90) — exactly the owner's 50-90%
+two-lane envelope. VERDICT: understanding phase complete; M1 (transport merge) + M2 (lane-B
+prefill-seeded staging) justified; M3 elastic overlap remains the make-or-break engineering.
 
 ### M1 — TRANSPORT: port 0033 tiered residency to the win tree (kill the exposed copy)
 **Hypothesis**: heat-driven residency (dynamic seed + X/X+Y knock + reap) cuts the exposed
