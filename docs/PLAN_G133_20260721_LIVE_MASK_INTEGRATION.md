@@ -142,6 +142,14 @@ budget P/token capped; miss telemetry wired into attribution.
 lucky); (2) miss% < 10% after settle; (3) zero critical-path stalls attributable to staging;
 (4) no freeze, C: queue bounded, PC usable (owner check).
 **Cost**: M. **Ledger**: `WIN-G133-M2-LANE-B`.
+**DESIGN FREEZE (post H-SPEC-B, ledger WIN-G133-HSPEC-B-PREFETCH-NOGO-20260721): the lane-B
+signal is prefill-mass seed + heat_ema staging + the elastic-serve law. PREDICTOR WORK IS
+CLOSED: three independent signals (frequency, prefill, speculation-surrogate) converge within
+7% held-out, and even a perfect drafter cannot reach stall-purity — the residual ~4.4-4.7
+stalls/tok are CAPACITY-structural (LRU ~5.9k of 11k experts), absorbed at ~10-19 ms/tok by
+elastic CPU serving. Do not fund more predictors. Capture gap to fix opportunistically: route
+traces lack token ids — add token-id logging to the trace format so the token->expert map
+becomes testable if this is ever revisited.
 
 ### M3 — Async lane A: CPU computes the warm tail OFF the critical path (the unsolved wall)
 **Hypothesis**: CPU-computing RAM-warm experts overlapped with GPU layer compute (non-blocking
