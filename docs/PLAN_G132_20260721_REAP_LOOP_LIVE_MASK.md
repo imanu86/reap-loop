@@ -79,7 +79,9 @@ NEXT: investigation 2 (two-lane DRAM contention bench), then the live-mask proto
 
 ## GATE 2 VERDICT: two lanes coexist — PASS (dram_contention_report.md)
 
-Lane A (6 cores, real IQ2 experts, cold-streamed) degrades only 10-12% while lane B sustains
-56-224 MB/token staging on either drive. BONUS: lane B from D: (SATA) sustains 504 MB/s with
-LOWER lane-A degradation (5-7%) — staging can avoid C: entirely, structurally removing the
-PC-freeze cause. Both pre-build gates are green; NEXT: the live-mask prototype (investigation 3).
+Lane A (6 cores, real IQ2 experts) degrades only 10-12% while lane B sustains 56-224 MB/token.
+DISK POLICY (owner-corrected): ALL weight reads come from C: NVMe — the model already lives at
+C:\ds4-models and the OS page cache is the RAM tier. D: is slow SATA and must NOT be on any hot
+read path (the earlier D:-staging idea is REJECTED). The PC-freeze cause is C: SATURATION, not the
+disk choice: it is handled by LOW I/O PRIORITY on lane B staging, not by moving to a slower disk.
+Both pre-build gates are green; NEXT: the live-mask prototype (investigation 3).
