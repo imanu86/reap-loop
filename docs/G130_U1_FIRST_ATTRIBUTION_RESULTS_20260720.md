@@ -53,3 +53,27 @@ Tokens are remarkably stable (e.g. t2 150.6 ms, t32 138.6 ms, t64 149.1 ms; resi
 - T3 quality probe: 512–2000 tokens, rendered L-grading, stop on L0/L1.
 - Span refinement inside mixed_q1_call; then F1 fix (host-ids entry + event fencing) targeting the 66 ms selection_d2h.
 - Only after L2+: the n≥3 campaign per the mandate.
+
+
+---
+
+# ADDENDUM 2026-07-21: A/B matrix promotion x trace — mystery SOLVED
+
+| Run | promotion | mixed-trace | request wall | decode ms/token | t/s |
+|---|---|---|---|---|---|
+| A | off | off | 46.8 s | 244.7 (measured) | 4.09 |
+| B | ON | off | 67.5 s | ~569 (est. from wall) | ~1.76 |
+| C | off | ON | 328.7 s | ~4,650 (est.) | ~0.21 |
+| D | ON | ON | 361.8 s | **5,180 (measured)** | 0.193 |
+
+D reproduces the G129 safety receipt (4,878 ms/token) and its attribution closes at **98.5%** (residual 1.5%):
+route_classify **3,401 ms/token (65.7%)** = the mixed-trace fprintf rows (~344/token through the PowerShell
+redirect pipe at ~10 ms/row); selection_d2h inflated to 988 ms/token (vs 66 clean); promotion_staging
+**304 ms/token** (the known F5 sync preads — matches review); residual 80 ms/token.
+
+**Conclusions:** (1) the "unattributed 4.5 s/token" was ~87% telemetry artifact + ~6% synchronous promotion;
+the Q1 transport core does 4.09 t/s full/open (diagnostic, short prompt). (2) The safety-vs-perf run
+distinction in the G130 plan (T2 diagnostics never quotable) is vindicated — trace-on numbers are a
+different physical regime. (3) F5 (promotion off the decode thread / SSD-WRAP) is confirmed worth ~324 ms/token.
+(4) B/C stderr logs were lost to a driver filename bug (single-quoted $Tag); their decode values are wall-derived.
+Next per plan: T3 quality probe (512+ tokens, rendered grading), then F1 (selection_d2h 66 ms clean-path), then n>=3.
