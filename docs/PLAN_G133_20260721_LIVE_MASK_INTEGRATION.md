@@ -233,6 +233,36 @@ M0 (miss economics offline — CAN the CPU cover it?)   [zero GPU, launches NOW]
                  -> M5 (FINAL EXAM: sustained exact chat, n>=3)   [M6 only if miss%>10]
 ```
 
+## 6.5 G73-OPEN — the central milestone (owner-directed synthesis, 2026-07-21 late)
+
+**The realization**: the evening's sim chain unknowingly explained the owner's G73 SOTA piece
+by piece — and G73 is the measured, working form of what M1/M2 were rebuilding bottom-up.
+
+G73 (ledger `WIN-G7-G73-SPLIT-FUSED-N3` + C0/C1/C2 canaries): prefill full/open -> decode mask
+DERIVED FROM PREFILL demand (request-scoped) -> pinned-RAM snapshot (arena 30GB / 4,551
+experts) + dynamic VRAM cache (320) -> decode CLOSED inside the mask. Measured: **4.98/4.97/
+5.01 t/s (n=3, exact_hash=true, SSD=0 during decode)**, stable ctx 256-8192. Never
+quality-graded — the known hole: decode demand escaping the mask was clamped.
+
+The sims mapped onto it exactly: (a) prefill-seeding kills prefill-covered stalls (M0c) = WHY
+G73 works; (b) the un-predictable residual (prompt-unseen FIRSTs + re-entries, ~4-5/tok,
+no predictor can foreknow them because routing reads the hidden state) = EXACTLY the demand a
+closed G73 mask clamps = the quality risk; (c) the owner's elastic law = the missing piece:
+serve escapes EXACTLY on CPU off the critical path (~10-19 ms/tok) instead of clamping (broken
+quality) or sync-fetching (1.65 t/s).
+
+**G73-OPEN = G73 + elastic escape valve.** Unchanged: prefill-derived mask, pinned arena,
+dynamic VRAM. New: out-of-mask routes are SERVED EXACTLY — CPU lane (lane-A v2 machinery) or
+the exact transient path (built in M1 fix round 2 for admission denial) — never clamped, never
+a stall. M1's heat tier is re-roled: not bootstrap but MASK MAINTENANCE across chat turns
+(re-entries, domain drift, where pure request-scoping ages). Quality gets graded AT LAST.
+
+**Gates**: decode >= 4.5 t/s (near closed-G73); full-length output quality graded PASS (the
+CSS-collapse check); out-of-mask demand served exact with join impact bounded (<15% of token
+time); n>=3. **Ledger**: `WIN-G133-G73-OPEN-*`. Sequencing: after M1 clears review (its
+transient path + telemetry are prerequisites), G73-OPEN becomes the first measured engine
+milestone, ahead of generic-tier bootstrapping.
+
 ## 7. Seam map (Codex gpt-5.6-sol read-only pass, 2026-07-21) — VERDICT
 
 Full report: `D:\ds4_work\seam_map_0033.log`. Headline: **the win tree already implements most
