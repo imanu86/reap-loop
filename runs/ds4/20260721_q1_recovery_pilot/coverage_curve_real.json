@@ -1,0 +1,684 @@
+{
+  "files": [
+    {
+      "path": "C:\\Users\\imanu\\g130i\\u1_replay1.server.stderr.log",
+      "route_rows": 16512
+    },
+    {
+      "path": "C:\\Users\\imanu\\g130i\\u1_replay2.server.stderr.log",
+      "route_rows": 16512
+    },
+    {
+      "path": "C:\\Users\\imanu\\g130i\\u1_replay3.server.stderr.log",
+      "route_rows": 16512
+    }
+  ],
+  "input_patterns": [
+    "C:/Users/imanu/g130i/u1_replay*.server.stderr.log"
+  ],
+  "layers_touched": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19,
+    20,
+    21,
+    22,
+    23,
+    24,
+    25,
+    26,
+    27,
+    28,
+    29,
+    30,
+    31,
+    32,
+    33,
+    34,
+    35,
+    36,
+    37,
+    38,
+    39,
+    40,
+    41,
+    42
+  ],
+  "mass_concentration": {
+    "top_1000_gate_mass_pct": 63.029734873967556,
+    "top_2000_gate_mass_pct": 79.10807325843595,
+    "top_4000_gate_mass_pct": 94.08944054740812
+  },
+  "replays_merged": 3,
+  "route_rows_merged": 49536,
+  "strategies": {
+    "floor_32": {
+      "3000": {
+        "fallback_gate_mass": 1444.40624567307,
+        "fallback_gate_mass_pct": 11.66348713390223,
+        "fallback_route_count": 8411,
+        "fallback_route_pct": 16.979570413436694,
+        "floor": 32,
+        "floor_candidate_count": 1376,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 117,
+          "layer": 2,
+          "mass": 0.890106053,
+          "routes": 3
+        },
+        "resident_count": 3000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 67.52614504339998,
+          "fallback_gate_mass_pct": 23.446578168522844,
+          "fallback_route_count": 267,
+          "fallback_route_pct": 23.177083333333332,
+          "layer": 2
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 63.531690590270024,
+          "fallback_gate_mass_pct": 22.059614797244578,
+          "fallback_route_count": 328,
+          "fallback_route_pct": 28.47222222222222,
+          "layer": 0
+        }
+      },
+      "4000": {
+        "fallback_gate_mass": 731.96368210757,
+        "fallback_gate_mass_pct": 5.910559452591624,
+        "fallback_route_count": 4681,
+        "fallback_route_pct": 9.449693152454781,
+        "floor": 32,
+        "floor_candidate_count": 1376,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 250,
+          "layer": 17,
+          "mass": 0.554378822,
+          "routes": 3
+        },
+        "resident_count": 4000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        }
+      },
+      "5000": {
+        "fallback_gate_mass": 309.5559829933,
+        "fallback_gate_mass_pct": 2.4996445672265675,
+        "fallback_route_count": 2240,
+        "fallback_route_pct": 4.521963824289406,
+        "floor": 32,
+        "floor_candidate_count": 1376,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 236,
+          "layer": 8,
+          "mass": 0.303848624,
+          "routes": 1
+        },
+        "resident_count": 5000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 9.9625351276,
+          "fallback_gate_mass_pct": 3.459213601997509,
+          "fallback_route_count": 87,
+          "fallback_route_pct": 7.552083333333333,
+          "layer": 33
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 9.558013782900003,
+          "fallback_gate_mass_pct": 3.318754781072543,
+          "fallback_route_count": 95,
+          "fallback_route_pct": 8.246527777777779,
+          "layer": 32
+        }
+      },
+      "5600": {
+        "fallback_gate_mass": 159.342394502,
+        "fallback_gate_mass_pct": 1.2866795430486557,
+        "fallback_route_count": 1279,
+        "fallback_route_pct": 2.5819605943152455,
+        "floor": 32,
+        "floor_candidate_count": 1376,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 216,
+          "layer": 23,
+          "mass": 0.20232175689999998,
+          "routes": 3
+        },
+        "resident_count": 5600,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 5.6856262051,
+          "fallback_gate_mass_pct": 1.9741757639419166,
+          "fallback_route_count": 51,
+          "fallback_route_pct": 4.427083333333333,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 5.5760508798,
+          "fallback_gate_mass_pct": 1.9361287866777181,
+          "fallback_route_count": 52,
+          "fallback_route_pct": 4.513888888888889,
+          "layer": 33
+        }
+      },
+      "6045": {
+        "fallback_gate_mass": 80.2392541492,
+        "fallback_gate_mass_pct": 0.6479267942842528,
+        "fallback_route_count": 748,
+        "fallback_route_pct": 1.5100129198966408,
+        "floor": 32,
+        "floor_candidate_count": 1376,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 110,
+          "layer": 10,
+          "mass": 0.154018581,
+          "routes": 1
+        },
+        "resident_count": 6045,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 3.0254450028,
+          "fallback_gate_mass_pct": 1.0505017361692517,
+          "fallback_route_count": 31,
+          "fallback_route_pct": 2.6909722222222223,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 2.7242204637,
+          "fallback_gate_mass_pct": 0.9459098819019376,
+          "fallback_route_count": 33,
+          "fallback_route_pct": 2.8645833333333335,
+          "layer": 32
+        }
+      }
+    },
+    "floor_64": {
+      "3000": {
+        "fallback_gate_mass": 1466.04457065157,
+        "fallback_gate_mass_pct": 11.83821521039869,
+        "fallback_route_count": 8381,
+        "fallback_route_pct": 16.919008397932817,
+        "floor": 64,
+        "floor_candidate_count": 2752,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 126,
+          "layer": 0,
+          "mass": 0.9812762896,
+          "routes": 6
+        },
+        "resident_count": 3000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 81.59235677160001,
+          "fallback_gate_mass_pct": 28.330679468963808,
+          "fallback_route_count": 330,
+          "fallback_route_pct": 28.645833333333332,
+          "layer": 2
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 77.69387037047,
+          "fallback_gate_mass_pct": 26.977038334032745,
+          "fallback_route_count": 387,
+          "fallback_route_pct": 33.59375,
+          "layer": 0
+        }
+      },
+      "4000": {
+        "fallback_gate_mass": 732.80357029877,
+        "fallback_gate_mass_pct": 5.917341495483866,
+        "fallback_route_count": 4687,
+        "fallback_route_pct": 9.461805555555555,
+        "floor": 64,
+        "floor_candidate_count": 2752,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 190,
+          "layer": 19,
+          "mass": 0.556425512,
+          "routes": 2
+        },
+        "resident_count": 4000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        }
+      },
+      "5000": {
+        "fallback_gate_mass": 309.5559829933,
+        "fallback_gate_mass_pct": 2.4996445672265675,
+        "fallback_route_count": 2240,
+        "fallback_route_pct": 4.521963824289406,
+        "floor": 64,
+        "floor_candidate_count": 2752,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 236,
+          "layer": 8,
+          "mass": 0.303848624,
+          "routes": 1
+        },
+        "resident_count": 5000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 9.9625351276,
+          "fallback_gate_mass_pct": 3.459213601997509,
+          "fallback_route_count": 87,
+          "fallback_route_pct": 7.552083333333333,
+          "layer": 33
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 9.558013782900003,
+          "fallback_gate_mass_pct": 3.318754781072543,
+          "fallback_route_count": 95,
+          "fallback_route_pct": 8.246527777777779,
+          "layer": 32
+        }
+      },
+      "5600": {
+        "fallback_gate_mass": 159.342394502,
+        "fallback_gate_mass_pct": 1.2866795430486557,
+        "fallback_route_count": 1279,
+        "fallback_route_pct": 2.5819605943152455,
+        "floor": 64,
+        "floor_candidate_count": 2752,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 216,
+          "layer": 23,
+          "mass": 0.20232175689999998,
+          "routes": 3
+        },
+        "resident_count": 5600,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 5.6856262051,
+          "fallback_gate_mass_pct": 1.9741757639419166,
+          "fallback_route_count": 51,
+          "fallback_route_pct": 4.427083333333333,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 5.5760508798,
+          "fallback_gate_mass_pct": 1.9361287866777181,
+          "fallback_route_count": 52,
+          "fallback_route_pct": 4.513888888888889,
+          "layer": 33
+        }
+      },
+      "6045": {
+        "fallback_gate_mass": 80.2392541492,
+        "fallback_gate_mass_pct": 0.6479267942842528,
+        "fallback_route_count": 748,
+        "fallback_route_pct": 1.5100129198966408,
+        "floor": 64,
+        "floor_candidate_count": 2752,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 110,
+          "layer": 10,
+          "mass": 0.154018581,
+          "routes": 1
+        },
+        "resident_count": 6045,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 3.0254450028,
+          "fallback_gate_mass_pct": 1.0505017361692517,
+          "fallback_route_count": 31,
+          "fallback_route_pct": 2.6909722222222223,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 2.7242204637,
+          "fallback_gate_mass_pct": 0.9459098819019376,
+          "fallback_route_count": 33,
+          "fallback_route_pct": 2.8645833333333335,
+          "layer": 32
+        }
+      }
+    },
+    "floor_96": {
+      "3000": {
+        "fallback_gate_mass": 1460.54860911577,
+        "fallback_gate_mass_pct": 11.793835676002981,
+        "fallback_route_count": 8362,
+        "fallback_route_pct": 16.88065245478036,
+        "floor": 96,
+        "floor_candidate_count": 4128,
+        "floor_satisfied": false,
+        "highest_mass_missed_expert": {
+          "expert": 1,
+          "layer": 2,
+          "mass": 1.195188702,
+          "routes": 5
+        },
+        "resident_count": 3000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 105.58654600740002,
+          "fallback_gate_mass_pct": 36.66199518594921,
+          "fallback_route_count": 430,
+          "fallback_route_pct": 37.326388888888886,
+          "layer": 2
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 94.48379006386998,
+          "fallback_gate_mass_pct": 32.8068715632747,
+          "fallback_route_count": 461,
+          "fallback_route_pct": 40.017361111111114,
+          "layer": 0
+        }
+      },
+      "4000": {
+        "fallback_gate_mass": 847.56862988037,
+        "fallback_gate_mass_pct": 6.844061938476528,
+        "fallback_route_count": 4949,
+        "fallback_route_pct": 9.990713824289406,
+        "floor": 96,
+        "floor_candidate_count": 4128,
+        "floor_satisfied": false,
+        "highest_mass_missed_expert": {
+          "expert": 1,
+          "layer": 2,
+          "mass": 1.195188702,
+          "routes": 5
+        },
+        "resident_count": 4000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 105.58654600740002,
+          "fallback_gate_mass_pct": 36.66199518594921,
+          "fallback_route_count": 430,
+          "fallback_route_pct": 37.326388888888886,
+          "layer": 2
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 94.48379006386998,
+          "fallback_gate_mass_pct": 32.8068715632747,
+          "fallback_route_count": 461,
+          "fallback_route_pct": 40.017361111111114,
+          "layer": 0
+        }
+      },
+      "5000": {
+        "fallback_gate_mass": 314.682940781,
+        "fallback_gate_mass_pct": 2.541044420191779,
+        "fallback_route_count": 2254,
+        "fallback_route_pct": 4.550226098191215,
+        "floor": 96,
+        "floor_candidate_count": 4128,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 28,
+          "layer": 22,
+          "mass": 0.319532126,
+          "routes": 1
+        },
+        "resident_count": 5000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 10.385479811099998,
+          "fallback_gate_mass_pct": 3.606069375716388,
+          "fallback_route_count": 84,
+          "fallback_route_pct": 7.291666666666667,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 10.385479811099998,
+          "fallback_gate_mass_pct": 3.606069375716388,
+          "fallback_route_count": 84,
+          "fallback_route_pct": 7.291666666666667,
+          "layer": 35
+        }
+      },
+      "5600": {
+        "fallback_gate_mass": 160.2924378077,
+        "fallback_gate_mass_pct": 1.2943510813751316,
+        "fallback_route_count": 1281,
+        "fallback_route_pct": 2.585998062015504,
+        "floor": 96,
+        "floor_candidate_count": 4128,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 45,
+          "layer": 23,
+          "mass": 0.2048179437,
+          "routes": 2
+        },
+        "resident_count": 5600,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 5.7787257758,
+          "fallback_gate_mass_pct": 2.0065020147815096,
+          "fallback_route_count": 53,
+          "fallback_route_pct": 4.600694444444445,
+          "layer": 33
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 4.9653061756,
+          "fallback_gate_mass_pct": 1.7240646418864791,
+          "fallback_route_count": 55,
+          "fallback_route_pct": 4.774305555555555,
+          "layer": 32
+        }
+      },
+      "6045": {
+        "fallback_gate_mass": 80.4676154428,
+        "fallback_gate_mass_pct": 0.6497707969793144,
+        "fallback_route_count": 750,
+        "fallback_route_pct": 1.5140503875968991,
+        "floor": 96,
+        "floor_candidate_count": 4128,
+        "floor_satisfied": true,
+        "highest_mass_missed_expert": {
+          "expert": 187,
+          "layer": 30,
+          "mass": 0.1547265947,
+          "routes": 2
+        },
+        "resident_count": 6045,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 3.1796364078,
+          "fallback_gate_mass_pct": 1.1040404184143322,
+          "fallback_route_count": 32,
+          "fallback_route_pct": 2.7777777777777777,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 2.7242204637,
+          "fallback_gate_mass_pct": 0.9459098819019376,
+          "fallback_route_count": 33,
+          "fallback_route_pct": 2.8645833333333335,
+          "layer": 32
+        }
+      }
+    },
+    "global": {
+      "3000": {
+        "fallback_gate_mass": 1444.40624567307,
+        "fallback_gate_mass_pct": 11.66348713390223,
+        "fallback_route_count": 8411,
+        "fallback_route_pct": 16.979570413436694,
+        "floor": null,
+        "floor_candidate_count": null,
+        "floor_satisfied": null,
+        "highest_mass_missed_expert": {
+          "expert": 117,
+          "layer": 2,
+          "mass": 0.890106053,
+          "routes": 3
+        },
+        "resident_count": 3000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 67.52614504339998,
+          "fallback_gate_mass_pct": 23.446578168522844,
+          "fallback_route_count": 267,
+          "fallback_route_pct": 23.177083333333332,
+          "layer": 2
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 63.531690590270024,
+          "fallback_gate_mass_pct": 22.059614797244578,
+          "fallback_route_count": 328,
+          "fallback_route_pct": 28.47222222222222,
+          "layer": 0
+        }
+      },
+      "4000": {
+        "fallback_gate_mass": 731.96368210757,
+        "fallback_gate_mass_pct": 5.910559452591624,
+        "fallback_route_count": 4681,
+        "fallback_route_pct": 9.449693152454781,
+        "floor": null,
+        "floor_candidate_count": null,
+        "floor_satisfied": null,
+        "highest_mass_missed_expert": {
+          "expert": 250,
+          "layer": 17,
+          "mass": 0.554378822,
+          "routes": 3
+        },
+        "resident_count": 4000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 22.598274254500012,
+          "fallback_gate_mass_pct": 7.846623039268341,
+          "fallback_route_count": 161,
+          "fallback_route_pct": 13.975694444444445,
+          "layer": 31
+        }
+      },
+      "5000": {
+        "fallback_gate_mass": 309.5559829933,
+        "fallback_gate_mass_pct": 2.4996445672265675,
+        "fallback_route_count": 2240,
+        "fallback_route_pct": 4.521963824289406,
+        "floor": null,
+        "floor_candidate_count": null,
+        "floor_satisfied": null,
+        "highest_mass_missed_expert": {
+          "expert": 236,
+          "layer": 8,
+          "mass": 0.303848624,
+          "routes": 1
+        },
+        "resident_count": 5000,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 9.9625351276,
+          "fallback_gate_mass_pct": 3.459213601997509,
+          "fallback_route_count": 87,
+          "fallback_route_pct": 7.552083333333333,
+          "layer": 33
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 9.558013782900003,
+          "fallback_gate_mass_pct": 3.318754781072543,
+          "fallback_route_count": 95,
+          "fallback_route_pct": 8.246527777777779,
+          "layer": 32
+        }
+      },
+      "5600": {
+        "fallback_gate_mass": 159.342394502,
+        "fallback_gate_mass_pct": 1.2866795430486557,
+        "fallback_route_count": 1279,
+        "fallback_route_pct": 2.5819605943152455,
+        "floor": null,
+        "floor_candidate_count": null,
+        "floor_satisfied": null,
+        "highest_mass_missed_expert": {
+          "expert": 216,
+          "layer": 23,
+          "mass": 0.20232175689999998,
+          "routes": 3
+        },
+        "resident_count": 5600,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 5.6856262051,
+          "fallback_gate_mass_pct": 1.9741757639419166,
+          "fallback_route_count": 51,
+          "fallback_route_pct": 4.427083333333333,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 5.5760508798,
+          "fallback_gate_mass_pct": 1.9361287866777181,
+          "fallback_route_count": 52,
+          "fallback_route_pct": 4.513888888888889,
+          "layer": 33
+        }
+      },
+      "6045": {
+        "fallback_gate_mass": 80.2392541492,
+        "fallback_gate_mass_pct": 0.6479267942842528,
+        "fallback_route_count": 748,
+        "fallback_route_pct": 1.5100129198966408,
+        "floor": null,
+        "floor_candidate_count": null,
+        "floor_satisfied": null,
+        "highest_mass_missed_expert": {
+          "expert": 110,
+          "layer": 10,
+          "mass": 0.154018581,
+          "routes": 1
+        },
+        "resident_count": 6045,
+        "worst_layer_by_mass_pct": {
+          "fallback_gate_mass": 3.0254450028,
+          "fallback_gate_mass_pct": 1.0505017361692517,
+          "fallback_route_count": 31,
+          "fallback_route_pct": 2.6909722222222223,
+          "layer": 35
+        },
+        "worst_layer_by_route_pct": {
+          "fallback_gate_mass": 2.7242204637,
+          "fallback_gate_mass_pct": 0.9459098819019376,
+          "fallback_route_count": 33,
+          "fallback_route_pct": 2.8645833333333335,
+          "layer": 32
+        }
+      }
+    }
+  },
+  "total_gate_mass": 12383.99999151727,
+  "unique_experts_touched": 6766,
+  "variance_caveat": null
+}
