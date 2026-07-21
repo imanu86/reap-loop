@@ -147,9 +147,17 @@ signal is prefill-mass seed + heat_ema staging + the elastic-serve law. PREDICTO
 CLOSED: three independent signals (frequency, prefill, speculation-surrogate) converge within
 7% held-out, and even a perfect drafter cannot reach stall-purity — the residual ~4.4-4.7
 stalls/tok are CAPACITY-structural (LRU ~5.9k of 11k experts), absorbed at ~10-19 ms/tok by
-elastic CPU serving. Do not fund more predictors. Capture gap to fix opportunistically: route
-traces lack token ids — add token-id logging to the trace format so the token->expert map
-becomes testable if this is ever revisited.
+elastic CPU serving. Do not fund more predictors.
+**FINAL (H-SPEC-B2, ledger WIN-G133-HSPEC-B2-TOKEN-EXPERT-NOGO-20260721): the token->expert
+test was run FOR REAL** — engine tokenizer, alignment PROVEN by exact count match on all 3
+texts. Verdict: token identity predicts experts poorly (top-6 recall 15.0% even given the TRUE
+future token; perfect-token oracle map still only -12.9% stalls, below the 20% gate) because
+**MoE routing reads the hidden state, not the token** — the same token routes differently by
+context. Exact expert foreknowledge would require running the layers ahead (a real draft
+forward), whose CPU cost exceeds the ~10-19 ms/tok the residual stalls cost. The miss chapter
+is closed on real evidence at every branch: oracle (capacity), history (M0b), prefill (M0c),
+surrogate (B), real token map (B2). The elastic-serve law stands as the design answer. Reusable
+asset gained: proven tokenizer-alignment infra (tokenizer_dump.c).
 
 ### M3 — Async lane A: CPU computes the warm tail OFF the critical path (the unsolved wall)
 **Hypothesis**: CPU-computing RAM-warm experts overlapped with GPU layer compute (non-blocking
