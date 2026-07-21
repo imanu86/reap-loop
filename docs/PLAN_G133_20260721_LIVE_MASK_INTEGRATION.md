@@ -79,11 +79,21 @@ layout assumption is wrong -> STOP and rethink tiers before any port work.
 **Hypothesis**: heat-driven residency (dynamic seed + X/X+Y knock + reap) cuts the exposed
 expert H2D on the EXISTING short fixture by >=50% (76 -> <38 ms/token) at equal quality,
 because the live working set (novelty 24.8%@W8) stays resident instead of re-copied.
-**Work**: apply/rebase 0033 per the §7 seam map onto `g132/lane-a-resident` base -> branch
-`g133/m1-residency`. Preserve the lane-A slot reader-reservation discipline: tier demotion/reap
-MUST skip reserved slots (§7 interaction list = the review checklist). Wire attribution
-counters: h2d_ms/token, warm-hit%, promotions/token, reap/token, thrash guard. Measurement on
-the existing ctx256/64tok fixture + one longer 256-tok run — NO new fixture needed.
+**Work** (REVISED by §7): do NOT apply the 0033 patch as-is — the win tree ALREADY has a
+four-state per-expert tier controller (`g_moe_tiering`: SSD / RAM-probation / RAM-warm /
+VRAM-protected, mass observer + hysteresis ranking) that substantially supersedes 0033.
+Applying the patch would create split-brain residency (two authorities — §7 critical #2).
+Instead ADOPT 0033's missing semantics INTO the existing controller (`cuda_moe_tier_entry`
+stays the sole authority): X/X+Y knock fields, decay, dynamic-seed semantics into
+`cuda_moe_prefill_vram_seed` + decode observation (28412), promotion/demotion policy into
+`cuda_moe_tiering_pick_vram_slot`/`demote_cache_entry`. FIRST harden the lifecycle (§7 step 1):
+the generic arena reap path takes NO lane-A writer claims (contained today only by
+`tiering_exclusive` mutual exclusion) — extend transaction-wide writer claims (deterministic
+slot order, all-or-nothing) BEFORE composing reap with lane-A. Skip 0039/0040 patch-porting:
+build the mass signal on the already-present CUDA mass observer (`cuda_reap_mass_observer`).
+Branch `g133/m1-residency`. Wire attribution counters: h2d_ms/token, warm-hit%,
+promotions/token, reap/token, thrash guard. Measurement on the existing ctx256/64tok fixture +
+one longer 256-tok run — NO new fixture needed.
 **Gate**: (1) bit-exact ON vs OFF (A/B hash, not asserted); (2) no-thrash convergence ON
 WINDOWS (same criterion as the pod gate); (3) h2d_ms/token reduction >=50%; (4) t/s >= baseline
 (no regression tolerated).
@@ -175,6 +185,46 @@ M0 (miss economics offline — CAN the CPU cover it?)   [zero GPU, launches NOW]
                  -> M5 (FINAL EXAM: sustained exact chat, n>=3)   [M6 only if miss%>10]
 ```
 
-## 7. Seam map (Codex read-only pass) — APPENDED WHEN IN
+## 7. Seam map (Codex gpt-5.6-sol read-only pass, 2026-07-21) — VERDICT
 
-(placeholder — `D:\ds4_work\seam_map_0033.log`; summarized here + committed on arrival)
+Full report: `D:\ds4_work\seam_map_0033.log`. Headline: **the win tree already implements most
+of the design** — porting is a SEMANTIC MERGE into the existing controller, not a patch apply.
+
+### What the win tree already has (supersedes much of 0031/0033)
+- Per-expert four-state tier controller `g_moe_tiering` via `cuda_moe_tier_entry` (22865):
+  SSD / RAM-probation / RAM-warm / VRAM-protected. History is PER EXPERT and survives eviction
+  (better than 0033's slot-local history).
+- Mass observer + hysteresis residency ranking: `cuda_reap_mass_observer` (2355),
+  `cuda_reap_mass_publish_residency` (11242).
+- Tier-aware victim selection/demotion/enforcement: `pick_vram_slot` 27702, `demote` 26153,
+  `enforce_request` 27844; prefill mass seed `cuda_moe_prefill_vram_seed` 26751.
+- Correct slot-lifecycle linearization (reader CAS -> revalidate; writer claim held across all
+  mutations incl. async SSD-wrap; lane-A holds reservation through compute + fail-open).
+
+### Critical conflicts (why patch-as-is is FORBIDDEN)
+1. **Split-brain residency**: 0031/0033 slot-local pinned/tier/knock alongside per-expert
+   `g_moe_tiering` = two authorities for residency/counts/demotion. -> Adopt semantics into the
+   existing controller; `cuda_moe_tier_entry` stays the SOLE authority.
+2. **Latent lifecycle hole**: generic arena reap (`cuda_dynamic_arena_wrap_publish_target` 9771
+   -> `ds4_gpu_dynamic_arena_begin` 7395, slot reassign 7524) takes NO lane-A writer claims —
+   contained today only by `tiering_exclusive` mutual exclusion (7408/24048). Composing reap
+   with lane-A WITHOUT transaction-wide writer claims = use-after-reassignment corruption.
+   Multi-slot reap: acquire writer claims in deterministic slot order, all-or-nothing.
+3. **F1/F2 async publication**: promotion/demotion must stay inside route-worker ordering and
+   honor claimed[], upload-stream completion, map publication, Q1 reuse events.
+4. **0039/0040 need the absent livemask base (0035-0038)** + GNU weak linkage + wrong dims for
+   win 43x256/MSVC. -> Skip patch-porting; build the mass signal on the existing CUDA mass
+   observer directly (the `g_reap_pin_mass` cross-TU seam is unnecessary).
+
+### Port order (adopted into M1)
+1. Harden lifecycle (writer claims on generic reap, or keep strict `tiering_exclusive`) — L
+2. Extend `cuda_moe_tier_entry` with knock/decay/hysteresis fields (single authority) — M
+3. Seed/observation semantics into `prefill_vram_seed` + decode observation 28412 — M
+4. Promotion/demotion policy into pick/demote (+ `cuda_q1_vram_lru_resolve` only if needed) — L
+5. Lane-A validation re-run with tier churn ON (all reservation/cancel/SSD-wrap paths) — M
+6. Selection-side livemask LAST, on the mass observer (not 0039/0040 patches) — L
+
+### Three biggest port risks (mandatory review checklist for M1)
+1. Slot reuse racing lane-A CPU readers.
+2. Split-brain residency from layering 0033 over the existing four-state controller.
+3. Breaking F1/F2 async publication/reuse fencing while changing victim selection or demotion.
