@@ -51,6 +51,14 @@ committed evidence and the code — find errors, overstatements, and unproven co
    the EXACT-ENGINE QUALITY are both still UNMEASURED.** This + item's quality are the two biggest open
    items. Resume: finish the reservation fix, re-review (slot race must be provably closed), build,
    run a SHORT (256-tok) quality+speed A/B with the resident gate. Machinery/rules: HANDOFF_20260721.
+   **UPDATE — v2 DONE + MEASURED (committed g132/lane-a-resident @ f250e08, reviewed APPROVE, see
+   LANE_A_V2_MEASURED.md). Result: BETTER not FIXED — 0.46 t/s (5x v1) with CPU 18% / GPU 30% (both
+   active), still 8x below the 4.86 target. Two unsolved axes: (a) per-layer cap DS4_G132_CPU_LANE_MAX=3
+   did NOT apply (routes still 5-6/layer); (b) NO CPU/GPU OVERLAP — join_wait == cpu_ms, the CPU is
+   serialized against the per-layer join, not hidden under GPU. The resident gate fixed the cold-mmap
+   axis (7ms vs 20ms); the REAL remaining lever is TRUE ASYNC OVERLAP (compute layer-N warm on CPU
+   WHILE GPU does layer-N hot, non-blocking join), NOT another gate tweak. Exact-engine QUALITY STILL
+   unmeasured (run stopped early). Slot reader-reservation race fix: reviewed+closed.**
 
 ## Strategic direction to stress-test
 
