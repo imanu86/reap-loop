@@ -83,6 +83,14 @@ ORACLE lookahead, in-sample seed, optimistic page cache, layer-barrier/tiny-batc
 (avg ~1.85 exp/layer < batch-4 — feeds M3 risk). Sim's own gate: engine integration stays
 BLOCKED until a CAUSAL (non-oracle) predictor reproduces this on held-out traces with a finite
 page-cache budget -> **M0b, launched**.
+**M0b RESULT (ledger WIN-G133-M0B-CAUSAL-PREDICTOR-NOGO-20260721): NO-GO.** Held-out
+rust_channel with finite LRU: miss 50.4% (vs 27.9% oracle), must-stall 6.02 exp/tok (gate 0.2),
+headroom 1.42x (gate 1.5). All three causal signals equivalent -> predictor choice is NOT the
+issue. **Broken assumption: causal decode history cannot pre-warm cold FIRST/re-entry
+references.** But M0b starts decode COLD — the real engine has PREFILL routes before decode t0
+(free causal signal, unused by the sim) -> **M0c launched**: prefill-seeded staging (+
+prompt-conditioned prior = the owner's SPEX idea) through the same finite-LRU held-out harness.
+Engine work (M1+M2) stays BLOCKED until M0c passes the same gates.
 
 ### M1 — TRANSPORT: port 0033 tiered residency to the win tree (kill the exposed copy)
 **Hypothesis**: heat-driven residency (dynamic seed + X/X+Y knock + reap) cuts the exposed
