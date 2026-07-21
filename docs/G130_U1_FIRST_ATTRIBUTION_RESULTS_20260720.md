@@ -77,3 +77,20 @@ distinction in the G130 plan (T2 diagnostics never quotable) is vindicated — t
 different physical regime. (3) F5 (promotion off the decode thread / SSD-WRAP) is confirmed worth ~324 ms/token.
 (4) B/C stderr logs were lost to a driver filename bug (single-quoted $Tag); their decode values are wall-derived.
 Next per plan: T3 quality probe (512+ tokens, rendered grading), then F1 (selection_d2h 66 ms clean-path), then n>=3.
+
+---
+
+# ADDENDUM 2: T3 quality probes (2026-07-21 morning)
+
+| Probe | Config | Tokens | Decode | Quality (visual, raw text inspection) | Q1 route share |
+|---|---|---|---|---|---|
+| T3-clean | promo OFF | 213 (self-stop) | 177.9 ms/tok = **5.62 t/s** | **L0/L1 NEGATIVE** — CSS repetition loop from ~150 tok ("font-weight: base, 400" repeated, invalid comma-joined properties) | 71.6% (39,886/55,617) |
+| T3-promo | promo ON (frozen gates) | 213 (self-stop) | 388 ms/tok = 2.58 t/s | **L0/L1 NEGATIVE** — different loop (endless invented pseudo-elements *::dialog, *::input...) | 67.4% (37,486/55,626) |
+
+**Findings:**
+1. Long-run decode is even faster than the 64-tok diagnostic: 5.62 t/s clean full/open (cache warms).
+2. **Quality breaks in BOTH arms** at ~150-200 tokens of long-form HTML — the Q1 fallback (~70% of routes at per-expert cosine 0.811) cannot sustain L2. The plan's "quality is unmechanized" diagnosis is now EMPIRICAL.
+3. **F6 empirically confirmed**: the frozen promotion budget (64/request) moved Q1 share by only 4.2 points at 2.2x the cost. Promotion as parameterized cannot fix quality.
+4. Strategic consequence: the mandate (>6 t/s AND >=L2) cannot be met by tuning THIS design. The evidence now points at the P3 architectural exit — **CPU-GEMV for cold experts serving EXACT IQ2 from host RAM** — which attacks BOTH failures at once: quality (exact weights everywhere, Q1 retired) and transport (~432x less PCIe traffic per cold route). Alternative paths (activation-aware Q1 recovery; replay-guided IQ2 split) remain but are slower to validate.
+
+Runs: diagnostic n=1, short prompt, ctx 4096, temp 0. NEGATIVE results recorded per protocol (T3 stop rule).
