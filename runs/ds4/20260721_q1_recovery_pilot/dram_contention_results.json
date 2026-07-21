@@ -1,0 +1,39 @@
+{
+  "schema": "dram_contention_results_v1",
+  "date_local": "2026-07-21",
+  "model_c": "C:\\ds4-models\\ds4-2bit.gguf",
+  "model_d": "D:\\ds4-models\\ds4-2bit.gguf",
+  "lane_a_threads": 6,
+  "lane_b_threads": 2,
+  "expert_ring": 64,
+  "duration_sec": 4.000,
+  "token_rate_for_mb_token_conversion": 1.650000,
+  "expert_payload_bytes": 7077888,
+  "lane_a_baseline": {"ms_per_expert": 0.988128, "weight_gb_s": 7.162927, "forwards": 4059, "elapsed_sec": 4.010811},
+  "lane_b_alone": [
+    {"source": "C:", "label": "56 MB/token", "mb_per_token": 56.000, "target_mb_s": 92.400000, "achieved_mb_s": 92.122402, "chunks": 34, "errors": 0},
+    {"source": "C:", "label": "112 MB/token", "mb_per_token": 112.000, "target_mb_s": 184.800000, "achieved_mb_s": 184.668354, "chunks": 106, "errors": 0},
+    {"source": "C:", "label": "224 MB/token", "mb_per_token": 224.000, "target_mb_s": 369.600000, "achieved_mb_s": 368.385100, "chunks": 210, "errors": 0},
+    {"source": "C:", "label": "unthrottled", "mb_per_token": 0.000, "target_mb_s": 0.000000, "achieved_mb_s": 1429.731235, "chunks": 812, "errors": 0},
+    {"source": "D:", "label": "56 MB/token", "mb_per_token": 56.000, "target_mb_s": 92.400000, "achieved_mb_s": 92.074492, "chunks": 52, "errors": 0},
+    {"source": "D:", "label": "112 MB/token", "mb_per_token": 112.000, "target_mb_s": 184.800000, "achieved_mb_s": 184.637514, "chunks": 106, "errors": 0},
+    {"source": "D:", "label": "224 MB/token", "mb_per_token": 224.000, "target_mb_s": 369.600000, "achieved_mb_s": 369.007846, "chunks": 210, "errors": 0},
+    {"source": "D:", "label": "unthrottled", "mb_per_token": 0.000, "target_mb_s": 0.000000, "achieved_mb_s": 504.560827, "chunks": 288, "errors": 0}
+  ],
+  "lane_b_thread_sweep_unthrottled": [
+    {"source": "C:", "label": "unthrottled", "workers": 1, "achieved_mb_s": 927.593810, "chunks": 526, "errors": 0},
+    {"source": "C:", "label": "unthrottled", "workers": 2, "achieved_mb_s": 1105.139924, "chunks": 628, "errors": 0},
+    {"source": "D:", "label": "unthrottled", "workers": 1, "achieved_mb_s": 527.743468, "chunks": 299, "errors": 0},
+    {"source": "D:", "label": "unthrottled", "workers": 2, "achieved_mb_s": 501.039419, "chunks": 285, "errors": 0}
+  ],
+  "concurrent_matrix": [
+    {"source": "C:", "label": "56 MB/token", "mb_per_token": 56.000, "target_mb_s": 92.400000, "lane_a_ms_per_expert": 1.086919, "lane_a_degradation_pct": 9.997776, "lane_a_weight_gb_s": 6.511884, "lane_b_achieved_mb_s": 92.253427, "lane_b_dram_gb_s_est": 0.276760, "combined_dram_gb_s_est": 6.788644, "lane_a_forwards": 3689, "lane_b_chunks": 56, "errors": 0, "pass": true},
+    {"source": "C:", "label": "112 MB/token", "mb_per_token": 112.000, "target_mb_s": 184.800000, "lane_a_ms_per_expert": 1.101384, "lane_a_degradation_pct": 11.461734, "lane_a_weight_gb_s": 6.426355, "lane_b_achieved_mb_s": 184.799995, "lane_b_dram_gb_s_est": 0.554400, "combined_dram_gb_s_est": 6.980755, "lane_a_forwards": 3640, "lane_b_chunks": 112, "errors": 0, "pass": true},
+    {"source": "C:", "label": "224 MB/token", "mb_per_token": 224.000, "target_mb_s": 369.600000, "lane_a_ms_per_expert": 1.095525, "lane_a_degradation_pct": 10.868699, "lane_a_weight_gb_s": 6.460730, "lane_b_achieved_mb_s": 369.000798, "lane_b_dram_gb_s_est": 1.107002, "combined_dram_gb_s_est": 7.567732, "lane_a_forwards": 3652, "lane_b_chunks": 224, "errors": 0, "pass": true},
+    {"source": "C:", "label": "unthrottled", "mb_per_token": 0.000, "target_mb_s": 0.000000, "lane_a_ms_per_expert": 1.022184, "lane_a_degradation_pct": 3.446578, "lane_a_weight_gb_s": 6.924276, "lane_b_achieved_mb_s": 1289.984992, "lane_b_dram_gb_s_est": 3.869955, "combined_dram_gb_s_est": 10.794231, "lane_a_forwards": 3926, "lane_b_chunks": 780, "errors": 0, "pass": true},
+    {"source": "D:", "label": "56 MB/token", "mb_per_token": 56.000, "target_mb_s": 92.400000, "lane_a_ms_per_expert": 1.111047, "lane_a_degradation_pct": 12.439639, "lane_a_weight_gb_s": 6.370464, "lane_b_achieved_mb_s": 92.324793, "lane_b_dram_gb_s_est": 0.276974, "combined_dram_gb_s_est": 6.647439, "lane_a_forwards": 3601, "lane_b_chunks": 56, "errors": 0, "pass": true},
+    {"source": "D:", "label": "112 MB/token", "mb_per_token": 112.000, "target_mb_s": 184.800000, "lane_a_ms_per_expert": 1.058334, "lane_a_degradation_pct": 7.104926, "lane_a_weight_gb_s": 6.687766, "lane_b_achieved_mb_s": 184.516997, "lane_b_dram_gb_s_est": 0.553551, "combined_dram_gb_s_est": 7.241317, "lane_a_forwards": 3781, "lane_b_chunks": 112, "errors": 0, "pass": true},
+    {"source": "D:", "label": "224 MB/token", "mb_per_token": 224.000, "target_mb_s": 369.600000, "lane_a_ms_per_expert": 1.041182, "lane_a_degradation_pct": 5.369123, "lane_a_weight_gb_s": 6.797937, "lane_b_achieved_mb_s": 368.914129, "lane_b_dram_gb_s_est": 1.106742, "combined_dram_gb_s_est": 7.904680, "lane_a_forwards": 3856, "lane_b_chunks": 224, "errors": 0, "pass": true},
+    {"source": "D:", "label": "unthrottled", "mb_per_token": 0.000, "target_mb_s": 0.000000, "lane_a_ms_per_expert": 1.058202, "lane_a_degradation_pct": 7.091609, "lane_a_weight_gb_s": 6.688598, "lane_b_achieved_mb_s": 503.232414, "lane_b_dram_gb_s_est": 1.509697, "combined_dram_gb_s_est": 8.198295, "lane_a_forwards": 3793, "lane_b_chunks": 305, "errors": 0, "pass": true}
+  ]
+}

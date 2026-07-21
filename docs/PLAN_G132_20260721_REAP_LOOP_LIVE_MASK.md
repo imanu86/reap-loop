@@ -76,3 +76,10 @@ Caveats: 64-token traces (longer runs will firm the tails); absolute hit% depend
 the load-bearing result is the adaptive-vs-static gap and the heat locality.
 
 NEXT: investigation 2 (two-lane DRAM contention bench), then the live-mask prototype (inv. 3).
+
+## GATE 2 VERDICT: two lanes coexist — PASS (dram_contention_report.md)
+
+Lane A (6 cores, real IQ2 experts, cold-streamed) degrades only 10-12% while lane B sustains
+56-224 MB/token staging on either drive. BONUS: lane B from D: (SATA) sustains 504 MB/s with
+LOWER lane-A degradation (5-7%) — staging can avoid C: entirely, structurally removing the
+PC-freeze cause. Both pre-build gates are green; NEXT: the live-mask prototype (investigation 3).
