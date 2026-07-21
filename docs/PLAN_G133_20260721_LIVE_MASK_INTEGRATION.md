@@ -74,6 +74,15 @@ DIRECTIONAL; the online gate (M2) is the real test.
 headroom ratio. If even the OFFLINE sim can't get miss below ~25% with generous staging, the
 layout assumption is wrong -> STOP and rethink tiers before any port work.
 **Cost**: hours, zero GPU. **Ledger**: `WIN-G133-M0-MISS-ECONOMICS`.
+**RESULT (2026-07-21, ledger row WIN-G133-M0-MISS-ECONOMICS-20260721): PARTIAL-GO.**
+On 9016 real decode tokens: miss 27.9% median @ owner layout (claim 10-20% NOT met; pinned
+2000 -> 22.5% — pinned is the trim knob). BUT the ECONOMY holds: staging collapses must-stall
+2.628 -> 0.050 exp/tok (misses become CPU-servable RAM-warm, not cold stalls) and the CPU
+covers the residual with 2.34x headroom @5.6 tok/s; staging BW trivial (~0.1 GB/s). Caveats:
+ORACLE lookahead, in-sample seed, optimistic page cache, layer-barrier/tiny-batch out of scope
+(avg ~1.85 exp/layer < batch-4 — feeds M3 risk). Sim's own gate: engine integration stays
+BLOCKED until a CAUSAL (non-oracle) predictor reproduces this on held-out traces with a finite
+page-cache budget -> **M0b, launched**.
 
 ### M1 — TRANSPORT: port 0033 tiered residency to the win tree (kill the exposed copy)
 **Hypothesis**: heat-driven residency (dynamic seed + X/X+Y knock + reap) cuts the exposed
