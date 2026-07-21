@@ -1,0 +1,115 @@
+{
+  "schema": "reap_revisited_coverage_curve_v1",
+  "generated_local_date": "2026-07-21",
+  "status": "missing_route_rows",
+  "status_detail": "No [q1-0-mixed-route] rows were present in any C:\\Users\\imanu\\g130i\\u1_*.stderr.log at the final scan. K-specific coverage and latency fields are null rather than estimated.",
+  "null_fields_for_all_missing_route_rows": [
+    "count_covered", "count_coverage", "fallback_route_count",
+    "fallback_experts_per_token", "mass_covered", "mass_coverage",
+    "fallback_mass", "cpu_tail_serial_ms_per_token",
+    "current_serial_ms_per_token", "current_serial_tps",
+    "current_overlap_ms_per_token", "current_overlap_tps",
+    "f1f2_serial_ms_per_token", "f1f2_serial_tps",
+    "f1f2_overlap_ms_per_token", "f1f2_overlap_tps"
+  ],
+  "expected_trace": {
+    "tokens": 64,
+    "layers": 43,
+    "routes_per_layer": 6,
+    "expected_rows": 16512,
+    "possible_layer_experts": 11008
+  },
+  "inputs_found": [
+    {
+      "path": "C:\\Users\\imanu\\g130i\\u1_$Tag.server.stderr.log",
+      "bytes_at_final_scan": 1853,
+      "route_rows": 0,
+      "note": "Failed-startup/zero-call summaries; file changed during the analysis window."
+    },
+    {
+      "path": "C:\\Users\\imanu\\g130i\\u1_attrib.server.stderr.log",
+      "bytes_at_final_scan": 36190,
+      "route_rows": 0,
+      "aggregate_calls": 2752,
+      "aggregate_slots": 16512,
+      "aggregate_trace_rows": 0,
+      "old_policy_exact_routes": 3271,
+      "old_policy_q1_routes": 13241,
+      "note": "Aggregate old-policy counts only; not a keep-K ranking input."
+    }
+  ],
+  "ranking": {
+    "primary_score": "sum(weight) by (layer, expert), descending",
+    "tie_break": "layer ascending, expert ascending",
+    "count_coverage": "resident route rows / all route rows",
+    "mass_coverage": "resident sum(weight) / all sum(weight)",
+    "floor_variants": [0, 16, 32, 64],
+    "floor_algorithm": "Reserve each layer's top floor experts by mass, then globally fill the remaining K slots by mass from unreserved experts."
+  },
+  "latency_model": {
+    "baseline_measured_ms_per_token": 244.7,
+    "retired_q1_serving_ms_per_token": 95.8,
+    "current_fixed_base_ms_per_token": 148.9,
+    "f1f2_fixed_base_ms_per_token": 75.5,
+    "cpu_ms_per_fallback_expert": 1.267,
+    "tokens_in_expected_trace": 64,
+    "serial_formula": "fixed_base_ms + (fallback_route_count / 64) * 1.267",
+    "overlap_ceiling_formula": "max(fixed_base_ms, (fallback_route_count / 64) * 1.267)"
+  },
+  "sensitivity": [
+    {
+      "fallback_fraction": 0.0,
+      "fallback_experts_per_token": 0.0,
+      "cpu_tail_ms": 0.0,
+      "current_serial_tps": 6.7159,
+      "current_overlap_ceiling_tps": 6.7159,
+      "f1f2_serial_tps": 13.2450,
+      "f1f2_overlap_ceiling_tps": 13.2450
+    },
+    {
+      "fallback_fraction": 0.05,
+      "fallback_experts_per_token": 12.9,
+      "cpu_tail_ms": 16.3443,
+      "current_serial_tps": 6.0516,
+      "current_overlap_ceiling_tps": 6.7159,
+      "f1f2_serial_tps": 10.8880,
+      "f1f2_overlap_ceiling_tps": 13.2450
+    },
+    {
+      "fallback_fraction": 0.10,
+      "fallback_experts_per_token": 25.8,
+      "cpu_tail_ms": 32.6886,
+      "current_serial_tps": 5.5070,
+      "current_overlap_ceiling_tps": 6.7159,
+      "f1f2_serial_tps": 9.2431,
+      "f1f2_overlap_ceiling_tps": 13.2450
+    },
+    {
+      "fallback_fraction": 0.15,
+      "fallback_experts_per_token": 38.7,
+      "cpu_tail_ms": 49.0329,
+      "current_serial_tps": 5.0522,
+      "current_overlap_ceiling_tps": 6.7159,
+      "f1f2_serial_tps": 8.0300,
+      "f1f2_overlap_ceiling_tps": 13.2450
+    }
+  ],
+  "curves": [
+    {"strategy":"global","per_layer_floor":0,"k":3000,"status":"missing_route_rows","resident_experts":3000,"count_covered":null,"count_coverage":null,"fallback_route_count":null,"fallback_experts_per_token":null,"mass_covered":null,"mass_coverage":null,"fallback_mass":null,"cpu_tail_serial_ms_per_token":null,"current_serial_ms_per_token":null,"current_serial_tps":null,"current_overlap_ms_per_token":null,"current_overlap_tps":null,"f1f2_serial_ms_per_token":null,"f1f2_serial_tps":null,"f1f2_overlap_ms_per_token":null,"f1f2_overlap_tps":null},
+    {"strategy":"global","per_layer_floor":0,"k":4000,"status":"missing_route_rows","resident_experts":4000,"count_covered":null,"count_coverage":null,"fallback_route_count":null,"fallback_experts_per_token":null,"mass_covered":null,"mass_coverage":null,"fallback_mass":null,"cpu_tail_serial_ms_per_token":null,"current_serial_ms_per_token":null,"current_serial_tps":null,"current_overlap_ms_per_token":null,"current_overlap_tps":null,"f1f2_serial_ms_per_token":null,"f1f2_serial_tps":null,"f1f2_overlap_ms_per_token":null,"f1f2_overlap_tps":null},
+    {"strategy":"global","per_layer_floor":0,"k":5000,"status":"missing_route_rows","resident_experts":5000,"count_covered":null,"count_coverage":null,"fallback_route_count":null,"fallback_experts_per_token":null,"mass_covered":null,"mass_coverage":null,"fallback_mass":null,"cpu_tail_serial_ms_per_token":null,"current_serial_ms_per_token":null,"current_serial_tps":null,"current_overlap_ms_per_token":null,"current_overlap_tps":null,"f1f2_serial_ms_per_token":null,"f1f2_serial_tps":null,"f1f2_overlap_ms_per_token":null,"f1f2_overlap_tps":null},
+    {"strategy":"global","per_layer_floor":0,"k":5600,"status":"missing_route_rows","resident_experts":5600,"count_covered":null,"count_coverage":null,"fallback_route_count":null,"fallback_experts_per_token":null,"mass_covered":null,"mass_coverage":null,"fallback_mass":null,"cpu_tail_serial_ms_per_token":null,"current_serial_ms_per_token":null,"current_serial_tps":null,"current_overlap_ms_per_token":null,"current_overlap_tps":null,"f1f2_serial_ms_per_token":null,"f1f2_serial_tps":null,"f1f2_overlap_ms_per_token":null,"f1f2_overlap_tps":null},
+    {"strategy":"per_layer_floor","per_layer_floor":16,"k":3000,"status":"missing_route_rows","resident_experts":3000},
+    {"strategy":"per_layer_floor","per_layer_floor":16,"k":4000,"status":"missing_route_rows","resident_experts":4000},
+    {"strategy":"per_layer_floor","per_layer_floor":16,"k":5000,"status":"missing_route_rows","resident_experts":5000},
+    {"strategy":"per_layer_floor","per_layer_floor":16,"k":5600,"status":"missing_route_rows","resident_experts":5600},
+    {"strategy":"per_layer_floor","per_layer_floor":32,"k":3000,"status":"missing_route_rows","resident_experts":3000},
+    {"strategy":"per_layer_floor","per_layer_floor":32,"k":4000,"status":"missing_route_rows","resident_experts":4000},
+    {"strategy":"per_layer_floor","per_layer_floor":32,"k":5000,"status":"missing_route_rows","resident_experts":5000},
+    {"strategy":"per_layer_floor","per_layer_floor":32,"k":5600,"status":"missing_route_rows","resident_experts":5600},
+    {"strategy":"per_layer_floor","per_layer_floor":64,"k":3000,"status":"missing_route_rows","resident_experts":3000},
+    {"strategy":"per_layer_floor","per_layer_floor":64,"k":4000,"status":"missing_route_rows","resident_experts":4000},
+    {"strategy":"per_layer_floor","per_layer_floor":64,"k":5000,"status":"missing_route_rows","resident_experts":5000},
+    {"strategy":"per_layer_floor","per_layer_floor":64,"k":5600,"status":"missing_route_rows","resident_experts":5600}
+  ]
+}
