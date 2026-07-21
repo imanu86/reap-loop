@@ -56,3 +56,23 @@ The expert mask is NOT static. It adapts token-by-token while generating:
 Standing rules unchanged (G130 §protocol, G131 gates): codex implements, independent codex
 reviews, Claude verifies/builds/commits; diagnostics never quotable; negatives recorded;
 one change per experiment; everything committed+pushed immediately.
+
+---
+
+## GATE 1 VERDICT (2026-07-21 evening): THE LOOP CHASES — adaptive beats static, empirically
+
+From the 3 real replays (working_set_coherence.md/json in runs/ds4/20260721_q1_recovery_pilot/):
+
+- Per-token mass novelty at W=8: **24.8% median** (75.3% of next-token gate mass is already in the
+  last-8-token union) — the working set evolves slowly enough to chase.
+- Heat half-life is long: re-routed within 1 token 52.5%, within 4 69.1%, within 16 **81.7%**.
+- **Adaptive promoter at P=8 promotions/token: 42.8% steady warm-tier mass hit vs 29.5% for a
+  same-size static top-K ranked on the first 16 tokens — +45% relative.** The owner's thesis
+  ("the mask must adapt as we write tokens") is CONFIRMED on data.
+- Domain switch (HTML→Python) recovery to 90% in-domain hit: P=8 ≈ 27 tokens, P=32 ≈ 15 tokens.
+- Lane-B sizing implication: P=8 ≈ 56 MB/token staging; P=32 for switch headroom.
+
+Caveats: 64-token traces (longer runs will firm the tails); absolute hit% depends on tier sizing —
+the load-bearing result is the adaptive-vs-static gap and the heat locality.
+
+NEXT: investigation 2 (two-lane DRAM contention bench), then the live-mask prototype (inv. 3).
