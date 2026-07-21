@@ -37,8 +37,20 @@ committed evidence and the code — find errors, overstatements, and unproven co
    Evidence: `runs/.../LANE_A_SMOKE_DIAGNOSIS.md`, `lane_a_redesign.md`, `cpu_lane_profile_results.json`.
    Check: does the profiler actually show 0 disk reads? Is the "picked q1_resident=SSD_COLD" root
    cause correct against the code (ds4_cuda.cu:34923-34929, 35273-35279, 34555-34612)?
-8. **Lane-A v2 (resident-IQ2 gate + cap):** [FILL IN with the v2 result when it lands — commit+build
-   status, and whether the corrected run hits t/s >= 4.86 with CPU actually working.]
+8. **Lane-A v2 (resident-IQ2 gate + cap):** branch `g132/lane-a-resident` (off `g132/lane-a-smoke`),
+   NOT yet committed (on disk `D:\ds4_work\wt-lane-a2`). Admission gate REDESIGNED per lane_a_redesign.md:
+   admits ONLY RAM-resident exact-IQ2 experts (has_2bit_ram + RAM_WARM/PROBATION + iq2_snapshot_ram/
+   tier_ram), excludes SSD_COLD/q1_resident, reads from the validated arena slot NOT the mmap, cap
+   DS4_G132_CPU_LANE_MAX=3/layer. nvcc-compiled. Adversarial review: gate CONFIRMED correct (the 20ms
+   cold-fault bug IS fixed at check time), but REJECTED on a real SLOT-LIFETIME RACE — the CPU workers
+   deref saved raw slot pointers while other threads (GPU route worker ~28378, tier replacement ~24092/
+   ~25554, SSD-wrap commit ~24947) can evict/reassign the slot mid-read -> corrupted output. Round-2 fix
+   IN PROGRESS: a reader-reservation/pin holding the slot from admission through CPU compute, with all
+   arena writers skipping reserved slots. **STATUS AT HANDOFF: gate correct, slot-race fix in flight —
+   NOT yet built/measured. The corrected speed (must be >= 4.86 t/s with CPU actually saving H2D) and
+   the EXACT-ENGINE QUALITY are both still UNMEASURED.** This + item's quality are the two biggest open
+   items. Resume: finish the reservation fix, re-review (slot race must be provably closed), build,
+   run a SHORT (256-tok) quality+speed A/B with the resident gate. Machinery/rules: HANDOFF_20260721.
 
 ## Strategic direction to stress-test
 
