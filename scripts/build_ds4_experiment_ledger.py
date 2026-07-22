@@ -753,6 +753,159 @@ def parse_windows_g7_rows(repo: Path) -> list[dict[str, str]]:
     return rows + aggregate_windows_g7_campaigns(root, rows)
 
 
+def parse_nested_residual_windows_rows(repo: Path) -> list[dict[str, str]]:
+    suite = "runs/ds4/20260718_nested_residual_lab"
+    prompt_sha = "38f6ec5ee5403f59dd2418eb5d9a5a94a0f0da19df015060383bb1ae46003bb6"
+    output_sha = "fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510"
+    model_sha = "efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668"
+    sidecar_sha = "07199bc5503aa6e2dea10f702c1ca9e8f05a5bf466a56cbed031f6a5fca4bdf9"
+    g125_receipt = (
+        r"C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local"
+        r"\ds4-win-work\g7_runs"
+        r"\g7_g125_nested_gpu_join_safety_current_build_clean_20260718T182935501Z_eb824ebedb_receipt.json"
+    )
+    g126_result = (
+        r"C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local"
+        r"\ds4-win-work\g7_runs"
+        r"\g7_g126_nested_gpu_join_ab_current_build_clean_v2_20260718T183831489Z_b4d8a5d111_result.json"
+    )
+    local_receipt = "runs/ds4/20260718_nested_residual_lab/G125_G126_RECEIPT.md"
+
+    common = {
+        "source_kind": "windows_g7_nested_residual",
+        "date": "20260718",
+        "suite": suite,
+        "category": "windows_native_nested_residual",
+        "experiment": "nested_residual_gpu_join",
+        "prompt_name": "cyber_html",
+        "prompt_sha16": prompt_sha[:16],
+        "prompt_chars": "197",
+        "prompt_excerpt": (
+            "Create a complete single-file HTML landing page for a cyberpunk AI "
+            "programming shop."
+        ),
+        "hardware": "Windows native",
+        "gpu": "local Windows GPU",
+        "model": r"C:\ds4-models\ds4-2bit.gguf",
+        "patches": f"model_sha256={model_sha}; sidecar_sha256={sidecar_sha}",
+        "ctx": "8192",
+        "request_max_tokens": "64",
+        "temperature": "0",
+        "think": "nothink",
+        "trace_routing": "off",
+        "trace_weights": "off",
+        "trace_residency": "off",
+        "runtime_platform": "windows_native",
+        "cache_state": "independent_new_processes_uncontrolled",
+        "outputs_identical": "true",
+        "expected_hash_match": "true",
+        "output_sha256": output_sha,
+        "quality_signal": "exact_hash=true; L0-L3=not_graded; no_quality_verdict",
+        "setup_text": (
+            "full/open routing; no REAP/static/bake/request-scoped closed mask; "
+            "four-layer nested residual fixture"
+        ),
+    }
+
+    rows: list[dict[str, str]] = []
+
+    g125 = base_row()
+    g125.update(common)
+    g125.update(
+        {
+            "row_id": "WIN-G7-NESTED-G125-GPU-JOIN-SAFETY-N1",
+            "evidence_level": "measured_safety_n1",
+            "benchmark_usable": "mechanism_only",
+            "run_id": "g125_nested_gpu_join_safety_n1",
+            "variant": "gpu_join_safety",
+            "profile": "n=1 structural safety; GPU join observed; no performance verdict",
+            "repeats": "1",
+            "replication_scope": "single_server_process",
+            "warmup": "false",
+            "wall_s": "98.233835",
+            "completion_tokens": "64",
+            "result_text": (
+                "G125 structural safety only; exact output; GPU join calls=1261; "
+                "base H2D=4958453760; residual H2D=3966763008; native H2D=0; "
+                "CPU reconstruct=0; verify mismatches=0; failures=0"
+            ),
+            "metrics_text": (
+                "gpu_join_seconds=0.1242402 diagnostic only; "
+                "wait_seconds=0.0019319; timers may overlap"
+            ),
+            "source_artifacts": (
+                f"{local_receipt}; {g125_receipt}; "
+                "sha256=ae15a6d3d3bc35e75b46befd8d18d7886f571e47d93561d146ada3ccf20f58fb"
+            ),
+        }
+    )
+    rows.append(g125)
+
+    for arm, decode_values, decode_mean, decode_min, decode_max, client_mean, ttft_mean, note in (
+        (
+            "cpu_join",
+            "1.15/1.16/1.15",
+            "1.153333",
+            "1.15",
+            "1.16",
+            "0.333719",
+            "171.829",
+            "baseline CPU reconstruction miss path",
+        ),
+        (
+            "gpu_join",
+            "1.56/1.58/1.57",
+            "1.57",
+            "1.56",
+            "1.58",
+            "0.499730",
+            "140.836",
+            "decode-positive GPU-side exact join; E2E batch-only/noisy",
+        ),
+    ):
+        row = base_row()
+        row.update(common)
+        row.update(
+            {
+                "row_id": f"WIN-G7-NESTED-G126-{arm.upper().replace('_', '-')}-N3",
+                "source_kind": "windows_g7_campaign_aggregate",
+                "evidence_level": "measured_independent_n3",
+                "benchmark_usable": "speed_only",
+                "run_id": f"campaign_g126_nested_gpu_join_ab_{arm}_n3",
+                "variant": arm,
+                "profile": f"G126 {arm}; {note}",
+                "repeats": "3",
+                "replication_scope": "independent_server_processes",
+                "warmup": "false",
+                "avg_tps": client_mean,
+                "client_completion_mean_tps": client_mean,
+                "server_decode_mean_tps": decode_mean,
+                "server_decode_min_tps": decode_min,
+                "server_decode_max_tps": decode_max,
+                "server_prefill_ttft_s": ttft_mean,
+                "prompt_s": ttft_mean,
+                "completion_tokens": "64",
+                "result_text": (
+                    f"G126 independent n=3 arm={arm}; decode runs={decode_values}; "
+                    f"server mean={decode_mean} t/s; exact=true; uncontaminated=true; "
+                    "decode finding defensible; E2E/TTFT/WRAP noisy and batch-only"
+                ),
+                "metrics_text": (
+                    "GPU join versus CPU join decode delta=+36.1272%; "
+                    "E2E mean delta=+49.7457% batch-only/noisy; "
+                    "request seconds roughly 96.98..351.57"
+                ),
+                "source_artifacts": (
+                    f"{local_receipt}; {g126_result}; "
+                    "sha256=c1f7849aa0da33c4b6d8279073954ba39f556fc485215e6d4058e809fbe9eaa6"
+                ),
+            }
+        )
+        rows.append(row)
+
+    return rows
+
+
 def parse_quality_full_decode_mass_weight_rows(repo: Path) -> list[dict[str, str]]:
     path = (
         repo
@@ -1539,6 +1692,26 @@ def parse_legacy_experiment_table(repo: Path) -> list[dict[str, str]]:
         )
         row["quality_signal"] = derive_quality(row)
         rows.append(row)
+
+    groups: dict[str, list[dict[str, str]]] = {}
+    for row in rows:
+        groups.setdefault(row["row_id"], []).append(row)
+    for base_id, group in groups.items():
+        if len(group) < 2:
+            continue
+        seen_suffixes: set[str] = set()
+        for row in group:
+            identity = json.dumps(
+                {key: row[key] for key in FIELDS if key != "row_id"},
+                ensure_ascii=True,
+                separators=(",", ":"),
+                sort_keys=True,
+            )
+            suffix = hashlib.sha256(identity.encode("utf-8")).hexdigest()[:12]
+            if suffix in seen_suffixes:
+                raise RuntimeError(f"Duplicate legacy ledger row content: {base_id}")
+            seen_suffixes.add(suffix)
+            row["row_id"] = f"{base_id}-{suffix}"
     return rows
 
 
@@ -1666,7 +1839,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
     ]
 
     lines: list[str] = [
-        "# DS4 / REAP Experiment Ledger - updated 2026-07-14",
+        "# DS4 / REAP Experiment Ledger - updated 2026-07-18",
         "",
         "This file is generated by `scripts/build_ds4_experiment_ledger.py`.",
         "Numbers are copied from artifacts when `source_kind=runner_summary` or `source_kind=windows_g7_result`; older Claude/research rows are preserved as legacy evidence and must not be mixed into benchmark plots unless re-run or explicitly marked comparable.",
@@ -1700,6 +1873,7 @@ def write_markdown(rows: list[dict[str, str]], path: Path) -> None:
         "- G25 prefill-mass bulk WRAP is decode-positive on the short Caesar prompt: 14 GiB WRAP independent n=3 averaged 4.37 server t/s versus 2.30 control with exact output, but the mean WRAP publication cost was 15.44 s and is not amortized by a 16-token request.",
         "- The 2 GiB G25 safety run is correctness/mechanism evidence only. No long-decode n=1 artifact is present in ds4-win commit `8f76b81`, imported in this G25 snapshot or used as a verdict.",
         "- G27 turns the packed G26b REAP mass signal into transactional pinned-RAM residency with an eight-slot swap ring. The mechanism is correct and exact, but the final counterbalanced 16-token n=3 gate is negative on speed: ON averaged 2.073 server t/s versus 2.513 OFF, because it pays about 2.36 s of WRAP bootstrap/rotation inside a very short decode. This is not a long-run amortization verdict.",
+        "- G126 is decode-positive for the nested-residual miss path under full/open routing: GPU-side exact join averaged 1.57 server decode t/s versus 1.153333 for CPU join (+36.1272%) with exact, uncontaminated outputs. E2E was +49.7457% in the batch but TTFT/WRAP/request timing was noisy, so only decode is a defensible finding. It is not absolute SOTA: G123 full/open IQ2 control was 1.65 t/s, while G73's 4.9867 t/s context is closed/request-scoped.",
         "",
         "## High-Signal Runtime Rows",
         "",
@@ -1979,6 +2153,7 @@ def main() -> int:
     rows: list[dict[str, str]] = []
     rows.extend(parse_summary_rows(repo))
     rows.extend(parse_windows_g7_rows(repo))
+    rows.extend(parse_nested_residual_windows_rows(repo))
     rows.extend(parse_quality_full_decode_mass_weight_rows(repo))
     rows.extend(parse_windows_g7_failure_rows(repo))
     rows.extend(parse_stage0_rows(repo))

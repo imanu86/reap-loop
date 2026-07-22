@@ -1,0 +1,235 @@
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index c16489c39a08a809939f1e5e27345e418098c234..ca1d5a1bc92450c762afe89a76e658288e33ca00 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -1361,7 +1361,11 @@ struct cuda_transport_safety_diag {
+     uint64_t upload_event_record_failures;
+     uint64_t upload_event_wait_failures;
+     uint64_t fallback_syncs;
++    uint64_t recovery_syncs;
++    uint64_t sync_mode_syncs;
++    uint64_t sync_mode_latches;
+     uint64_t fallback_sync_failures;
++    uint64_t cleanup_device_sync_failures;
+     uint64_t staged_h2d_failures;
+     uint64_t stale_slot_reads;
+ };
+@@ -1370,6 +1374,7 @@ static int g_transport_diag_printed;
+ static int g_transport_atexit_registered;
+ static int g_fault_stage_event_create;
+ static int g_fault_stage_event_record;
++static int g_fault_stage_event_wait;
+ static int g_fault_upload_event_create;
+ static int g_fault_upload_event_record;
+ static int g_fault_upload_event_wait;
+@@ -1441,6 +1446,7 @@ static uint64_t cuda_transport_failure_count(void) {
+            g_transport_safety_diag.upload_event_record_failures +
+            g_transport_safety_diag.upload_event_wait_failures +
+            g_transport_safety_diag.fallback_sync_failures +
++           g_transport_safety_diag.cleanup_device_sync_failures +
+            g_transport_safety_diag.staged_h2d_failures +
+            g_transport_safety_diag.stale_slot_reads;
+ }
+@@ -1455,7 +1461,9 @@ static void cuda_transport_diag_print_final(const char *phase) {
+             "war_wait_failures=%llu stage_event_create_failures=%llu "
+             "stage_event_record_failures=%llu upload_event_create_failures=%llu "
+             "upload_event_record_failures=%llu upload_event_wait_failures=%llu "
+-            "fallback_syncs=%llu fallback_sync_failures=%llu "
++            "fallback_syncs=%llu recovery_syncs=%llu sync_mode_syncs=%llu "
++            "sync_mode_latches=%llu fallback_sync_failures=%llu "
++            "cleanup_device_sync_failures=%llu "
+             "staged_h2d_failures=%llu stale_slot_reads=%llu sync_stage_mode=%d\n",
+             phase ? phase : "exit",
+             (unsigned long long)g_transport_safety_diag.stage_chunks,
+@@ -1469,7 +1477,11 @@ static void cuda_transport_diag_print_final(const char *phase) {
+             (unsigned long long)g_transport_safety_diag.upload_event_record_failures,
+             (unsigned long long)g_transport_safety_diag.upload_event_wait_failures,
+             (unsigned long long)g_transport_safety_diag.fallback_syncs,
++            (unsigned long long)g_transport_safety_diag.recovery_syncs,
++            (unsigned long long)g_transport_safety_diag.sync_mode_syncs,
++            (unsigned long long)g_transport_safety_diag.sync_mode_latches,
+             (unsigned long long)g_transport_safety_diag.fallback_sync_failures,
++            (unsigned long long)g_transport_safety_diag.cleanup_device_sync_failures,
+             (unsigned long long)g_transport_safety_diag.staged_h2d_failures,
+             (unsigned long long)g_transport_safety_diag.stale_slot_reads,
+             g_stream_selected_stage_sync_mode);
+@@ -1480,8 +1492,9 @@ static void cuda_transport_diag_print_atexit(void) {
+ }
+ 
+ static void cuda_transport_latch_sync_staging(const char *why) {
+-    if (!g_stream_selected_stage_sync_mode) {
+-        g_stream_selected_stage_sync_mode = 1;
++    if (__sync_bool_compare_and_swap(
++            &g_stream_selected_stage_sync_mode, 0, 1)) {
++        g_transport_safety_diag.sync_mode_latches++;
+         fprintf(stderr,
+                 "ds4: CUDA transport safe synchronous staging mode latched (%s)\n",
+                 why ? why : "event failure");
+@@ -1513,15 +1526,25 @@ static void cuda_transport_stage_mark_complete(uint64_t slot) {
+     g_stream_selected_stage_slot_inflight[slot] = 0;
+ }
+ 
++enum cuda_transport_sync_kind {
++    CUDA_TRANSPORT_SYNC_RECOVERY = 0,
++    CUDA_TRANSPORT_SYNC_MODE = 1,
++};
++
+ static int cuda_transport_drain_upload_stream(
+         const char *what,
++        cuda_transport_sync_kind sync_kind,
+         int latch_sync_mode,
+         int log_success) {
+     if (latch_sync_mode) cuda_transport_latch_sync_staging(what);
+     g_transport_safety_diag.fallback_syncs++;
++    if (sync_kind == CUDA_TRANSPORT_SYNC_MODE) {
++        g_transport_safety_diag.sync_mode_syncs++;
++    } else {
++        g_transport_safety_diag.recovery_syncs++;
++    }
+     /* A NULL CUDA stream handle is the default stream, not "no stream". */
+     cudaError_t err = cudaStreamSynchronize(g_stream_selected_upload_stream);
+-    cuda_transport_clear_deferred_state();
+     if (err != cudaSuccess) {
+         g_transport_safety_diag.fallback_sync_failures++;
+         fprintf(stderr,
+@@ -1531,6 +1554,7 @@ static int cuda_transport_drain_upload_stream(
+         (void)cudaGetLastError();
+         return 0;
+     }
++    cuda_transport_clear_deferred_state();
+     if (log_success) {
+         fprintf(stderr,
+                 "ds4: CUDA transport fallback sync succeeded for %s\n",
+@@ -4085,7 +4109,8 @@ static int cuda_stream_selected_upload_done_event_ensure(void) {
+ static int cuda_stream_selected_upload_record_or_drain(const char *what) {
+     if (!cuda_stream_selected_upload_done_event_ensure()) {
+         return cuda_transport_drain_upload_stream(
+-                   what ? what : "upload event create failure", 1, 1) ? 2 : 0;
++                   what ? what : "upload event create failure",
++                   CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1) ? 2 : 0;
+     }
+     const int injected = cuda_transport_fault_once(
+         "DS4_CUDA_FAULT_UPLOAD_EVENT_RECORD",
+@@ -4102,7 +4127,8 @@ static int cuda_stream_selected_upload_record_or_drain(const char *what) {
+                 injected ? "injected fault" : cudaGetErrorString(err));
+         (void)cudaGetLastError();
+         return cuda_transport_drain_upload_stream(
+-                   what ? what : "upload event record failure", 1, 1) ? 2 : 0;
++                   what ? what : "upload event record failure",
++                   CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1) ? 2 : 0;
+     }
+     g_stream_selected_upload_done_recorded = 1;
+     return 1;
+@@ -4130,7 +4156,8 @@ static int cuda_stream_selected_upload_wait_if_recorded(const char *what) {
+                 injected ? "injected fault" : cudaGetErrorString(err));
+         (void)cudaGetLastError();
+         return cuda_transport_drain_upload_stream(
+-            what ? what : "upload event wait failure", 1, 1);
++            what ? what : "upload event wait failure",
++            CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1);
+     }
+     g_stream_selected_upload_done_recorded = 0;
+     return 1;
+@@ -5606,7 +5633,8 @@ static int cuda_model_copy_to_device_streamed(
+             } else {
+                 if (g_stream_selected_stage_sync_mode) {
+                     completion_ok = cuda_transport_drain_upload_stream(
+-                        "synchronous masked zero-copy upload", 1, 0) ? 2 : 0;
++                        "synchronous masked zero-copy upload",
++                        CUDA_TRANSPORT_SYNC_MODE, 1, 0) ? 2 : 0;
+                 } else {
+                     pin_err = cudaStreamSynchronize(g_stream_selected_upload_stream);
+                     completion_ok = pin_err == cudaSuccess ? 2 : 0;
+@@ -5685,18 +5713,24 @@ static int cuda_model_copy_to_device_streamed(
+             (chunk_idx >= stage_depth || g_stream_selected_stage_defer_inflight);
+         if (needs_war_wait) {
+             g_transport_safety_diag.war_waits++;
+-            err = g_stream_selected_stage_event[bi] ?
+-                cudaEventSynchronize(g_stream_selected_stage_event[bi]) :
+-                cudaErrorInvalidResourceHandle;
++            const int injected = cuda_transport_fault_once(
++                "DS4_CUDA_FAULT_STAGE_EVENT_WAIT",
++                &g_fault_stage_event_wait,
++                "stage_event_wait");
++            err = injected ? cudaErrorUnknown :
++                (g_stream_selected_stage_event[bi] ?
++                    cudaEventSynchronize(g_stream_selected_stage_event[bi]) :
++                    cudaErrorInvalidResourceHandle);
+             if (err != cudaSuccess) {
+                 g_transport_safety_diag.war_wait_failures++;
+                 fprintf(stderr,
+                         "ds4: CUDA streaming selected staging wait failed for %s: %s\n",
+                         what ? what : "expert",
+-                        cudaGetErrorString(err));
++                        injected ? "injected fault" : cudaGetErrorString(err));
+                 (void)cudaGetLastError();
+                 if (!cuda_transport_drain_upload_stream(
+-                        "staging WAR wait failure", 1, 1)) {
++                        "staging WAR wait failure",
++                        CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1)) {
+                     return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+                 }
+             } else {
+@@ -5717,7 +5751,8 @@ static int cuda_model_copy_to_device_streamed(
+                     (unsigned long long)g_stream_selected_stage_completed_generation[bi],
+                     (unsigned)g_stream_selected_stage_slot_inflight[bi]);
+             if (!cuda_transport_drain_upload_stream(
+-                    "debug stale staging slot", 1, 1)) {
++                    "debug stale staging slot",
++                    CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1)) {
+                 return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+             }
+         }
+@@ -5754,14 +5789,15 @@ static int cuda_model_copy_to_device_streamed(
+                     cudaGetErrorString(err));
+             (void)cudaGetLastError();
+             (void)cuda_transport_drain_upload_stream(
+-                "staged H2D failure", 1, 1);
++                "staged H2D failure", CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1);
+             return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+         }
+         g_transport_safety_diag.stage_chunks++;
+         cuda_transport_stage_mark_enqueued(bi);
+         if (g_stream_selected_stage_sync_mode) {
+             if (!cuda_transport_drain_upload_stream(
+-                    "synchronous staging chunk", 1, 0)) {
++                    "synchronous staging chunk",
++                    CUDA_TRANSPORT_SYNC_MODE, 1, 0)) {
+                 return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+             }
+         } else {
+@@ -5780,7 +5816,8 @@ static int cuda_model_copy_to_device_streamed(
+                         injected ? "injected fault" : cudaGetErrorString(err));
+                 (void)cudaGetLastError();
+                 if (!cuda_transport_drain_upload_stream(
+-                        "staging event record failure", 1, 1)) {
++                        "staging event record failure",
++                        CUDA_TRANSPORT_SYNC_RECOVERY, 1, 1)) {
+                     return cuda_spex_stats_finish_copy(0, bytes, spex_t0);
+                 }
+             }
+@@ -5867,7 +5904,14 @@ extern "C" int ds4_gpu_init(void) {
+ }
+ 
+ extern "C" void ds4_gpu_cleanup(void) {
+-    (void)cudaDeviceSynchronize();
++    cudaError_t cleanup_sync_err = cudaDeviceSynchronize();
++    if (cleanup_sync_err != cudaSuccess) {
++        g_transport_safety_diag.cleanup_device_sync_failures++;
++        fprintf(stderr,
++                "ds4: CUDA transport cleanup device sync failed: %s\n",
++                cudaGetErrorString(cleanup_sync_err));
++        (void)cudaGetLastError();
++    }
+     cuda_spex_stats_print();
+     cuda_transport_diag_print_final("cleanup");
+     if (g_cublas_ready) {
+@@ -7229,7 +7273,7 @@ static int cuda_stream_selected_cache_begin_compact_load(
+             "streaming selected upload done event record (post-batch)");
+         if (!completion) {
+             cuda_stream_selected_cache_invalidate();
+-            return strict_failure ? 0 : 1;
++            return 0;
+         }
+     }
+ 

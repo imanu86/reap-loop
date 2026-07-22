@@ -1,0 +1,23 @@
+run_id=arm_keep46_zerocopy_cache450
+arm=keep46_zerocopy
+mask=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/masks/mask46_self.txt
+mask_keep_per_layer=118
+mask_keep_pct=46.1
+binary=/root/ds4-keep46-work/ds4-server
+binary_source=/root/ds4-v2-work (isolated copy at test start)
+model=/root/models/ds4-2bit.gguf
+port=8097
+cache_experts=450
+warmup_tokens=400
+measured_tokens=1600
+budget_gb=31
+ctx=4096
+ram_floor_mb=7168
+started_utc=2026-07-13T10:28:39Z
+server_pid_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/arms/arm_keep46_zerocopy_cache450/server.pid
+live_stream_file=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/arms/arm_keep46_zerocopy_cache450/stream_live.txt
+[arm_keep46_zerocopy_cache450] GPU lock acquired 2026-07-13T10:28:39Z
+warmup_started_utc=2026-07-13T10:29:25Z
+warmup_finished_utc=2026-07-13T10:29:27Z
+warmup_duration_s=1.4
+warmup_curl_rc=22

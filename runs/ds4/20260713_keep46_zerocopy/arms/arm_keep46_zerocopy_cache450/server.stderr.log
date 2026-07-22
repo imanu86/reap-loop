@@ -1,0 +1,28 @@
+ds4: Linux cuda backend set oom_score_adj=1000
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: SSD streaming initial cuda model map restricted to token embedding (1 spans, 0.99 GiB tensor span)
+ds4: CUDA masked zero-copy diag final: queries=0/0.00 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=0 miss_range=0
+ds4: CUDA preparing model tensor mappings
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup model preparation covered 0.99 GiB of tensor spans in 0.908s
+ds4: CUDA stream-from-RAM masked window: mask /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/masks/mask46_self.txt (5520 blocked entries)
+ds4: CUDA stream-from-RAM masked window: budget 31.00 GiB total / 0.77 GiB per layer (40 masked layers, DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB) reached for 40 expert runs, left on the normal pread path
+ds4: CUDA masked zero-copy register: 7461/7461 ranges mapped, 30.60 GiB pinned in 15.522s
+ds4: CUDA stream-from-RAM masked window: 40 layer, 4642 expert kept, 7461/7461 ranges registered, 30.60 GiB zero-copy
+ds4: cuda backend initialized for graph diagnostics
+0713 12:29:21 ds4-server: context buffers 122.69 MiB (ctx=4096, backend=cuda, prefill_chunk=512, raw_kv_rows=768, compressed_kv_rows=1026)
+0713 12:29:21 ds4-server: listening on http://127.0.0.1:8097
+0713 12:29:25 ds4-server: chat ctx=0..78:78 prompt start
+ds4: PACE LIVEMASK RATING-ONLY on (DS4_PACE_LIVEMASK_RATING_ONLY=1) - observe+publish g_reap_pin_mass; mask NOT modified (bake mask authoritative)
+ds4: PACE LIVEMASK on - bootstrap=10 window=16 K=8 observe_top=16 X=3 max_swaps=2 cooldown=16 hyst=1.000 weighted=0 pin=0
+ds4: PACE LIVEMASK note: K=8 is the AGGRESSIVE stress config; wide domains (coding/HTML) likely need DS4_PACE_LIVEMASK_K=16..40.
+ds4: PACE LIVEMASK rating levers: blocked_weight=1.000 demote_horizon=16 promo_rate_cap=0 (unlimited)
+ds4: PACE LIVEMASK pin-by-mass ON (DS4_REAP_PIN_BY_MASS=1) - seed+candidate ordered by MASS (lm_wshare, wcount stays knock gate); g_reap_pin_mass published per token (S7 seam)
+ds4: CUDA loading model tensors 0.00 GiB cached
+ds4: CUDA masked zero-copy first miss: reason=3 registered_base=0x7e36b7a00000 copy_base=0x7e36b7a00000 query=[16804672,18967360) nearest=[5450459968,5454785344)
+ds4: CUDA streaming selected staging allocation failed: out of memory
+ds4: gpu layer 0 ffn batch encode failed
+ds4: gpu layer-major prefill layer 0 encode failed
+0713 12:29:27 ds4-server: shutdown requested, draining requests
+ds4: SPEX stats: selected_batches=1 selected_experts=200 cache_hits=0 cache_misses=0 hit_rate=0.0000 miss_per_expert=0.0000 direct_loads=1 copy_calls=1 copied=0.00 MiB copy_ms=119.998 copy_ms_per_batch=119.998 sync_calls=0 sync_ms=0.000 sync_ms_per_batch=0.000
+ds4: CUDA masked zero-copy diag final: queries=1/2.06 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=1 miss_range=0

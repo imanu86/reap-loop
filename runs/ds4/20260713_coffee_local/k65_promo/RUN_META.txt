@@ -1,0 +1,11 @@
+arm=k65_promo
+binary=/root/ds4-v2-work/ds4-server
+binary_md5=3bc7c5200d288e26eb95fb664b3d16f2
+model=/root/models/ds4-2bit.gguf
+mask=/mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_coffee_local/masks/mask_coffee_k65.txt
+budget_gb=24
+ctx=2048 max_tokens=1000 n_predict=1256 port=8097
+cache_experts=400 prefill_chunk=512
+started_utc=2026-07-13T12:36:01Z
+ready_utc=2026-07-13T12:37:02Z
+warmup_rc=0 warmup_s=70.4

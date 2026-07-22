@@ -1,0 +1,63 @@
+{
+  "payload_bytes": 512,
+  "payload_sha256": "133077537c3fd736f9ca5c26b85aead87fcbc1314ceece534bb6c166436883d0",
+  "record_count": 3,
+  "records": [
+    {
+      "dims": [
+        512,
+        2,
+        2
+      ],
+      "expert_stride": 256,
+      "kind": "gate",
+      "kind_offset_within_expert": 0,
+      "layer": 0,
+      "residual_bytes": 256,
+      "residual_expert_bytes": 256,
+      "residual_offset": 436,
+      "source_bytes": 528,
+      "source_offset": 0,
+      "source_type": 16
+    },
+    {
+      "dims": [
+        256,
+        3,
+        2
+      ],
+      "expert_stride": 256,
+      "kind": "up",
+      "kind_offset_within_expert": 128,
+      "layer": 0,
+      "residual_bytes": 192,
+      "residual_expert_bytes": 256,
+      "residual_offset": 564,
+      "source_bytes": 504,
+      "source_offset": 528,
+      "source_type": 10
+    },
+    {
+      "dims": [
+        256,
+        1,
+        2
+      ],
+      "expert_stride": 256,
+      "kind": "down",
+      "kind_offset_within_expert": 224,
+      "layer": 0,
+      "residual_bytes": 64,
+      "residual_expert_bytes": 256,
+      "residual_offset": 660,
+      "source_bytes": 132,
+      "source_offset": 1032,
+      "source_type": 16
+    }
+  ],
+  "schema": "ds4_nested_residual_sidecar_receipt_v1",
+  "sidecar": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs\\ds4\\20260718_nested_residual_lab\\fixture_smoke\\residual.ds4nr",
+  "source": "C:\\Users\\imanu\\source\\repos\\reap-loop\\runs\\ds4\\20260718_nested_residual_lab\\fixture_smoke\\source.bin",
+  "source_sha256": "7ca0435568a2997e1543cf1176787a44220f059a99cdfb76f151c13c5ce7e260",
+  "source_size": 1164
+}

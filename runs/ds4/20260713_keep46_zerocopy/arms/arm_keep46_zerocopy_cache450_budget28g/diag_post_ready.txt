@@ -1,0 +1,5 @@
+ds4: CUDA masked zero-copy diag final: queries=0/0.00 MiB covered=0/0.00 MiB dma_ok=0/0.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=0 miss_range=0
+ds4: CUDA stream-from-RAM masked window: mask /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/masks/mask46_self.txt (5520 blocked entries)
+ds4: CUDA stream-from-RAM masked window: budget 28.00 GiB total / 0.70 GiB per layer (40 masked layers, DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB) reached for 242 expert runs, left on the normal pread path
+ds4: CUDA masked zero-copy register: 6855/6855 ranges mapped, 27.94 GiB pinned in 15.584s
+ds4: CUDA stream-from-RAM masked window: 40 layer, 4238 expert kept, 6855/6855 ranges registered, 27.94 GiB zero-copy

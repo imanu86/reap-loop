@@ -1,0 +1,84 @@
+{
+  "schema": "g123_equal_host_budget_ab_receipt_v1",
+  "batch_tag": "g123_equal_host_budget_20260718T155135337Z_59fe62edca",
+  "status": "pass",
+  "gate_kind": "outer-benchmark-n3",
+  "timing_claim_valid": true,
+  "quality_claim_scope": "64-token deterministic exactness only",
+  "model_sha256": "efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668",
+  "sidecar_sha256": "07199bc5503aa6e2dea10f702c1ca9e8f05a5bf466a56cbed031f6a5fca4bdf9",
+  "sidecar_payload_sha256": "02c8cb248a8184e365e2e486653484165db39402fd28320ba621fb4fdb3f7bd8",
+  "prompt_sha256": "38f6ec5ee5403f59dd2418eb5d9a5a94a0f0da19df015060383bb1ae46003bb6",
+  "expected_content_sha256": "fd6c4522975a71e252b90199d49cfe3236310e2a7285dc0fc4d0e9d0e4885510",
+  "executable_sha256": "7b10ac61a0def70823d0ecd58f1b515b95669a334f9f743b9e4d4aa59bb16294",
+  "build_input_fingerprint_sha256": "1a5b5813df244951151617749f836b634c1752b31ba90b49876b36551d00ebcd",
+  "accepted_processes": 6,
+  "control_processes": 3,
+  "candidate_processes": 3,
+  "all_outputs_exact": true,
+  "all_processes_uncontaminated": true,
+  "host_budget_gib": {
+    "control": {
+      "primary_arena": 30.0,
+      "nested_base": 0.0,
+      "exact_cache": 0.0,
+      "total": 30.0
+    },
+    "candidate": {
+      "primary_arena": 25.828125,
+      "nested_base": 3.75,
+      "exact_cache": 0.421875,
+      "total": 30.0
+    }
+  },
+  "control": {
+    "end_to_end_tps_mean": 0.6502613333333334,
+    "end_to_end_tps_median": 0.64754,
+    "server_decode_tps_mean": 1.65,
+    "server_decode_tps_median": 1.65,
+    "ttft_seconds_mean": 59.21733333333333,
+    "ttft_seconds_median": 59.192,
+    "load_seconds_mean": 11.2215,
+    "request_seconds_mean": 98.42609366666666
+  },
+  "candidate": {
+    "end_to_end_tps_mean": 0.5554973333333333,
+    "end_to_end_tps_median": 0.559217,
+    "server_decode_tps_mean": 1.1633333333333333,
+    "server_decode_tps_median": 1.16,
+    "ttft_seconds_mean": 59.802666666666674,
+    "ttft_seconds_median": 58.876,
+    "load_seconds_mean": 29.211973333333333,
+    "request_seconds_mean": 115.22808566666667,
+    "nested_vram_route_calls_per_process": 256,
+    "nested_vram_hits_per_process": 541,
+    "nested_vram_misses_per_process": 995,
+    "nested_vram_hit_rate": 0.3522135416666667,
+    "nested_vram_host_fills_per_process": 995,
+    "nested_vram_route_h2d_bytes_per_process": 7042498560,
+    "nested_residual_preads_per_process": 869,
+    "nested_residual_bytes_per_process": 2733637632,
+    "nested_total_h2d_bytes_per_process": 8925216768,
+    "nested_mismatches": 0,
+    "nested_failures": 0
+  },
+  "relative_delta": {
+    "end_to_end_tps_mean": -0.14573217742200073,
+    "server_decode_tps_mean": -0.29494949494949485
+  },
+  "accepted_tags": [
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_control_r1",
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_candidate_r1",
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_control_r2",
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_candidate_r2",
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_control_r3_retry1",
+    "g123_equal_host_budget_20260718T155135337Z_59fe62edca_candidate_r3_retry1"
+  ],
+  "excluded_attempt": {
+    "tag": "g123_equal_host_budget_20260718T155135337Z_59fe62edca_control_r3",
+    "included_in_aggregate": false,
+    "reason": "arena source copy 134.654 s followed by GPU route worker timeout at seq=1882"
+  },
+  "verdict": "negative-performance-current-miss-path",
+  "sota_updated": false
+}

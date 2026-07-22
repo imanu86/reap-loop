@@ -1,0 +1,16 @@
+﻿{
+    "status":  "waiting_for_downloads",
+    "started_utc":  "2026-07-15T18:10:47.4748315Z",
+    "completed_utc":  null,
+    "download_process_ids":  [
+                                 18200,
+                                 23836
+                             ],
+    "pack_root":  "D:\\ds4-models",
+    "bake_root":  "C:\\ds4-models",
+    "packer":  "C:\\Users\\imanu\\source\\repos\\reap-loop\\scripts\\ds4_windows_sparse_bake.py",
+    "results":  [
+
+                ],
+    "error":  null
+}

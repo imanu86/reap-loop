@@ -1,2 +1,3 @@
 [2026-07-13T13:47:50Z] pod 32qbfbamo634hp A5000 secure created, reaper armed
 [2026-07-13T14:21:01Z] pod 32qbfbamo634hp terminated by operator at end of run
+[reaper] auto-removed 32qbfbamo634hp after 7200s

@@ -1,0 +1,55 @@
+{
+  "active_routed_gib": {
+    "exact_residual": 30.0,
+    "native": 67.5,
+    "nested_base": 37.5
+  },
+  "exact_reconstruction_failures": 0,
+  "expert_mib": {
+    "exact_residual": 3.0,
+    "native": 6.75,
+    "nested_base": 3.75
+  },
+  "formats": {
+    "IQ2_XXS": {
+      "base_bytes": 34,
+      "native_bytes": 66,
+      "residual_bytes": 32
+    },
+    "Q2_K": {
+      "base_bytes": 52,
+      "native_bytes": 84,
+      "residual_bytes": 32
+    }
+  },
+  "model": "C:\\ds4-models\\ds4-2bit.gguf",
+  "quality_proxy": {
+    "iq2_xxs_dot_nmae": {
+      "max": 0.15486306225846058,
+      "mean": 0.029782057070940542,
+      "median": 0.02489697715999782,
+      "p95": 0.07386514274969364
+    },
+    "iq2_xxs_weight_nrmse": {
+      "max": 0.7626229400104225,
+      "mean": 0.6046784731248455,
+      "median": 0.5998136926787601,
+      "p95": 0.6638115960498499
+    },
+    "q2_k_dot_nmae": {
+      "max": 0.11506983653694342,
+      "mean": 0.027243602259781147,
+      "median": 0.023020868293777898,
+      "p95": 0.0674616047950503
+    },
+    "q2_k_weight_nrmse": {
+      "max": 0.6137343015876797,
+      "mean": 0.5450138609409145,
+      "median": 0.5422489479170705,
+      "p95": 0.5837244062727481
+    }
+  },
+  "sampled_blocks": 768,
+  "schema": "ds4_nested_residual_lab_v1",
+  "seed": 20260720
+}

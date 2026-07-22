@@ -1,0 +1,14 @@
+[arm_keep46_zerocopy_cache450_budget28g] waiting for GPU lock...
+[arm_keep46_zerocopy_cache450_budget28g] GPU lock acquired 2026-07-13T10:57:44Z
+[arm_keep46_zerocopy_cache450_budget28g] server pid=4851
+[arm_keep46_zerocopy_cache450_budget28g] server ready 2026-07-13T10:58:16Z
+[arm_keep46_zerocopy_cache450_budget28g] warmup done in 191.9s
+scripts/run_keep46_zerocopy.sh: line 115:  4843 Hangup                  ( while true; do
+    line=$(free -m | awk '/^Mem:/{print $7}'); echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) MemAvailable_MB=$line" >> "$OUT/ram_log.txt"; if [[ -n "$line" && "$line" -lt "$RAM_FLOOR_MB" ]]; then
+        echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) RAM FLOOR BREACHED ($line < $RAM_FLOOR_MB) - killing server" >> "$OUT/ram_log.txt"; echo "ram_floor_breach available_mb=$line" > "$OUT/RAM_KILL.txt"; if [[ -f "$OUT/server.pid" ]]; then
+            kill "$(cat "$OUT/server.pid")" 2> /dev/null || true;
+        fi; break;
+    fi; sleep 30;
+done )  (wd: /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy)
+scripts/run_keep46_zerocopy.sh: line 115:  5375 Hangup                  python3 "$REPO/scripts/stream_stop_guard.py" --url "http://127.0.0.1:$PORT/v1/chat/completions" --request "$OUT/request.json" --response "$OUT/response.json" --events "$OUT/stream_events.jsonl" --live-text "$OUT/stream_live.txt" --timeout 3600 --stop-html-close --stop-repeat --repeat-ngram 3 --repeat-window 120 --repeat-count 3
+scripts/run_keep46_zerocopy.sh: line 115:  4851 Hangup                  env -i "${SERVER_ENV[@]}" "$BIN" -m "$MODEL" --cuda --ssd-streaming --ssd-streaming-cache-experts "$CACHE_N" --prefill-chunk "$PREFILL_CHUNK" -c "$CTX" -n "$((MEASURED_TOK + WARMUP_TOK + 256))" --host 127.0.0.1 --port "$PORT" --cors > "$OUT/server.stdout.log" 2> "$OUT/server.stderr.log"

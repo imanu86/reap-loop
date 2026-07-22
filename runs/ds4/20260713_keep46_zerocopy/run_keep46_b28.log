@@ -1,0 +1,9 @@
+[arm_keep46_zerocopy_cache450_budget28g] waiting for GPU lock...
+[arm_keep46_zerocopy_cache450_budget28g] GPU lock acquired 2026-07-13T10:38:12Z
+[arm_keep46_zerocopy_cache450_budget28g] server pid=3348
+[arm_keep46_zerocopy_cache450_budget28g] server ready 2026-07-13T10:38:48Z
+[arm_keep46_zerocopy_cache450_budget28g] warmup done in 435.5s
+{"finish_reason": "length", "client_stop": null, "stream_error": null}
+[arm_keep46_zerocopy_cache450_budget28g] STOP_REASON: finished_or_budget
+[arm_keep46_zerocopy_cache450_budget28g] GRADE: LIVELLO L0
+[arm_keep46_zerocopy_cache450_budget28g] run dir: /mnt/c/Users/imanu/source/repos/reap-loop/runs/ds4/20260713_keep46_zerocopy/arms/arm_keep46_zerocopy_cache450_budget28g

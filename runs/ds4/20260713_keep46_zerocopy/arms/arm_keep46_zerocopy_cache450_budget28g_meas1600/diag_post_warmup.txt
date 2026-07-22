@@ -1,0 +1,5 @@
+ds4: CUDA masked zero-copy diag periodic: queries=174592/392831.81 MiB covered=131209/295220.06 MiB dma_ok=131208/295218.00 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=23304 miss_range=20079
+ds4: CUDA masked zero-copy diag periodic: queries=175104/393984.00 MiB covered=131634/296176.50 MiB dma_ok=131633/296173.88 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=23358 miss_range=20112
+ds4: CUDA masked zero-copy diag periodic: queries=175616/395135.62 MiB covered=132062/297139.12 MiB dma_ok=132061/297137.06 MiB dma_failed=0 miss_empty=0 miss_base=0 miss_before=23412 miss_range=20142
+0713 12:46:05 ds4-server: chat ctx=428..478:50 gen=400 decoding chunk=2.73 t/s avg=1.12 t/s 356.133s
+0713 12:46:05 ds4-server: chat ctx=0..78:78 gen=400 finish=length 435.400s

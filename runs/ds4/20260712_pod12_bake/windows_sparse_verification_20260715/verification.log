@@ -1,0 +1,4 @@
+﻿[2026-07-15T18:10:32.1481132Z] Waiting for download processes: 1820023836
+[2026-07-15T18:10:32.1632973Z] Download process 1820023836 exited
+[2026-07-15T18:10:32.1913989Z] FAILED: Missing completed pack: D:\ds4-models\ds4-2bit-k60-mass-full-decode-5b6d9850.ds4pack
+[2026-07-15T18:10:47.6598950Z] Waiting for download processes: 18200, 23836

@@ -1,0 +1,389 @@
+Ecco una landing page single-file in stile cyberpunk per un negozio di programmazione AI, con modulo contatti e popup di conferma.
+```html
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Code · Cyberpunk Store</title>
+    <!-- Font futuristico -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&display=swap" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            background: radial-gradient(circle at 20% 30%, #0a0f1e, #020204);
+            font-family: 'Orbitron', sans-serif;
+            color: #d0f0ff;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        /* main container cyberpunk */
+        .cyber-wrap {
+            max-width: 1000px;
+            width: 100%;
+            background: rgba(10, 20, 40, 0.5);
+            backdrop-filter: blur(4px);
+            border: 2px solid #00f0ff;
+            box-shadow: 0 0 30px #00f0ff88, inset 0 0 20px #00a0ff40;
+            border-radius: 28px;
+            padding: 30px 25px;
+            transition: 0.2s;
+        }
+
+        /* header */
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px dashed #ff00c8;
+            padding-bottom: 15px;
+            margin-bottom: 25px;
+        }
+
+        .logo h1 {
+            font-size: 2.2rem;
+            font-weight: 900;
+            text-shadow: 0 0 15px #00f0ff, 0 0 30px #0055ff;
+            letter-spacing: 4px;
+            background: linear-gradient(45deg, #f0f, #00f0ff);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .logo span {
+            font-size: 0.9rem;
+            display: block;
+            color: #ff66cc;
+            letter-spacing: 2px;
+            -webkit-text-fill-color: #ff66cc;
+            background: none;
+        }
+
+        .neon-tagline {
+            font-size: 1rem;
+            border: 1px solid #ff00c8;
+            padding: 6px 14px;
+            border-radius: 40px;
+            background: #0f0030;
+            color: #f0a0ff;
+            box-shadow: 0 0 12px #ff00c866;
+        }
+
+        /* hero */
+        .hero {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            padding: 20px 0;
+        }
+
+        .hero h2 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            text-shadow: 0 0 20px #0af, 0 0 40px #0af;
+            margin-bottom: 10px;
+        }
+
+        .hero p {
+            max-width: 600px;
+            font-size: 1.1rem;
+            color: #b0d0ff;
+            background: #111a2e80;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: 1px solid #33ffff;
+            backdrop-filter: blur(2px);
+            margin: 10px 0 20px;
+        }
+
+        .grid-offer {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 20px;
+            margin: 30px 0;
+        }
+
+        .offer-item {
+            background: #0e1a2b;
+            border: 1px solid #ff66cc;
+            border-radius: 20px;
+            padding: 18px 10px;
+            text-align: center;
+            transition: 0.2s;
+            box-shadow: 0 0 10px #ff66cc40;
+        }
+
+        .offer-item:hover {
+            transform: scale(1.02);
+            border-color: #00f0ff;
+            box-shadow: 0 0 20px #00f0ff;
+        }
+
+        .offer-item .icon {
+            font-size: 2.2rem;
+            margin-bottom: 8px;
+        }
+
+        .offer-item h3 {
+            font-size: 1.1rem;
+            color: #f0d0ff;
+            text-shadow: 0 0 8px #a0f;
+        }
+
+        .offer-item p {
+            font-size: 0.75rem;
+            color: #99ccff;
+        }
+
+        /* modulo contatti */
+        .contact-section {
+            background: #0a1422cc;
+            border: 1px solid #ff00c8;
+            border-radius: 30px;
+            padding: 30px 25px;
+            margin: 20px 0 10px;
+            backdrop-filter: blur(6px);
+            box-shadow: inset 0 0 30px #ff00c840, 0 0 20px #ff00c880;
+        }
+
+        .contact-section h3 {
+            font-size: 1.8rem;
+            text-align: center;
+            margin-bottom: 20px;
+            text-shadow: 0 0 10px cyan;
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 18px;
+        }
+
+        .input-field {
+            background: #0f1a2f;
+            border: 1px solid #33ffff;
+            border-radius: 40px;
+            padding: 14px 20px;
+            font-family: 'Orbitron', sans-serif;
+            font-size: 0.9rem;
+            color: #f0f0ff;
+            outline: none;
+            transition: 0.2s;
+            width: 100%;
+        }
+
+        .input-field:focus {
+            border-color: #ff66cc;
+            box-shadow: 0 0 20px #ff66cc;
+            background: #1a2a40;
+        }
+
+        textarea.input-field {
+            min-height: 100px;
+            resize: vertical;
+        }
+
+        .btn-submit {
+            background: #ff00c8;
+            border: none;
+            padding: 16px 30px;
+            font-size: 1.3rem;
+            font-weight: 700;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            color: #0f0f1f;
+            border-radius: 60px;
+            letter-spacing: 3px;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 20px #ff00c8, 0 0 40px #ff00c880;
+            margin-top: 10px;
+        }
+
+        .btn-submit:hover {
+            background: #ff33dd;
+            box-shadow: 0 0 40px #ff33dd, 0 0 70px #ff00c8;
+            transform: scale(1.02);
+        }
+
+        .footer {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #80b0d0;
+            border-top: 1px solid #33ffff40;
+            padding-top: 15px;
+        }
+
+        /* popup */
+        .popup-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0;
+            width: 100%; height: 100%;
+            background: #000000dd;
+            backdrop-filter: blur(6px);
+            align-items: center;
+            justify-content: center;
+            z-index: 999;
+        }
+
+        .popup-card {
+            background: #120b2e;
+            border: 3px solid #00f0ff;
+            border-radius: 40px;
+            padding: 40px 50px;
+            text-align: center;
+            box-shadow: 0 0 80px #00f0ff, inset 0 0 30px #a0f0ff;
+            max-width: 400px;
+            width: 90%;
+            animation: flicker 0.5s;
+        }
+
+        .popup-card h2 {
+            font-size: 2rem;
+            color: #f0a0ff;
+            text-shadow: 0 0 20px #ff00c8;
+        }
+
+        .popup-card p {
+            margin: 20px 0;
+            font-size: 1.2rem;
+            color: #b0f0ff;
+        }
+
+        .popup-card .btn-close {
+            background: #00f0ff;
+            border: none;
+            padding: 12px 40px;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: 700;
+            font-size: 1.2rem;
+            border-radius: 60px;
+            color: #0a0a1a;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 0 20px cyan;
+        }
+
+        .popup-card .btn-close:hover {
+            background: #66ffff;
+            box-shadow: 0 0 40px cyan;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0; transform: scale(0.8); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+
+        /* responsive */
+        @media (max-width: 600px) {
+            .header { flex-direction: column; gap: 10px; }
+            .hero h2 { font-size: 1.8rem; }
+            .logo h1 { font-size: 1.8rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="cyber-wrap">
+        <!-- header -->
+        <div class="header">
+            <div class="logo">
+                <h1>⚡ AI·CODEX</h1>
+                <span>✦ cyberpunk programming store</span>
+            </div>
+            <div class="neon-tagline">🔮 NEURAL · GRID</div>
+        </div>
+
+        <!-- hero -->
+        <div class="hero">
+            <h2>CODICE DA TURING</h2>
+            <p>〚 modelli · agenti · synth 〛<br>architetture AI pronte per il tuo futuro</p>
+        </div>
+
+        <!-- offerte -->
+        <div class="grid-offer">
+            <div class="offer-item">
+                <div class="icon">🧠</div>
+                <h3>AI AGENT</h3>
+                <p>moduli cognitivi</p>
+            </div>
+            <div class="offer-item">
+                <div class="icon">🤖</div>
+                <h3>ROBOT CODE</h3>
+                <p>automazione reattiva</p>
+            </div>
+            <div class="offer-item">
+                <div class="icon">🌐</div>
+                <h3>SYNAPSE</h3>
+                <p>reti neurali</p>
+            </div>
+            <div class="offer-item">
+                <div class="icon">⚡</div>
+                <h3>CYBER·LANG</h3>
+                <p>programmazione quantica</p>
+            </div>
+        </div>
+
+        <!-- modulo contatti -->
+        <div class="contact-section" id="contact">
+            <h3>📬 contatta il nexus</h3>
+            <form id="contactForm" action="#" method="post">
+                <div class="form-group">
+                    <input type="text" class="input-field" id="name" placeholder="🔸 nome / terminale" required>
+                    <input type="email" class="input-field" id="email" placeholder="🔸 email / cyberlink" required>
+                    <textarea class="input-field" id="message" placeholder="🔸 messaggio / richiesta codice..." required></textarea>
+                    <button type="submit" class="btn-submit">◉ INVIA RICHIESTA</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- footer -->
+        <div class="footer">
+            <span>⚙️ 2025 · AI CODEX · interfaccia neurale ⚙️</span>
+        </div>
+    </div>
+
+    <!-- popup overlay -->
+    <div class="popup-overlay" id="popupOverlay">
+        <div class="popup-card">
+            <h2>✔️ RICHIESTA INVIATA</h2>
+            <p>🔮 il tuo segnale è stato trasmesso alla rete neurale</p>
+            <button class="btn-close" id="closePopup">CHIUDI</button>
+        </div>
+    </div>
+
+    <script>
+        (function() {
+            const form = document.getElementById('contactForm');
+            const popup = document.getElementById('popupOverlay');
+            const closeBtn = document.getElementById('closePopup');
+
+            // mostra popup
+            function showPopup() {
+                popup.style.display = 'flex';
+                // piccolo effetto flicker già attivo con css
+            }
+
+            // nascondere popup
+            function hidePopup() {
+                popup.style.display = 'none';
+            }
+
+            // gestione invio form
+            form.addEventListener('submit', function(e) {
+                e.preventDefault(); // blocca ricarica
+
+               

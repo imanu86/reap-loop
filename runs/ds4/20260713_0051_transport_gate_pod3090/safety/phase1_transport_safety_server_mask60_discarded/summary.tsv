@@ -1,0 +1,2 @@
+depth	fault	content_sha256	content_bytes	finish_reason	diag
+1	baseline	d5517fca3d7a1abbdc1cf2ecf9e1ed0ad1ce1d3a04dff9e58d1080568f8e540d	15	length	ds4: CUDA transport safety final phase=cleanup stage_chunks=14514 cursor_advances=11400 slot_reuses=14513 war_waits=11400 war_wait_failures=0 stage_event_create_failures=0 stage_event_record_failures=0 upload_event_create_failures=0 upload_event_record_failures=0 upload_event_wait_failures=0 fallback_syncs=0 fallback_sync_failures=0 staged_h2d_failures=0 stale_slot_reads=0 sync_stage_mode=0

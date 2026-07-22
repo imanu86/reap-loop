@@ -1,0 +1,14 @@
+{
+  "content_bytes": 15,
+  "content_sha256": "d5517fca3d7a1abbdc1cf2ecf9e1ed0ad1ce1d3a04dff9e58d1080568f8e540d",
+  "finish_reason": "length",
+  "usage": {
+    "prompt_tokens": 64,
+    "completion_tokens": 4,
+    "total_tokens": 68,
+    "prompt_tokens_details": {
+      "cached_tokens": 0,
+      "cache_write_tokens": 64
+    }
+  }
+}

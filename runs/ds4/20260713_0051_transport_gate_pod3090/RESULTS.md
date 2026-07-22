@@ -58,13 +58,78 @@ combination; the present evidence does not identify which factor is causal.
 Patch 0050's bounded range registrations succeeded on the same node up to
 23.94 GiB, so its robustness advantage over the reference is measured.
 
+### Chunked/split-copy adaptation
+
+This campaign did not silently treat a modified binary as the exact fork.
+The runnable control is explicitly `5a854d2 + chunked/split-copy safety
+adaptation`, preserved in
+`provenance/chripell-5a854d2/chripell-model-map-chunked.patch`.
+
+The measured adaptation path was:
+
+1. Plain `cudaHostRegisterMapped` failed even after reducing registration
+   chunks to 2 MiB on the read-only FUSE mmap.
+2. `cudaHostRegisterReadOnly | cudaHostRegisterMapped` registered the full
+   80.76 GiB map in 324 chunks of at most 256 MiB.
+3. The first inference then exposed an expert copy crossing a registration
+   boundary (`selected moe_up: invalid argument`). Splitting H2D copies at the
+   registered boundaries fixed that failure.
+4. Cleanup was moved before `munmap`, and partial registration now rolls back
+   instead of entering the fork's broken pageable fallback.
+
+The final adapted binary SHA256 was
+`163d11b0a5e7f5b3cf4cc90d573337af7a7471362f383255c360b64de8c39571`.
+With the documented Profile A knobs, the same 64-token prompt, a 256-token
+warmup and three measured 256-token requests, it produced:
+
+| repetition | prompt seconds | decode seconds | decode t/s | wall seconds |
+|---|---:|---:|---:|---:|
+| warmup | 2.878 | 136.910 | 1.87 | 139.789 |
+| r01 | 2.972 | 136.617 | 1.87 | 139.620 |
+| r02 | 2.966 | 136.704 | 1.87 | 139.700 |
+| r03 | 3.013 | 136.591 | 1.87 | 139.626 |
+
+The three measured outputs were byte-identical. Each contains one complete,
+tag-balanced HTML document and closes `</html>`. The committed standard
+`functional_grade.py frontpage` result is nevertheless `L1,L1,L1`, because
+this minimal benchmark prompt does not request the form, CSS, or JavaScript
+that the generic frontpage rubric requires. Both facts are preserved; the
+prompt-specific success is not relabelled as L3.
+
+The server used 11,580 MiB of VRAM during the run. The measured 1.87 t/s does
+not reproduce the fork's published 9.04 t/s. The original prompt, model hash,
+output length, warm order, and repetition count behind that published number
+remain unavailable, so this is a controlled same-node profile measurement,
+not proof that the published result is false.
+
+## 0050k safety checkpoint and blocker
+
+The 0050k binary was reconstructed with post-patch `ds4_cuda.cu` SHA256
+`10e21d340702df127e2398aba35923833b5eb47e9cc025af3a7beec32bf79fe2`.
+On the real server async path, an eight-arm mechanism screen completed:
+baseline ring depths 1/2/8 plus the five one-shot event faults at depth 1.
+Every arm exercised 14,514 staged chunks and emitted the same four-token
+canary. Baselines recorded 11,400 cursor advances and WAR waits; every injected
+fault latched synchronous staging, completed its fallback, and reported zero
+fallback-sync failure, staged-H2D failure, and stale-slot diagnostic.
+
+This screen is useful but does **not** close Phase 1. Static review found that
+`cuda_transport_drain_upload_stream()` clears deferred/inflight state before
+checking whether `cudaStreamSynchronize()` succeeded, and a non-strict
+post-batch caller can convert a failed safety drain to success. The patch also
+lacks a one-shot staging-event WAR-wait fault and an independent device-payload
+checksum. Throughput promotion is paused pending an incremental fail-closed
+patch and a repeated safety gate. The completed 0050k matrix is evidence for
+the recoverable paths only, not proof of all failure paths.
+
 ## Position relative to the reference
 
 The honest current position is:
 
-1. The best comparable mechanism observation is C2 at a 4.13 t/s measured
-   median and 5.03 t/s last warm repetition. This is still below Chripell's
-   published 9.04 t/s.
+1. The best earlier mechanism observation is C2 at a 4.13 t/s measured median
+   and 5.03 t/s last warm repetition. The runnable same-node chripell
+   adaptation measured 1.87 t/s, while the published but incompletely
+   specified chripell score remains 9.04 t/s.
 2. The configurations are not yet equivalent. C2 used 400 cache experts
    (about 2.64 GiB), 1 GiB reserve, prefill chunk 512, context 2048, a static
    keep-60 compute mask, and only 23.94 GiB of selected host pinning. Profile A
