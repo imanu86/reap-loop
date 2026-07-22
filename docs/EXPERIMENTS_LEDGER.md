@@ -4497,3 +4497,15 @@ bloccata a 8192 (count 15-37 su 161-182) mentre a 768 riempie normale (109/250) 
 primo indiziato il floor di VRAM libera (~1GB a 8192) che veta le ammissioni.
 Prossimo: debug crash ring (log in g73_gate/f8b_suite_231257) + caccia al gate di
 ammissione big-ctx.
+
+**Addendum 4 (01:30): S5 chiude la diagnosi big-ctx.** Con
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=300 (+ROTATOR): tiering-enforce failed 0,
+deadline 0, cache RIEMPITA 160/160 (vs 15-37) -> il blocco d'ammissione ERA il
+timeout IO (accoppiamento confermato). MA decode 7.2->10.1->27.3->20.3 s/tok al
+riempirsi: a capacity 160 < working-set ~240 slot NESSUNA politica vince
+(bloccata=fame 32s; libera=churn LRU 27s, la lezione fit-sweep). Il blocco era
+accidentalmente protettivo. CONCLUSIONE QUANTIFICATA: il big-ctx si sblocca solo
+con capacity >= ~240 slot = ~540MB di VRAM in piu' a ctx 8192. Vie: migrazione KV
+F8b (250-500MB, borderline da sola) + dieta buffer ctx + (alternativa) riduzione
+working-set via mask. Non ci sono piu' misteri: c'e' un budget di 540MB da
+chiudere. (S5: 90 tok in 2113s totali; stop pulito.)
