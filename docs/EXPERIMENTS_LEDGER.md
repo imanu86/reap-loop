@@ -4521,3 +4521,17 @@ Q1-companion (tier sub-bit per la coda: complemento residenza + knock + MTP,
 config I7 cold<=1.0bpw=41GB) ha ora fondamento sperimentale. Prossimi: curva
 256/1000/2000 (in coda), poi punto dense-training, poi produzione (~$100 per
 10.240 sidecar, pipeline collaudata stanotte end-to-end da R2 al checkpoint).
+
+**Addendum 6 (02:30) — CURVA DATI Q1 completa: il muro era pipeline, non dati.**
+E176 test-cosine per n campioni: n256=0.8050, n1000=0.7865, n2000=0.7928,
+n5173=0.8335. SHOCK: gia' a 256 (STESSO conteggio del muro storico 0.7009) questa
+pipeline fa 0.805 = +0.10 a parita' di dati. Il "muro 0.70" era ingegneria di
+training, NON capacita' del formato ne' fame di dati. Curva non-monotona
+(split diversi + pochi campioni), segnale robusto: 256 gia' forte, 5173 il best.
+IMPLICAZIONE COSTO: bastano poche centinaia-poche migliaia di campioni/expert per
+superare la soglia transient-serve (~0.80-0.83) -> i 10.240 sidecar costano molto
+meno del previsto (cattura naturale per i caldi, dense per la coda). Artefatti:
+q1_pilot_data/trained_e176_n{256,1000,2000,full}/. Pipeline end-to-end collaudata:
+R2 -> extract_expert_shard (filtro all-experts->single, header DS4ERTR1) ->
+make_teacher_outputs (GGUF decode + forward esatto) -> train_expert (STE+LoRA) ->
+checkpoint. Fase-1 CHIUSA positiva; prossimo = dense-training per la coda + scale.
