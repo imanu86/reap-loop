@@ -4397,3 +4397,67 @@ authorized `promotion_ssd_2_0` structural safety. Runtime, harness and branch
 tip commits are `16273d4a1d9b648a5878223e7d3ecd3a8d233672`,
 `415ed980da69bad304d98e77b1851076a7ae06a6` and
 `801a6d8fee17d1fd18fa4fe83fec3f750501fd7e`.
+
+## 2026-07-22 sera — F6/F7/F8, radice della spirale big-ctx, cattura L15 su fleet 4090
+
+**F6+F7 landate** (wt-g73-open `55ad829`, autorate Codex + applicazione multi-agente,
+verifica avversariale Claude+Codex, build Release pulita). F6
+(`DS4_CUDA_RELEASE_PREFILL_SCRATCH=1`): rilascio dello scratch prefill al confine
+prefill→decode, ledger `[vram-ledger]` sempre attivo — MECCANISMO VERIFICATO live
+(`release_status=released`), ma a prefill_chunk=2048 libera ~72MiB, non i ~1.5GiB
+dello studio: lo scratch non è il ladro dominante della spirale. F7
+(`DS4_CUDA_KV_MANAGED=1`, advice host-preferred sulle 3 cache KV già managed):
+no-op documentato su Windows/WDDM (one-shot `[kv-managed] cudaMemAdvise
+unavailable`), payoff solo Linux. h6 ambiguo risolto al sito GPU 17743 (il gemello
+CPU non linkerebbe sotto DS4_NO_GPU).
+
+**F8 "KV staged-ring" landata** (`4535e11` + fix stop `decd412`; design = intuizione
+utente, registro "KV-ring rotante in VRAM"; 13 hunk Codex sessione
+019f8b15-d37d + 19 fix initializer per il nuovo `host_ptr`): KV intera in host
+pinned-mapped, ring VRAM 2×4MiB (2048 righe MLA/slot, top-k cap 512), stream copia
+dedicato + 4 eventi, online-softmax esatto, kernel heads8 cooperativi in shared
+memory (uccide l'amplificazione ×64 per costruzione). Gate
+`DS4_CUDA_KV_STAGED_RING=1`, unset = bit-exact per costruzione (host_ptr NULL →
+branch mai presi; verificato a mano). Costo VRAM del ctx → 8MiB FISSI qualunque
+finestra: spezza il legame capacità-dichiarata→VRAM. Smoke runtime in corso.
+
+**RADICE della spirale ctx≥1536 QUANTIFICATA** (misure live 3060, stessa sessione):
+ctx 768 → cache esperti 320 slot ≈2.1GB > working set ~1.6GB/token → 2.8 t/s;
+ctx 8192 → buffer/riserve clampano la cache a 165-174 slot ≈1.1GB < working set →
+thrash LRU totale → 8.4GB/token letti da SSD (631MB/s misurati / 0.07-0.5 t/s)
+→ 10-13s/token. È il muro fit-in-cache applicato al contesto, NON una regressione:
+bisect pre-F8 vs F8 = stesso collasso (10.8 vs 13.6 s/token). F6 da sola non salva
+il big-ctx. Leva candidata: F8 (KV+riserve fuori VRAM → capacity risale). APERTO:
+righe "transient route unavailable"+"snapshot publication failed" SOLO col binario
+F8 (~25% peggio) — indagare interazione col path mass-compose anche a gate spento.
+Nota metodo (richiamo utente recepito): quota SSD SI MISURA (contatori
+vram/ram_hit + MB/s disco / t/s), non si stima per capacità.
+
+**Cattura L15 all-experts su fleet**: H200 terminato dall'utente (misload:
+zero-copy default; `DS4_CUDA_COPY_MODEL=1` → residenza piena in 12s MA decode
+resta ~3.5 t/s = orchestration-bound confermato su H200; multi-processo su 1 GPU
+NON scala, aggregato piatto ~3.5; `DS4_LOCK_FILE` bypassa il lock single-instance).
+Pivot fleet: pod A secure 4×4090 ($2.76/h, 251GB RAM, driver 570 sano) = 4 worker
+1×GPU zero-copy, 1.1 vec/s l'uno, aggregato 4.40 STEADY (≥75s) = batte l'H200 a
+60% del costo (~9.6k vettori/$ vs ~2.9k). Modello in page cache condivisa (162GB
+buff/cache, I/O disco ~0). Round 1 target 40k; round 2 (A2) automatico → 80k
+fase-1. Histogram a 31.7k vettori: 191.589 coppie (≈6 route/token ✓), 253/256
+expert toccati, MEDIANA 269/expert (già sopra il muro 256), 29 expert ≥2000 —
+segnale del pilota Q1 promettente. Ops: 3 secure 4×4090 serali mai partiti
+(runtime null anche senza volume), community = stesso host marcio 580.x in loop →
+regola: estendere il pod provato batte cacciare host nuovi; MSYS mangia
+`--volumePath` da Git Bash (3 pod persi, ~$2) → `MSYS_NO_PATHCONV=1`; porte SSH
+da GraphQL `runtime.ports`, non REST.
+
+**DeepSpec/route-oracle**: analisi Codex (sessione 019f8b19-af3d, report
+`D:\ds4_work\g73_fix\deepspec_oracle.out.log`): capitolo drafter riaperto RISTRETTO
+("MTP nativo GPU + route proxy tier-aware") — MTP GPU 26.6/30.5ms p50/p95 entra
+nel budget <50ms (G34-CPU resta chiuso); V4 ufficiale ha i primi 3 layer routing
+hash/token-ID (route ESATTA, da verificare nel fork); pipeline corretta = predire
+t+2; checkpoint DeepSpec inutilizzabili (1.85-6.9GB, no DeepSeek). Spike 1g con
+go/no-go nel report §F.
+
+**Stop pulito**: endpoint `/__g130_u1_shutdown` armato dal solo token+loopback
+(`decd412`; il gate Q1-profile confliggeva con DS4_G73_OPEN). UI DS4 Control
+patchata: Ferma DS4 = drain via token → taskkill gentile → /F ultima spiaggia
+(il /F misurato orfana la RAM: NON-ATTRIBUITA 8.9→11GB).
