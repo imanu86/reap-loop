@@ -27,7 +27,7 @@ pinned at Q8_0** — so the *effective* bpw is higher than the pure-expert bpw.
 | `ds4-2bit.gguf` (86.72 GB) | our BASE model, IQ2_XXS | 2.21 | **ds4 CODING imatrix** (byte-identical to antirez IQ2-imatrix) | ✅ GOOD — the exact model everything runs on |
 | `ds4-q1-layers0-42-derived.gguf` (~36 GB) | Q1_0 sidecar | 1.125 | **NONE — synthetic** ("sign bits + mean-abs scale only… NOT a quantization-quality result" per our own DS4_Q1_0_PORT_DESIGN.md) | ❌ STRAWMAN — never meant to be quality; source of the "1.1.1.1" collapse |
 | `DeepSeek-V4-Flash-IQ1_S-XL.gguf` (61.5 GB, persadian) | IQ1_S-XL | 1.73 | wikitext imatrix (llama.cpp toolchain) | ❌ **BROKEN FILE** — raw concat of 2 shards; header exposes only 1066/1328 tensors; **experts for layers 34–42 MISSING**. Our "IQ1_S 37% routing / late-layer collapse" (WIN-G133-HSHADOW-IQ1S-AB) is an ARTIFACT of these missing deep layers, NOT IQ1_S quality. INVALID. |
-| IQ1_S-XL proper split (downloading) | IQ1_S-XL, 2 shards merged | 1.73 | wikitext | ⏳ downloading + merge → the FIRST valid IQ1_S measurement |
+| `DeepSeek-V4-Flash-IQ1_S-XL-proper.gguf` (61.5 GB, C:) | IQ1_S-XL, proper merge, 1328/1328 tensors, sha c52da099 | 1.73 | wikitext | ❌ **MEASURED 2026-07-22: DEAD for coding** — routing agreement **10.0%** UNIFORM across all 43 layers (early 13 / mid 7.9 / late 9.5), token collapse identical to the broken-file test ('b'b'b), 0/64 match; sidecar mechanically flawless (2795 loads, 0 failures). The truncation invalidated the old *measurement*, it never caused the *collapse* — the quant itself fails (wrong-domain calibration and/or 1.73bpw insufficient). Ledger: WIN-G134-IQ1S-VALID-AB-VERDICT |
 
 ## 3. The three invalidations (why every 1-bit pessimism today was on broken ground)
 
@@ -41,8 +41,10 @@ measured** by anyone. That is the virgin road.
 
 ## 4. Roads open (owner: "tutte le strade vanno battute")
 
-- **A. Valid IQ1_S** (zero code): download proper teamblobfish IQ1_S-XL split → `gguf-split
-  --merge` → our existing `DS4_IQ1_S_EXPERT_SIDECAR` loader → re-measure. IN PROGRESS.
+- **A. Valid IQ1_S** — ✅ DONE 2026-07-22, verdict NEGATIVE (10% routing, uniform; see
+  status table). Wikitext-IQ1_S is dead as a full replacement for coding. This makes
+  road C the decisive experiment: if coding-calibrated IQ1 also collapses, everything
+  below dies a fortiori; if it holds, the game changes.
 - **B. IQ1_M** (~1.75–1.91 bpw, more bits): NEEDS added IQ1_M kernel+loader in our fork
   (our runtime only loads IQ1_S / Q1_0 today). Deferred.
 - **C. Coding-imatrix IQ1** (the real prize): collect a CODING imatrix (CUDA tooling exists —
