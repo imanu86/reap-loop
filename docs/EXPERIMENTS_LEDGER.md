@@ -4509,3 +4509,15 @@ con capacity >= ~240 slot = ~540MB di VRAM in piu' a ctx 8192. Vie: migrazione K
 F8b (250-500MB, borderline da sola) + dieta buffer ctx + (alternativa) riduzione
 working-set via mask. Non ci sono piu' misteri: c'e' un budget di 540MB da
 chiudere. (S5: 90 tok in 2113s totali; stop pulito.)
+
+**Addendum 5 (02:00) — IL MURO Q1 E' SFONDATO.** train_expert.py su E176 (L15) con
+5.173 campioni reali (round-1 della cattura fleet, shard filtrato
+extract_expert_shard.py + teacher offline exact-iq2 via make_teacher_outputs):
+iter 5000 -> train 0.9336 / val 0.8258 / **TEST COSINE 0.8335** contro il muro
+storico 0.7009@256 (STE-adapter) e l'overfit 0.962/0.651 del trained-max. Firma
+sana: val=test (niente overfit), gap train-test fisiologico. LA TESI DI FASE-1 E'
+CONFERMATA: il muro era fame di dati, non capacita' del formato Q1_0. Il filone
+Q1-companion (tier sub-bit per la coda: complemento residenza + knock + MTP,
+config I7 cold<=1.0bpw=41GB) ha ora fondamento sperimentale. Prossimi: curva
+256/1000/2000 (in coda), poi punto dense-training, poi produzione (~$100 per
+10.240 sidecar, pipeline collaudata stanotte end-to-end da R2 al checkpoint).
