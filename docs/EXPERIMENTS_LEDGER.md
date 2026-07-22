@@ -4484,3 +4484,16 @@ interazione F8 x ctx-grande A GATE SPENTO (assente su pre-F8 a 8192 e su F8 a 76
 → indiziati gli hunk 7-8 "contents/copy host-aware" (girano su TUTTI i tensori,
 inclusa la pubblicazione dello snapshot mass-compose). Da correggere prima di
 qualunque nuovo test big-ctx.
+
+**Addendum 3 (mezzanotte): suite F8b + refutazione riserva.** F8b "migrate-to-arena"
+(commit su g73-open; prefill in VRAM -> migrazione una-tantum D2H pinned non-mapped
+al decode-start -> ring; append D2H; sticky-off; spin): (a) gate OFF a ctx768 =
+4.95 t/s parita' daily -> SICURA; (b) migrazione FUNZIONA (105 tensori, mapped=0 =
+obiettivo architetturale centrato); (c) decode ring CRASHA mid-gen (S2, da
+debuggare); (d) S3 end-to-end 794s vs 1718s S4 (2.2x, ma page-cache piu' calda e
+n=2 campioni: non conclusivo). S4 (RESERVE=32 @8192): 11.8s/tok, cache 15/177 ->
+TEORIA RISERVA REFUTATA; il mistero big-ctx si sposta: l'ammissione in cache e'
+bloccata a 8192 (count 15-37 su 161-182) mentre a 768 riempie normale (109/250) --
+primo indiziato il floor di VRAM libera (~1GB a 8192) che veta le ammissioni.
+Prossimo: debug crash ring (log in g73_gate/f8b_suite_231257) + caccia al gate di
+ammissione big-ctx.
