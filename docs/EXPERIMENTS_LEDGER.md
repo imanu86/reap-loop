@@ -4470,3 +4470,17 @@ DESIGN non refutato (il bisect lo scagiona dal collasso; la matematica è esatta
 è l'IMPLEMENTAZIONE su Windows a non rendere. Gate resta off di default
 (bit-exact). Banco giusto per l'A/B: pod Linux post-cattura. Se lì conferma,
 ottimizzazione Windows separata (chunk-batching o staging via copia).
+
+**Addendum 2 (notte): A/B cancello d'ammissione tier = IPOTESI STROZZATURA REFUTATA.**
+ctx 768, 120 tok/braccio, stesso prompt temp 0. CONTROLLO (budget32/minf3/hyst1.25)
+vs SPALANCATO (512/2/1.0): decode_ms 222 vs 211 (rumore), ram_hit 60-67% vs 61-73%
+(nessuna convergenza differenziale), transient/tok ~31 vs ~29 (identici). Aprire il
+cancello 16x non sposta nulla → l'ammissione NON e' il collo a ctx sano. I ~30
+transient/token (~12%) coincidono col pavimento SORPRESA del 07-12 (il ~10% della
+domanda fuori-recency): a ctx 768 il sistema sta SUL floor teorico. Bonus: 4-5 t/s
+misurati (>riferimento 2.8, page cache calda). La patologia big-ctx resta confinata
+a: (a) cache clampata 165<working-set, (b) bug "snapshot publication failed" =
+interazione F8 x ctx-grande A GATE SPENTO (assente su pre-F8 a 8192 e su F8 a 768)
+→ indiziati gli hunk 7-8 "contents/copy host-aware" (girano su TUTTI i tensori,
+inclusa la pubblicazione dello snapshot mass-compose). Da correggere prima di
+qualunque nuovo test big-ctx.
