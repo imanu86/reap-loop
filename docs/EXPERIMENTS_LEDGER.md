@@ -4461,3 +4461,12 @@ go/no-go nel report §F.
 (`decd412`; il gate Q1-profile confliggeva con DS4_G73_OPEN). UI DS4 Control
 patchata: Ferma DS4 = drain via token → taskkill gentile → /F ultima spiaggia
 (il /F misurato orfana la RAM: NON-ATTRIBUITA 8.9→11GB).
+
+**Addendum F8 smoke Windows (stessa sera)**: con `DS4_CUDA_KV_STAGED_RING=1` su
+ctx corto il decode va a ~10.3-10.6 s/token (pre-F8: ~2s) = ~5× peggio; un token
+da 107.9s con `route worker respawned after transient-io kill`; GPU 3% = attese
+eventi/mapped-host. WDDM è ostile a pinned-mapped + event-handoff per chunk.
+DESIGN non refutato (il bisect lo scagiona dal collasso; la matematica è esatta):
+è l'IMPLEMENTAZIONE su Windows a non rendere. Gate resta off di default
+(bit-exact). Banco giusto per l'A/B: pod Linux post-cattura. Se lì conferma,
+ottimizzazione Windows separata (chunk-batching o staging via copia).
