@@ -24,7 +24,7 @@ llama.cpp CUDA graphs, DeepSeek MTP, Bonsai-style training).
 | C4 | **Split-fused re-enable** (G73's original overlap trick, hardened for the transient path) | on g133/g73-open | existing env | route overlap | part of G73's 4.98 | C0 approved |
 | C5 | **Lock Pages in Memory** (SeLockMemoryPrivilege) | no code — system toggle | — | arena 30->40GB+ | +30% mask coverage | owner gpedit + relogin |
 | C6 | **MTP-head check** (does the GGUF retain DeepSeek's MTP layer? If yes: a free quality drafter for C3) | investigation only | — | drafter quality | unknown | none |
-| C7 | **Bonsai-style IQ1 training done right** (thousands of iters, many experts — our pilot was undertrained; ceiling UNKNOWN per ledger) | offline track | — | M6 miss-cover | unknown | activation capture |
+| C7 | **Bonsai ladder: trained IQ1.0 REPLACES IQ2** (owner's original thesis — not mere miss-cover). Rungs: (1) single-expert 5-10k samples + 5000 iters -> test cosine ~0.9 (n>=3 experts: l15e176 + early + late); (2) ONE-LAYER substitution A/B in the real forward (compounding gate — the Q1 token-collapse lesson); (3) fleet training, costed from rung 1 (minutes/expert x 11008 x pod rate, embarrassingly parallel); (4) 86GB -> ~44GB model: VRAM holds 2x experts (640+ on the 3060), the whole routed fleet pins in 64GB RAM, H2D halves, SSD tier ~vanishes. MULTIPLIES every other card (residency was the measured 4x lever; halved bytes = doubled capacity at every tier, bought with training not hardware). | offline track | — | THE capacity wall, at the root | capacity x2 everywhere | activation capture (prep running) |
 
 ## 2. PHASE A — FORGE (all in parallel, now)
 
