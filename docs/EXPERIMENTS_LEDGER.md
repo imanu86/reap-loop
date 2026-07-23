@@ -4535,3 +4535,18 @@ q1_pilot_data/trained_e176_n{256,1000,2000,full}/. Pipeline end-to-end collaudat
 R2 -> extract_expert_shard (filtro all-experts->single, header DS4ERTR1) ->
 make_teacher_outputs (GGUF decode + forward esatto) -> train_expert (STE+LoRA) ->
 checkpoint. Fase-1 CHIUSA positiva; prossimo = dense-training per la coda + scale.
+
+**Addendum 7 (03:00) — DENSE-TRAINING: il ponte verso l'universale REGGE (cross-eval).**
+E176: dense (14336 x di TUTTI gli expert, teacher offline E176-exact) vs routed (5173).
+Cross-eval sulla STESSA regione routed (cross_eval.py):
+- routed-model su routed: 0.8936 (con train overlap) / 0.8335 test pulito
+- DENSE-model su routed: 0.8088 (quasi tutto unseen per lui)
+- dense-model su full manifold: 0.4570 (IRRILEVANTE: E176 non serve mai quegli x)
+VERDETTO: il dense costa solo ~0.02 cosine sulla regione che conta e resta SOPRA la
+soglia transient-serve (~0.80), pur non avendo MAI visto la cattura routed. => per la
+CODA FREDDA (esperti non catturabili abbastanza) il dense-training col teacher offline
+su x abbondanti da' un Q1 usabile (0.81) -> l'universale NON e' capture-bound, e'
+compute-bound (embarrassingly parallel: un forward-expert per (x,expert)). Caldi =
+routed-specific (0.83); freddi = dense (0.81). Il crollo dense-su-full-manifold (0.46)
+conferma che la selettivita' del ROUTER e' cio' che rende Q1 viable: l'expert opera solo
+sul suo sub-manifold ristretto, dove 1.125 bpw basta. Artefatti trained_e176_dense/.
