@@ -1,0 +1,5 @@
+We need to write a Python function that validates an email address using regex. The function should include a docstring and 3 test cases. Then explain the regex used. The user is likely asking for a solution in Italian? The user said "Scrivi una funzione Python che valida un indirizzo email con regex, con docstring e 3 test. Poi spiega la regex." So answer in Italian.
+
+We need to produce a Python function, with docstring, and three test examples. Then explain the regex. The explanation should be clear, possibly in Italian.
+
+Let's produce a simple but robust email regex. Common regex for email validation: a typical one is like r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}' but we can make it more precise. However, the user wants a simple function with a docstring and 3 tests. We'll provide

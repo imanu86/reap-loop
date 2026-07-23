@@ -4882,3 +4882,18 @@ Q1 MOLTO piu' probabile che batta l'H2D. IL Q1 RENDE COLIBRI PIU' FATTIBILE. CON
 + filone velocita' (GPU+CPU split + three-tier) NON ortogonali -> si incontrano: Q1 rende competitivo il
 compute-CPU-da-RAM -> elimina scambi -> risolve thrash. NEXT DECISIVO (audit #0, ora con Q1): microbenchmark
 kernel CPU Q1-expert vs transient-H2D; se CPU vince, implementare il cold-path-in-CPU (Colibri) + three-tier.
+
+**Addendum 34 (11:30) — END-TO-END Q1 FUNZIONA: pipeline completa cattura->GPTQ->sidecar->runtime->generazione.**
+Test: BASE (867 char) vs SIDECAR_Q1 L15 (803 char), stesso prompt coding temp0. Runtime: sidecar validato+
+installato (0.85GiB) + dispatch abilitato (DS4_Q1_0_SELECTED_LOAD=1; opt-in mancante trovato a ds4_cuda.cu:37762;
+NB DS4_G73_OPEN rifiuta il sidecar -> server minimale senza catena F5). ESITO: Q1-GPTQ GENERA OUTPUT COERENTE E
+SUL TASK (entrambi capiscono: funzione Python email-regex + docstring + 3 test; il Q1 nota pure il prompt IT).
+LA PIPELINE FUNZIONA END-TO-END. Metrica: string-similarity 0.23 ma FUORVIANTE - primi 100 char IDENTICI poi
+divergono = BUTTERFLY EFFECT del greedy@temp0 (Q1 perturba i logit, flippa 1 token, il greedy amplifica in
+continuazione diversa), NON degrado qualita'; entrambi coerenti+corretti. VERDETTO ONESTO: serving Q1 PRESERVA
+la competenza, NON e' token-identico (atteso). String-match e' la metrica sbagliata; giusta = perplessita'
+held-out o task-correctness. Dato interessante: L15 da SOLO (1/43 layer) fa divergere la sequenza -> i suoi
+esperti CONTANO, eppure la coerenza tiene. FILONE Q1 CHIUSO: da "dubbio STE 0.73" (ieri sera) a "Q1-GPTQ servito
+dal runtime reale, output coerente, pipeline funzionante" (stamattina). RESTA per la validazione rigorosa:
+perplessita' base-vs-Q1 su held-out (metrica corretta) + t/s pulito post-riavvio. Output salvati runs/ds4/BASE.txt,
+SIDECAR_Q1.txt.

@@ -1,0 +1,11 @@
+We need to write a Python function that validates an email address using regex. The function should have a docstring and include at least 3 test cases. Then explain the regex.
+
+So, we'll produce a function `validate_email(email: str) -> bool` that returns True if the email matches a regex pattern, else False. We'll include a docstring describing the function, parameters, return, and maybe examples. Then we'll provide three test cases (likely using `assert` statements or something). Then we'll explain the regex pattern.
+
+The user likely expects a complete response with code and explanation.
+
+We need to be careful: the regex should be reasonably comprehensive but not overly strict (e.g., allowing common valid emails). We'll use a common pattern like:
+
+`^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$`
+
+But we might want to allow underscores, plus signs, etc
