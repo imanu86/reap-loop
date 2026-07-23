@@ -4726,3 +4726,18 @@ a "produzione verde" (GPTQ 0.81) risolvendo la CAUSA (STE, non formato/dati/LoRA
 pronta: extract dedup -> teacher fp32 -> gptq_q1.py -> sidecar. RESTA pre-deploy: (a) sidecar nel formato
 runtime ds4 (ds4_q1_sidecar_converter.py) + test END-TO-END chat (la soglia 0.80 non e' ancora validata vs
 qualita' output reale); (b) very-cold <50 campioni; (c) multi-dominio; (d) Q1/Q2 adattivo per i <0.78.
+
+**Addendum 21 (08:15) — PIANO PRODUZIONE Q1 (utente: "avanti fino a produzione completa").** GPTQ output =
+gate/up/down.q1.npz + manifest (Q1_0_custom, block128, provenance completa). FRONTI PARALLELI:
+- FRONTE B (CRITICO, Codex): ponte GPTQ.q1.npz -> sidecar formato RUNTIME ds4 (ds4_q1_sidecar_converter.py
+  ha RUNTIME_MANIFEST_SCHEMA + un gate provenienza) + wiring per servire l'expert come Q1 nel runtime
+  (path mixed_q1 esiste). Poi TEST END-TO-END: chat reale con N esperti serviti Q1-GPTQ, l'output degrada?
+  = IL GATE MAI VALIDATO (la soglia 0.80 cosine e' euristica).
+- FRONTE A (CPU): GPTQ su piu' esperti L15 (verso i 256) - estende la distribuzione + produce i sidecar.
+  Collo: estrazione teacher fp32 per-expert (~2min x 256 = 8h serial) -> ottimizzabile con estrazione
+  all-256 in un pass GGUF (follow-up).
+- FRONTE C (Codex): F10-fix (defer cache+seed, col conto slot onesto).
+PREREQUISITO PRODUZIONE TOTALE (10240 sidecar): cattura ALL-LAYER (task #1) - la cattura attuale e' solo
+L15. Milestone raggiungibile: L15 COMPLETO (256) + end-to-end -> PROVA la pipeline; poi campagna pod all-layer.
+TEST NECESSARI PRE-PRODUZIONE: (1) end-to-end [critico]; (2) L15 full no-crolli; (3) very-cold <50 (calib
+dense per Hessian pieno); (4) Q1/Q2 adattivo per i <0.78.
