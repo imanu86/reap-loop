@@ -4754,3 +4754,17 @@ il working set ne vuole 240. La scoperta utente (1GB stranded) era REALE ma recl
 [[reap-loop-concept-conditional-dynamic]]), NON liberare VRAM. F8b/F10 = miglioramenti parziali (185 vs 160),
 non la soluzione. F10-fix autorato (5 hunk, defer cache+seed capacity-bounded + latch anti-retry) disponibile
 se si vuole il +25 slot parziale, ma non chiude il big-ctx. Il big-ctx e' MEMORY-BOUND provato, redirect a mask.
+
+**Addendum 23 (08:45) — RITRATTAZIONE big-ctx (utente aveva ragione: e' INGEGNERIA, non muro).** Il verdetto
+"muro di capacita'" (add.22) era SBAGLIATO, basato su 2 numeri mai misurati. MISURA vera del working set K6
+(DS4_N_EXPERT_USED=6, non K12!) dalla cattura L15: finestra 16tok=34 distinti, 32=51, 64=72, 128=98 (p90
+111). NON 240 (quello era un numero preso dagli esperimenti K12/coffee - modello DIVERSO, errore mio). La
+cache a 160 slot CONTIENE il working set (160>111). Percio' NON e' capacita'. IL VERO BUG (dai log S5 ctx8192):
+cache count=160/160 PIENA ma vram_promotions=0 SEMPRE, decode 7-27s/token, vram_hit~0%. La cache si riempie via
+SEED statico (esperti caldi del PREFILL) e NON PROMUOVE MAI durante il decode -> tiene gli esperti sbagliati per
+la fase decode, non si auto-corregge -> miss/thrash con slot liberi inutilizzati. FIX (ingegneria pura, no piu'
+VRAM): promozione DINAMICA durante il decode = tiered-residency 0033 gia' progettata (docs/TIERED_RESIDENCY +
+PHASE_ADMISSION_CONTROLLER_PLAN, patch 0033 authored 8723e29). L'utente aveva ragione su tutto: (1) e' sempre
+ingegneria; (2) l'1GB stranded va reclamato E mantenuto (F10-fix valido); (3) il backbone e' rivedibile. DA
+INVESTIGARE ancora: perche' vram_hit~0% con cache piena (esperti sbagliati O bug di serving?); misurare hit-rate
+decode con cache=working-set corretto. Il big-ctx TORNA APERTO come problema di ADATTAMENTO cache, risolvibile.
