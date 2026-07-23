@@ -4897,3 +4897,13 @@ esperti CONTANO, eppure la coerenza tiene. FILONE Q1 CHIUSO: da "dubbio STE 0.73
 dal runtime reale, output coerente, pipeline funzionante" (stamattina). RESTA per la validazione rigorosa:
 perplessita' base-vs-Q1 su held-out (metrica corretta) + t/s pulito post-riavvio. Output salvati runs/ds4/BASE.txt,
 SIDECAR_Q1.txt.
+
+**Addendum 35 (post-riavvio 11:00 — PERPLESSITA': la metrica GIUSTA valida Q1).** Costruito ds4_ppl.exe
+(nuovo target, teacher-forced via ds4_session_token_logprob; NB ritorna 1=ok non 0; ds4_cli e' NOT WIN32 quindi
+binario dedicato; sidecar via env come il server). Held-out heldout.txt (201 token, prosa+codice+MoE). RISULTATO:
+BASE 2-bit = ppl 3.014; Q1-L15 (sidecar 161 GPTQ, LAYER 15, SELECTED_LOAD=1) = ppl 3.151 = +4.5%. Q1 su L15
+PRESERVA la qualita' (degradazione piccola). VALIDA il filone con la metrica corretta - lo string-match end-to-end
+(0.23, add.34) era butterfly-greedy fuorviante; la perplessita' e' il metro vero. CAVEAT: solo L15 (1/43 layer);
+full-model si accumulerebbe ma +4.5%/layer a 1.125bpw e' ragionevole, e l'adattivo Q1/Q2 (duri->base) lo abbassa.
+Post-riavvio pulito (VRAM 629MB, 0 orfani). RAM durante run ~34GB (arena pinned) = ~30GB headroom libero (nota
+utente) dove vive l'idea GPU+CPU/Colibri (#17). NEXT: t/s pulito; poi ppl multi-layer per estrapolare full-model.
