@@ -4597,3 +4597,14 @@ OBBLIGATORIA, non un ripiego. F8c (crash-safety respawn) conta SOPRATTUTTO li' (
 lungo). MAPPA LEVE: F10 grow-cache = sblocca 8k sul 3060 (working-set vs cache); F8b+F8c ring =
 abilita ultra-long-ctx 250k-1M su QUALSIASI GPU. F8b non era sbagliata, era puntata alla scala di
 contesto sbagliata per il daily; casa = long-context. Da testare quando serve il regime 250k+.
+
+**Addendum 11 (05:00) — Compressione KV nativa (domanda utente): eccellente e GIA' sfruttata.**
+DS4 usa MLA con ratio per-layer (ds4.c:452 ds4_layer_compress_ratio): layer 0-1 ratio 0 (piena),
+layer pari ratio 4, layer DISPARI ratio 128 (!). Meta' dei layer comprimono la KV 128x. E' bakato
+nel modello (metadata deepseek4.attention.compress_ratios, validato). Noi lo implementiamo fedelmente
+(comp_cap=ctx/ratio+2). E' perche' la KV a 8k = solo 300MB e perche' 1M e' fattibile senza 4 H200.
+Non e' una leva lasciata sul tavolo: e' design del modello, non spingibile senza retrain. CONVERGENZA
+(le 2 domande utente streaming-KV + compressione puntano allo stesso posto): la KV NON e' mai stata il
+collo del big-ctx (300MB!); il collo e' l'I/O ESPERTI (40 layer di pesi da SSD) = leva #1 studio prefill
+(planner per-layer, expert caricato 1 volta/chunk) + F10 (cache esperti che ricresce). F8c committata.
+Studio prefill completo salvato (prefill_study.out.log via GitHub connector, sandbox ha bloccato clone).
