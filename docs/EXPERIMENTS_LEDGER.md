@@ -4550,3 +4550,13 @@ compute-bound (embarrassingly parallel: un forward-expert per (x,expert)). Caldi
 routed-specific (0.83); freddi = dense (0.81). Il crollo dense-su-full-manifold (0.46)
 conferma che la selettivita' del ROUTER e' cio' che rende Q1 viable: l'expert opera solo
 sul suo sub-manifold ristretto, dove 1.125 bpw basta. Artefatti trained_e176_dense/.
+
+**Correzione (front C, decomposizione da codice ds4_context_memory_estimate):** il
+budget 540MB del big-ctx NON e' dominato dal prefill (correggo la stima precedente
+~130MB). Decomposizione a ctx 8192 dei "context buffers" 333MiB: raw_bytes +
+compressed_bytes = KV MLA (~300MB, = F8b migra questi, device_bytes=315MB misurato)
++ scratch_bytes = 2*comp_cap*prefill_cap*4 = solo ~32MB (leva prefill_chunk ->
+dimezza a ~16MB = TRASCURABILE). Il ~130MB residuo del budget = g_cuda_tmp (scratch
+prefill che cresce nel prefill lungo, GIA' rilasciato da F6 al decode-start, questione
+di timing). CONCLUSIONE: la leva del big-ctx e' la KV via F8b (~55% del budget), NON
+il prefill. Ridurre prefill_chunk = rifinitura da pochi-MB, non fix.
