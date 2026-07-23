@@ -4780,3 +4780,17 @@ ridondanti (256, ne sparano 6) errori si MEDIANO. Bit spesi dove contano (attn 8
 (esperti 2-bit) = mixed-precision ottimale, confermato da QuantMoE-Bench/MxMoE ("attn+shared meritano piu' precisione").
 CONSEGUENZA PRODUZIONE Q1: comprimere ESPERTI (GPTQ 2->1.125), attention NON si tocca (gia' ottimale). Comprimerla
 (q8->q2) = danneggia il routing backbone per pochi GB, vale solo per long-ctx estremo (spendere qualita' per memoria KV).
+
+**Addendum 26 (09:30) — Idea utente: riduzione dinamica su miss-pressione poi riespansione. Analisi.** Tre
+target possibili: (1) PRECISIONE ATTENTION dinamica = RISCHIOSA: fattibile con base-resident+residuo-streamato
+(sfratti il residuo sotto miss), ma i miss-spike coincidono coi CAMBI DI FASE (prosa->codice) = quando il routing
+conta di piu'; degradare il backbone del routing li' -> route peggiori -> piu' miss -> spirale. Si degrada la cosa
+sbagliata nel momento sbagliato. (2) DYNAMIC-K su miss-pressione = OTTIMA (la forma migliore dell'idea): quando la
+cache thrasha, restringi il routing K6->K4 per pochi token -> working set si contrae -> entra in cache -> miss
+crollano -> ri-espandi a K6. Costo: qualita' minima+transitoria sulla RIDONDANZA esperti (errori si mediano), non
+sul backbone. E' la mask conditional-dynamic del registro [[reap-loop-concept-conditional-dynamic]], "riduzione
+minima poi riespansa" alla lettera. (3) MEMBERSHIP cache dinamica = gia' il fix promotions=0 (muovi quali esperti
+residenti, gratis, vs ri-quantizzare pesi costoso). PRINCIPIO unificante delle 3 intuizioni utente notturne (VRAM
+stranded, working set, dynamic-reduction) = RIALLOCAZIONE DINAMICA guidata da miss-pressione = endgame. REGOLA:
+riallocare la risorsa ECONOMICA (membership/K) sotto pressione, proteggere la SENSIBILE (attention). Dynamic-K su
+miss e' esperimento pulito falsificabile -> aggiunto come leva al fix big-ctx (task promotions=0).
