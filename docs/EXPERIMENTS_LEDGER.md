@@ -4770,3 +4770,13 @@ INVESTIGARE ancora: perche' vram_hit~0% con cache piena (esperti sbagliati O bug
 decode con cache=working-set corretto. Il big-ctx TORNA APERTO come problema di ADATTAMENTO cache, risolvibile.
 
 **Addendum 24 (09:00) — SCOMPOSIZIONE MODELLO (domanda utente "quanto e' l'attention"): la VRAM non e' MAI stata il vincolo.** ds4-2bit.gguf 86.71GB: ESPERTI routed 77.91GB (90%, STREAMABILE, sparse 6/256), ATTENTION 5.80GB (residente), embed/output 1.62, shared 1.15, router 0.09. RESIDENTE MINIMO (attn+embed+shared+router) = 8.66GB. Su 12GB: 8.66 resident + ~0.3 KV(8k) = 9GB -> ~3GB liberi = ~440 slot cache esperti >> working set 111 (misurato). CONFERMA DEFINITIVA (3 vie): working set 111 non 240; cache 160>111; resident floor lascia 440 slot. LA VRAM NON E' IL VINCOLO. Il big-ctx thrasha per promotions=0 (cache non adatta), NON capacita' - INGEGNERIA (utente aveva ragione). ATTENTION e' f32(299)/q8(215)/f16(187) = ALTA PRECISIONE, comprimibile: q4/q2 la porta 5.8->~1.5-3GB. ARCHITETTURA CORRETTA (utente): residente = attention(+KV) comprimibile, esperti streammati. LEVE: (8k daily) fix promotions=0 [cache adatta, gia' 3GB liberi]; (ultra-long 250k-1M) comprimi attention +4GB -> KV enorme + ring F8b. Il "rewrite backbone" dell'utente = comprimere l'attention (ora f32/q8) per il regime long-ctx. Verdetto muro CANCELLATO: e' tutto ingegneria, headroom abbondante.
+
+**Addendum 25 (09:15) — Attention high-precision = allocazione OTTIMALE, non spreco (domanda utente).** Scomposizione
+attention per ruolo: proiezioni grandi (attn_output_a/b, q_b, q_a, kv) = q8_0 8-bit (~6.4GB, NON f32); compressori
+MLA (compressor_gate/kv/ape, indexer) = f16 (~0.9GB); norms/sinks/scales = f32 ma VETTORI DA BYTE (~0GB, RMSNorm
+divide + sink toccano softmax = f32 obbligatorio). ZERO f32 sprecato su matrici grandi. PERCHE' giusto: l'attention
+(6.7% del modello) decide DOVE fluisce l'info (routing/mixing), errori si COMPONGONO su ogni token/layer; esperti
+ridondanti (256, ne sparano 6) errori si MEDIANO. Bit spesi dove contano (attn 8-bit) risparmiati dove tollera
+(esperti 2-bit) = mixed-precision ottimale, confermato da QuantMoE-Bench/MxMoE ("attn+shared meritano piu' precisione").
+CONSEGUENZA PRODUZIONE Q1: comprimere ESPERTI (GPTQ 2->1.125), attention NON si tocca (gia' ottimale). Comprimerla
+(q8->q2) = danneggia il routing backbone per pochi GB, vale solo per long-ctx estremo (spendere qualita' per memoria KV).
