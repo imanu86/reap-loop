@@ -4715,3 +4715,14 @@ finge una derivata sulla discontinuita' del segno -> update sotto-soglia sparisc
 via Hessian error-feedback deterministico, no gradiente. VERDETTO FINALE: adottare GPTQ per la produzione
 Q1. Distribuzione GPTQ completa sui 13 in corso (bl9c4m5vl). Poi: scrivere sidecar Q1 dal GPTQ output nel
 formato runtime + test end-to-end (la validazione che manca).
+
+**Addendum 20 (08:00) — DISTRIBUZIONE GPTQ COMPLETA: filone Q1 SALVO.** GPTQ-Q1 su 13 esperti caldi
+(gptq_all_results.tsv, leakage-clean): mediana 0.811, min 0.755, max 0.855, media 0.811. >=0.80: 10/13;
+>=0.75: 13/13 (TUTTI). Contro STE leaky (mediana 0.733, >=0.80 solo 2/13): +0.08 mediana e NESSUN crollo -
+il peggiore GPTQ (0.755) supera la mediana STE. Distribuzione STRETTA e ALTA = qualita' PREVEDIBILE per
+expert, non lotteria. VERDETTO Q1 DEFINITIVO: produzione VIABLE via GPTQ one-shot CPU (~0.80 mediano
+garantito, minuti/expert, zero training/GPU/overfit). La notte ha portato il Q1 da "in dubbio" (STE 0.73)
+a "produzione verde" (GPTQ 0.81) risolvendo la CAUSA (STE, non formato/dati/LoRA/leakage). PIPELINE PRODUZIONE
+pronta: extract dedup -> teacher fp32 -> gptq_q1.py -> sidecar. RESTA pre-deploy: (a) sidecar nel formato
+runtime ds4 (ds4_q1_sidecar_converter.py) + test END-TO-END chat (la soglia 0.80 non e' ancora validata vs
+qualita' output reale); (b) very-cold <50 campioni; (c) multi-dominio; (d) Q1/Q2 adattivo per i <0.78.
