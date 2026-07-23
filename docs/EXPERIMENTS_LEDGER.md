@@ -4649,3 +4649,21 @@ non universale. Vie: (a) bit-adattivo (piu' bit per gli esperti duri), (b) dilui
 sparano di rado -> 0.70 forse basta, da validare end-to-end). Il dense-on-routed cold non ha completato
 (teacher dense per-expert costoso, run veloce); da rifare se serve. NEXT deciso dall'utente: distillazione
 REGOLARIZZATA sui peggiori (e77=0.58, e87=0.64) per capire se 0.72 e' tetto-formato o difetto-training.
+
+**Addendum 15 (06:00) — RICERCA COMPRESSIONE SOTA (Codex): il fix di Q1, validato dalla letteratura.**
+Report completo: D:\ds4_work\g73_fix\compression_sota.out.log (fonti verificate, link a commit/arXiv).
+DIAGNOSI: il nostro train/test gap (0.9/0.73) e' un fallimento di RAPPRESENTAZIONE+OTTIMIZZAZIONE, non
+dati/reg. STE su 25M segni + LoRA "in nessuno dei 2 regimi che funzionano" (native QAT globale tipo
+BitNet/ParetoQ; o PTQ strutturato tipo AQLM/QuIP#). Tre difetti precisi: (1) STE sbagliato per ottim.
+discreta - update sotto-soglia spariscono (PV-Tuning arXiv:2405.14852 lo prova); (2) COSINE LOSS
+magnitude-blind, dominata da direzioni frequenti (difetto del NOSTRO obiettivo); (3) "16k caldi ~ 50
+freddi" = attivazioni routed a rango basso/anisotrope, piu' token stessi-domini ~zero info indipendente.
+FIX 2 STRADE: Path A (formato Q1_0 invariato, trainer-only, feasible stanotte) = GPTQ-style: obiettivo
+Hessian-weighted reconstruction tr((W-Q)H(W-Q)^T) NON cosine, sign-assignment Hessian-aware NON STE,
+NIENTE LoRA, + rotazione Hadamard fissa (QuaRot); one-shot, Hessian 64MiB, no overfit possibile. Path B
+(nuovo formato, meglio ma serve kernel dequant) = AQLM codebook VQ ~1.38bpw. IDEA UTENTE Q1/Q2 ADATTIVO
+= prior art solido (QuantMoE-Bench 2406.08155, MxMoE 2505.05799, MoQE, QMoE 2310.16795 = precedente MoE
+diretto GPTQ-per-expert 0.8bpw); a budget 1.5bpw medio -> Q2 al 37.5% esperti sensibili. CALIBRAZIONE:
+split per-documento non per-token, dedup, stratifica per dominio/router-prob/norma, damping Hessian.
+ESPERIMENTO DECISIVO: GPTQ-Q1 one-shot su 2-3 esperti -> se batte 0.73 era il TRAINING, se ~0.73 e' il
+FORMATO 1.125bpw (serve VQ). NEXT: decisione utente Path A (GPTQ-Q1) vs B (AQLM) vs Q1/Q2 adattivo.
