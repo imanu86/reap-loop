@@ -4806,3 +4806,15 @@ frammenti). CAMPAGNA GPTQ: 98/~200 esperti fatti (CPU, in corso), produce gate/u
 STATO PRODUZIONE Q1: scienza SOLIDA (GPTQ 0.81, breakthrough); pipeline produzione = campagna GPTQ (in corso) + ponte
 sidecar (formato mappato, converter da finire) + end-to-end (dipende dal ponte). Non e' finita, ma il percorso e' chiaro
 e senza incognite scientifiche - solo engineering GGUF rimasto.
+
+**Addendum 28 (10:00) — DISTRIBUZIONE L15 DEFINITIVA + SPEC PRODUZIONE Q1/Q2 (1.46 bpw).** GPTQ su 161/256
+esperti L15 (>=200 campioni; gptq_L15_full.tsv): mediana 0.766, media 0.748, min 0.569, max 0.924. >=0.80: 46
+(29%); >=0.75: 92 (57%); <0.72: 54 (34%). I 13 caldi (0.811) erano il lato alto; la distribuzione completa e' piu'
+larga (coda a 0.57). SPEC PRODUZIONE (idea utente Q1/Q2 adattivo, ora coi numeri): 107 esperti -> Q1 (1.125bpw,
+>=0.72), 54 -> Q2 (2.125bpw, lista: 4,5,11,19,24,36,42,45,49,54,55,56,60,65,66,72,74,75,78,86,88,90,91,98,107,110,
+115,121,129,133,135,136,140,147,151,158,161,163,180,186,189,190,205,210,214,220,221,222,223,239,244,245,249,253).
+BUDGET MEDIO = 1.460 bpw, coincide col ~1.5 predetto (research). VERIFICHE oneste rimaste: (1) i <0.72 migliorano
+DAVVERO a Q2? (assunto 2x bit, da provare su 2-3); (2) 95 esperti FREDDI (<200 campioni) non nei 161 -> serve
+GPTQ con calib DENSE (tutti gli x, Hessian pieno). Il filone Q1 e' passato in una notte da "in dubbio" a spec di
+produzione quantitativa: mix Q1/Q2 a 1.46bpw, lista Q2 concreta, pipeline GPTQ collaudata. Manca solo l'engineering
+sidecar (converter GGUF in corso Codex) + end-to-end + i freddi.
