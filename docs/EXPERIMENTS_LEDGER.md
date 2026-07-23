@@ -4626,3 +4626,16 @@ connettore GitHub (sandbox ha bloccato il clone locale; link fissati a commit). 
 Report completo: D:\ds4_work\g73_fix\prefill_study.out.log. CLASSIFICA per noi (3060/Windows): #1
 expert-I/O planner per-layer (allineato a F10 grow-cache: entrambi attaccano l'I/O esperti); #2 prefetch
 predittivo (dopo che il planner rende deterministico l'ordine); #3 prefix-caching per il multi-turno.
+
+**Addendum 13 (05:30) — PILOTA SCALATO 13 esperti caldi: RIDIMENSIONA il titolo Q1 (misura>speranza).**
+E176 (0.83) era il CASO FORTUNATO sul lato alto. Distribuzione reale 13 esperti caldi L15
+(multi_expert_results.tsv): mediana 0.733, media 0.716, range 0.582(e77)-0.807(e246). Solo 2/13 >=0.80,
+4/13 >=0.75. SEGNALE DIAGNOSTICO: forte OVERFITTING su molti (e77 train0.77/test0.58; e87 0.89/0.64;
+e43 0.90/0.67) -> non fame-dati (hanno 4.6-16.7k) ma capacita'/regolarizzazione a 1.125bpw. VERDETTO
+ONESTO: Q1@1.125bpw NON riproduce affidabilmente gli esperti, e' expert-dipendente (mediana 0.73), NON
+lo 0.83 universale che E176 suggeriva. Produzione 10240 sidecar a bit fisso IN DUBBIO. Il pilota scalato
+ha fatto il suo lavoro: evitato $100 su una conclusione da un expert fortunato. CAVEAT che salvano
+l'architettura (misurabili): (1) il carico vero sono i FREDDI (cold-test in corso), errore diluito, barra
+piu' bassa; (2) la soglia 0.80 e' euristica mia, MAI validata vs qualita' output -> test vero = end-to-end
+(chat degrada con Q1 transient-serve?). LEVE PRODUZIONE: bit-rate adattivo (Q1 facili/Q2 difficili) o fix
+overfitting (reg/early-stop/LoRA-rank). NON promuovere la produzione finche' cold-test + test end-to-end.
