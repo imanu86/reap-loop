@@ -4560,3 +4560,17 @@ dimezza a ~16MB = TRASCURABILE). Il ~130MB residuo del budget = g_cuda_tmp (scra
 prefill che cresce nel prefill lungo, GIA' rilasciato da F6 al decode-start, questione
 di timing). CONCLUSIONE: la leva del big-ctx e' la KV via F8b (~55% del budget), NON
 il prefill. Ridurre prefill_chunk = rifinitura da pochi-MB, non fix.
+
+**Addendum 8 (03:30) — F8c: crash ring diagnosticato + SCOPERTA STRATEGICA.** Codex
+(f8c_ring_crash.out.log, 12 hunk): il crash "whole-map-classification-d2h" e' una RACE
+reale — cuda_moe_route_worker_cancel_and_join non sincronizza il route_upload_stream
+(non-blocking), l'invalidazione azzera la device map sul default stream, il respawn
+riusa buffer non quiescenti. Fix = safe respawn (query stream, 5s quiescenza o
+safe-leaked+fallback, no cudaDeviceSynchronize). APPLICATO. **MA il punto strategico:**
+anche con timeout 300s (zero crash, S5) il ring resta ~90s/token → sistemare il crash
+lo rende SICURO, non VELOCE. Il ring KV migrate, su 3060/WDDM, si mangia in latenza piu'
+di quanto guadagna liberando i 315MB. => la leva big-ctx via migrazione-KV e' in DUBBIO
+su questo HW (il rischio WDDM originale confermato). Ipotesi alternativa da testare: la
+vera leva big-ctx e' RIDURRE IL WORKING SET (mask/pruning K12 -> il set/token scende
+sotto la capacity 160) non liberare VRAM con streaming KV lento. Lo studio prefill
+(Codex, in corso) potrebbe indicare la strada. F8c resta valore (server che non crasha).
