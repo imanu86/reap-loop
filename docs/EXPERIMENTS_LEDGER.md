@@ -4667,3 +4667,15 @@ diretto GPTQ-per-expert 0.8bpw); a budget 1.5bpw medio -> Q2 al 37.5% esperti se
 split per-documento non per-token, dedup, stratifica per dominio/router-prob/norma, damping Hessian.
 ESPERIMENTO DECISIVO: GPTQ-Q1 one-shot su 2-3 esperti -> se batte 0.73 era il TRAINING, se ~0.73 e' il
 FORMATO 1.125bpw (serve VQ). NEXT: decisione utente Path A (GPTQ-Q1) vs B (AQLM) vs Q1/Q2 adattivo.
+
+**Addendum 16 (06:30) — Test F10 + LEAKAGE Q1.** (1) F10 two-phase FALLISCE a runtime: fase B GROW=1
+-> "[expert-cache-grow] mode=two-phase result=failed cache=disabled fallback=exact-streaming". CAUSA:
+conflitto con prefill-vram-seed (il pre-warm della cache coi caldi durante il prefill si aspetta una
+cache che F10 ha RIMANDATO -> "prefill-vram-seed result=failed reason=cache-capacity" -> finalize
+fallisce -> cache disabilitata = PEGGIO del baseline 160). Bug d'integrazione: la deferral rompe il
+contratto del seed. FIX: F10 deve anche disabilitare/rimandare il prefill-vram-seed sotto GROW=1, o
+approccio diverso. Rimandato a Codex. Baseline fase A: cache 160, decode 2733ms. (2) LEAKAGE Q1
+SCOPERTO: shard per-expert estratti SENZA dedup -> E176 5173 righe/3797 token unici/1090 duplicati ->
+split random mette copie in train+test -> i 0.73-0.83 sono OTTIMISTICI, il vero held-out e' peggiore.
+Batteria ablation (leakage-clean + no-LoRA su e176/e77/e87) + GPTQ-Q1 (Codex, one-shot no-STE) in corso.
+Loss training e' GIA' MSE gate-weighted (cosine solo metrica) - il report sbagliava su quel punto per noi.
