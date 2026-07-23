@@ -4703,3 +4703,15 @@ da ~0.75-0.84 clean su tutta la distribuzione testata -> PRODUZIONE VIABLE via G
 solo coding); (c) very-cold <50 campioni (Hessian ha bisogno di ~128+ righe - borderline, testare); (d) Q1/Q2
 adattivo per chi resta basso. NEXT: GPTQ su tutti i 13 del pilota + i freddi -> distribuzione GPTQ completa;
 poi scrivere Q1 sidecar dal GPTQ output nel formato runtime + test end-to-end.
+
+**Addendum 19 (07:45) — TESTA-A-TESTA STE-clean vs GPTQ-clean: chiude la diagnosi.** Ablation
+(ablation_results.tsv) su e176/e77/e87 x [STE-leaky / STE-clean-lora4 / STE-clean-lora0] vs GPTQ-clean:
+e176: 0.833/0.792/0.813 vs GPTQ 0.843. e77: 0.581/0.577/0.541 vs GPTQ 0.755. e87: 0.642/0.627/0.629 vs
+GPTQ 0.811. TRE VERITA': (1) LEAKAGE PICCOLO ~-0.04 (i 0.73 STE erano solo lievemente gonfiati, non un
+disastro - onesto: temevo peggio). (2) LoRA NON e' la colpa (effetto incoerente: aiuta e176 0.792->0.813,
+danneggia e77 0.577->0.541). (3) GPTQ domina ovunque (+0.03 facili, +0.18 difficili); nessuna variante STE
+(clean/no-LoRA) si avvicina. LA CAUSA E' STE (ottimizzazione dei segni), come da ricerca compressione: STE
+finge una derivata sulla discontinuita' del segno -> update sotto-soglia spariscono; GPTQ risolve i segni
+via Hessian error-feedback deterministico, no gradiente. VERDETTO FINALE: adottare GPTQ per la produzione
+Q1. Distribuzione GPTQ completa sui 13 in corso (bl9c4m5vl). Poi: scrivere sidecar Q1 dal GPTQ output nel
+formato runtime + test end-to-end (la validazione che manca).
