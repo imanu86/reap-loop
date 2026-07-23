@@ -4794,3 +4794,15 @@ residenti, gratis, vs ri-quantizzare pesi costoso). PRINCIPIO unificante delle 3
 stranded, working set, dynamic-reduction) = RIALLOCAZIONE DINAMICA guidata da miss-pressione = endgame. REGOLA:
 riallocare la risorsa ECONOMICA (membership/K) sotto pressione, proteggere la SENSIBILE (attention). Dynamic-K su
 miss e' esperimento pulito falsificabile -> aggiunto come leva al fix big-ctx (task promotions=0).
+
+**Addendum 27 (09:45) — Ponte sidecar: formato MAPPATO, converter da completare (onesto).** Codex
+(sidecar_bridge.out.log) ha mappato ENTRAMBI i formati ma NON consegnato un converter runnable: (a) GPTQ .npz =
+chiavi sign_bits[out,nblk,16]uint8 (packbits little), scales[out,nblk]fp16, shape, block_size=128; bit0->-1 bit1->+1
+(gptq_q1.py:977/1005). (b) Loader ds4 (ds4.c:19511 q1_0_sidecar_bind): NON legge JSON companion; vuole GGUF v3 coi
+metadata semantici del base + stesso general.name, validati da config_validate_model; lista in ds4_q1_sidecar_converter.py:113.
+La mappatura (parte difficile) c'e'; RESTA: scrivere+testare il writer GGUF che impacca sign_bits/scales nel blocco
+GGML Q1_0 coi metadata giusti + golden byte-test. RILANCIARE Codex per il converter completo (o completarlo a mano dai
+frammenti). CAMPAGNA GPTQ: 98/~200 esperti fatti (CPU, in corso), produce gate/up/down.q1.npz = materia prima sidecar.
+STATO PRODUZIONE Q1: scienza SOLIDA (GPTQ 0.81, breakthrough); pipeline produzione = campagna GPTQ (in corso) + ponte
+sidecar (formato mappato, converter da finire) + end-to-end (dipende dal ponte). Non e' finita, ma il percorso e' chiaro
+e senza incognite scientifiche - solo engineering GGUF rimasto.
