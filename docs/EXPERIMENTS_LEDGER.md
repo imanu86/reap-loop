@@ -4690,3 +4690,16 @@ l'intuizione utente ("distillazione LoRA non tiene"). IN CORSO: GPTQ su e77(STE 
 decisore-produzione (se GPTQ risolleva anche i peggiori, i 10240 sidecar sono viable via GPTQ one-shot,
 zero training, minuti/expert su CPU). Se GPTQ tiene su tutta la distribuzione -> il filone Q1 e' SALVO e
 la produzione e' molto piu' economica del previsto (no GPU training, no overfit da gestire).
+
+**Addendum 18 (07:15) — PRODUZIONE Q1 VERDE: GPTQ salva i peggiori.** GPTQ-Q1 clean vs STE+LoRA leaky:
+e176 0.83->0.843, e87 0.64->0.811 (+0.17!), e77 0.58->0.755 (+0.17!). I PEGGIORI sotto STE sono quelli che
+GPTQ risolleva di piu'. Distribuzione: STE leaky mediana ~0.64 -> GPTQ clean ~0.81, caso peggiore 0.58->0.755
+(sopra soglia utile). GPTQ NON e' marginale: ribalta il filone. Metodo produzione-ideale: one-shot, CPU,
+minuti/expert, zero training/GPU/overfit, holdout pulito. I 10240 sidecar fattibili senza GPU-training.
+VERDETTO Q1 CONSOLIDATO (3 revisioni in una notte, onesto): (1) "muro sfondato 0.83" [E176 fortunato+leaky];
+(2) "mediana 0.73, dubbio" [STE su 13, ancora leaky]; (3) DEFINITIVO: il tetto era STE+LoRA, GPTQ one-shot
+da ~0.75-0.84 clean su tutta la distribuzione testata -> PRODUZIONE VIABLE via GPTQ. CAVEAT residui pre-prod:
+(a) validazione end-to-end (0.75-0.84 preserva l'output chat? soglia mai validata); (b) multi-dominio (cattura
+solo coding); (c) very-cold <50 campioni (Hessian ha bisogno di ~128+ righe - borderline, testare); (d) Q1/Q2
+adattivo per chi resta basso. NEXT: GPTQ su tutti i 13 del pilota + i freddi -> distribuzione GPTQ completa;
+poi scrivere Q1 sidecar dal GPTQ output nel formato runtime + test end-to-end.
