@@ -4587,3 +4587,13 @@ al picco di pressione prefill), l'opposto del bisogno. FIX candidato (elegante, 
 far RICRESCERE la cache al passaggio prefill->decode (hook F6 gia' li') reclamando l'1-2GB liberato ->
 a 8192: 160 -> ~310 slot > working set ~240 = BIG-CTX RISOLTO GRATIS. Codex incaricato del patch
 (realloc-and-grow o two-phase sizing). Questa e' la leva vera, non la KV-migrate.
+
+**Addendum 10 (04:30) — RISCATTO F8b (intuizione utente): il ring KV e' per l'ULTRA-LONG-CTX.**
+Utente: "lo streaming KV torna utile per contesti molto grandi; la gente viaggia a 250k KV
+minimo, DS4 supporta 1M." Corretto: la KV MLA a 8k = ~300MB (sta in VRAM -> F10 grow-cache e'
+la leva, il ring costa solo latenza). A 250k = ~10GB, a 1M = ~40GB -> NON entra in nessuna VRAM
+(nemmeno H100) -> streaming host+double-buffering+online-softmax esatto (F8b) e' l'architettura
+OBBLIGATORIA, non un ripiego. F8c (crash-safety respawn) conta SOPRATTUTTO li' (ring esercitato a
+lungo). MAPPA LEVE: F10 grow-cache = sblocca 8k sul 3060 (working-set vs cache); F8b+F8c ring =
+abilita ultra-long-ctx 250k-1M su QUALSIASI GPU. F8b non era sbagliata, era puntata alla scala di
+contesto sbagliata per il daily; casa = long-context. Da testare quando serve il regime 250k+.
