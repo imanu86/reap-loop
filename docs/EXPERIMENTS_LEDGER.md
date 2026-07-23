@@ -4843,3 +4843,13 @@ metadata+identity+round-trip NPZ byte). Sidecar PRODUZIONE L15 (161 GPTQ) in gen
 END-TO-END (server con sidecar, DS4_Q1_0_LAYER_FIRST/LAST=15, chat reale, output degrada?) = valida la soglia
 mai provata. Prereq: riavvio (4.7GB RAM orfana). Pipeline Q1 COMPLETA: cattura->GPTQ->sidecar GGUF, solo
 end-to-end rimasto. Zero incognite scientifiche, solo il test di conferma.
+
+**Addendum 31 (10:45) — SIDECAR PRODUZIONE L15 GENERATO+VERIFICATO. Pipeline Q1 completa fino al GGUF.** 
+sidecar_L15_prod.gguf: 909MB, 161 esperti GPTQ di L15, verifica interna PASSATA (metadata, identity tensors,
+round-trip NPZ byte-level). Servibile via DS4_Q1_0_EXPERT_SIDECAR + DS4_Q1_0_LAYER_FIRST/LAST=15. LA PIPELINE Q1
+E' COMPLETA E FUNZIONANTE: cattura fleet -> GPTQ one-shot -> sidecar GGUF valido. RESTA SOLO il test END-TO-END
+runtime (conferma, non scoperta): server col sidecar, chat reale, output degrada vs base? -> valida la soglia
+0.80 mai provata contro qualita' reale. Test qualita' robusto allo stato RAM; t/s pulito serve riavvio (4.7GB
+orfana). BILANCIO FILONE Q1 (una notte): dubbio STE 0.73 -> GPTQ 0.81 -> spec produzione 1.46bpw -> pipeline
+GGUF funzionante. Zero incognite scientifiche. Il converter (gptq_to_sidecar.py, moe-aggressive-commit) e' la
+prova che GPTQ-Q1 diventa un artefatto servibile dal runtime esistente.
