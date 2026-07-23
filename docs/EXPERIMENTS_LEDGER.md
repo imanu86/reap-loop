@@ -4830,3 +4830,16 @@ da Q1 (1.125) = risparmio ~0.875bpw x 107. (2) FREDDI via calib DENSE: e117 (50 
 161 + freddi via dense), base 2-bit per il resto; ~1.46bpw medio. NEXT: converter GGUF con copertura parziale
 (Codex in corso) -> primo sidecar reale -> end-to-end. NB estendere gptq a 2-bit resta possibile SE si vuole
 comprimere anche i duri sotto 2-bit (follow-up), ma non necessario per la produzione base.
+
+**Addendum 30 (10:30) — CONVERTER SIDECAR FUNZIONA: pipeline Q1 completa fino al GGUF.** Codex (fresh, il resume
+si piantava) ha scritto tools/gptq_to_sidecar.py (moe-aggressive-commit, commit f00465c+fix): GPTQ .npz ->
+GGUF v3 sidecar caricabile via DS4_Q1_0_EXPERT_SIDECAR. Formato Q1_0 VERIFICATO vs runtime: type-id GGML 41,
+blocco 18 byte = fp16 scale LE + 16 byte sign-bit (bitorder little). Metadata semantici copiati dal base +
+general.name (expert_group_* resi opzionali: assenti in ds4-2bit, il runtime non li richiede). VINCOLO scoperto:
+il binder q1_0_sidecar_bind richiede tensori Q1_0 COMPLETI per layer -> esperti non-GPTQ dequant base->Q1;
+quindi "hard->base-2bit" NON possibile intra-layer (o tutti Q1 o niente sidecar) - l'adattivo Q2 va ripensato
+(hard->Q1-naive vs meccanismo per-expert opt-out da investigare). TEST sidecar 5-expert: OK (909MB, verifica
+metadata+identity+round-trip NPZ byte). Sidecar PRODUZIONE L15 (161 GPTQ) in generazione. ULTIMO PASSO: test
+END-TO-END (server con sidecar, DS4_Q1_0_LAYER_FIRST/LAST=15, chat reale, output degrada?) = valida la soglia
+mai provata. Prereq: riavvio (4.7GB RAM orfana). Pipeline Q1 COMPLETA: cattura->GPTQ->sidecar GGUF, solo
+end-to-end rimasto. Zero incognite scientifiche, solo il test di conferma.
