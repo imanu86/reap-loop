@@ -4608,3 +4608,21 @@ Non e' una leva lasciata sul tavolo: e' design del modello, non spingibile senza
 collo del big-ctx (300MB!); il collo e' l'I/O ESPERTI (40 layer di pesi da SSD) = leva #1 studio prefill
 (planner per-layer, expert caricato 1 volta/chunk) + F10 (cache esperti che ricresce). F8c committata.
 Studio prefill completo salvato (prefill_study.out.log via GitHub connector, sandbox ha bloccato clone).
+
+**Addendum 12 (05:10) — Studio prefill (Codex, GitHub-wide) — leve estratte.** Fonti verificate via
+connettore GitHub (sandbox ha bloccato il clone locale; link fissati a commit). Tecniche mappate:
+- **Expert-I/O planner per-layer** (LA leva non-tirata): caricare gli esperti PER-LAYER-tutti-i-token del
+  chunk, non per-token-tutti-i-layer -> ogni expert letto 1 volta per chunk invece che per token. Il
+  batching base c'e' gia'; manca il PLANNER CUDA/Windows che ordina/coalizza gli I/O (PR #514 upstream:
+  .expbundle, coalescing gate/up/down, dense staging ring). Beneficio ALTO sul nostro prefill, costo medio.
+- **Prefetch predittivo cross-layer** (ProMoE 2410.22134, MoE-Infinity, Fate): prefetch dell'onda expert
+  successiva col fallback esatto; potenziale ma prematuro finche' restano reload/seek/sync deterministici.
+- **MLA absorb** (DeepSeek V2/V3): aiuta KV/attention ma NON riduce i 40 layer di traffico expert -> non
+  e' la nostra leva (confermato: collo = expert I/O, non KV).
+- **Prefix caching / PD disaggregation** (DistServe, Splitwise, Mooncake): leva sui prefissi RIPETUTI, non
+  sul primo cold prefill; utile per chat multi-turno, non per il primo prompt lungo.
+- **Speculative prefill / token pruning** (SpecPrefill 2502.02789): un modello leggero pota token del
+  prompt -> meno lavoro prefill; prompt compression, rischio qualita'.
+Report completo: D:\ds4_work\g73_fix\prefill_study.out.log. CLASSIFICA per noi (3060/Windows): #1
+expert-I/O planner per-layer (allineato a F10 grow-cache: entrambi attaccano l'I/O esperti); #2 prefetch
+predittivo (dopo che il planner rende deterministico l'ordine); #3 prefix-caching per il multi-turno.
