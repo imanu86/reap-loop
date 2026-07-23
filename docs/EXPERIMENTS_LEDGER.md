@@ -4574,3 +4574,16 @@ su questo HW (il rischio WDDM originale confermato). Ipotesi alternativa da test
 vera leva big-ctx e' RIDURRE IL WORKING SET (mask/pruning K12 -> il set/token scende
 sotto la capacity 160) non liberare VRAM con streaming KV lento. Lo studio prefill
 (Codex, in corso) potrebbe indicare la strada. F8c resta valore (server che non crasha).
+
+**Addendum 9 (04:00) — SCOPERTA UTENTE: ~1-2GB VRAM MAI RECLAMATA (candidato #1 big-ctx, GRATIS).**
+Osservazione utente: "durante i test la VRAM non si riempie mai, ~1GB di margine, e' voluto?"
+Verificato NO: la expert cache e' dimensionata al PRIMO prefill (cuda_moe_expert_cache_prepare,
+lazy dai path forward 35490/37181/40823) quando i buffer transitori del prefill pressano la VRAM;
+cap=max_slots=(free-reserve)/6.75MB al momento del calcolo. Poi il prefill finisce, ~1-2GB si
+liberano (F6 + graph buffers) MA la cache e' assegnata UNA volta (capacity= riga 31263, early-return
+se config combacia) e NON ricresce. Dati decode-start: ctx768 free=1.91GB cache=250; ctx8192
+free=1.16GB cache=160. PARADOSSO: la cache nasce PIU' PICCOLA quando il ctx e' PIU' GRANDE (sizing
+al picco di pressione prefill), l'opposto del bisogno. FIX candidato (elegante, no F8b, no ring lento):
+far RICRESCERE la cache al passaggio prefill->decode (hook F6 gia' li') reclamando l'1-2GB liberato ->
+a 8192: 160 -> ~310 slot > working set ~240 = BIG-CTX RISOLTO GRATIS. Codex incaricato del patch
+(realloc-and-grow o two-phase sizing). Questa e' la leva vera, non la KV-migrate.
