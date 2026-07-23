@@ -4639,3 +4639,13 @@ l'architettura (misurabili): (1) il carico vero sono i FREDDI (cold-test in cors
 piu' bassa; (2) la soglia 0.80 e' euristica mia, MAI validata vs qualita' output -> test vero = end-to-end
 (chat degrada con Q1 transient-serve?). LEVE PRODUZIONE: bit-rate adattivo (Q1 facili/Q2 difficili) o fix
 overfitting (reg/early-stop/LoRA-rank). NON promuovere la produzione finche' cold-test + test end-to-end.
+
+**Addendum 14 (05:45) — COLD-TEST: piu' dati NON aiuta, il tetto e' il formato.** Esperti freddi routed
+(50-160 campioni): e63(151)=0.700, e15(160)=0.697, e117(50)=0.716, e252(55)=0.652. Confronto: caldi
+4.6-16.7k campioni = mediana 0.73; freddi 50-160 = 0.65-0.72. QUINDI il conteggio campioni NON e' il
+collo (caldi 16.7k ~ freddi 50). Il collo e' FORMATO 1.125bpw + overfitting. La maggioranza cluster
+0.65-0.80 qualunque n; E176(0.83)/e246(0.81) = fortunati. VERDETTO Q1 CONSOLIDATO: tetto ~0.72 mediano,
+non universale. Vie: (a) bit-adattivo (piu' bit per gli esperti duri), (b) diluizione architetturale (freddi
+sparano di rado -> 0.70 forse basta, da validare end-to-end). Il dense-on-routed cold non ha completato
+(teacher dense per-expert costoso, run veloce); da rifare se serve. NEXT deciso dall'utente: distillazione
+REGOLARIZZATA sui peggiori (e77=0.58, e87=0.64) per capire se 0.72 e' tetto-formato o difetto-training.
