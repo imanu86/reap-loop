@@ -4868,3 +4868,17 @@ finisce entro la finestra layer GPU, 1-2 esperti ~1-2ms overlappano), core dedic
 H2D output 16KB + sync/layer. Prior art forte. Esiste gia' un path CPU (ds4_cpu_decode_scratch, forward CPU
 per DS4_NO_GPU). NEXT: prototipo = shared-expert su CPU da RAM (il piu' semplice, deterministico) -> misurare
 H2D/token risparmiato + t/s; poi estendere ai cold routed. Complementare al fix promotions=0 [[reap-loop-concept-conditional-dynamic]].
+
+**Addendum 33 (11:15) — COLIBRI: l'idea GPU+CPU era gia' citata dall'utente, ed e' il blueprint.** L'utente
+ha ricordato Colibri (github.com/JustVugg/colibri, audit bad64d1 in DS4_MOE_EXTERNAL_AUDIT_RANKED_20260714.md).
+Colibri = ESATTAMENTE le 2 idee di stanotte: (a) "its cold path can compute in CPU RAM" = expert-split GPU+CPU
+(add.32); (b) three-tier state machine SSD/RAM/VRAM + LFRU/heat/recency repin = fix promotions=0 (add.23/15).
+Anche llama.cpp PR#24524: "CPU threads compute miss rows concurrently with GPU hit rows... avoids making every
+miss a synchronous H2D penalty" = idem. L'audit aveva gia' rankato l'esperimento DECISIVO come #0: "IQ2XXS
+warm-tier microbenchmark: decides CPU miss vs transient H2D architecture" - MAI eseguito. CAVEAT audit: "valuable
+only if an IQ2XXS CPU expert kernel is competitive on our CPU". NOVITA' STANOTTE che cambia le probabilita':
+l'audit assumeva IQ2XXS (2-bit); ora abbiamo Q1 (1.125bpw) = esperti ~meta' piu' piccoli -> kernel CPU su expert
+Q1 MOLTO piu' probabile che batta l'H2D. IL Q1 RENDE COLIBRI PIU' FATTIBILE. CONVERGENZA: filone Q1 (compressione)
++ filone velocita' (GPU+CPU split + three-tier) NON ortogonali -> si incontrano: Q1 rende competitivo il
+compute-CPU-da-RAM -> elimina scambi -> risolve thrash. NEXT DECISIVO (audit #0, ora con Q1): microbenchmark
+kernel CPU Q1-expert vs transient-H2D; se CPU vince, implementare il cold-path-in-CPU (Colibri) + three-tier.
