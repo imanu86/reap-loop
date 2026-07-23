@@ -1,0 +1,92 @@
+{
+  "algorithm": {
+    "act_order": "within-block",
+    "damp_fraction": 0.01,
+    "down_hessian_input": "silu(gate_teacher(X))*up_teacher(X)",
+    "gradients": false,
+    "name": "GPTQ/OBQ one-shot",
+    "scale_initialization": "mean_abs_current_residual_block",
+    "scale_refine_iters": 2,
+    "scale_refinement": "closed_form_projection_in_inverse_cholesky_metric",
+    "scale_rounded_before_final_error_feedback": true,
+    "training": false
+  },
+  "bitorder": "little",
+  "bits_per_weight": 1.125,
+  "block_size": 128,
+  "calibration": {
+    "heldout_unique_rows": 570,
+    "seed": 1234,
+    "source_rows": 3797,
+    "split_mode": "unique-row-index",
+    "train_unique_rows": 3227
+  },
+  "format": "Q1_0_custom",
+  "format_version": 1,
+  "hessian": {
+    "down": {
+      "effective_damping": 0.0004564040154218674,
+      "mean_diag_before_damping": 0.04564040154218674,
+      "requested_damping": 0.0004564040154218674,
+      "retry_extra_damping": 0.0,
+      "samples": 3227.0
+    },
+    "gate_up": {
+      "effective_damping": 0.0010602082312107085,
+      "mean_diag_before_damping": 0.10602082312107086,
+      "requested_damping": 0.0010602082312107085,
+      "retry_extra_damping": 0.0,
+      "samples": 3227.0
+    }
+  },
+  "matrices": {
+    "down": {
+      "file": "down.q1.npz",
+      "shape": [
+        4096,
+        2048
+      ]
+    },
+    "gate": {
+      "file": "gate.q1.npz",
+      "shape": [
+        2048,
+        4096
+      ]
+    },
+    "up": {
+      "file": "up.q1.npz",
+      "shape": [
+        2048,
+        4096
+      ]
+    }
+  },
+  "quantization": {
+    "down": {
+      "normalized_error_sum": 32.61035740375519,
+      "scale_refine_iters": 2.0
+    },
+    "gate": {
+      "normalized_error_sum": 47.84818358719349,
+      "scale_refine_iters": 2.0
+    },
+    "up": {
+      "normalized_error_sum": 48.26519390940666,
+      "scale_refine_iters": 2.0
+    }
+  },
+  "scale_constraint": "finite_positive",
+  "scale_dtype": "float16",
+  "sign_encoding": {
+    "0": -1,
+    "1": 1
+  },
+  "verification": {
+    "cosine_similarity": 0.8434215279566356,
+    "heldout_rows": 570.0,
+    "mean_token_cosine_similarity": 0.832750917466587,
+    "mse": 0.016601575137186585
+  },
+  "weight_dtype_before_quantization": "float32"
+}

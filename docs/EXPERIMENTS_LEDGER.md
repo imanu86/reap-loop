@@ -4679,3 +4679,14 @@ SCOPERTO: shard per-expert estratti SENZA dedup -> E176 5173 righe/3797 token un
 split random mette copie in train+test -> i 0.73-0.83 sono OTTIMISTICI, il vero held-out e' peggiore.
 Batteria ablation (leakage-clean + no-LoRA su e176/e77/e87) + GPTQ-Q1 (Codex, one-shot no-STE) in corso.
 Loss training e' GIA' MSE gate-weighted (cosine solo metrica) - il report sbagliava su quel punto per noi.
+
+**Addendum 17 (07:00) — SVOLTA: GPTQ-Q1 RISOLVE il tetto Q1 (era TRAINING non formato).** GPTQ/OBQ
+one-shot (Codex gptq_q1.py, Hessian XtX + error-feedback, no STE/no LoRA/no SGD) su e176 LEAKAGE-CLEAN
+(dedup 3797 token, 570 holdout): cosine=0.8434, mean-token=0.8328, MSE=0.0166. CONFRONTO: STE+LoRA e176
+= 0.83 ma LEAKY (gonfiato); GPTQ-Q1 = 0.843 su holdout PULITO e one-shot (overfit impossibile). QUINDI il
+tetto 0.73 mediano era il METODO DI TRAINING (STE+LoRA), NON il formato 1.125bpw ne' i dati. Valida la
+ricerca compressione (STE per segni discreti e' sbagliato; Hessian-reconstruction generalizza) e
+l'intuizione utente ("distillazione LoRA non tiene"). IN CORSO: GPTQ su e77(STE 0.58)/e87(STE 0.64) = il
+decisore-produzione (se GPTQ risolleva anche i peggiori, i 10240 sidecar sono viable via GPTQ one-shot,
+zero training, minuti/expert su CPU). Se GPTQ tiene su tutta la distribuzione -> il filone Q1 e' SALVO e
+la produzione e' molto piu' economica del previsto (no GPU training, no overfit da gestire).
