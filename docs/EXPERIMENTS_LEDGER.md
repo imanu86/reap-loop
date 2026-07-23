@@ -4818,3 +4818,15 @@ DAVVERO a Q2? (assunto 2x bit, da provare su 2-3); (2) 95 esperti FREDDI (<200 c
 GPTQ con calib DENSE (tutti gli x, Hessian pieno). Il filone Q1 e' passato in una notte da "in dubbio" a spec di
 produzione quantitativa: mix Q1/Q2 a 1.46bpw, lista Q2 concreta, pipeline GPTQ collaudata. Manca solo l'engineering
 sidecar (converter GGUF in corso Codex) + end-to-end + i freddi.
+
+**Addendum 29 (10:15) — Verifiche produzione: "Q2"=base 2-bit (semplifica!) + freddi via dense.** (1) gptq_q1.py
+e' Q1-only (1.125bpw). RIFLESSIONE: il teacher E' gia' l'expert a 2-bit (iq2_exact, cosine~1.0 = reference), quindi
+per i 54 duri "Q2" = LASCIARLI AL BASE 2-bit, NON un GPTQ-2bit. L'adattivo si semplifica: sidecar Q1 copre SOLO i
+107 facili (>=0.72), il runtime serve i 54 duri dal modello base. La COPERTURA PARZIALE del sidecar (che Codex
+analizzava) e' quindi il DESIGN NATURALE, non un problema. Storage: base 2-bit (77.9GB) con 107 esperti sostituiti
+da Q1 (1.125) = risparmio ~0.875bpw x 107. (2) FREDDI via calib DENSE: e117 (50 campioni routed=0.716) con dense
+14336x = 0.727 (+0.011, sopra soglia). Hessian pieno aiuta poco ma basta a renderlo Q1-viable. Dense = via per i
+95 freddi (<200 campioni), boost marginale. SPEC PRODUZIONE FINALE: sidecar Q1 parziale (esperti >=0.72, ~107+ dei
+161 + freddi via dense), base 2-bit per il resto; ~1.46bpw medio. NEXT: converter GGUF con copertura parziale
+(Codex in corso) -> primo sidecar reale -> end-to-end. NB estendere gptq a 2-bit resta possibile SE si vuole
+comprimere anche i duri sotto 2-bit (follow-up), ma non necessario per la produzione base.
