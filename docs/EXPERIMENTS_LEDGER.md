@@ -4853,3 +4853,18 @@ runtime (conferma, non scoperta): server col sidecar, chat reale, output degrada
 orfana). BILANCIO FILONE Q1 (una notte): dubbio STE 0.73 -> GPTQ 0.81 -> spec produzione 1.46bpw -> pipeline
 GGUF funzionante. Zero incognite scientifiche. Il converter (gptq_to_sidecar.py, moe-aggressive-commit) e' la
 prova che GPTQ-Q1 diventa un artefatto servibile dal runtime esistente.
+
+**Addendum 32 (11:00) — LEVA: expert-parallelism GPU+CPU per RIDURRE GLI SCAMBI (idea utente).** Non piu'
+compute (GPU non satura), ma TRANSFER: la CPU calcola un expert dalla SUA RAM -> quei pesi NON attraversano
+PCIe. Numeri: per token 7 esperti x 6.75MB = 47MB verso GPU (collo PCIe/streaming). CPU serve N esperti da
+RAM -> N x 6.75MB NON transitano, solo N x 16KB output (trascurabile). Ogni expert-su-CPU = -6.75MB H2D/token.
+CANDIDATI: (1) SHARED expert (spara ogni token, deterministico, e' Q8 nel modello ds4.c:2405) -> 6.75MB
+garantiti/token; (2) COLPO GROSSO = esperti FREDDI/miss (la fonte del thrash, streaming SSD->VRAM): invece di
+streammarli in VRAM (capacita' limitata), la CPU li calcola da RAM (gia' page-cache) -> il miss diventa
+compute-CPU-da-RAM, ZERO transfer/stallo SSD. E' lo split hot/cold di ktransformers/PowerInfer/llama.cpp
+(-ncmoe): hot->GPU-VRAM, cold->CPU-RAM. ATTACCA il bottleneck cold-expert (tutta la notte) ELUDENDO il limite
+VRAM invece di scontrarcisi. Si sposa col Q1 (esperti CPU in Q1 = ancora meno RAM letta). LIMITI: sync (CPU
+finisce entro la finestra layer GPU, 1-2 esperti ~1-2ms overlappano), core dedicati (orchestrazione ne usa),
+H2D output 16KB + sync/layer. Prior art forte. Esiste gia' un path CPU (ds4_cpu_decode_scratch, forward CPU
+per DS4_NO_GPU). NEXT: prototipo = shared-expert su CPU da RAM (il piu' semplice, deterministico) -> misurare
+H2D/token risparmiato + t/s; poi estendere ai cold routed. Complementare al fix promotions=0 [[reap-loop-concept-conditional-dynamic]].
