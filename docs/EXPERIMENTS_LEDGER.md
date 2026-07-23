@@ -4741,3 +4741,16 @@ PREREQUISITO PRODUZIONE TOTALE (10240 sidecar): cattura ALL-LAYER (task #1) - la
 L15. Milestone raggiungibile: L15 COMPLETO (256) + end-to-end -> PROVA la pipeline; poi campagna pod all-layer.
 TEST NECESSARI PRE-PRODUZIONE: (1) end-to-end [critico]; (2) L15 full no-crolli; (3) very-cold <50 (calib
 dense per Hessian pieno); (4) Q1/Q2 adattivo per i <0.78.
+
+**Addendum 22 (08:30) — BIG-CTX = MURO DI CAPACITA' PROVATO (non difetto). F10-fix conto onesto.** Codex
+F10-fix (f10_fix_slotmath.out.log) ha fatto l'aritmetica esatta: per_expert=7.077.888 byte (6.75MB),
+free a decode-start=1.114GB, reserve 0.125GB. -> grow DA SOLO = floor((1.114G-0.125G)/6.75M)=138 slot
+(PEGGIO del baseline 160!); grow+F8b(+315MB)=185 slot; working set=240 -> GAP RESIDUO 55 slot anche con
+TUTTE le leve VRAM. Il seed da 160 (1.132GB) supera pure il free lordo di 18MB. CONCLUSIONE (categoria
+fisica-provata, l'unica che e' muro vero): il big-ctx a 8192 sul 3060 NON e' risolvibile per reclamo VRAM -
+backbone(~8.85G)+context-buffers lasciano ~1.1-1.7GB per la cache = max ~185 slot con ogni ottimizzazione,
+il working set ne vuole 240. La scoperta utente (1GB stranded) era REALE ma reclamarlo non basta. LEVA VERA
+= ridurre il WORKING SET sotto 185 (mask K12/pruning - meno esperti/token, l'ENDGAME del registro
+[[reap-loop-concept-conditional-dynamic]]), NON liberare VRAM. F8b/F10 = miglioramenti parziali (185 vs 160),
+non la soluzione. F10-fix autorato (5 hunk, defer cache+seed capacity-bounded + latch anti-retry) disponibile
+se si vuole il +25 slot parziale, ma non chiude il big-ctx. Il big-ctx e' MEMORY-BOUND provato, redirect a mask.
