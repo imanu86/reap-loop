@@ -4999,3 +4999,38 @@ gli SHA256 di provenienza validati solo come stringhe esadecimali, mai calcolati
 CAVEAT: run profilato ~6.5x piu' lento del non profilato (11.5s vs 1.78s/token a ctx8192 default) -> i valori ASSOLUTI
 col profiling sono gonfiati; il RAPPORTO chunk768-vs-chunk2048 sulla stessa build strumentata resta valido. Ri-misurare
 il numero pulito SENZA profiling e' il prossimo passo.
+
+**Addendum 38 (2026-07-24 07:00) — LEVE DEL SECONDO COLLO: PROMOTE_BUDGET, non l'adaptive (che muove il budget sbagliato).**
+Seguito di add.37 (prefill_chunk sblocca il PRIMO collo big-ctx). Il SECONDO collo, misurato col profiler IQ2 (eac28f2)
++ g130-attrib: nei token lenti a chunk768 la residenza collassa (route_ready_miss +221ms, ssd_read +103ms,
+vram_hit 52->23/258, out_of_mask_routes 28->258). attention_ms = 17ms (IRRILEVANTE: il "70% attention" di add.36
+era TUTTO overhead del profiling, confermato il caveat 6.5x).
+
+RISULTATI TEST (ctx8192, profiling on -> numeri assoluti gonfiati ~6x, i RAPPORTI valgono):
+- chunk768 solo: primi ~60 token 374ms=2.67 t/s (4.8x vs default 0.56), poi degrada a ~1900ms (collasso residenza).
+- chunk768+adaptive-budget (threshold DEFAULT 64): budget FERMO a 32, adaptive_ups=0 -> NON scatta mai. mediana 731ms=1.37t/s.
+- chunk768+adaptive8 (threshold 8): budget ANCORA fermo a 32, ups=0 a 45 token.
+
+DIAGNOSI (verificata nel sorgente): CI SONO DUE SISTEMI DI PROMOZIONE DISTINTI.
+  (a) g_cuda_g133_advisory_budget = DS4_G133_PROMOTE_BUDGET (=8), gate le promozioni DECODE-TIME G133
+      (ds4_cuda.cu:26565 "remaining < g133_promote_budget").
+  (b) policy_replacement_budget (=32 base) = quello che DS4_EXPERT_TIER_ADAPTIVE_BUDGET fa salire.
+L'ADAPTIVE MUOVE IL BUDGET (b), ma il nostro collo decode e' gated da (a). Quindi l'adaptive NON PUO' curare
+questo collo per costruzione. La leva GIUSTA per il secondo collo e' DS4_G133_PROMOTE_BUDGET 8->64 (test v4 interrotto
+dall'utente prima dei risultati - DA COMPLETARE).
+
+CHIARIMENTO su "64 era sbagliato?" (domanda utente): NO. adaptive_pressure_threshold=64 era il DEFAULT ed era
+attivo, ma l'intero meccanismo adaptive era SPENTO (adaptive_budget=0 in ogni log storico) -> il 64 non veniva mai
+consultato. Acceso il meccanismo, 64 non scatta comunque perche' la finestra e' piccola e con PROMOTE_BUDGET=8 non
+si accumulano 64 skip/finestra. Non "64 sbagliato" ma "64 irraggiungibile su questa macchina". NB nome env corretto:
+DS4_EXPERT_TIER_ADAPTIVE_PRESSURE_THRESHOLD (senza _BUDGET_; il mio primo tentativo col nome sbagliato sarebbe stato
+un flag-fantasma - beccato prima di lanciare grazie alla verifica nel sorgente).
+
+STATO PROSSIMO: (1) completare v4 (chunk768 + PROMOTE_BUDGET 64 vs 32) = la leva vera del 2o collo. (2) ri-misurare
+chunk768 PULITO senza profiling (il 2.67 e' con overhead 6x, il numero vero e' piu' alto). (3) le altre leve rotte
+dall'atlante restano da provare (MOE_IO_QD=1 disabilita overlap, MOE_CACHE_POLICY=lru invalido).
+
+STATO POD (cattura round-4, backup incrementale su D:): round1(22k)+round2-salvato-su-D(30GB) = ~51k/layer su 40/40;
+round3 PERSO (finalizzazione fallita: output_exists + fail-closed rimuove tutto - lezione: mai toccare file coi
+server vivi, morte con 3 check separati); round4 IN CORSO con backup incrementale ogni 3min in cartella dedicata
+(tar copy MAI sync). Teacher Linux port pronto (b040302), campagna GPTQ non ancora lanciata.

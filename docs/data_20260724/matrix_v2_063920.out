@@ -1,0 +1,4 @@
+=== MATRICE LEVE ctx8192 (120 tok x 4) 06:39:20 ===
+### chunk768+adaptive 06:39:20 ###
+chunk768+adaptive            med=   740ms=1.35t/s | veloci= 57 lenti=147 | hit_v=19.8%/hit_l=16.7% | promo_v=0 skips?
+### chunk768 06:44:52 ###

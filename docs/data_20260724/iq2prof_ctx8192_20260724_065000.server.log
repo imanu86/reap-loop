@@ -1,0 +1,18 @@
+ds4: [iq2-profile] result=enabled enabled=1 event_capacity=1024 event_syncs_added=0 device_clock=cuda_event host_clock=monotonic
+ds4: CUDA backend initialized on NVIDIA GeForce RTX 3060 (sm_86)
+ds4: CUDA loading model tensors into device cache
+ds4: CUDA startup cache excluded 72.56 GiB of routed-expert tensors; dedicated expert cache owns residency
+ds4: CUDA startup cache excluded 0.99 GiB token embedding table; row staging owns access
+ds4: CUDA startup model cache prepared 7.21 GiB of tensor spans in 9.105s
+ds4: cuda backend initialized for graph diagnostics
+0724 06:50:10 ds4-server: context buffers 205.69 MiB (ctx=8192, backend=cuda, prefill_chunk=768, raw_kv_rows=1024, compressed_kv_rows=2050)
+ds4: [kv-managed] device access advice unsupported (concurrentManagedAccess=0); managed KV remains host-preferred/zero-copy
+ds4: [g73-open] terminal ready slot_bytes=7077888 device_slots=6 device_bytes=42467328 host_bounce_bytes=7077888 acquisition=boot-only source=dedicated-plain-fd
+ds4: [arena-cap] requested_gib=29.999 min_available_gib=0.000 available_before_gib=29.524 requested_bytes=32211468288 requested_slots=4551 chosen_bytes=32239779840 chosen_slots=4551 pageable_bytes=15026356224 pageable_slots=2123 total_slots=6674 ring_slots=4 host_budget_bytes=47266136064 ssd_wrap=1 capped=0 result=ready reason=ok
+ds4: CUDA dynamic arena ready pinned=30.03 GiB pageable=13.99 GiB total_slots=6674 pinned_slots=4551 pageable_slots=2123 ring_slots=4 6.75 MiB/slot available_ram=0.70 GiB bytes=32239779840 host_budget_bytes=47266136064 slot_bytes=7077888 backing=primary iq2_host_arena=enabled mixed_host_backing=n/a
+0724 06:50:14 ds4-server: listening on http://127.0.0.1:8000
+0724 06:50:20 ds4-server: chat ctx=0..15:15 prompt start
+ds4: [prefill-mass] armed slots=6674 layers=3..42 router=unbiased residency=prefill-ranked policy=bulk-wrap
+ds4: [prefill-mass-compose] hash_layers=3 hash_seed_entries=768 ranked_entries=5778 total_candidate=6546 capacity=6546 candidate_fnv1a64=d5b60fa2ac86a5eb sparse_skipped_ranked=0 nested_skipped_ranked=0 mass_source=full-probability-normalized-per-token
+ds4: [prefill-mass] finalize layers=40 rows_min=15 rows_max=15 routed_slots=3600 unique=10240 candidate=6546 capacity=6674 mass_total=600.000000 mass_candidate=467.897778 mass_coverage=0.7798 cutoff=0.043874 router=unbiased residency=prefill-ranked policy=bulk-wrap
+ds4: [arena] begin base=0 target=1 resident=6546 loads=6546 slots=6674

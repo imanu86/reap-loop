@@ -1,0 +1,5 @@
+=== MATRICE LEVE ctx8192 (120 tok x 4) 06:35:24 ===
+### baseline(default) 06:35:24 ###
+baseline(default): pochi token (0)
+run_lever_matrix.sh: line 36: syntax error near unexpected token `)'
+run_lever_matrix.sh: line 36: `%S) ==="'

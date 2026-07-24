@@ -158,6 +158,28 @@ Ipotesi **tutte falsificate**: lunghezza generazione (a 600 token fissi: 4.91 vs
 
 ---
 
+## 5-bis. SVOLTA BIG-CTX (07:00 — vedi ledger add.37/38 e DS4_LEVER_ATLAS_20260724.md)
+
+**Il muro big-ctx era DUE colli, entrambi ingegneria non fisica. L'attention era un fantasma del profiler.**
+
+- **Metodo**: workflow 10-agenti "atlante leve" (docs/DS4_LEVER_ATLAS_20260724.md, 80KB) ha mappato ogni leva del
+  runtime (277 env, 76k righe) e ha indicato il colpevole #1 dalla FORMA della curva.
+- **1° collo — `DS4_METAL_PREFILL_CHUNK`**: `ds4_default_prefill_cap_for_prompt` (ds4.c:7289) = `min(ctx,2048)`
+  dimensiona 38 tensori batch_* SEMPRE via cudaMallocManaged (~0.97 MiB/tok): 746 MiB@768 → 1989 MiB@≥2048 poi
+  PIATTO. Forma ESATTA della curva misurata. Buffer mai letti in decode, mai liberati. TEST: chunk768 @ctx8192 =
+  **2.67 t/s vs 0.56 default = 4.8×** (col profiling attivo, quindi il numero pulito è più alto).
+- **2° collo — residenza che collassa a generazione lunga**: nei token lenti route_ready_miss +221ms, ssd_read
+  +103ms, vram_hit 52→23/258, out_of_mask 28→258. attention = **17ms** (irrilevante — il "70% attention" di add.36
+  era overhead del profiling 6.5×). La leva VERA: `DS4_G133_PROMOTE_BUDGET` 8→64 (NON l'adaptive: due budget distinti,
+  l'adaptive muove `replacement_budget`=32, ma le promozioni decode sono gated da g133_promote_budget=8). Test v4
+  (chunk768+PROMOTE_BUDGET 64 vs 32) INTERROTTO prima dei risultati → DA COMPLETARE.
+- **Strumentazione IQ2** committata su g73-q1serve (`eac28f2`): `DS4_IQ2_PROFILE=1`, buckets che chiudono al 99.99%.
+- **Leve rotte/mai-usate scoperte dall'atlante** (da provare): `DS4_CUDA_MOE_CACHE_POLICY=lru` è un valore NON
+  riconosciuto dal parser (il preset lo passa da sempre); `DS4_CUDA_MOE_IO_QD=1` default → path overlapped MAI
+  eseguito; `DS4_EXPERT_TIER_ADAPTIVE_BUDGET` mai acceso; gli SHA256 di provenienza validati solo come stringhe.
+- **Dati grezzi**: docs/data_20260724/ (dataset profilo + log server chiave).
+- **Harness**: `iq2_profile_collect.sh`, `test_levers.sh` (LV_CHUNK/LV_ADAPTIVE/LV_PROMOTE/LV_QD/LV_ADAPT_THRESH).
+
 ## 6. PROSSIMI PASSI, IN ORDINE
 
 1. **Finire round-3** → tutti i layer ≥77.8k → finalizzare **col runtime** (non a mano).
