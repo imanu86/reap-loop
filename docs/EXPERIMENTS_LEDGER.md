@@ -4978,3 +4978,24 @@ sbagliato di 6x (jsonl vs sample_count). (c) confound ctx/max_tokens variati ins
 senza, /workspace diventa C:/Program Files/Git/workspace e il container NON PARTE (tutti i pod creati da Git Bash
 nascevano morti). (f) rclone->R2 via S3 API strozzato (0.36MB/s, stalli al 95%): usare URL presigned + curl -C -
 (60-116 MB/s).
+
+**Addendum 37 (2026-07-24 06:20) — IL MURO BIG-CTX ERA DS4_METAL_PREFILL_CHUNK (buffer managed sovradimensionati).**
+Workflow "atlante leve" (10 agenti, docs/DS4_LEVER_ATLAS_20260724.md) ha identificato il candidato #1: ds4_default_prefill_cap_for_prompt
+(ds4.c:7289) fissa prefill_cap = min(ctx, 2048), che dimensiona 38 tensori batch_* SEMPRE via cudaMallocManaged
+(ds4_cuda.cu:6796, ~0.97 MiB/token): 746 MiB @ctx768 -> 1989 MiB @ctx>=2048, poi PIATTO (cap a 2048). E' l'unica
+grandezza del runtime con la forma ESATTA della curva misurata (gradino a 2048, plateau). Buffer mai letti in decode,
+mai liberati. VERIFICATO nel sorgente prima del test.
+TEST (ctx8192, DS4_METAL_PREFILL_CHUNK=768, profiling on): i primi ~60 token = mediana 374ms = 2.67 t/s vs default
+0.56 t/s = **4.8x**. (Poi seconda degradazione a ~1900ms oltre i ~60 token: secondo collo distinto, plausibilmente
+il ricalcolo quando la generazione supera la finestra di chunk - da isolare.)
+CONCLUSIONE: gran parte del "muro big-ctx" - che ha resistito a 5 config di KV, promotions, ring - era una MANOPOLA
+(env var che sovradimensiona buffer managed), non fisica. Fedele al "niente muri finche' la fisica non e' provata".
+La strumentazione IQ2 (eac28f2) aveva gia' mostrato attention=70%: coerente, l'attention gira su quei buffer managed.
+ALTRE SCOPERTE ATLANTE da verificare: DS4_CUDA_MOE_CACHE_POLICY=lru e' un valore NON riconosciuto dal parser (preset
+lo passa da sempre); DS4_CUDA_MOE_IO_QD=1 default -> path overlapped MAI eseguito; DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC
+off -> drain completo del device per ogni layer di ogni token; l'A/B ring-vs-managed non ha mai testato managed-CON-advise
+(il ramo staged ritorna prima); DS4_METAL_INDEXER_STAGE_PROFILE mai acceso (unica sonda del ramo indexer sospetto);
+gli SHA256 di provenienza validati solo come stringhe esadecimali, mai calcolati.
+CAVEAT: run profilato ~6.5x piu' lento del non profilato (11.5s vs 1.78s/token a ctx8192 default) -> i valori ASSOLUTI
+col profiling sono gonfiati; il RAPPORTO chunk768-vs-chunk2048 sulla stessa build strumentata resta valido. Ri-misurare
+il numero pulito SENZA profiling e' il prossimo passo.
