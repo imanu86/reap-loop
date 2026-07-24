@@ -135,15 +135,26 @@ Ipotesi **tutte falsificate**: lunghezza generazione (a 600 token fissi: 4.91 vs
 
 ---
 
-## 5. STATO OPERATIVO AL MOMENTO DELL'HANDOFF
+## 5. STATO OPERATIVO (aggiornato in corsa)
 
-- **Pod 1** `ds4-camp-v2-155412` (`8740zkq3kxexjg`, 4×4090, $2.76/h): round-3 in cattura, prefisso `all43c_w*`,
-  driver a 1800 token, target +26k/layer.
-- **Pod 2** `ds4-cap-4090a3-migration` (`sxwbfmt49kw98k`, 4×4090, 128 vCPU, $2.76/h): setup in corso
-  (modello + build) → destinato alla **campagna GPTQ**.
+- **Pod 1** `ds4-camp-v2-155412` (`8740zkq3kxexjg`, 4×4090, **256 vCPU**, 1007GB RAM, $2.76/h): round-3 in cattura,
+  prefisso `all43c_w*`, 4 worker all-layer, driver a **1800 token/richiesta**, target +26k/layer (56% alle 01:15).
+  È anche la macchina designata per il GPTQ: ha modello, 256 core **e i vettori sul proprio volume** (zero trasferimenti).
+  ⚠️ Il pod si era **stoppato per credito esaurito** e sembrava sparito dall'API: era solo in pausa,
+  `runpodctl start` l'ha resuscitato **col volume intatto** (modello 86GB, build, captures round-1).
+- **Pod 2** `ds4-cap-4090a3-migration` (`sxwbfmt49kw98k`): **SPENTO**. La sua rete verso R2 andava a **1 MB/s**
+  (20h per il modello) ed era comunque ridondante — pod 1 ha il doppio dei core e i dati in locale.
 - **Port teacher Linux CONSEGNATO** (`b040302`): `--backend {auto,msvc,gcc}`, equivalenza **provata byte-a-byte**
   su L15/e176, 0.241s/esperto di dequant. `tools/run_gptq_campaign_linux.sh` pronto (resumable, xargs-parallel).
-- **3060**: libero.
+- **Strumentazione path IQ2** — in lavorazione da Codex (`task-mrycpjlz`, ~26 min): è il blocco #3 dei prossimi passi.
+- **Workflow "atlante delle leve"** — 10 agenti in parallelo sui sottosistemi del runtime (76k righe, 277 env var,
+  51 test) → produce catalogo completo, leve mai tirate, matrice dei conflitti, e la sezione *caccia aperta* su
+  ciò che scala col ctx. Run `wf_000bc1c4-494`.
+- **Harness raccolta profilo pronto**: `iq2_profile_collect.sh` + `iq2_profile_sweep.sh`. Strategia scelta:
+  **molte richieste corte** (40×64 token ≈ 2.500 token profilati per sessione) invece di poche corse lunghe →
+  potenza statistica vera, e chiude il problema "n=3 senza potere" dell'handoff precedente. Sweep minimo:
+  **8192, 768, 1200** (il plateau 2048/4096/8192 è già noto, misurarlo tutto sarebbe ridondanza pagata).
+- **3060**: libero, in attesa della build strumentata.
 
 ---
 
