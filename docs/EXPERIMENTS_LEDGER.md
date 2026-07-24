@@ -5187,3 +5187,38 @@ I 4 usi del Q1 mappati dall'utente esistono TUTTI nel runtime: (1) promozione ra
 **CAMPAGNA GPTQ**: chiusa a **8214 esperti** (oltre il target 8177), 40 layer L03-L42, ~205-222 esperti/layer. Il farm era ancora attivo dopo il completamento (17 make_teacher_outputs + xargs -P40) -> killato. Npz scaricati in locale: 7644 (~37GB). Sidecar GGUF full in assemblaggio SUL POD (`gptq_to_sidecar.py`, mode joint, base `/workspace/models/ds4-2bit.gguf`). I vettori grezzi (teacher.npz/weights.npz, ~22MB/esperto) sono CANCELLATI dalla campagna dopo la quantizzazione: non recuperabili, servirebbero solo per ri-quantizzare.
 
 **LEZIONE METODO (la piu' importante di oggi):** su un sistema bistabile il t/s NON e' una metrica. Prima di misurare qualunque leva serve una metrica di REGIME (qui: reload del backbone) e i run degradati vanno scartati, non mediati. Inoltre: verificare SEMPRE che un campo di log sia calcolato e non un letterale hardcoded prima di costruirci sopra una diagnosi (3 trappole trovate oggi: q1-routes-bypass, preloaded=0, html_closed).
+
+**Addendum 43b (2026-07-24 sera, misurato) — BENCHMARK DISCO: nessun headroom I/O. P1/P3 del TTFT sono MORTE. E TOKEN_SPLIT_LAYERS e' refutata.**
+
+**A) Benchmark del disco (l'ipotesi portante di Add.43, ora MISURATA).** Modello su C: = Lexar EQ790 1TB NVMe (disk 1, healthy), C: pieno **all'88.5%** (106.8 GB liberi su 930.7).
+
+| metodo | throughput |
+|---|---|
+| dd 1 stream, 4GB @offset 30GB | 1.45 GB/s |
+| dd **4 stream paralleli**, 2GB ciascuno @offset distinti | **1.38 GB/s = 0.96x** |
+| .NET FileStream 4GB @offset 10GB | 1.03 GB/s |
+| .NET FileStream 4GB @offset 45GB | 1.11 GB/s |
+| **il runtime ottiene** (wrap mmap / prefill ReadFile) | **0.93-1.0 GB/s** |
+
+**Il disco NON scala con la profondita' di coda** (4 stream = stesso aggregato di 1) e il runtime e' gia' al 70-100% di cio' che il disco consegna. => **P1 (`DS4_CUDA_MOE_IO_QD=4`) e P3 (`ARENA_WRAP_SEQUENTIAL_FILE=1` + `FILE_QD=8`) sono REFUTATE**: entrambe presupponevano banda sbloccabile con piu' QD. Non esiste. Non rimetterle in coda.
+
+Caveat: 4 processi dd separati che danno lo stesso aggregato di uno indicano un collo CONDIVISO (disco o path I/O dell'OS), non overhead per-processo — quindi la conclusione non dipende dall'overhead MSYS. 1.0-1.5 GB/s su NVMe PCIe4 (nominali ~7) resta basso: sospetti = drive pieno all'88.5% + frammentazione del file da 81GB. NON spostabile su D: (e' il SATA EMTEC, max ~550 MB/s). Riscrivere il modello contiguo su un C: liberato e' una pista indipendente, non verificata.
+
+**=> UNICA STRADA PER IL TTFT: LEGGERE MENO BYTE.** Restano P4 (write-through prefill->arena: elimina i 31GB di rilettura = 45% del TTFT; impianto gia' presente, morto solo per un gate) e il **caso 4 tutto-Q1** (traffico da 60-67GB a 34GB, letti una volta e prompt-indipendenti).
+
+**B) `DS4_METAL_GRAPH_TOKEN_SPLIT_LAYERS` REFUTATA come controller del regime.** A/B a 4 posizioni (IQ2-pura, G73_OPEN=0, CACHE_N=320, seed 96/0):
+
+| pos | TOKEN_SPLIT | RELOADS | steady t/s | cache slot | VRAM libera a fine richiesta |
+|---|---|---|---|---|---|
+| p1 | **0** | 16 | 0.55 | 148 | 1.00 GiB |
+| p2 | **4** | 16 | 0.55 | 148 | 1.01 GiB |
+| p3 | **0** | **0** | **3.69** | 146 | **0.15 GiB** |
+| p4 | **4** | 0 | CRASH (3 tok, finish=error) | 152 | **0.06 GiB** |
+
+p1 e p2 sono IDENTICI (16 reload, 0.55 t/s, 148 slot, traiettorie sovrapponibili) -> la env var non c'entra. Il pattern e' la POSIZIONE: degradano p1-p2, poi p3-p4 sono puliti (servono ~2 run di warm-up, non 1). Prima era gia' caduta `CACHE_N` (160 -> 15 reload, come 320) e, dai log storici, TOKEN_SPLIT=0 non e' NECESSARIO (molti run veloci a 0 reload non ce l'hanno: `long_g73closed`=4.01, `chat_1024d`=4.27, `g3_promo_215201`=4.89, `leverB_n320`=3.19).
+
+**NUOVA PISTA (dalla colonna che nessuno guardava): equilibrio di pressione VRAM.** La VRAM libera a fine richiesta CROLLA run dopo run: 1.00 -> 1.01 -> 0.15 -> 0.06 GiB, e p4 crasha con `max_expert_cache_count=0`. I due regimi sembrano: **thrash** (backbone ricaricato di continuo -> VRAM "libera" ma lentissimo) vs **residente** (tutto resta -> 3.69 t/s ma consuma l'headroom fino a schiantarsi). Con ~1 GiB di margine su 12 GB il sistema sta sul filo: da qui la bistabilita'. Nota anche che i primi 10 token dei bracci sono IDENTICI e la divergenza compare a META' decode -> non e' "il run parte male", e' qualcosa che si sviluppa DURANTE il decode.
+
+**C) Metrica reload = CANCELLO, non motore.** Applicata a ~100 log storici: reload>=8 -> t/s SEMPRE <=0.72 (n=20, zero eccezioni); reload=0 -> range 0.16-4.89. Cioe' reload>0 e' SUFFICIENTE per il collasso ma reload=0 NON garantisce velocita'. E' un filtro di validita' (run con reload>0 = da scartare), non la spiegazione. Probabilmente i reload sono un SINTOMO che condivide la causa col rallentamento, non la causa.
+
+**PROTOCOLLO DI MISURA (da adottare sempre):** (1) run sacrificale di warm-up per sessione, scartato per costruzione — e servono ~2 posizioni, non 1; (2) gate meccanico: calcolare RELOADS_IN_DECODE e SCARTARE (non interpretare) ogni run >0; (3) macchina quieta, un solo ds4_server, nessun I/O pesante in parallelo; (4) bracci A/B alternati sulle posizioni, cosi' un effetto d'ordine residuo si vede come pattern di posizione invece di essere assorbito nel braccio; (5) riportare SEMPRE i numeri grezzi per run, MAI medie di braccio (su un sistema bistabile la media descrive un run che non esiste).
