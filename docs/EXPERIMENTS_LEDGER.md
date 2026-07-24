@@ -5034,3 +5034,103 @@ STATO POD (cattura round-4, backup incrementale su D:): round1(22k)+round2-salva
 round3 PERSO (finalizzazione fallita: output_exists + fail-closed rimuove tutto - lezione: mai toccare file coi
 server vivi, morte con 3 check separati); round4 IN CORSO con backup incrementale ogni 3min in cartella dedicata
 (tar copy MAI sync). Teacher Linux port pronto (b040302), campagna GPTQ non ancora lanciata.
+
+---
+
+**Addendum 39 (2026-07-24 mattina, post-compaction) — SECONDO COLLO: la teoria RESIDENZA e' SMENTITA dai dati. Tabella completa test (puliti/falliti/sporchi).**
+
+Utente ha chiesto ledger con TUTTI i test compresi falliti e incerti-per-sistema-sporco. Ecco.
+
+BASELINE PULITA (fidata, macchina fresca post-reboot 11:03):
+- **T3 = test_long.sh, budget=8, chunk768, ctx8192, 800tok, temp=0.7, prompt HTML.** prefill 94s, ssd-fail=0.
+  Decode steady ~1625ms = **0.62 t/s**. vram_hit sale 0->11->14->21->20% e si stabilizza. residenti 229/320.
+  promotions continue (~4-8/tok), served_selected_fallback=0. NON collassa. FIDATA.
+
+TABELLA LEVE (tutte una-variabile-per-volta sopra T3):
+| test | variabile | esito | t/s | affidabilita' |
+|---|---|---|---|---|
+| sweep seed | PROMOTE_BUDGET 8..64 (probe prefill) | seed OK <=62, FAIL a 64 (cache-capacity) | - | PULITO |
+| PROMOTE_BUDGET=64 | budget 8->64 | seed FAILED entries=0, promotions=0, fallback=258 | 0.35 | PULITO (leva morta) |
+| KNOCK_X=1 KNOCK_Y=3 | +knock (su budget64) | seed ancora rotto, promotions=0 | 0.35 | PULITO (leva morta) |
+| CACHE_N=400 | STREAMING_EXPERT_CACHE_N 320->400 | seed FAILED cache-capacity, fallback=258 | 0.35 | PULITO (leva morta, rompe seed come budget64) |
+| STREAM_RUNTIME_RESERVE_MB=512 | reserve runtime 1024->512 | residenti 201-215 (<=229), nessun guadagno | 0.55 | PULITO ma MANOPOLA SBAGLIATA |
+| Q8_F16_CACHE_RESERVE_MB=2048 | q8 reserve 4096->2048 | residenti 219 (~229, non salgono) | ~0.11-0.49 | SPORCO (RAM 57GB da standby transcript agente) + manopola sbagliata |
+
+FINDING COMPOSIZIONE (sub-agente, verificato ds4_cuda.cu):
+- NON ci sono 320 slot con 229 pieni. Ci sono **229 slot FISICI**. cap = (free_VRAM - reserve)/per_expert (ds4_cuda.cu:31242).
+  requested=320 ma la VRAM libera all'alloc conteneva 229 esperti. coverage/cutoff sono REPORT, non soglie (nessun env coverage-target).
+- Le mie leve reserve erano su ALTRI sottosistemi: Q8_F16_RESERVE (:3030) e STREAM_RUNTIME_RESERVE (:6190) NON toccano il calcolo di cap (:31240).
+  L'unico env su quella riga = DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB, gia' 0.125 nel preset -> spazio esaurito.
+- unique=10240 (TUTTI i 40x256 esperti toccati) -> routing larghissimo. cap=229 ~= 6.2 residenti/layer vs 8 selezionati -> thrashing strutturale.
+
+SMENTITA (la piu' importante): confronto run VELOCE vs LENTO, STESSO binario/config/no-profiler:
+| | clean_chunk768 (~4 t/s, temp=0) | T3 (0.62, temp=0.7) |
+| decode/token | ~200ms | ~1650ms |
+| residenti | 194/320 | 229/320 |
+| vram_hit | 18% | 20% |
+| served_transient | 38 | 27 |
+| upload_sync_wait | 40ms | 43ms |
+| **residual_ms** | **193** | **1680** |
+=> Residenza/upload/miss IDENTICI. Tutto l'8x e' nel residual_ms (forward MoE non strumentato). **NON e' capacita' ne' residenza.**
+La differenza tra i due run: temperature (0 vs 0.7), prompt (Python-code vs HTML), max_tokens (64 vs 800). Sospetto forte = temperature=0 + MTP speculativo (--mtp-draft 1). NON ANCORA ISOLATO. Test decisivo da fare: test_long a temp=0.
+
+CONCLUSIONE STRATEGICA: il filone "leva di residenza a runtime" e' CHIUSO due volte -- (a) residenza gia' ottimale (promozione), cap VRAM-bound; (b) e comunque il gap 4t/s vs 0.62 NON e' residenza ma residual/forward. La cura al muro decode resta: esperti piu' piccoli (Q1, campagna pod IN CORSO -> per_expert dimezza -> cap ~raddoppia) oppure working-set ridotto (mask/reap-loop, gia' concepito, vincolato al dominio). Ma PRIMA va capito il residual (temperature/MTP).
+
+LEZIONI CONTAMINAZIONE (ripetute 3+ volte, colpa mia):
+- Download pod->D: + pressione RAM -> ssd-wrap FALLISCE letture modello (partial_or_pread), stalli 123s/token. REBOOT risolve (resetta mmap).
+- Sub-agenti che leggono file grandi (transcript .jsonl, ds4_cuda.cu) -> cache standby -> sfratta cache modello C: -> stalli. REGOLA: investigazioni a-agenti SOLO con NESSUN test ds4 in parallelo.
+- pagefile e' su C: (4MB, inusato) -> ds4 non pagina su D:. Il "D lavora" era SEMPRE il mio background transfer.
+
+POD (recupero + CPU): pod ds4-camp-v2-155412 EXITED (spot evacuato), riacceso con 1 GPU. /workspace = network volume uuj94bbe8ri602 (dati salvi). Vettori/harvest COMPLETI. Teacher backend = gcc/CPU -> campagna COMPLETABILE senza 4 GPU. /root azzerato -> harness ridispiegato da moe-aggressive-commit/tools + c7_bonsai (serve ds4_q1_ref.c/.h/.inc + teacher_backend_portable.cpp o build fallisce). Campagna in resume su 256 core, 2118 -> 3346/8177 (40.9%). Download 2130 esperti (6619 npz, 18GB) su D: come assicurazione; bulk finale a campagna finita.
+
+---
+
+**Addendum 40 (2026-07-24, correzioni da rilettura transcript via sub-agente) — gap e una CORREZIONE che cambia la diagnosi.**
+
+Sub-agente ha ri-verificato il transcript vs Add.39. Add.39 confermato accurato su: baseline T3, tabella leve, sweep seed, composizione 229, smentita residual-vs-residenza, contaminazione. Correzioni/aggiunte:
+
+MANCAVA:
+- **Esperimento CTX-isolation (07-23 20:04) che GENERO' la teoria residenza:** ctx768=4.91 t/s vs ctx8192=0.56, STESSA lunghezza 600 tok, 8.8x. ATTENZIONE: quel ctx8192 era PRE-fix (chunk default 2048), quindi NON comparabile a T3 (che ha chunk768). E' l'origine dell'ipotesi, non una prova valida contro T3.
+- **Endpoint SSH pod:** root@213.192.2.94 -p 40127 (precedente 213.181.111.2). Cambia a ogni restart -> recupero via GraphQL api.runpod.io.
+- **La leva raccomandata dal sub-agente composizione (DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB) NON e' MAI stata eseguita a runtime.** Il "briciole ~10 slot" di Add.39 e' una DEDUZIONE, non una misura. Resta da testare (o da chiudere come non-fatto).
+- Picco veloce reale piu' alto di "~4": BASE@768 = **4.24 t/s** (n=140, mediana 236ms). "clean_chunk768" e' in realta' ctx8192 (nome fuorviante).
+
+DA CORREGGERE (importante, sulla diagnosi del residual):
+- Add.39 dice "sospetto forte = temperature=0". SOVRAPPESATO. I dati sono CONFUSI su piu' variabili (ctx, lunghezza-gen, temperature, prompt) tra setup diversi. MA nota chiave dal transcript: T3 e' lento GIA' AL TOKEN 3 (~1700ms) mentre clean_chunk768 al token 3 = 216ms -> **stesso punto di generazione (3 token), 8x** -> quindi NON e' la lunghezza-generazione (il sub-agente propendeva per la lunghezza, ma il confronto a token-fisso la esclude). Restano TEMPERATURE (0 vs 0.7) o PROMPT (code vs HTML) o KV-da-prompt (18 vs 86 posizioni al token 3). NON ISOLATO.
+- Verdetto onesto: la causa del gap 4.24 -> 0.62 e' **NON RISOLTA**. E' nel residual_ms (forward), non nella residenza (provato). Candidati non isolati: temperature/MTP, prompt, KV-da-prompt-len. Test decisivo: test_long a temp=0 (isola temperature); poi test_long con prompt corto (isola prompt/KV).
+
+IN SOSPESO (aperti):
+1. **test_long a temp=0** = primo test da fare, isola temperature vs prompt.
+2. Scelta A/B (offerta 09:42, mai risolta): A) misurare STREAMING_EXPERT_CACHE_RESERVE_GB=0.05 per chiudere empiricamente il muro; B) accettare muro + stimare t/s con esperti Q1.
+3. Stima quantitativa t/s con Q1 (cap 229->~450 = "~raddoppia", ma il t/s risultante non calcolato -- e ora sappiamo che il t/s NON scala solo con cap/residenza, quindi la stima Q1 va rifatta sul residual, non sul vram_hit).
+
+---
+
+**Addendum 42 (2026-07-24 pom) — RISOLTO: "HTML lento" era il flag DS4_G73_OPEN=1. TUTTE le mie teorie sbagliate. Istinto utente giusto.**
+
+Guidato dall'utente ("è la config non il workload; ci sfugge qualcosa"). Sequenza:
+- Trasporto ESCLUSO dai numeri: upload_sync_wait=41ms su decode 1744ms (2.4%); miss-sim cyberpunk must_stall=2.5/token, headroom per 4 t/s. NON è trasporto.
+- G40 archivio: stesso prompt cyberpunk, config "production" = **2.07 t/s decode**. Nostra G73-open = 0.62. => è la CONFIG, non il contenuto.
+- Maschera dinamica: l'utente ha notato che dopo il prefill NON si aggiorna. Verificato: `[reap-mass-wrap]`=0 eventi nel nostro run (la dinamica del decode DS4_CUDA_REAP_MASS_OBSERVE/WRAP è SPENTA; solo prefill-mass statico). Accesa -> reap-mass e cache-VRAM MUTUAMENTE ESCLUSIVI hardcoded (ds4_cuda.cu:37257 `g_reap_mass_observer.enabled ||` -> rifiuta path VRAM; T4 caveat confermato). Comporli = patch+rebuild.
+- **ISOLAMENTO FINALE (#2, no rebuild): HTML + `DS4_G73_OPEN=0` -> 4.85 t/s steady (2.89 e2e su 800 tok), vram_hit sano 20-34%, seed ok, promotions attive.** Da 0.62 a 4.85 = **7.8x**. HTML ora == CODE (4.71). La differenza workload SPARISCE.
+
+CONCLUSIONE: il flag **DS4_G73_OPEN=1** (unbiased router + exact-transient-escape, il preset che abbiamo usato per TUTTA la sessione) era il costo del 5-8x sull'HTML. Non era: contenuto/routing-width, temperature, capacità-cache (229), trasporto, warmth, residenza — tutte mie conclusioni affrettate, smentite una a una. Il "regresso ~5->0.62" = HTML-con-G73_OPEN vs code/short. `html_closed=False` a 800 tok = normale (prompt cyberpunk chiude a ~3500 tok), non degenerazione.
+
+DA FARE: (1) confermare G73_OPEN=0 su piu' workload e verificare cosa PERDE G73_OPEN=1 (era acceso per un motivo -- pageable-overflow? qualita'?). (2) la maschera dinamica reap-mass resta un'idea valida ma richiede rebuild per comporsi col g133 (patch 37257 + cablare admission) -- opzionale, il grosso del guadagno e' gia' preso da G73_OPEN=0.
+
+NB METODO: 8+ conclusioni affrettate mie prima di isolare la variabile. Lezione: cambiare UNA variabile e confrontare, non teorizzare dal residual non strumentato. L'utente ha dovuto fermarmi ripetutamente.
+
+---
+
+**Addendum 41 (2026-07-24 12:30) — LA CAUSA DEL "REGRESSO 5->0.6" E' LA CACHE DEL MODELLO IN RAM, non una leva. Indagine chiusa.**
+
+Isolamento finale (reboot #2, run in blocco senza agenti):
+- temp0 + prompt HTML (freddo): 0.36 t/s. -> temperature NON e' la causa (stesso prompt HTML lento anche a temp0).
+- prompt CODICE + temp0, ADESSO (macchina in warm-up): ~2100ms = **0.47 t/s**. MA lo STESSO prompt codice il 08:14 (macchina calda da ore di run) = **236ms = 5.15 t/s**. **9x di differenza a parita' di prompt/temp/config.** -> contenuto NON e' la causa.
+- Prova fisica: RAM resta a 58GB ANCHE dopo aver killato ds4 (arena 40GB liberata) -> ~40GB di cache-modello in standby. Modello = **81GB, RAM = 64GB**: NON ci sta. ds4 arena ~40GB (esperti pinned/pageable) + ~20GB OS-cache = ~23% degli 81GB in RAM; il resto stream da SSD on-demand.
+
+CONCLUSIONE: la velocita' di decode e' dominata dalla **warmth della cache modello in RAM**, che dipende dalla STORIA dei run (ore di run precedenti scaldano gli esperti caldi -> 4-5 t/s; post-reboot tutto 0.3-0.6 in warm-up). NON e' residenza (provato Add.39), NON temperature (temp0-HTML lento), NON contenuto (stesso codice 9x piu' lento a freddo). Il "regresso" era un confronto caldo-vs-freddo mascherato da regressione.
+
+RICADUTA STRATEGICA (rafforza tutto): il collo vero e' il **modello troppo grande per RAM+VRAM** (81GB vs 64GB RAM vs 12GB VRAM). La cura NON e' una leva runtime (esaurite) ma ridurre la dimensione: esperti Q1 (~meta' bit) -> piu' esperti stanno in RAM-cache E in VRAM-cache -> velocita' CONSISTENTE e non-dipendente-da-warmth. La campagna Q1 sul pod e' la cura, confermata da un terzo angolo. FILONE RUNTIME LOCALE CHIUSO.
+
+LEZIONE METODO: su questa macchina (modello > RAM) ogni misura t/s e' confondata dalla warmth. Per confronti validi servirebbe scaldare identico prima di ogni run (impraticabile) o misurare su hardware con RAM >= modello. I numeri "puliti" di oggi (T3=0.62, ecc.) sono validi solo relativamente tra loro a warmth simile, NON come assoluti.
