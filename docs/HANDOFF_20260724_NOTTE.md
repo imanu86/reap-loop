@@ -180,6 +180,67 @@ Ipotesi **tutte falsificate**: lunghezza generazione (a 600 token fissi: 4.91 vs
 - **Dati grezzi**: docs/data_20260724/ (dataset profilo + log server chiave).
 - **Harness**: `iq2_profile_collect.sh`, `test_levers.sh` (LV_CHUNK/LV_ADAPTIVE/LV_PROMOTE/LV_QD/LV_ADAPT_THRESH).
 
+## 5-ter. STATO ALLE 07:45 — PRIMA DELLA COMPATTAZIONE (leggere per primo alla ripresa)
+
+### COSA FANNO I POD
+- **Pod attivo UNICO**: `8740zkq3kxexjg` (ds4-camp-v2-155412, 4×4090, **256 vCPU**, $2.76/h). Endpoint in
+  `D:\ds4_work\pod_campaign_20260723\endpoint_r3.txt` (host|port — RILEGGERLO, cambia a ogni stop/start).
+  SSH key: `C:\Users\imanu\.runpod\ssh\runpodctl-ssh-key`. API key: `C:\Users\imanu\Desktop\Runapod.txt`.
+  ⚠️ Il pod si è già stoppato/ripartito più volte: se l'API lo dà "sparito" o "not ready", è probabile SOLO in pausa
+  → `runpodctl start pod 8740zkq3kxexjg` lo resuscita col volume intatto. `/root` si azzera a ogni riavvio
+  (rispedire tool); `/workspace` (modello, build, captures) PERSISTE.
+- **DUE lavori girano IN PARALLELO sul pod** (GPU-bound vs CPU-bound, non competono — il pod ha 256 core!):
+  1. **Cattura round-4** (GPU): 4 worker all-layer prefisso `all43d_w*`, driver 1800 tok. Sta salendo verso
+     pilota-grade. Riavvio worker: `/root/round4_launch.sh {0..3}` + `/root/r4_driver.sh {0..3}` (rigenerare se
+     /root azzerato — template era round3_launch.sh).
+  2. **CAMPAGNA GPTQ FULL-MODEL** (CPU, 256 core): `run_gptq_campaign_linux.sh` su `/workspace/harvest`, 40 job,
+     min-samples 200. **8.177 esperti in coda, ~374 fatti, resumable** (skip complete). VALIDATA: cosine mediana
+     **0.769** (= pilota L15 0.766 → il teacher gcc è corretto). Master pid nel log `/root/campaign.log`.
+     Rilancio: `setsid bash -c "cd /root && bash /root/tools/run_gptq_campaign_linux.sh /workspace/harvest --teacher
+     /workspace/models/ds4-2bit.gguf --bonsai-dir /root/c7_bonsai --out /workspace/gptq_campaign --jobs 40
+     --min-samples 200 > /root/campaign.log 2>&1" < /dev/null &`
+
+### COME INTEGRARE I VETTORI (il punto delicato — ho distrutto dati 2 volte qui)
+- **REGOLA D'ORO: MAI FINALIZZARE.** SIGINT ai server → il fail-closed cancella tutto se la commit fallisce
+  (`output_exists_or_length`). Ho perso round-2 e round-3 così. **Invece**: `harvest_no_finalize.py` sul pod
+  (in /root, rigenerare se azzerato — logica: copia i .partial in /workspace/harvest, ricostruisce i manifest dalla
+  DIMENSIONE del file, tronca jsonl a sample_index<n, i SERVER RESTANO VIVI). extract_expert_shard.py verifica solo
+  schema+layer del manifest, NON lo sha → manifest ricostruiti accettati.
+- **DOVE STANNO I VETTORI ORA** (conteggio = sample_count nel manifest, NON righe jsonl che sono 6× per all-experts):
+  - **Sul pod** (`/workspace/captures` + harvest): round-1 (all43, ~22k) + round-4 (all43d, in crescita) = ~49k/layer.
+  - **Solo su D:** (persi dal pod col mio errore): round-2 (`D:\ds4_work\pod_captures_round2`, all43b, ~29k/layer,
+    93/160 vector-file salvati). Sommato: **~69k mediano su D:**, 13/40 layer ≥77.8k.
+  - Backup D: `pod_captures_backup/captures` (round-1), `pod_captures_round2`, `pod_captures_round4`.
+- **DA FARE: reintegrare round-2 (D:) sul pod** per portare la campagna a 69k. UPLOAD scp singolo = 5 MB/s
+  (overhead cifrario SSH, NON la rete: la fibra è gigabit vera). Usare **tar-pipe con cipher veloce**:
+  `tar cf - all43b_* | ssh -c aes128-gcm@openssh.com pod "tar xf - -C /workspace/harvest"`. La campagna è additiva:
+  aggiunti i round-2, un re-run dà a ogni esperto la calib completa (resume skip i già fatti su 49k → per
+  ricalcolarli con 69k serve --force o cancellare i result.tsv). NB: 49k è GIÀ 6× soglia → la campagna a 49k è
+  valida per un primo verdetto; round-2 è raffinamento.
+
+### TEST LOCALI DA FARE / RIPETERE (3060 libero, VRAM 736 MiB pulita)
+1. **[RIFARE] prefill_chunk PULITO senza profiling** — il 2.67 t/s @ctx8192 con chunk768 è col profiling attivo
+   (~6.5× overhead). Il numero VERO è più alto. Runner: `test_levers.sh` con `LV_CHUNK=768`, ma TOGLIERE
+   `DS4_IQ2_PROFILE` per il numero pulito. Confronto contro default 0.56.
+2. **[COMPLETARE] matrice v4 INTERROTTA** — `chunk768 + DS4_G133_PROMOTE_BUDGET 64 vs 32` a ctx8192. È la leva VERA
+   del 2° collo (la residenza che collassa a gen lunga: route_ready_miss +221ms, hit 52→23/258). NON l'adaptive:
+   sono DUE budget distinti (g133_promote_budget=8 gate le promozioni decode; policy_replacement_budget=32 è quello
+   che l'adaptive muove → l'adaptive NON tocca il nostro collo). Runner `run_lever_matrix4.sh` (già scritto).
+3. **[PROVARE] leve rotte trovate dall'atlante** (docs/DS4_LEVER_ATLAS_20260724.md):
+   - `DS4_CUDA_MOE_IO_QD` default 1 → il path I/O overlapped NON viene MAI eseguito. Provare QD 4-8.
+   - `DS4_CUDA_MOE_CACHE_POLICY=lru` = valore NON riconosciuto dal parser (il preset G73 lo passa da sempre) → capire
+     cosa fa il default reale e se un valore valido cambia.
+   - `DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC` off → drain completo device per ogni layer di ogni token (già =1 nel preset?).
+4. **[VERIFICARE] il diroppo ctx 768→2048** — con chunk768 sbloccato, ri-fare lo sweep ctx (768/1200/2048) per vedere
+   se la soglia si sposta. Harness: `iq2_profile_sweep.sh` (CTXS override).
+- **Harness locali** (in `D:\ds4_work\g73_gate`): `test_levers.sh` (LV_CHUNK/LV_ADAPTIVE/LV_PROMOTE/LV_QD/
+  LV_ADAPT_THRESH), `run_lever_matrix4.sh`, `iq2_profile_collect.sh`, `iq2_profile_sweep.sh`. Env nomi VERI verificati
+  nel sorgente: `DS4_METAL_PREFILL_CHUNK`, `DS4_G133_PROMOTE_BUDGET`, `DS4_EXPERT_TIER_ADAPTIVE_BUDGET` +
+  `DS4_EXPERT_TIER_ADAPTIVE_PRESSURE_THRESHOLD` (NON _BUDGET_PRESSURE), `DS4_CUDA_MOE_IO_QD`.
+- **REGOLE OPERATIVE**: server locale killarlo per PID (mai lasciare zombie: ne ho lasciato uno da 11GB VRAM);
+  telemetria `D:\ds4_work\telemetry\telemetry.ps1` da riavviare; il numero profilato è ~6.5× gonfiato (rapporti OK,
+  assoluti no).
+
 ## 6. PROSSIMI PASSI, IN ORDINE
 
 1. **Finire round-3** → tutti i layer ≥77.8k → finalizzare **col runtime** (non a mano).
