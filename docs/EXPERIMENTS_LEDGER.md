@@ -4907,3 +4907,74 @@ PRESERVA la qualita' (degradazione piccola). VALIDA il filone con la metrica cor
 full-model si accumulerebbe ma +4.5%/layer a 1.125bpw e' ragionevole, e l'adattivo Q1/Q2 (duri->base) lo abbassa.
 Post-riavvio pulito (VRAM 629MB, 0 orfani). RAM durante run ~34GB (arena pinned) = ~30GB headroom libero (nota
 utente) dove vive l'idea GPU+CPU/Colibri (#17). NEXT: t/s pulito; poi ppl multi-layer per estrapolare full-model.
+
+**Addendum 36 (2026-07-24 notte) — GATE QUALITA' Q1 PASSATO + cattura 40/40 layer + la KV era in host per design.**
+Handoff completo: docs/HANDOFF_20260724_NOTTE.md. Repo: moe-aggressive-commit@b040302 (pushato);
+rami runtime in m1-admin.git: g73-q1serve, g73-promo0033, c7-capture-alllayer.
+
+(1) RUBRIC CIECO base-vs-Q1 (4 prompt x 3 seed x 2 modi, temp0.7, stack identico, NO_Q8_F16=1, grading su file
+anonimizzati con mapping sigillato): Q1 = 12/12 L2, ZERO L0/L1. base = 9 L2, 1 L0 (vuoto), 2 L1. Nessuna caduta di
+mediana. La soglia 0.80-cosine - l'assunzione non validata a piu' alto rischio dell'handoff 23/7 - REGGE alla prova
+di output; le uniche degenerazioni sono nel BASE. Caveat: max_tokens=200 troncava il reasoning di entrambi (paired valido).
+
+(2) PPL riprodotta pulita: BASE 3.013584 -> Q1-L15 3.151018 = +4.56%. La catena F completa NON sposta la ppl
+(base fedele identico a 6 decimali) => residenza bit-exact. ATTRIBUZIONE ONESTA: il sidecar L15 e' 161 GPTQ +
+~95 esperti NAIVE-Q1 (256 esperti nel layer; gptq_to_sidecar.py:8-10 ri-quantizza rozzo i non listati) -> il
++4.56% misura la MISCELA, non il GPTQ puro.
+
+(3) VELOCITA': base-G73 ctx768 = 4.24 t/s (il numero base pulito mai avuto). q1-G73 = 0.20 (-95%) MA q1-plain 0.48
+= base-plain 0.48 -> a stack pari il FORMATO Q1 COSTA ZERO; la penalita' era integrazione trasporto. Colpevole:
+cuda_q1_0_route_arena() non restituiva mai l'arena resident pubblicata (bootstrap 256 completava, consumatore
+irraggiungibile) - fix 2318753 provato: 256/256 pinned 905MB, route_pread=disabled.
+
+(4) AUDIT #0 CHIUSO (CPU vince): CPU Q1 dequant+GEMV 294us/esperto @4thread vs GPU H2D+GEMV 766us (base-2bit)
+e 448us (Q1); il SOLO H2D costa 293us = quanto l'intero calcolo CPU. Il transient H2D non puo' vincere ->
+Colibri validato al microbench. tools/audit0_microbench/.
+
+(5) CATTURA DA 1 A 40 LAYER: sentinel LAYER=43 (c2d536b include il fix SIGSEGV Linux: 8.5MiB di stato
+materializzati sullo stack a ogni reset anche a tracing spento - MSVC perdonava, gcc no). Campagna su pod 4x4090.
+NB CONTEGGIO: le righe di samples.jsonl sono 6 per vettore (all-experts = 1 vettore-input + 6 righe routing);
+il numero autorevole e' sample_count nel manifest. Round1+round2 = ~51k vettori/layer su 40/40 (round-3 in corso
+per portare tutti a >=77.8k = soglia pilota).
+
+(6) LA KV ERA IN HOST PER DESIGN - tutte le misure big-ctx storiche sono da rileggere. DS4_CUDA_KV_MANAGED=1
+(presente in OGNI catena di test) alloca la KV managed; il log stampava sempre "cudaMemAdvise unavailable
+(invalid device ordinal); managed KV stays migratable". Diagnosi Codex: (a) Windows/WDDM ha
+concurrentManagedAccess=0 -> SetAccessedBy non supportato (non e' un ordinale sbagliato); (b) l'advice di
+preferred-location seleziona ESPLICITAMENTE LA CPU -> KV host-backed by design, riletta dal PCIe dalle 64 teste MLA.
+
+(7) MATRICE KV a ctx8192 (600 token, stessa richiesta): managed 0.56 | VRAM pura OOM (10.7/12GB, telemetria) |
+ring v0 crash (illegal memory access) | ring v1 0.085 | ring v2 (overlap riparato) 0.55. RING E MANAGED
+CONVERGONO -> il trasporto KV NON e' il collo a 8k. Il ring resta obbligatorio per 250k-1M ma non spiega la
+lentezza a 8k. Due bug veri riparati: 9182f99 (FP8 su tensore migrato con ptr==NULL) e 7baabee (fence inutile;
+le chiamate a un batch riusavano SEMPRE lo slot 0 = double-buffering mai esistito; attention indicizzata
+sincronizzava il top-k su host e sparava fino a 512 copie H2D sparse per layer = ~20.000 microcopie/token ->
+sostituito con gathering device-side; geometria ora da env).
+
+(8) PROMOTIONS FIX: FUNZIONA ma non basta (2c1116a). vram_promotions>0 in 154/434 finestre (prima 0 SEMPRE),
+vram_hit da ~0% a 22-38%. Velocita' 0.56 -> 0.59 (invariata). PERCHE': media 2.3 promozioni/finestra, tetto
+PROMOTE_BUDGET=8, mentre ogni token seleziona 240 esperti; nel 64% delle finestre non promuove nulla. La
+rotazione per massa ESISTE (mass-lfru, knock 3/5, decay 0.98) ma e' strozzata a un rubinetto. MAI PROVATO:
+PROMOTE_BUDGET 8->64, KNOCK 3/5->1/2.
+
+(9) DOVE VA IL TEMPO A ctx8192: NON LO SAPPIAMO. decode_ms=1776, upload_sync_wait=33ms (1.9%),
+residual_ms=1776 = 100% NON ATTRIBUITO (gli span coprono solo il path Q1-mixed, non l'IQ2 standard).
+Telemetria: GPU 29-39%, disco 0.5-92MB/s, CPU 10-24% -> NIENTE E' SATURO = latency/serialization-bound.
+Strumentare il path IQ2 standard e' il prossimo passo obbligato.
+
+(10) DIROPPO ctx MISURATO NON SPIEGATO: 768=4.91 | 2048=0.59 | 4096=0.59 | 8192=0.56 t/s. Ipotesi TUTTE
+falsificate: lunghezza generazione (a 600 token fissi 4.91 vs 0.56), KV in byte (75 vs 333 MiB), arena esperti
+(identica 6546 a ogni ctx), slot cache (ctx8192 ne ha DI PIU': 199 vs 163). Il salto 768->2048 resta da spiegare.
+
+(11) PORT TEACHER LINUX CONSEGNATO (b040302): --backend {auto,msvc,gcc}, equivalenza PROVATA BYTE-A-BYTE su
+L15/e176, 0.241s/esperto dequant + 0.326s forward 256-righe. run_gptq_campaign_linux.sh resumable/parallelo.
+Sblocca la campagna full-model su pod (prima era MSVC/vcvars-only = Windows).
+
+(12) ERRORI DA NON RIPETERE: (a) file di cattura toccati con i server vivi -> il fail-closed ha CANCELLATO ~40%
+dei vettori round-2 dal pod (un pgrep singolo aveva dato falso 0; il backup su D: ne ha salvato il 58%). Regola:
+mai rename/truncate, morte verificata con 3 check separati, finalizzazione al runtime. (b) conteggio vettori
+sbagliato di 6x (jsonl vs sample_count). (c) confound ctx/max_tokens variati insieme. (d) etichette bugiarde
+(echo hardcoded, label promo su binario senza il fix). (e) MSYS_NO_PATHCONV=1 OBBLIGATORIO su runpodctl create:
+senza, /workspace diventa C:/Program Files/Git/workspace e il container NON PARTE (tutti i pod creati da Git Bash
+nascevano morti). (f) rclone->R2 via S3 API strozzato (0.36MB/s, stalli al 95%): usare URL presigned + curl -C -
+(60-116 MB/s).
