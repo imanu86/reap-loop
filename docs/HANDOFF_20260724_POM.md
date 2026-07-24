@@ -1,10 +1,10 @@
 # HANDOFF 2026-07-24 pomeriggio — stato pre-compattazione
 
-## 🔴 AZIONE IN CORSO: build locale della patch fp8 di Codex
-- **Patch applicata** a `D:/ds4_work/wt-g73-open/ds4_cuda.cu` (Codex `kv_staged_fp8_fix.patch`, 41 righe, +preflight OK: applica pulito, tutti gli helper esistono).
-- **Build in corso**: `cmd //c scratchpad/build_ds4.bat` (fa vcvars64 + ninja ds4_server). Log: `D:/ds4_work/wt-g73-open/build_fp8_HHMM.log`. Cerca `BUILD_EXIT 0` = ok. ~10-15 min (ricompila ds4_cuda.cu 42k righe).
-- **DOPO IL BUILD**: reboot (RAM sporca a ~30GB). Poi verificare `ds4_server.exe` mtime nuovo.
-- **NOTA build**: nvcc ha bisogno di `vcvars64.bat` (cl.exe in PATH) — ninja da solo fallisce con "Cannot find cl.exe". Il batch lo carica.
+## ✅ BUILD FATTO — patch fp8 di Codex compilata nel binario
+- **Patch applicata** a `D:/ds4_work/wt-g73-open/ds4_cuda.cu` (uncommitted; committare DOPO che il test ring valida) e **compilata OK**: `ds4_server.exe` ricompilato 2026-07-24 16:00:30 (BUILD_EXIT 0 in ~67s, solo warning C4244 benigni). ds4_cuda.cu.obj fresco.
+- **NOTA build**: nvcc ha bisogno di `vcvars64.bat` (cl.exe in PATH) — ninja da solo fallisce "Cannot find cl.exe". Usato `scratchpad/build_ds4.bat` (vcvars+ninja). Build velocissimo (~1 min per un TU).
+- **PROSSIMO PASSO (post-reboot)**: TEST del ring a 250k = `bash D:/ds4_work/g73_gate/test_long_ring.sh`. Successo = decode produce token senza "illegal memory access" (prima crashava a fp8_kv_quantize su x->ptr NULL), cache 320 (ring libera VRAM), t/s > 0.57. Se OK → committare la patch in ds4_cuda.cu (branch g133/g73-open).
+- **REBOOT**: fatto dopo il build (RAM sporca ~30GB + app Claude al 95% CPU per sessione lunga).
 
 ## 🏆 LA VITTORIA DELLA SESSIONE: DS4_G73_OPEN=0
 **HTML da 0.62 → 4.85 t/s (7.8×) su IQ2.** Il flag flippa il dispatch a `routed_moe_launch_impl<true>` (ds4_cuda.cu:39696-98) = path lento "exact-transient-escape". NON era contenuto/temperature/cache/trasporto/warmth/residenza (tutte conclusioni affrettate mie, smentite una a una). Nel preset G73_OPEN=1 → **spegnere su IQ2 puro**. Dettaglio: EXPERIMENTS_LEDGER.md add.42.
