@@ -5134,3 +5134,56 @@ CONCLUSIONE: la velocita' di decode e' dominata dalla **warmth della cache model
 RICADUTA STRATEGICA (rafforza tutto): il collo vero e' il **modello troppo grande per RAM+VRAM** (81GB vs 64GB RAM vs 12GB VRAM). La cura NON e' una leva runtime (esaurite) ma ridurre la dimensione: esperti Q1 (~meta' bit) -> piu' esperti stanno in RAM-cache E in VRAM-cache -> velocita' CONSISTENTE e non-dipendente-da-warmth. La campagna Q1 sul pod e' la cura, confermata da un terzo angolo. FILONE RUNTIME LOCALE CHIUSO.
 
 LEZIONE METODO: su questa macchina (modello > RAM) ogni misura t/s e' confondata dalla warmth. Per confronti validi servirebbe scaldare identico prima di ogni run (impraticabile) o misurare su hardware con RAM >= modello. I numeri "puliti" di oggi (T3=0.62, ecc.) sono validi solo relativamente tra loro a warmth simile, NON come assoluti.
+
+---
+
+**Addendum 43 (2026-07-24 sera) — IL SISTEMA E' BISTABILE: la metrica t/s e' rumore. Q1 ASSOLTO, molte conclusioni di oggi RIBALTATE (adversarial review Opus).**
+
+Sessione serale con 3 agenti in parallelo (convergenza Q1, adversarial review, TTFT). Molte conclusioni della giornata sono state smentite da revisione avversariale indipendente. Registrate qui perche' NON vanno ri-derivate.
+
+**1) SCOPERTA PRINCIPALE — bistabilita' / thrash del backbone.** Il decode ha due regimi e il t/s dipende da quale becchi, non dalla config:
+
+| run | Q1 | t/s steady | reload backbone in decode |
+|---|---|---|---|
+| L4 (IQ2, TOKEN_SPLIT=0) | no | 3.97-4.79 | **0** |
+| L1 (IQ2, stessa config di H1d) | no | 0.56 | 23 |
+| H1d (con Q1 L15) | si | 0.57 | 15 |
+| H1d rerun IDENTICO | si | 0.52 | 28 |
+
+Correlato perfetto: 0 reload = ~300ms/token; >0 reload = crollo. La riga di reload e' rate-limited a 1/10s in non-tty (cu:4233-4234) quindi 28 righe ~ 280s di ricaricamento su 272s di decode. NON deterministico: il rerun identico e' andato PIU' LENTO con PIU' residenza (205 vs 141 slot) e PIU' VRAM libera (1.71 vs 1.14 GB). H1d ha retto **44 token a ~300ms CON Q1 attivo** (= L4, 298ms) prima di crollare.
+
+=> **NUOVA METRICA PRIMARIA**: contare i reload dopo decode-start (pattern: dopo la riga `vram-ledger] phase=decode-start`, contare le occorrenze di `CUDA loading model tensors`). 0 = regime sano; >0 = **run da SCARTARE, non da interpretare**. Tutte le classifiche di leve misurate a t/s vanno riviste su questa base.
+
+Sospetto primario da bisecare: `DS4_CUDA_STREAMING_EXPERT_CACHE_N=320` (la expert cache cresce a 141->205->219 slot x 6.75MiB e compete col backbone da 7.21GiB dentro 12GB VRAM). Secondari: `Q8_F16_CACHE_RESERVE_MB=4096`, `STREAM_RESERVE_MB=1024`. Caveat A/B: a CACHE_N=160 il seed del preset (TOTAL=160/FLOOR=4) fallirebbe il gate di capacita' (cu:30706) confondendo il test -> tenere il seed fisso a 96/0.
+
+**2) Q1 E' ASSOLTO (aritmetica verificata).** H1d: `calls=121` = 1 prefill + 120 decode; `slots=1218` (498 = 83 prompt x 6 esperti, 720 = 120 x 6) -> **Q1 invocato a OGNI token, 6 esperti/token esatti**; `failures=0`; fail-closed mai scattato; sidecar completo **256/256** esperti (905969664/3538944 = 256.0). Il dispatch sceglie per TIPO DI TENSORE (cu:37783-37785), non per lookup: i 39 layer non-Q1 non consultano mai il sidecar. Il sospetto "cerca esperti inesistenti" e' REFUTATO meccanicamente. Il `direct_pread` costa **1.13%** del tempo (1.887s su 166.5s), NON e' il collo. **L1 senza alcun Q1 gira come H1d con Q1 (0.56 vs 0.57)**.
+
+**3) TRAPPOLE DI LOG (stringhe hardcoded, non stati):**
+- `iq2_vram_cache=q1-routes-bypass` = **letterale hardcoded** nella format string (cu:4554, come cu:7628). Non segnala nulla.
+- `preloaded=0` nella riga `[prefill-mass-wrap]` = **letterale hardcoded** (cu:12992).
+- `html_closed=True` = **FALSO POSITIVO**: tutti i run finiscono `finish=length` a 120 token dentro il blocco THINKING; il check `'</html>' in txt.lower()` matcha il modello che CITA l'istruzione. Lo riportano anche L1 e L4. **Nessun run ha mai prodotto HTML. La qualita' Q1 resta NON MISURATA** (zero perplexity/logit/diff).
+
+**4) CORREZIONI a conclusioni intermedie di oggi:** (a) `DS4_Q1_0_PROMOTION_SSD_WRAP` E' davvero solo partizionamento arena (pinned/pageable + 4 ring slot, cu:8020-8033), NON compare nel path di serving Q1 — la ritrattazione di meta' giornata era sbagliata; (b) `FLOOR_PER_LAYER=0` e' NECESSARIO non un cerotto: il layer Q1 esce dal mass observer (`[prefill-mass] finalize layers=39` vs 40) -> `ranked.size()==0` -> qualsiasi floor>=1 fallisce con `reason=rank` (cu:30835); (c) H1/H1b fallivano per un motivo DIVERSO (`reason=cache-capacity`, 157<160 e 140<144, il sidecar occupa 0.85GiB di VRAM); (d) `error_not_locked=6920` NON e' un bug: idioma Windows standard (VirtualUnlock su range mai lockati -> FALSE ma esegue il trim), ed e' load-bearing (working_set -4.29GB = 1 wave); (e) **l'8x di `DS4_G73_OPEN=0` (Add.42) e' DA RIVERIFICARE**: L1 e L4 hanno ENTRAMBI G73_OPEN=0 e l'unico delta e' `METAL_GRAPH_TOKEN_SPLIT_LAYERS=0` -> su questi log l'attribuzione non regge.
+
+**5) TTFT SCOMPOSTO AL 96% (I/O SSD puro).** conv_H1d, 75.4s + 12-14s di startup:
+
+| fase | tempo | % | natura |
+|---|---|---|---|
+| forward di prefill (stream esperti) | 39.05s | 52% | ReadFile ~1.0 GB/s |
+| VirtualUnlock trim | 2.54s | 3% | CPU, zero I/O |
+| arena-wrap bulk copy 31.33GB | 33.82s | 45% | mmap page-fault ~0.93 GB/s |
+| non attribuito | ~0s | 0% | — |
+
+**CAUSA RADICE: gli stessi byte letti DUE VOLTE per avvio.** Il prefill streamma gli esperti (ReadFile), poi il bulk-wrap RILEGGE via mmap i 4423 candidati (31.33GB) ricavati dal routing appena osservato -> sovrapposizione ~100%. Totale ~60-67GB di traffico file per cold start. Scaling verificati: wrap proporzionale ai byte d'arena (~0.9GB/s costante: 4423 load/31.3GB -> 33.8s; 6546/46.4GB -> 51.5s); residuo proporzionale ai token di prompt (6 tok -> 4.65s, 83 tok -> 33-45s). A ctx250k il wrap collassa a 98MB/s -> 319s (sempre il wrap, degradato da pressione memoria).
+
+**IL RIMEDIO ESISTE IN CODICE MA E' MORTO**: `cuda_dynamic_arena_observer_mirror_ptr` (cu:11857-11958) + `_mirror_done` (cu:11960) specchiano la lettura dentro lo slot d'arena, e tutti e 3 i path di fill onorano gia' `s.mirror` (cu:33376/33440/34063). Ma e' gated su `g_dynamic_arena_observer.target[]`, popolato SOLO dall'observer di decode (`cuda_dynamic_arena_observe_selected` cu:13782 esce se `n_tokens != 1`). Prova: `[arena-observe]` in **0 log su 71**. Nessuna persistenza dell'arena tra riavvii esiste.
+
+Proposte ordinate: P2 sonde gratis PRIMA (`ARENA_WRAP_LAYOUT_PROFILE=1`, `PREFILL_UNION_STATS=1`, `REQUEST_PHASE_TRACE=1`); P1 `MOE_IO_QD=4` (gia' validato che esegue, ~7% n=1, NO fallback se fallisce); P3 wrap via ReadFile overlapped (`ARENA_WRAP_SEQUENTIAL_FILE=1` + `FILE_QD=8`, contratto stretto cu:11038, violarlo = arena avvelenata, gira su 1 thread); P4 **write-through prefill->arena (CODICE, premio massimo: elimina l'intero wrap)**; P5 arena piu' piccola (-10GiB = -11s ma toglie residenza); P6 `cuda_tmp_alloc` high-water (cu:2720, big-ctx). **IPOTESI PORTANTE NON MISURATA**: che l'SSD dia >0.9GB/s a QD maggiore — P1 e P3 dipendono interamente da questo, serve benchmark del disco a macchina libera.
+
+**6) ARCHITETTURA — conferma il design dell'utente: Q1 deve SOSTITUIRE IQ2, non aggiungersi.** Oggi non lo fa: col layer 15 in Q1 l'arena carica comunque `candidate=4423` slot come senza Q1, e gli unici scendono solo 10240->9984 (= 256, un layer) -> **gli esperti IQ2 del layer Q1 restano zavorra**. A 40 layer il direct-pread diventa ~850MB/token (la residenza diventa obbligatoria) ma un'arena Q1 da ~36GB non entra accanto ai 30GiB di IQ2 pinnati in 64GB di RAM. **Il requisito non e' piu' RAM: e' la sostituzione.** Nota: `DS4_Q1_VRAM_LRU_SLOTS` (default 600, cu:30305) e' MORTO senza resident transport (`q1_vram_lru_active` gated su `cuda_q1_0_resident_transport_requested()`, cu:36968) -> oggi non esiste una cache VRAM Q1 economica. `RESIDENT_ARENA=1` da solo ri-rompe il tiering (rende l'arena esclusiva cu:2427 -> gate cu:26909 `mixed-host-resolver-not-implemented`): va sempre in coppia con `DUAL_ARENA=1`; ma su questa config il tetto di guadagno e' 1.1%, non e' la priorita'.
+
+I 4 usi del Q1 mappati dall'utente esistono TUTTI nel runtime: (1) promozione rapida = `probation` + `MIN_TOUCHES`; (2) idratazione/disidratazione pinned<->pageable = `PAGEABLE_OVERFLOW` + `DUAL_ARENA` (con G73_OPEN=0 l'SSD-wrap gia' divide via `DS4_Q1_0_IQ2_PINNED_GIB`, default 1.5GiB pinnati + resto pageable); (3)/(4) tutto-Q1 = **scavalca l'intera costellazione** perche' con tiering OFF il gate cu:26909 accetta l'arena esclusiva. Dimensioni misurate: tutti gli esperti routed = **72.56 GiB a IQ2 vs ~34 GiB a Q1** (0.847 GiB/layer x 40) -> a Q1 l'intero set esperti STA in 64GB di RAM (contro i 30GiB gia' pinnati oggi), il che cancellerebbe anche la causa radice del TTFT (34GB letti una volta, prompt-indipendenti, zero rilettura).
+
+**CAMPAGNA GPTQ**: chiusa a **8214 esperti** (oltre il target 8177), 40 layer L03-L42, ~205-222 esperti/layer. Il farm era ancora attivo dopo il completamento (17 make_teacher_outputs + xargs -P40) -> killato. Npz scaricati in locale: 7644 (~37GB). Sidecar GGUF full in assemblaggio SUL POD (`gptq_to_sidecar.py`, mode joint, base `/workspace/models/ds4-2bit.gguf`). I vettori grezzi (teacher.npz/weights.npz, ~22MB/esperto) sono CANCELLATI dalla campagna dopo la quantizzazione: non recuperabili, servirebbero solo per ri-quantizzare.
+
+**LEZIONE METODO (la piu' importante di oggi):** su un sistema bistabile il t/s NON e' una metrica. Prima di misurare qualunque leva serve una metrica di REGIME (qui: reload del backbone) e i run degradati vanno scartati, non mediati. Inoltre: verificare SEMPRE che un campo di log sia calcolato e non un letterale hardcoded prima di costruirci sopra una diagnosi (3 trappole trovate oggi: q1-routes-bypass, preloaded=0, html_closed).
