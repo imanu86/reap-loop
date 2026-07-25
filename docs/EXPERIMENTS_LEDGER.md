@@ -5277,3 +5277,71 @@ Correzione al piano originale: l'ipotesi "H1 di config" **non poteva funzionare*
 `chunk=600` **è una PEZZA**: funziona per motivi non capiti (e muove insieme i `batch_*` **e** `raw_kv_rows`, inseparabili per costruzione: `raw_cap = align_up(min(DS4_N_SWA + prefill_cap, ctx), 256)` con `DS4_N_SWA=128` compile-time). **Non è una config di produzione.**
 
 **LEZIONE DELLA SESSIONE.** Abbiamo costruito ogni difesa contro l'auto-inganno — falsificatori, gate, bilanci voce-per-voce, il catalogo dei modi — **tranne quella di guardare l'output**. Sei metriche fallaci smascherate in una notte (tre letterali hardcoded, un falso positivo, un cronometro spacciato per contatore, un default silenzioso di harness), e nessuna di esse leggeva il testo. **Regola: in ogni sessione di misura, il primo controllo è leggere cosa dice il modello. Prima del throughput, prima del bilancio, prima di tutto.**
+
+---
+
+**Addendum 45 (2026-07-25 alba) — CHI SI PRENDE LA VRAM: RISOLTO. Non un consumatore nascosto, TRE errori nel nostro bilancio. E la qualità Q1 regge a 20 layer.**
+
+## A) L'allocator tracer chiude il conto: residuo da 3215 a 178,7 MiB
+
+Metodo: **avvolgere l'allocatore invece di interrogare i sospetti** (interrogarli aveva reso 0/5). Strumentati tutti i 104 siti di allocazione device + 113 chiamate tensore di `ds4.c` con attribuzione per riga. Commit `f64cc89`, build separato `build-trace/` (md5 `9534675c0a04`), golden verificato invariato.
+
+Tabella per tag a decode-start, full-Q1 E09 riprodotto (arena 34 GiB, layer 3..42, chunk 600, expert cache 198 slot). `cudaMemGetInfo`: totale 12287,4 · libera 141,9 · **usati 12145,5 MiB**.
+
+| tag | live MiB | call |
+|---|---|---|
+| `device/cuda_model_stream_alloc@6800` | **8819,28** | 12 |
+| `device/cuda_moe_expert_cache_prepare` (down/gate/up) | 519,75 + 408,38 + 408,38 | 6 |
+| `managed/ds4.c:*` — 88 siti del grafo | **778,56** | 294 |
+| **VRAM tracciata** | **10934,40** | |
+| pavimento contesto CUDA (misurato a parte) | 1032,40 | |
+| **residuo** | **178,70** | |
+
+Le quattro righe device sommano 10155,79 contro un totale device del tracer di 10155,82: **la VRAM device è attribuita al 100% a due soli consumatori**. Correttamente esclusi come RAM host: arena Q1 34560 MiB, finestra `cudaHostRegister` 2048 MiB, stage pool 256 MiB.
+
+## B) I tre errori, non un colpevole
+
+| correzione | MiB |
+|---|---|
+| il `backbone` era una **costante fissa 7383**; l'allocatore reale è **elastico** e arriva a 8819,3 | +1436 |
+| `ctx_buffers` era **182**; i tensori managed del grafo sono **778,6** | +597 |
+| pavimento del contesto CUDA **mai sottratto** | +1032 |
+| expert cache 1336,5 contro 1343 assunti | −7 |
+| sovrapprezzo per-allocazione dell'allocatore managed (invisibile a un tracer che registra i byte richiesti) | +179 |
+| **totale** | **+3237** contro i 3215 di mistero |
+
+**ERRORE 1 — la model stream cache è ELASTICA, non una costante da 7,21 GiB.** `cuda_model_stream_alloc` alloca finché `free >= aligned + reserve` e sfratta LRU solo sotto pressione: **è cresciuta di +1444 MiB DURANTE il prefill**, dopo la riga "startup model cache prepared 7.21 GiB" su cui basavamo il bilancio. **È LEI il consumatore elastico** che annullava ogni leva: tagliare la expert cache da 320 a 96 slot liberava 1512 MiB e ne restituiva 34 perché **la stream cache assorbiva il resto**. **Corregge un'ipotesi scritta perfino nei commenti degli script**, che incolpavano la LRU Q1 — la quale non viene mai allocata (add.44).
+
+**ERRORE 2 — `ds4_context_memory_estimate` conta SOLO la KV** (raw + compressed + un termine di scratch). Omette l'intera famiglia `batch_*`, lo stato per-layer di attention/indexer, i tensori spec/MTP e i logits: **597 MiB fuori budget**.
+
+**ERRORE 3 — il pavimento del contesto CUDA non era mai stato misurato.** Sonda autonoma (`cudaSetDevice` + `cudaFree(0)` + `cudaMemGetInfo`), GPU quieta, **3/3 run identici: 1032,4 MiB già usati con nulla allocato**; il binario strumentato riporta lo stesso valore alla sua prima marca — conferma indipendente. `cublasCreate` aggiunge 12 MiB. Split dedotto da due contatori (non da una misura singola): **~476 MiB sono applicazioni desktop** — `cudaMemGetInfo` riporta l'uso **dell'intera macchina**, quindi ds4 paga davvero per Chrome & co. e chiuderle restituisce VRAM — ~105 MiB impronta fisica del processo, ~451 MiB riserva driver che nvidia-smi non attribuisce a nessuno.
+
+## C) Cosa è riducibile
+
+- **Model stream cache (8819 MiB)**: regolabile con `DS4_CUDA_STREAM_RESERVE_MB` / `STREAM_RUNTIME_RESERVE_MB`. È una **cache, non spreco**: ridurla scambia VRAM per ri-streaming. **MA va limitata PER PRIMA, altrimenti ogni altro risparmio viene mangiato in silenzio.** È il punto operativo che riordina tutte le priorità.
+- **Tensori del grafo (778,6 MiB)**: la famiglia `batch_*` scala **linearmente** con `DS4_METAL_PREFILL_CHUNK` (~590 dei 778 a chunk 600). Dimezzare il chunk salva ~295 MiB — **ed è questa la spiegazione del "chunk 600 funziona"**, che finora era una pezza senza teoria.
+- **Pavimento (1032,4)**: ~476 MiB recuperabili chiudendo le app desktop; ~556 MiB di contesto driver **irriducibili** su GeForce/WDDM.
+- **Sovrapprezzo managed (~179-276 MiB)**: **riducibile**. `cudaMalloc` è caricato 1.00x sopra i 32 KiB, ma `cudaMallocManaged` aggiunge **+2 MiB per allocazione** nella banda 1-16 MiB. E la managed **non compra nulla qui**: `cudaMemAdvise` fallisce a runtime (`invalid device ordinal` su WDDM), quindi `DS4_CUDA_KV_MANAGED=1` **paga un sovrapprezzo per un servizio mai erogato**. Unico blocco alla conversione a `cudaMalloc`: `metal_tensor_fill_f32` (`ds4.c:10434`), l'unico dereference host.
+
+## D) Qualità Q1 — bisezione completa, e 20 layer reggono a 200 token
+
+| config | 16 token | note |
+|---|---|---|
+| IQ2 controllo (stesso binario/harness/prompt/seed) | coerente | harness, binario, prompt **assolti** |
+| Q1 1 layer (pilota L15 e file full v2) | coerente | **file assolto** |
+| Q1 2 layer | coerente | **indicizzazione assolta** → e con essa il resolver `9aec23e` |
+| Q1 **20 profondi** (23..42) | coerente | |
+| Q1 **20 superficiali** (3..22) | coerente **ma risponde in INGLESE** a prompt italiano | degrado sottile: i primi layer sono più delicati, non abbastanza da collassare a 20 |
+| Q1 40 layer | **spazzatura** | |
+
+**La soglia è di QUANTITÀ (fra 20 e 40 layer), non di posizione.**
+
+**VALIDAZIONE A 200 TOKEN — 20 layer profondi: qualità buona.** Il modello riformula il compito e poi ragiona sull'implementazione in modo tecnicamente sensato (*«devo produrre un file HTML singolo, con CSS interno (style tag), JavaScript interno (script tag)… variabili CSS per coerenza»*). `UNIQ_BY_THIRD = 0.92 / 0.87 / 0.87` → **stabile, nessun crollo nel finale**; `repeated_4gram=none`; 760 caratteri. **Metà del modello a 1,125 bit è qualitativamente utilizzabile.**
+
+**Ma quel run girava a 0,30 t/s con 67 reload**, cioè in pieno regime VRAM degradato. **I DUE PROBLEMI SONO SEPARATI**: la quantizzazione funziona, la velocità è ostaggio della corsa VRAM. Lo stesso Q1 a 20 layer ha dato 4,2 t/s quando la corsa andava bene (chunk 600) e 0,30 quando andava male.
+
+## E) Caveat onesti
+Il tracer registra i byte **richiesti**: il sovrapprezzo per-allocazione del driver gli è invisibile ed è stato misurato a parte — la curva prevede +276 MiB per 294 allocazioni managed mentre il residuo misurato è 178,7, quindi il residuo è **bracketed, non combaciante**. Lo split 476/556 del pavimento è **dedotto** da due contatori, non misurato direttamente. Il build di trace usa `-DDS4_CUDA_ARCHITECTURES=86` contro gli 80;86;89;90 del golden: solo il cubin corrispondente entra nel contesto quindi la VRAM non cambia, ma **non è un build byte-identico**.
+
+## F) La lezione di metodo
+Interrogare i sospetti a uno a uno ha reso **0 su 5** (expert cache, runtime reserve, LRU Q1, `batch_*`, transient staging). **Avvolgere l'allocatore ha chiuso il conto in un run.** La differenza non è la fatica: è che il tracer risponde alla domanda giusta — *dove va la memoria* — invece che alla domanda sbagliata, *è colpa di questo?*. Stessa forma del salto sulla qualità: smettere di dedurre dai sintomi e **guardare la cosa**.
