@@ -140,3 +140,74 @@ Nuovi fatti emersi prima di spendere altri run:
   il GGUF MTP locale è stato verificato.
 - P4a è ora quantificato: circa 603 H2D/token devono diventare al massimo 86,
   con un publish demand per layer; P4b separerà le promozioni solo dopo P4a.
+
+## Checkpoint P0/A1 e nuove leve
+
+Task aggiunte e pinnate:
+
+```text
+P0_G73_ROTATOR=019f9e90-b846-7151-a5b4-47f4641a1a0d
+P1_SAMPLED_TRACE=019f9e9a-8aa3-7670-be40-103c24ca75c3
+P5_LONG_KV_RESIDENCY=019f9e9a-d59d-70a3-813e-8193954ab7b6
+```
+
+P0 ha corretto una failure reale del rotator G73: un singolo job I/O fallito
+veniva contato due volte e trasformato in latch terminale, nonostante la
+rotazione avvenga dopo il serving exact. La correzione rende la failure
+job-local, libera ownership/ring, consente submit successivi, conserva un
+receipt `degraded` fail-closed per il benchmark e mantiene terminali gli errori
+di ownership/generation/commit e il percorso non-G73.
+
+Il primo A1 OFF sul binario P0 e' stato fermato correttamente:
+
+```text
+run=20260726_155302_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+serving_exact=PASS
+rotator=DEGRADED
+rotator_attempts=407
+rotator_successes=362
+rotator_advisory_failures=45
+rotator_advisory_releases=45
+rotator_stale_dropped_structural=0
+overall_gate=FAIL
+graph_tensor_on=NOT_RUN
+turn1_wall_tps=1.076165
+turn1_graph_tps=2.236573
+turn1_mature_tps=2.602229
+turn2_wall_tps=0.907693
+turn2_suffix_prefill_tps=1.081058
+turn2_decode_graph_tps=2.436381
+weighted_decode_tps=2.273869
+ledger_commit=460f4cf73002d81d5fb6c868265c75fd68b18ad1
+shutdown=native_verified
+postflight=clean
+```
+
+Tutti i 45 eventi hanno `range=0 expected=2162688 actual=0 errno=138`
+e durata 0,2-1,2 microsecondi. Non parte alcuna lettura SSD: la deadline
+`queued_at + 50ms` e' gia' scaduta quando il worker background acquisisce il
+job. P0.1 deve iniziare lo stesso budget da 50 ms a `io_started`, lasciando
+`queued_at` ad aging/telemetria e senza rilassare il gate.
+
+P1 ha trovato inoltre un underflow del contatore `pread_bytes` dovuto al reset
+nel worker e ha definito telemetry v2 con 178 event CUDA preallocati, capture
+Nsight di 1-2 token e hard gate overhead 2%.
+
+P5 ha chiuso il budget live-150k:
+
+```text
+raw_plus_indexer_ratio4_plus_attention_ratio128_resident=504206336_bytes
+attention_ratio4_staged=1761693696_bytes
+target_kv_indexer_h2d=22020096_bytes_per_token
+target_kv_indexer_submissions=21_per_token
+watermark_target=1_GiB
+watermark_floor=512_MiB
+capsule=D4CP_v2
+```
+
+Il piano operativo persistente aggiornato e':
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\DS4_OPERATIONAL_PLAN.md
+SHA256=5E99F27467B8D032404ABB9996886C75D5BDBEA11C3C1156854423464B0B64A3
+```
