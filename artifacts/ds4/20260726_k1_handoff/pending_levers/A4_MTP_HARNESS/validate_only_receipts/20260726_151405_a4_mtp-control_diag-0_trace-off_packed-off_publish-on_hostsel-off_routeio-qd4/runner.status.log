@@ -1,0 +1,2 @@
+2026-07-26T15:14:05.7263402+02:00 prepared run_dir=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-mtp-batch-verify\work\a4_validation_final\20260726_151405_a4_mtp-control_diag-0_trace-off_packed-off_publish-on_hostsel-off_routeio-qd4
+2026-07-26T15:14:11.3009451+02:00 validation=PASS mtp_mode=Control mtp_draft=1 mtp_batch_verify=0 temperature=0 think=false trace_mode=Off manifest_count=47 packed_copy=Off batched_publish=On g73_host_selected=Off route_io_qd=Qd4 binary_mtp_hashes=PASS source_tree_match=0 server_started=no

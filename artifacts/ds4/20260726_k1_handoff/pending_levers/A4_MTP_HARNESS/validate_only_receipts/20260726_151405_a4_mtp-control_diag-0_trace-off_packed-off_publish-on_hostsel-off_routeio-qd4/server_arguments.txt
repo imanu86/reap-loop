@@ -1,0 +1,17 @@
+-m
+C:\ds4-models\ds4-2bit.gguf
+--mtp
+C:\ds4-models\DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf
+--cuda
+-c
+150000
+-n
+8192
+--mtp-draft
+1
+--mtp-margin
+3
+--host
+127.0.0.1
+--port
+8000

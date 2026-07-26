@@ -1,0 +1,1083 @@
+diff --git a/runtime_p0p1/run_two_turn_lifecycle.ps1 b/runtime_p0p1/run_two_turn_lifecycle.ps1
+index cb0674e..471e4c8 100644
+--- a/runtime_p0p1/run_two_turn_lifecycle.ps1
++++ b/runtime_p0p1/run_two_turn_lifecycle.ps1
+@@ -44,7 +44,7 @@ $manifestSource = Join-Path $root 'manifest_47.env'
+ $monitorScript = Join-Path $root 'runtime_monitor.ps1'
+ $nsysStreamExtractor = Join-Path $root 'extract_nsys_process_streams.py'
+ $python = 'C:\Users\imanu\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+-$buildRoot = Join-Path $workspace 'work\build-a1-graph-tensor-device'
++$buildRoot = Join-Path $workspace 'work\build-p0-ssd-rotator'
+ $exe = Join-Path $buildRoot 'ds4_server.exe'
+ $model = 'C:\ds4-models\ds4-2bit.gguf'
+ $nsys = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2024.5.1\target-windows-x64\nsys.exe'
+@@ -60,13 +60,13 @@ $runId = '{0}_a1_m0_p0_trace-{1}_packed-{2}_publish-{3}_hostsel-{4}_routeio-{5}_
+     $safeHostSelected, $safeRouteIo, $safeGraphTensorDevice
+ $runDirectory = Join-Path $outputRoot $runId
+ 
+-$expectedExeHash = '2B11AA8160191F9AC44802451CDEC2EF36334C52B06F0ECF5FCC2068990562BA'
++$expectedExeHash = '070A450ECD5E4AB94A7C6CCB2FED73D8FDB6EF45E0E700CF506D647BA3F54E5D'
+ $expectedModelHash = 'efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668'
+ $expectedTurn1ContentHash = '7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b'
+ $expectedTurn2ContentHash = '0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb'
+ $expectedSourceHashes = [ordered]@{
+     'ds4.c' = '54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466'
+-    'ds4_cuda.cu' = '53B152FA67FC8155F1391C27CB807001E7B3DBB39BBD5F863CC2338BFB684182'
++    'ds4_cuda.cu' = '313A8CCC8BCA6B8EC08E3205621B18D8BA7E58624EF20D568063EC86784B90AD'
+     'ds4_gpu.h' = '625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C'
+     'ds4_metal.m' = '81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D'
+ }
+@@ -124,6 +124,81 @@ function Get-TextSha256 {
+     }
+ }
+ 
++function Get-Q1SsdWrapGate {
++    param([string]$LogText)
++
++    $summaryMatches = [regex]::Matches(
++        $LogText,
++        '(?m)^ds4: \[q1-0-ssd-wrap\] ' +
++        'result=(complete|degraded|failed) requested=[^\r\n]*(?=\r?$)')
++    $summary = if ($summaryMatches.Count -eq 1) {
++        $summaryMatches[0].Value
++    } else {
++        ''
++    }
++    $result = if ($summary -match 'result=(complete|degraded|failed)') {
++        $matches[1]
++    } else {
++        'missing'
++    }
++    $fields = [ordered]@{}
++    foreach ($name in @(
++            'requested', 'attempts', 'successes', 'failures',
++            'advisory_failures', 'advisory_releases',
++            'advisory_degraded', 'structural_rejects', 'stale', 'dropped',
++            'ram_ready', 'pinned_ready', 'pageable_ready')) {
++        $fields[$name] = -1L
++        if ($summary -match "(?:^|\s)$name=(\d+)") {
++            $fields[$name] = [Int64]$matches[1]
++        }
++    }
++    $terminalMarkerCount = [regex]::Matches(
++        $LogText,
++        '(?m)^ds4: \[q1-0-ssd-wrap(?:-wave|-io)?\]' +
++        '[^\r\n]*(?:result=(?:failed|degraded)|worker detached|' +
++        'commit deadline expired|safe-leaked|tier reset deferred|' +
++        'retained tier entries permanently)').Count
++    $accountingPass =
++        $fields.requested -eq $fields.attempts -and
++        $fields.attempts -eq (
++            $fields.successes + $fields.failures + $fields.dropped) -and
++        $fields.ram_ready -eq $fields.successes -and
++        ($fields.pinned_ready + $fields.pageable_ready) -eq
++            $fields.successes -and
++        $fields.advisory_releases -eq $fields.advisory_failures
++    $gatePass =
++        $summaryMatches.Count -eq 1 -and
++        $result -eq 'complete' -and
++        $fields.attempts -gt 0 -and
++        $fields.failures -eq 0 -and
++        $fields.advisory_failures -eq 0 -and
++        $fields.advisory_releases -eq 0 -and
++        $fields.advisory_degraded -eq 0 -and
++        $fields.structural_rejects -eq 0 -and
++        $fields.stale -eq 0 -and
++        $fields.dropped -eq 0 -and
++        $terminalMarkerCount -eq 0 -and
++        $accountingPass
++
++    return [pscustomobject]@{
++        gate_pass = $gatePass
++        summary_count = $summaryMatches.Count
++        result = $result
++        terminal_marker_count = $terminalMarkerCount
++        accounting_pass = $accountingPass
++        requested = $fields.requested
++        attempts = $fields.attempts
++        successes = $fields.successes
++        failures = $fields.failures
++        advisory_failures = $fields.advisory_failures
++        advisory_releases = $fields.advisory_releases
++        advisory_degraded = $fields.advisory_degraded
++        structural_rejects = $fields.structural_rejects
++        stale = $fields.stale
++        dropped = $fields.dropped
++    }
++}
++
+ function Get-LogLineCount {
+     if (-not (Test-Path -LiteralPath $serverLog)) {
+         return 0
+@@ -724,6 +799,7 @@ $allLog = if (Test-Path -LiteralPath $serverLog) {
+ } else {
+     ''
+ }
++$rotatorGate = Get-Q1SsdWrapGate -LogText $allLog
+ $allocLogMatches = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-(?:summary|row|kind|balance)\]' +
+@@ -1054,13 +1130,10 @@ if (Test-Path -LiteralPath $turn2ResponsePath) {
+     } catch {}
+ }
+ 
+-$gatePass = if ($TraceMode -eq 'Nsys') {
++$servingExactGatePass = if ($TraceMode -eq 'Nsys') {
+     -not $runError -and
+     $turn1ContentHash -eq $expectedTurn1ContentHash -and
+     $turn2ContentHash -eq $expectedTurn2ContentHash -and
+-    $allocTraceGatePass -and
+-    $graphTensorDeviceGatePass -and
+-    $nsysGatePass -and
+     $shutdownMode -eq 'graceful_http_verified'
+ } else {
+     -not $runError -and
+@@ -1078,11 +1151,14 @@ $gatePass = if ($TraceMode -eq 'Nsys') {
+     $batchedPublishGatePass -and
+     $g73HostSelectedGatePass -and
+     $routeIoGatePass -and
+-    $allocTraceGatePass -and
+-    $graphTensorDeviceGatePass -and
+-    $nsysGatePass -and
+     $shutdownMode -eq 'graceful_http_verified'
+ }
++$gatePass =
++    $servingExactGatePass -and
++    $rotatorGate.gate_pass -and
++    $allocTraceGatePass -and
++    $graphTensorDeviceGatePass -and
++    $nsysGatePass
+ 
+ @(
+     "run_dir=$runDirectory"
+@@ -1097,6 +1173,22 @@ $gatePass = if ($TraceMode -eq 'Nsys') {
+     'declared_parameter_count=52'
+     'ctx_capacity=150000'
+     'live_position_150000=not_claimed'
++    "serving_exact_gate_pass=$servingExactGatePass"
++    "rotator_gate_pass=$($rotatorGate.gate_pass)"
++    "rotator_summary_count=$($rotatorGate.summary_count)"
++    "rotator_result=$($rotatorGate.result)"
++    "rotator_terminal_marker_count=$($rotatorGate.terminal_marker_count)"
++    "rotator_accounting_pass=$($rotatorGate.accounting_pass)"
++    "rotator_requested=$($rotatorGate.requested)"
++    "rotator_attempts=$($rotatorGate.attempts)"
++    "rotator_successes=$($rotatorGate.successes)"
++    "rotator_failures=$($rotatorGate.failures)"
++    "rotator_advisory_failures=$($rotatorGate.advisory_failures)"
++    "rotator_advisory_releases=$($rotatorGate.advisory_releases)"
++    "rotator_advisory_degraded=$($rotatorGate.advisory_degraded)"
++    "rotator_structural_rejects=$($rotatorGate.structural_rejects)"
++    "rotator_stale=$($rotatorGate.stale)"
++    "rotator_dropped=$($rotatorGate.dropped)"
+     "cached_prefix_tokens=$cachedPrefix"
+     "suffix_tokens=$suffixTokens"
+     "short_suffix_preserve_count=$($preserveMatches.Count)"
+diff --git a/runtime_p0p1/test_p0_ssd_rotator_runner_gate.ps1 b/runtime_p0p1/test_p0_ssd_rotator_runner_gate.ps1
+new file mode 100644
+index 0000000..4f93cb2
+--- /dev/null
++++ b/runtime_p0p1/test_p0_ssd_rotator_runner_gate.ps1
+@@ -0,0 +1,68 @@
++$ErrorActionPreference = 'Stop'
++Set-StrictMode -Version 2.0
++
++$runnerPath = Join-Path $PSScriptRoot 'run_two_turn_lifecycle.ps1'
++$runner = [System.IO.File]::ReadAllText($runnerPath)
++$start = $runner.IndexOf(
++    'function Get-Q1SsdWrapGate {', [StringComparison]::Ordinal)
++$end = $runner.IndexOf(
++    'function Get-LogLineCount {', $start, [StringComparison]::Ordinal)
++if ($start -lt 0 -or $end -le $start) {
++    throw 'unable to isolate Get-Q1SsdWrapGate from runner'
++}
++Invoke-Expression $runner.Substring($start, $end - $start)
++
++function Assert-True([bool]$Condition, [string]$Message) {
++    if (-not $Condition) {
++        throw "P0 SSD rotator runner fixture failed: $Message"
++    }
++}
++
++$valid = @'
++ds4: [q1-0-ssd-wrap] result=complete requested=2 deduplicated=0 backpressure=0 attempts=2 successes=2 failures=0 advisory_failures=0 advisory_releases=0 advisory_degraded=0 structural_rejects=0 bytes_requested=14155776 bytes_read=14155776 bytes_useful=14155776 ranges_requested=6 ranges_read=6 coalesced_ranges=0 max_queue_depth=1 waves_prefill=0 waves_decode=2 ram_ready=2 pinned_ready=2 pageable_ready=0 pinned_hits=10 pageable_hits=0 stale=0 dropped=0 host_copy_bytes=14155776 host_copy_seconds=0.001 h2d_waits=0 h2d_wait_seconds=0 pageable_paged_out_before_copy=0 first_use=0 wasted=0 service_seconds=0.003
++'@
++$gate = Get-Q1SsdWrapGate -LogText $valid
++Assert-True $gate.gate_pass 'healthy rotator summary was rejected'
++Assert-True $gate.accounting_pass 'healthy accounting was rejected'
++
++$advisory = @'
++ds4: [q1-0-ssd-wrap-io] result=degraded mode=advisory action=release-job-local wave_id=2 job=0 sequence=2 layer=7 expert=42 range=0 expected=1048576 actual=-1 errno=110 deadline=rotator-local service_seconds=0.05
++ds4: [q1-0-ssd-wrap] result=degraded requested=2 deduplicated=0 backpressure=0 attempts=2 successes=1 failures=1 advisory_failures=1 advisory_releases=1 advisory_degraded=1 structural_rejects=0 bytes_requested=14155776 bytes_read=7077888 bytes_useful=7077888 ranges_requested=6 ranges_read=3 coalesced_ranges=0 max_queue_depth=1 waves_prefill=0 waves_decode=2 ram_ready=1 pinned_ready=1 pageable_ready=0 pinned_hits=10 pageable_hits=0 stale=0 dropped=0 host_copy_bytes=7077888 host_copy_seconds=0.001 h2d_waits=0 h2d_wait_seconds=0 pageable_paged_out_before_copy=0 first_use=0 wasted=0 service_seconds=0.053
++'@
++$gate = Get-Q1SsdWrapGate -LogText $advisory
++Assert-True (-not $gate.gate_pass) 'advisory-degraded rotator passed'
++Assert-True $gate.accounting_pass `
++    'job-local advisory accounting should remain internally consistent'
++Assert-True ($gate.advisory_failures -eq 1 -and
++    $gate.advisory_releases -eq 1) `
++    'advisory failure/release telemetry was not preserved'
++
++$hiddenAdvisory = $valid.Replace(
++    'failures=0 advisory_failures=0 advisory_releases=0 advisory_degraded=0',
++    'failures=1 advisory_failures=1 advisory_releases=1 advisory_degraded=1'
++).Replace('attempts=2 successes=2', 'attempts=2 successes=1')
++$gate = Get-Q1SsdWrapGate -LogText $hiddenAdvisory
++Assert-True (-not $gate.gate_pass) `
++    'result=complete hid nonzero advisory telemetry'
++
++$doubleCount = $valid.Replace(
++    'attempts=2 successes=2 failures=0 advisory_failures=0 advisory_releases=0 advisory_degraded=0',
++    'attempts=2 successes=1 failures=2 advisory_failures=1 advisory_releases=1 advisory_degraded=1'
++).Replace('stale=0 dropped=0', 'stale=0 dropped=1')
++$gate = Get-Q1SsdWrapGate -LogText $doubleCount
++Assert-True (-not $gate.gate_pass) 'double-counted accounting passed'
++Assert-True (-not $gate.accounting_pass) `
++    'double-counted accounting invariant was not detected'
++
++$gate = Get-Q1SsdWrapGate -LogText ''
++Assert-True (-not $gate.gate_pass) 'missing summary passed'
++
++$gate = Get-Q1SsdWrapGate -LogText ($valid + "`n" + $valid)
++Assert-True (-not $gate.gate_pass) 'duplicate summary passed'
++
++$structural = $valid.Replace('result=complete', 'result=failed').Replace(
++    'structural_rejects=0', 'structural_rejects=1')
++$gate = Get-Q1SsdWrapGate -LogText $structural
++Assert-True (-not $gate.gate_pass) 'structural terminal passed'
++
++Write-Output 'test_p0_ssd_rotator_runner_gate.ps1: PASS'
+diff --git a/wt-hot-reserve/ds4_cuda.cu b/wt-hot-reserve/ds4_cuda.cu
+index f834de7..9697b77 100644
+--- a/wt-hot-reserve/ds4_cuda.cu
++++ b/wt-hot-reserve/ds4_cuda.cu
+@@ -29337,20 +29337,32 @@ static int cuda_g73_open_rotation_record_context_init(
+         &record->destination_down_offset, &record->destination_bytes);
+ }
+ 
+-enum cuda_q1_0_ssd_wrap_job_state : uint8_t {
+-    CUDA_Q1_0_SSD_WRAP_FREE = 0,
+-    CUDA_Q1_0_SSD_WRAP_REQUESTED,
++enum cuda_q1_0_ssd_wrap_job_state : uint8_t {
++    CUDA_Q1_0_SSD_WRAP_FREE = 0,
++    CUDA_Q1_0_SSD_WRAP_REQUESTED,
+     CUDA_Q1_0_SSD_WRAP_SSD_INFLIGHT,
+     CUDA_Q1_0_SSD_WRAP_RAM_READY,
+     CUDA_Q1_0_SSD_WRAP_RAM_COMMITTING,
+     CUDA_Q1_0_SSD_WRAP_FAILED,
+-    CUDA_Q1_0_SSD_WRAP_DEAD,
+-};
+-
+-struct cuda_q1_0_ssd_wrap_job {
+-    cuda_q1_0_ssd_wrap_job_state state;
+-    cuda_q1_0_promotion_record_context record;
+-    cuda_moe_route_request request;
++    CUDA_Q1_0_SSD_WRAP_DEAD,
++};
++
++enum cuda_q1_0_ssd_wrap_io_status : uint8_t {
++    CUDA_Q1_0_SSD_WRAP_IO_NONE = 0,
++    CUDA_Q1_0_SSD_WRAP_IO_OK,
++    CUDA_Q1_0_SSD_WRAP_IO_CONTRACT,
++    CUDA_Q1_0_SSD_WRAP_IO_DEADLINE,
++    CUDA_Q1_0_SSD_WRAP_IO_TIMEOUT,
++    CUDA_Q1_0_SSD_WRAP_IO_CANCELLED,
++    CUDA_Q1_0_SSD_WRAP_IO_PREAD,
++    CUDA_Q1_0_SSD_WRAP_IO_SHORT_READ,
++};
++
++struct cuda_q1_0_ssd_wrap_job {
++    cuda_q1_0_ssd_wrap_job_state state;
++    cuda_q1_0_ssd_wrap_io_status io_status;
++    cuda_q1_0_promotion_record_context record;
++    cuda_moe_route_request request;
+     uint64_t request_epoch;
+     uint64_t enqueue_call;
+     uint64_t enqueue_sequence;
+@@ -29369,17 +29381,22 @@ struct cuda_q1_0_ssd_wrap_job {
+     uint32_t victim_expert;
+     cuda_moe_tier_state victim_state;
+     char *read_base;
+-    double queued_at;
+-    double io_seconds;
+-    const char *failure_reason;
+-    uint8_t replacing;
+-    uint8_t prefill_wave;
+-    uint8_t destination_pageable;
+-    uint8_t writer_claimed;
+-    uint8_t g73_open_rotation;
+-    uint8_t commit_safe_leaked;
+-    uint64_t tier_generation;
+-};
++    double queued_at;
++    double io_seconds;
++    const char *failure_reason;
++    int io_errno;
++    int64_t io_actual_bytes;
++    uint64_t io_expected_bytes;
++    uint32_t io_failure_range;
++    uint8_t replacing;
++    uint8_t prefill_wave;
++    uint8_t destination_pageable;
++    uint8_t writer_claimed;
++    uint8_t g73_open_rotation;
++    uint8_t failure_counted;
++    uint8_t commit_safe_leaked;
++    uint64_t tier_generation;
++};
+ 
+ struct cuda_q1_0_ssd_wrap_state {
+     os_file_t file;
+@@ -29420,10 +29437,12 @@ struct cuda_q1_0_ssd_wrap_state {
+     uint64_t requested;
+     uint64_t deduplicated;
+     uint64_t backpressure;
+-    uint64_t attempts;
+-    uint64_t successes;
+-    uint64_t failures;
+-    uint64_t structural_rejects;
++    uint64_t attempts;
++    uint64_t successes;
++    uint64_t failures;
++    uint64_t advisory_failures;
++    uint64_t advisory_releases;
++    uint64_t structural_rejects;
+     uint64_t stale;
+     uint64_t dropped;
+     uint64_t bytes_requested;
+@@ -29625,20 +29644,47 @@ static void cuda_q1_0_ssd_wrap_working_set_sample(const char *phase) {
+ #endif
+ }
+ 
+-struct cuda_q1_0_ssd_wrap_part {
+-    uint64_t source_offset;
+-    uint64_t bytes;
+-    char *destination;
+-};
+-
+-static int cuda_q1_0_ssd_wrap_read_job(
+-        cuda_q1_0_ssd_wrap_job *job, uint32_t *ranges_read_out,
+-        uint32_t *coalesced_out, double absolute_deadline) {
+-    if (!job || !ranges_read_out || !coalesced_out || !job->read_base ||
+-        job->record.destination_bytes != g_dynamic_arena.slot_bytes) {
+-        return 0;
+-    }
+-    cuda_q1_0_ssd_wrap_part parts[3] = {
++struct cuda_q1_0_ssd_wrap_part {
++    uint64_t source_offset;
++    uint64_t bytes;
++    char *destination;
++};
++
++struct cuda_q1_0_ssd_wrap_read_result {
++    cuda_q1_0_ssd_wrap_io_status status;
++    uint32_t ranges_read;
++    uint32_t coalesced;
++    uint32_t failure_range;
++    uint64_t expected_bytes;
++    int64_t actual_bytes;
++    int os_error;
++};
++
++static const char *cuda_q1_0_ssd_wrap_io_status_name(
++        cuda_q1_0_ssd_wrap_io_status status) {
++    switch (status) {
++        case CUDA_Q1_0_SSD_WRAP_IO_OK: return "ok";
++        case CUDA_Q1_0_SSD_WRAP_IO_CONTRACT: return "contract";
++        case CUDA_Q1_0_SSD_WRAP_IO_DEADLINE: return "deadline-before-range";
++        case CUDA_Q1_0_SSD_WRAP_IO_TIMEOUT: return "timeout";
++        case CUDA_Q1_0_SSD_WRAP_IO_CANCELLED: return "cancelled";
++        case CUDA_Q1_0_SSD_WRAP_IO_PREAD: return "pread-error";
++        case CUDA_Q1_0_SSD_WRAP_IO_SHORT_READ: return "short-read";
++        default: return "none";
++    }
++}
++
++static cuda_q1_0_ssd_wrap_read_result cuda_q1_0_ssd_wrap_read_job(
++        cuda_q1_0_ssd_wrap_job *job, double absolute_deadline) {
++    cuda_q1_0_ssd_wrap_read_result result = {};
++    result.status = CUDA_Q1_0_SSD_WRAP_IO_CONTRACT;
++    result.failure_range = UINT32_MAX;
++    result.actual_bytes = -1;
++    if (!job || !job->read_base ||
++        job->record.destination_bytes != g_dynamic_arena.slot_bytes) {
++        return result;
++    }
++    cuda_q1_0_ssd_wrap_part parts[3] = {
+         {job->record.destination_gate_offset,
+          job->record.destination_gate_bytes, job->read_base},
+         {job->record.destination_up_offset,
+@@ -29648,43 +29694,70 @@ static int cuda_q1_0_ssd_wrap_read_job(
+          job->record.destination_down_bytes,
+          job->read_base + job->record.destination_gate_bytes +
+              job->record.destination_up_bytes},
+-    };
+-    std::sort(parts, parts + 3,
++    };
++    std::sort(parts, parts + 3,
+               [](const cuda_q1_0_ssd_wrap_part &a,
+                  const cuda_q1_0_ssd_wrap_part &b) {
+-                  return a.source_offset < b.source_offset;
+-              });
+-    uint32_t ranges_read = 0;
+-    uint32_t coalesced = 0;
+-    for (uint32_t i = 0; i < 3u;) {
+-        uint64_t source = parts[i].source_offset;
++                  return a.source_offset < b.source_offset;
++              });
++    for (uint32_t i = 0; i < 3u;) {
++        uint64_t source = parts[i].source_offset;
+         uint64_t bytes = parts[i].bytes;
+         char *destination = parts[i].destination;
+         uint32_t next = i + 1u;
+         while (next < 3u && source <= UINT64_MAX - bytes &&
+                destination + bytes == parts[next].destination &&
+-               source + bytes == parts[next].source_offset &&
+-               bytes <= UINT64_MAX - parts[next].bytes) {
+-            bytes += parts[next].bytes;
+-            coalesced++;
+-            next++;
+-        }
+-        const uint32_t remaining_ms =
+-            cuda_deadline_remaining_ms(absolute_deadline);
+-        if (remaining_ms == 0u) return 0;
+-        const int64_t got = os_pread_cancellable_timeout(
+-            &g_q1_0_ssd_wrap.file, destination, bytes, source,
+-            &g_q1_0_ssd_wrap.pread, job->io_sequence, remaining_ms);
+-        if (got < 0 || (uint64_t)got != bytes) {
+-            return 0;
+-        }
+-        ranges_read++;
+-        i = next;
+-    }
+-    *ranges_read_out = ranges_read;
+-    *coalesced_out = coalesced;
+-    return 1;
+-}
++               source + bytes == parts[next].source_offset &&
++               bytes <= UINT64_MAX - parts[next].bytes) {
++            bytes += parts[next].bytes;
++            result.coalesced++;
++            next++;
++        }
++        const uint32_t remaining_ms =
++            cuda_deadline_remaining_ms(absolute_deadline);
++        if (remaining_ms == 0u) {
++            result.status = CUDA_Q1_0_SSD_WRAP_IO_DEADLINE;
++            result.failure_range = i;
++            result.expected_bytes = bytes;
++            result.actual_bytes = 0;
++            result.os_error = ETIMEDOUT;
++            return result;
++        }
++        errno = 0;
++        const int64_t got = os_pread_cancellable_timeout(
++            &g_q1_0_ssd_wrap.file, destination, bytes, source,
++            &g_q1_0_ssd_wrap.pread, job->io_sequence, remaining_ms);
++        const int read_errno = errno;
++        if (got < 0) {
++            result.status = read_errno == ETIMEDOUT
++                ? CUDA_Q1_0_SSD_WRAP_IO_TIMEOUT
++                : (read_errno == ECANCELED
++                    ? CUDA_Q1_0_SSD_WRAP_IO_CANCELLED
++                    : CUDA_Q1_0_SSD_WRAP_IO_PREAD);
++            result.failure_range = i;
++            result.expected_bytes = bytes;
++            result.actual_bytes = got;
++            result.os_error = read_errno;
++            return result;
++        }
++        if ((uint64_t)got != bytes) {
++            result.status = CUDA_Q1_0_SSD_WRAP_IO_SHORT_READ;
++            result.failure_range = i;
++            result.expected_bytes = bytes;
++            result.actual_bytes = got;
++            result.os_error = read_errno;
++            return result;
++        }
++        result.ranges_read++;
++        i = next;
++    }
++    result.status = CUDA_Q1_0_SSD_WRAP_IO_OK;
++    result.failure_range = UINT32_MAX;
++    result.expected_bytes = 0u;
++    result.actual_bytes = 0;
++    result.os_error = 0;
++    return result;
++}
+ 
+ static void cuda_q1_0_ssd_wrap_fail_and_release_all_locked(
+     const char *reason);
+@@ -29796,69 +29869,99 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+                 os_mutex_unlock(&state.mutex);
+                 break;
+             }
+-            local = state.jobs[index];
+-            os_mutex_unlock(&state.mutex);
+-            const double io_started = cuda_wall_sec();
+-            uint32_t ranges_read = 0;
+-            uint32_t coalesced = 0;
+-            os_pread_cancellable_reset(&state.pread);
+-            const double io_deadline = std::min(
+-                local.queued_at + std::min(
+-                    cuda_g133_rotator_io_timeout_seconds(),
+-                    cuda_g133_transient_io_timeout_seconds()),
+-                local.request.absolute_deadline > 0.0
+-                    ? local.request.absolute_deadline
+-                    : local.queued_at +
+-                        cuda_g133_transient_io_timeout_seconds());
+-            const int read_ok = cuda_q1_0_ssd_wrap_read_job(
+-                &local, &ranges_read, &coalesced, io_deadline);
+-            const double io_seconds = cuda_wall_sec() - io_started;
+-            os_mutex_lock(&state.mutex);
++            local = state.jobs[index];
++            os_mutex_unlock(&state.mutex);
++            const double io_started = cuda_wall_sec();
++            os_pread_cancellable_reset(&state.pread);
++            const double rotator_deadline =
++                local.queued_at + std::min(
++                    cuda_g133_rotator_io_timeout_seconds(),
++                    cuda_g133_transient_io_timeout_seconds());
++            /* G73 rotation is advisory and starts only after exact transient
++             * serving has succeeded. It therefore owns a fresh rotator-local
++             * I/O budget and must never inherit the serving request deadline.
++             * Non-G73 Q1 promotion retains the original fail-closed request
++             * deadline coupling. */
++            const double io_deadline =
++                !local.g73_open_rotation &&
++                local.request.absolute_deadline > 0.0
++                    ? std::min(
++                        rotator_deadline, local.request.absolute_deadline)
++                    : rotator_deadline;
++            const cuda_q1_0_ssd_wrap_read_result read_result =
++                cuda_q1_0_ssd_wrap_read_job(&local, io_deadline);
++            const int read_ok =
++                read_result.status == CUDA_Q1_0_SSD_WRAP_IO_OK;
++            const double io_seconds = cuda_wall_sec() - io_started;
++            os_mutex_lock(&state.mutex);
+             if (index >= state.jobs.size() || state.stop || state.failed ||
+                 state.jobs[index].enqueue_sequence != local.enqueue_sequence) {
+                 os_mutex_unlock(&state.mutex);
+                 break;
+             }
+-            cuda_q1_0_ssd_wrap_job *job = &state.jobs[index];
+-            job->io_seconds = io_seconds;
+-            job->ranges_read = ranges_read;
+-            job->bytes_read = read_ok ? job->bytes_requested : 0u;
+-            if (read_ok) {
+-                job->state = CUDA_Q1_0_SSD_WRAP_RAM_READY;
++            cuda_q1_0_ssd_wrap_job *job = &state.jobs[index];
++            job->io_seconds = io_seconds;
++            job->io_status = read_result.status;
++            job->ranges_read = read_result.ranges_read;
++            job->io_failure_range = read_result.failure_range;
++            job->io_expected_bytes = read_result.expected_bytes;
++            job->io_actual_bytes = read_result.actual_bytes;
++            job->io_errno = read_result.os_error;
++            job->bytes_read = read_ok ? job->bytes_requested : 0u;
++            if (read_ok) {
++                job->state = CUDA_Q1_0_SSD_WRAP_RAM_READY;
+                 state.ram_ready++;
+-                wave_ready++;
+-            } else {
+-                job->failure_reason = "partial_or_pread";
+-                job->state = CUDA_Q1_0_SSD_WRAP_FAILED;
+-                wave_failed++;
+-            }
+-            state.bytes_read += job->bytes_read;
+-            state.bytes_useful += job->bytes_read;
+-            state.ranges_read += ranges_read;
+-            state.coalesced_ranges += coalesced;
+-            if (!read_ok) {
+-                /* Job-local failure only: the FAILED job is consumed and
++                wave_ready++;
++            } else {
++                job->failure_reason =
++                    cuda_q1_0_ssd_wrap_io_status_name(read_result.status);
++                job->state = CUDA_Q1_0_SSD_WRAP_FAILED;
++                job->failure_counted = 1u;
++                wave_failed++;
++            }
++            state.bytes_read += job->bytes_read;
++            state.bytes_useful += job->bytes_read;
++            state.ranges_read += read_result.ranges_read;
++            state.coalesced_ranges += read_result.coalesced;
++            if (!read_ok) {
++                /* Job-local failure only: the FAILED job is consumed and
+                  * released by cuda_q1_0_ssd_wrap_finish_one (failure_reason
+                  * set -> ok=0 path). A single missed read used to latch the
+                  * whole rotator dead via fail_and_release_all (measured:
+                  * wave 58/79 expired in-queue and killed 78 working
+                  * rotations for the rest of the run). The route it was
+-                 * rotating simply stays SSD-served until re-requested. */
+-                state.failures++;
+-                fprintf(stderr,
+-                        "ds4: [q1-0-ssd-wrap] job read failed "
+-                        "(reason=%s); continuing with remaining jobs\n",
+-                        job->failure_reason ? job->failure_reason :
+-                            "partial_or_pread");
+-            }
++                 * rotating simply stays SSD-served until re-requested. */
++                state.failures++;
++                if (job->g73_open_rotation) state.advisory_failures++;
++                fprintf(stderr,
++                        "ds4: [q1-0-ssd-wrap-io] result=%s mode=%s "
++                        "action=%s wave_id=%llu job=%u sequence=%llu "
++                        "layer=%u expert=%u range=%u expected=%llu "
++                        "actual=%lld errno=%d deadline=%s "
++                        "service_seconds=%.9g\n",
++                        job->g73_open_rotation ? "degraded" : "failed",
++                        job->g73_open_rotation ? "advisory" : "terminal",
++                        job->g73_open_rotation ? "release-job-local" :
++                                                "fail-closed",
++                        (unsigned long long)wave_id, index,
++                        (unsigned long long)job->enqueue_sequence,
++                        job->layer, job->expert,
++                        read_result.failure_range,
++                        (unsigned long long)read_result.expected_bytes,
++                        (long long)read_result.actual_bytes,
++                        read_result.os_error,
++                        job->g73_open_rotation ? "rotator-local" :
++                                                "request-bounded",
++                        io_seconds);
++            }
+             os_cond_broadcast(&state.cond);
+             os_mutex_unlock(&state.mutex);
+             wave_requested += local.bytes_requested;
+-            wave_read += read_ok ? local.bytes_requested : 0u;
+-            wave_useful += read_ok ? local.bytes_requested : 0u;
+-            wave_ranges_requested += local.ranges_requested;
+-            wave_ranges_read += ranges_read;
+-            wave_coalesced += coalesced;
++            wave_read += read_ok ? local.bytes_requested : 0u;
++            wave_useful += read_ok ? local.bytes_requested : 0u;
++            wave_ranges_requested += local.ranges_requested;
++            wave_ranges_read += read_result.ranges_read;
++            wave_coalesced += read_result.coalesced;
+         }
+         const double wave_seconds = cuda_wall_sec() - wave_started;
+         os_mutex_lock(&state.mutex);
+@@ -30084,12 +30187,15 @@ static void cuda_q1_0_ssd_wrap_fail_and_release_all_locked(
+             if (job.state == CUDA_Q1_0_SSD_WRAP_RAM_COMMITTING) {
+                 if (!job.commit_safe_leaked) committing++;
+                 continue;
+-            }
+-            job.failure_reason = reason ? reason : "rotator-disabled";
+-            job.state = CUDA_Q1_0_SSD_WRAP_FAILED;
+-            state.failures++;
+-            state.dropped++;
+-            cuda_q1_0_ssd_wrap_job_release_locked(&job);
++            }
++            job.failure_reason = reason ? reason : "rotator-disabled";
++            job.state = CUDA_Q1_0_SSD_WRAP_FAILED;
++            if (!job.failure_counted) {
++                state.failures++;
++                job.failure_counted = 1u;
++            }
++            state.dropped++;
++            cuda_q1_0_ssd_wrap_job_release_locked(&job);
+         }
+         if (committing == 0u) break;
+         const uint32_t remaining_ms =
+@@ -30183,8 +30289,12 @@ static int cuda_q1_0_ssd_wrap_finish_one(
+         os_mutex_unlock(&state.mutex);
+     }
+ 
+-    int ok = local.failure_reason == NULL;
+-    const char *reason = local.failure_reason;
++    int ok = local.failure_reason == NULL;
++    const int advisory_io_failure =
++        local.g73_open_rotation &&
++        local.io_status != CUDA_Q1_0_SSD_WRAP_IO_NONE &&
++        local.io_status != CUDA_Q1_0_SSD_WRAP_IO_OK;
++    const char *reason = local.failure_reason;
+     uint64_t stale_delta = 0u;
+     uint64_t host_copy_bytes = 0u;
+     double host_copy_seconds = 0.0;
+@@ -30379,21 +30489,31 @@ static int cuda_q1_0_ssd_wrap_finish_one(
+         os_mutex_unlock(&state.mutex);
+         return ok;
+     }
+-    if (!ok) {
+-        if (index < state.jobs.size()) {
+-            state.jobs[index].state = CUDA_Q1_0_SSD_WRAP_FAILED;
+-            state.jobs[index].failure_reason =
+-                reason ? reason : "ssd-wrap-commit-failure";
+-        }
+-        cuda_q1_0_ssd_wrap_fail_and_release_all_locked(
+-            reason ? reason : "ssd-wrap-commit-failure");
+-    } else if (index < state.jobs.size()) {
++    if (!ok) {
++        if (index < state.jobs.size()) {
++            state.jobs[index].state = CUDA_Q1_0_SSD_WRAP_FAILED;
++            state.jobs[index].failure_reason =
++                reason ? reason : "ssd-wrap-commit-failure";
++        }
++        if (advisory_io_failure && index < state.jobs.size()) {
++            /* Exact transient serving completed before this G73 rotation was
++             * scheduled. A failed advisory read publishes nothing and owns no
++             * serving fallback: release only this job so later rotations can
++             * proceed. The experiment gate remains degraded via the explicit
++             * advisory counter. */
++            state.advisory_releases++;
++            cuda_q1_0_ssd_wrap_job_release_locked(&state.jobs[index]);
++        } else {
++            cuda_q1_0_ssd_wrap_fail_and_release_all_locked(
++                reason ? reason : "ssd-wrap-commit-failure");
++        }
++    } else if (index < state.jobs.size()) {
+         cuda_q1_0_ssd_wrap_job_release_locked(&state.jobs[index]);
+-    }
+-    os_cond_broadcast(&state.cond);
+-    os_mutex_unlock(&state.mutex);
+-    return ok;
+-}
++    }
++    os_cond_broadcast(&state.cond);
++    os_mutex_unlock(&state.mutex);
++    return ok || advisory_io_failure;
++}
+ 
+ static void *cuda_q1_0_ssd_wrap_selftest_finish_one(void *arg) {
+     const uint32_t index = *(const uint32_t *)arg;
+@@ -30789,12 +30909,14 @@ static void cuda_q1_0_ssd_wrap_release(int report) {
+         state.h2d_pending[i] = 0;
+     }
+     if (report && state.enabled) {
+-        cuda_q1_0_ssd_wrap_working_set_sample("release");
+-        fprintf(stderr,
+-                "ds4: [q1-0-ssd-wrap] result=%s requested=%llu "
+-                "deduplicated=%llu backpressure=%llu attempts=%llu "
+-                "successes=%llu failures=%llu structural_rejects=%llu "
+-                "bytes_requested=%llu bytes_read=%llu bytes_useful=%llu "
++        cuda_q1_0_ssd_wrap_working_set_sample("release");
++        fprintf(stderr,
++                "ds4: [q1-0-ssd-wrap] result=%s requested=%llu "
++                "deduplicated=%llu backpressure=%llu attempts=%llu "
++                "successes=%llu failures=%llu advisory_failures=%llu "
++                "advisory_releases=%llu advisory_degraded=%u "
++                "structural_rejects=%llu "
++                "bytes_requested=%llu bytes_read=%llu bytes_useful=%llu "
+                 "ranges_requested=%llu ranges_read=%llu "
+                 "coalesced_ranges=%llu max_queue_depth=%llu "
+                 "waves_prefill=%llu waves_decode=%llu ram_ready=%llu "
+@@ -30803,15 +30925,19 @@ static void cuda_q1_0_ssd_wrap_release(int report) {
+                 "dropped=%llu host_copy_bytes=%llu host_copy_seconds=%.9g "
+                 "h2d_waits=%llu h2d_wait_seconds=%.9g "
+                 "pageable_paged_out_before_copy=%llu first_use=%llu "
+-                "wasted=%llu service_seconds=%.9g\n",
+-                state.failed ? "failed" : "complete",
+-                (unsigned long long)state.requested,
++                "wasted=%llu service_seconds=%.9g\n",
++                state.failed ? "failed" :
++                    (state.advisory_failures ? "degraded" : "complete"),
++                (unsigned long long)state.requested,
+                 (unsigned long long)state.deduplicated,
+                 (unsigned long long)state.backpressure,
+-                (unsigned long long)state.attempts,
+-                (unsigned long long)state.successes,
+-                (unsigned long long)state.failures,
+-                (unsigned long long)state.structural_rejects,
++                (unsigned long long)state.attempts,
++                (unsigned long long)state.successes,
++                (unsigned long long)state.failures,
++                (unsigned long long)state.advisory_failures,
++                (unsigned long long)state.advisory_releases,
++                state.advisory_failures ? 1u : 0u,
++                (unsigned long long)state.structural_rejects,
+                 (unsigned long long)state.bytes_requested,
+                 (unsigned long long)state.bytes_read,
+                 (unsigned long long)state.bytes_useful,
+@@ -38853,10 +38979,11 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+         g_moe_tiering.entries[2u].ram_slot != UINT32_MAX;
+     if (!cross_request_rearm_ok) ok = 0;
+ 
+-    /* Restore empty synthetic ownership, then retain the original fatal
+-     * teardown-versus-submit assertion as an independent transport case. */
+-    g_moe_tiering.entries.assign(
+-        (size_t)CUDA_MOE_LAYER_COUNT * 256u, empty);
++    /* Restore empty synthetic ownership and inject the worker terminal for one
++     * advisory I/O failure. It must release only that job; a later rotation
++     * must still submit and publish without replaying or serving the failure. */
++    g_moe_tiering.entries.assign(
++        (size_t)CUDA_MOE_LAYER_COUNT * 256u, empty);
+     for (uint32_t i = 0; i < g_dynamic_arena.slots.size(); i++) {
+         g_dynamic_arena.slots[i] = cuda_dynamic_arena_slot{};
+         g_dynamic_arena.slots[i].host_ptr = &synthetic_slots[i];
+@@ -38868,11 +38995,120 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+         job = cuda_q1_0_ssd_wrap_job{};
+     }
+     state.ring_busy.assign(2u, 0u);
+-    g_q1_0_ssd_wrap_reserved_slots.assign(2u, 0u);
+-    state.failed = 0;
+-    state.stop = 0;
+-    request.g133_epoch.request_epoch = 3u;
+-    record = cuda_q1_0_promotion_record_context{};
++    g_q1_0_ssd_wrap_reserved_slots.assign(2u, 0u);
++    state.failed = 0;
++    state.stop = 0;
++    request.g133_epoch.request_epoch = 3u;
++    record = cuda_q1_0_promotion_record_context{};
++    record.active = 1;
++    record.layer = 0u;
++    record.expert = 3u;
++    record.destination_bytes = 1u;
++    record.request_epoch = 3u;
++    record.observation_call = 3u;
++    record.current_call = 3u;
++    record.first_eligible_call = 4u;
++    const uint64_t advisory_failures_before = state.advisory_failures;
++    const uint64_t advisory_releases_before = state.advisory_releases;
++    const uint64_t failures_before = state.failures;
++    const int advisory_submitted = cuda_q1_0_ssd_wrap_submit(
++        request, 0u, 3u, &record, 1);
++    uint32_t advisory_job_index = UINT32_MAX;
++    os_mutex_lock(&state.mutex);
++    for (uint32_t i = 0; i < state.jobs.size(); i++) {
++        cuda_q1_0_ssd_wrap_job &job = state.jobs[i];
++        if (job.state == CUDA_Q1_0_SSD_WRAP_REQUESTED &&
++            job.layer == 0u && job.expert == 3u) {
++            advisory_job_index = i;
++            job.io_status = CUDA_Q1_0_SSD_WRAP_IO_TIMEOUT;
++            job.failure_reason = "timeout";
++            job.io_errno = ETIMEDOUT;
++            job.io_expected_bytes = 1u;
++            job.io_actual_bytes = -1;
++            job.io_failure_range = 0u;
++            job.failure_counted = 1u;
++            job.state = CUDA_Q1_0_SSD_WRAP_FAILED;
++            state.failures++;
++            state.advisory_failures++;
++            break;
++        }
++    }
++    os_mutex_unlock(&state.mutex);
++    const int advisory_poll_ok =
++        advisory_job_index != UINT32_MAX &&
++        cuda_q1_0_ssd_wrap_finish_one(advisory_job_index, 1);
++    int advisory_cleanup_ok = advisory_submitted == 1 &&
++        advisory_poll_ok && !state.failed && !state.stop &&
++        state.failures == failures_before + 1u &&
++        state.advisory_failures == advisory_failures_before + 1u &&
++        state.advisory_releases == advisory_releases_before + 1u &&
++        g_moe_tiering.entries[3u].state == CUDA_MOE_TIER_SSD_COLD &&
++        g_moe_tiering.entries[3u].ram_slot == UINT32_MAX;
++    for (const cuda_q1_0_ssd_wrap_job &job : state.jobs) {
++        if (job.state != CUDA_Q1_0_SSD_WRAP_FREE) advisory_cleanup_ok = 0;
++    }
++    for (const cuda_dynamic_arena_slot &slot : g_dynamic_arena.slots) {
++        if (cuda_dynamic_arena_slot_refs_load(&slot.cpu_lane_slot_refs) != 0u) {
++            advisory_cleanup_ok = 0;
++        }
++    }
++    for (uint8_t reserved : g_q1_0_ssd_wrap_reserved_slots) {
++        if (reserved != 0u) advisory_cleanup_ok = 0;
++    }
++    for (uint8_t ring_busy : state.ring_busy) {
++        if (ring_busy != 0u) advisory_cleanup_ok = 0;
++    }
++
++    request.g133_epoch.request_epoch = 4u;
++    record = cuda_q1_0_promotion_record_context{};
++    record.active = 1;
++    record.layer = 0u;
++    record.expert = 4u;
++    record.destination_bytes = 1u;
++    record.request_epoch = 4u;
++    record.observation_call = 4u;
++    record.current_call = 4u;
++    record.first_eligible_call = 5u;
++    const uint64_t post_failure_successes_before = state.successes;
++    const int post_failure_submitted = cuda_q1_0_ssd_wrap_submit(
++        request, 0u, 4u, &record, 1);
++    os_mutex_lock(&state.mutex);
++    for (cuda_q1_0_ssd_wrap_job &job : state.jobs) {
++        if (job.state == CUDA_Q1_0_SSD_WRAP_REQUESTED &&
++            job.layer == 0u && job.expert == 4u) {
++            job.bytes_read = 1u;
++            job.io_status = CUDA_Q1_0_SSD_WRAP_IO_OK;
++            job.state = CUDA_Q1_0_SSD_WRAP_RAM_READY;
++        }
++    }
++    os_mutex_unlock(&state.mutex);
++    cuda_q1_0_ssd_wrap_flush();
++    const int advisory_followup_ok =
++        post_failure_submitted == 1 && !state.failed && !state.stop &&
++        state.successes == post_failure_successes_before + 1u &&
++        g_moe_tiering.entries[4u].ram_slot != UINT32_MAX;
++    if (!advisory_cleanup_ok || !advisory_followup_ok) ok = 0;
++
++    /* Restore empty synthetic ownership, then retain the original fatal
++     * teardown-versus-submit assertion as an independent structural case. */
++    g_moe_tiering.entries.assign(
++        (size_t)CUDA_MOE_LAYER_COUNT * 256u, empty);
++    for (uint32_t i = 0; i < g_dynamic_arena.slots.size(); i++) {
++        g_dynamic_arena.slots[i] = cuda_dynamic_arena_slot{};
++        g_dynamic_arena.slots[i].host_ptr = &synthetic_slots[i];
++        g_dynamic_arena.slots[i].layer = UINT32_MAX;
++        g_dynamic_arena.slots[i].expert = UINT32_MAX;
++        g_dynamic_arena.slots[i].state = DS4_GPU_ARENA_FREE;
++    }
++    for (cuda_q1_0_ssd_wrap_job &job : state.jobs) {
++        job = cuda_q1_0_ssd_wrap_job{};
++    }
++    state.ring_busy.assign(2u, 0u);
++    g_q1_0_ssd_wrap_reserved_slots.assign(2u, 0u);
++    state.failed = 0;
++    state.stop = 0;
++    request.g133_epoch.request_epoch = 3u;
++    record = cuda_q1_0_promotion_record_context{};
+     record.active = 1;
+     record.layer = 0u;
+     record.expert = 1u;
+@@ -39022,16 +39258,25 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+             "ds4: [g73-open-selftest] result=%s "
+             "pread_cancel=start-then-cancel "
+             "pread_deadline=start-then-cancel "
+-            "rotator=production sequential_consistency_hook=real "
+-            "cross_request_rearm=%s first_submit=%d second_submit=%d "
+-            "promotion_delta=%llu "
+-            "teardown_during_committing=generation-abandon "
++            "rotator=production sequential_consistency_hook=real "
++            "cross_request_rearm=%s first_submit=%d second_submit=%d "
++            "promotion_delta=%llu "
++            "advisory_failure=%s advisory_followup=%s "
++            "advisory_failure_delta=%llu advisory_release_delta=%llu "
++            "structural_failure=terminal "
++            "teardown_during_committing=generation-abandon "
+             "invariant=real\n",
+             ok ? "passed" : "failed",
+-            cross_request_rearm_ok ? "second-submit-promoted" : "failed",
+-            first_request_submitted, second_request_submitted,
+-            (unsigned long long)(rotation_promotions_after -
+-                                 rotation_promotions_before));
++            cross_request_rearm_ok ? "second-submit-promoted" : "failed",
++            first_request_submitted, second_request_submitted,
++            (unsigned long long)(rotation_promotions_after -
++                                 rotation_promotions_before),
++            advisory_cleanup_ok ? "job-local-clean" : "failed",
++            advisory_followup_ok ? "subsequent-promoted" : "failed",
++            (unsigned long long)(state.advisory_failures -
++                                 advisory_failures_before),
++            (unsigned long long)(state.advisory_releases -
++                                 advisory_releases_before));
+     return ok;
+ }
+ 
+diff --git a/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1 b/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1
+new file mode 100644
+index 0000000..69cc411
+--- /dev/null
++++ b/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1
+@@ -0,0 +1,111 @@
++$ErrorActionPreference = 'Stop'
++
++$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
++$source = [System.IO.File]::ReadAllText((Join-Path $root 'ds4_cuda.cu'))
++$runnerPath = Join-Path (
++    Split-Path -Parent $root) 'runtime_p0p1\run_two_turn_lifecycle.ps1'
++$runner = [System.IO.File]::ReadAllText($runnerPath)
++
++function Assert-True([bool]$Condition, [string]$Message) {
++    if (-not $Condition) {
++        throw "P0 SSD rotator advisory contract failed: $Message"
++    }
++}
++
++function Assert-Contains(
++        [string]$Text, [string]$Needle, [string]$Message) {
++    Assert-True ($Text.Contains($Needle)) $Message
++}
++
++function Slice-Between(
++        [string]$Text, [string]$Start, [string]$End) {
++    $begin = $Text.IndexOf($Start, [StringComparison]::Ordinal)
++    if ($begin -lt 0) { throw "missing slice start: $Start" }
++    $finish = $Text.IndexOf(
++        $End, $begin + $Start.Length, [StringComparison]::Ordinal)
++    if ($finish -lt 0) { throw "missing slice end: $End" }
++    return $Text.Substring($begin, $finish - $begin)
++}
++
++$worker = Slice-Between $source `
++    'static void *cuda_q1_0_ssd_wrap_worker(void *) {' `
++    'static int cuda_q1_0_ssd_wrap_init(void) {'
++Assert-Contains $worker 'const double rotator_deadline =' `
++    'worker lacks a rotator-local deadline'
++Assert-Contains $worker '!local.g73_open_rotation &&' `
++    'G73 advisory reads still inherit the serving deadline'
++Assert-Contains $worker 'local.request.absolute_deadline > 0.0' `
++    'non-G73 promotion lost its fail-closed request deadline'
++Assert-Contains $worker 'job->failure_counted = 1u;' `
++    'worker failure is not marked as already counted'
++Assert-Contains $worker 'state.advisory_failures++;' `
++    'advisory failure telemetry is missing'
++Assert-Contains $worker '"rotator-local"' `
++    'failure telemetry does not identify the deadline domain'
++Assert-Contains $worker 'job->layer, job->expert' `
++    'failure telemetry does not identify the failed route'
++
++$finishOne = Slice-Between $source `
++    'static int cuda_q1_0_ssd_wrap_finish_one(' `
++    'static int cuda_q1_0_ssd_wrap_poll_internal('
++Assert-Contains $finishOne 'const int advisory_io_failure =' `
++    'finish path does not distinguish advisory I/O from structural failure'
++Assert-Contains $finishOne 'state.advisory_releases++;' `
++    'advisory release telemetry is missing'
++Assert-Contains $finishOne `
++    'cuda_q1_0_ssd_wrap_job_release_locked(&state.jobs[index]);' `
++    'advisory failure does not release its job-local ownership'
++Assert-Contains $finishOne 'return ok || advisory_io_failure;' `
++    'advisory terminal still poisons poll/submit'
++Assert-Contains $finishOne `
++    'cuda_q1_0_ssd_wrap_fail_and_release_all_locked(' `
++    'structural and non-G73 errors are no longer terminal'
++
++$releaseAll = Slice-Between $source `
++    'static void cuda_q1_0_ssd_wrap_fail_and_release_all_locked(' `
++    'static void cuda_q1_0_ssd_wrap_disable('
++Assert-Contains $releaseAll 'if (!job.failure_counted) {' `
++    'terminal teardown can double-count an existing I/O failure'
++Assert-Contains $releaseAll 'state.failed = 1;' `
++    'structural teardown no longer latches failed'
++Assert-Contains $releaseAll 'state.stop = 1;' `
++    'structural teardown no longer stops the worker'
++
++Assert-Contains $source `
++    '(state.advisory_failures ? "degraded" : "complete")' `
++    'final telemetry hides an advisory-degraded rotator'
++Assert-Contains $source 'advisory_failures=%llu' `
++    'final telemetry lacks advisory failure count'
++Assert-Contains $source 'advisory_releases=%llu' `
++    'final telemetry lacks job-local release count'
++Assert-Contains $source 'advisory_failure=%s advisory_followup=%s' `
++    'self-test does not report advisory failure and subsequent rotation'
++Assert-Contains $source '"job-local-clean"' `
++    'self-test does not assert clean advisory teardown'
++Assert-Contains $source '"subsequent-promoted"' `
++    'self-test does not assert a rotation after advisory failure'
++Assert-Contains $source '"structural_failure=terminal "' `
++    'self-test does not retain a terminal structural error assertion'
++Assert-Contains $source `
++    'g_moe_tiering.entries[3u].state == CUDA_MOE_TIER_SSD_COLD' `
++    'self-test does not prove the failed route remains SSD-cold'
++Assert-Contains $source `
++    'state.failures == failures_before + 1u' `
++    'self-test does not prove single failure accounting'
++
++Assert-Contains $runner 'function Get-Q1SsdWrapGate {' `
++    'runner lacks a dedicated rotator gate'
++Assert-Contains $runner '$rotatorGate.gate_pass -and' `
++    'overall gate does not require rotator health'
++Assert-Contains $runner '$fields.advisory_failures -eq 0' `
++    'runner accepts advisory failures'
++Assert-Contains $runner '$fields.advisory_degraded -eq 0' `
++    'runner accepts degraded rotator state'
++Assert-Contains $runner '$fields.dropped -eq 0' `
++    'runner accepts dropped rotator work'
++Assert-Contains $runner '$summaryMatches.Count -eq 1' `
++    'runner does not fail closed on missing/duplicate summary'
++Assert-Contains $runner 'serving_exact_gate_pass=' `
++    'runner does not report exact-serving correctness separately'
++
++Write-Output 'test_p0_ssd_rotator_advisory_static.ps1: PASS'

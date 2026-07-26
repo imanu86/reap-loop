@@ -148,6 +148,12 @@ Il bundle committato contiene:
 - report e receipt runtime K0/K1;
 - harness K0/K1 e manifest 47;
 - manifest SHA-256 di 111 artefatti runtime.
+- report/harness non eseguiti A2, A3, A4, P4 e P5;
+- diagnosi e patch portabili P0/P0.1.
+
+Gli ultimi elementi sono indicizzati in
+`artifacts/ds4/20260726_k1_handoff/pending_levers/INDEX.md`: non vanno
+interpretati come risultati runtime.
 
 Hash principali:
 
@@ -171,4 +177,3 @@ C:\Users\imanu\Documents\Codex\2026-07-26\ds4-kv-phase-aware-followup\outputs\kv
 - K1: meccanismo ingaggiato e VRAM liberata, ma respinto per correctness.
 - K2: non eseguito.
 - Nessun altro run Codex e' in corso o autorizzato.
-

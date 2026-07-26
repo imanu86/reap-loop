@@ -1,0 +1,1106 @@
+﻿diff --git a/runtime_p0p1/run_two_turn_lifecycle.ps1 b/runtime_p0p1/run_two_turn_lifecycle.ps1
+index cb0674e..5dab6a9 100644
+--- a/runtime_p0p1/run_two_turn_lifecycle.ps1
++++ b/runtime_p0p1/run_two_turn_lifecycle.ps1
+@@ -11,11 +11,14 @@ param(
+     [string]$RouteIoQd = 'Off',
+     [ValidateSet('Off', 'On')]
+     [string]$GraphTensorDevice = 'Off',
++    [ValidateSet('Off', 'On')]
++    [string]$G73Open = 'On',
+     [ValidateRange(1, 1024)]
+     [int]$Turn1MaxTokens = 128,
+     [ValidateRange(1, 1024)]
+     [int]$Turn2MaxTokens = 32,
+-    [switch]$ValidateOnly
++    [switch]$ValidateOnly,
++    [switch]$AllowSourceDriftForValidation
+ )
+ 
+ Set-StrictMode -Version 2.0
+@@ -27,8 +30,16 @@ $invariant = [System.Globalization.CultureInfo]::InvariantCulture
+ if ($PackedCopy -ne 'Off' -or
+     $BatchedPublish -ne 'Off' -or
+     $G73HostSelected -ne 'Off' -or
+-    $RouteIoQd -ne 'Off') {
+-    throw 'A1 requires the M0/P0 foundation: PackedCopy, BatchedPublish, G73HostSelected and RouteIoQd must all be Off'
++    $RouteIoQd -ne 'Off' -or
++    $GraphTensorDevice -ne 'Off' -or
++    $TraceMode -ne 'Off') {
++    throw 'A2 requires P0: TraceMode, PackedCopy, BatchedPublish, G73HostSelected, RouteIoQd and GraphTensorDevice must all be Off'
++}
++if ($Turn1MaxTokens -ne 128 -or $Turn2MaxTokens -ne 32) {
++    throw 'A2 fixes the measured workload at 128 and 32 completion tokens'
++}
++if ($AllowSourceDriftForValidation -and -not $ValidateOnly) {
++    throw 'AllowSourceDriftForValidation is legal only with ValidateOnly'
+ }
+ 
+ # Windows PowerShell can expose both Path/PATH to Start-Process. Normalize the
+@@ -38,37 +49,36 @@ Remove-Item Env:PATH -ErrorAction SilentlyContinue
+ [Environment]::SetEnvironmentVariable('Path', $savedProcessPath, 'Process')
+ 
+ $root = Split-Path -Parent $MyInvocation.MyCommand.Path
+-$workspace = Split-Path -Parent (Split-Path -Parent $root)
+-$sourceRoot = Join-Path $workspace 'work\wt-hot-reserve'
++$projectRoot = Split-Path -Parent (Split-Path -Parent $root)
++$sourceRoot = 'C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\wt-hot-reserve'
+ $manifestSource = Join-Path $root 'manifest_47.env'
+ $monitorScript = Join-Path $root 'runtime_monitor.ps1'
+ $nsysStreamExtractor = Join-Path $root 'extract_nsys_process_streams.py'
+ $python = 'C:\Users\imanu\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+-$buildRoot = Join-Path $workspace 'work\build-a1-graph-tensor-device'
+-$exe = Join-Path $buildRoot 'ds4_server.exe'
++$exe = Join-Path $sourceRoot 'build2\ds4_server.exe'
+ $model = 'C:\ds4-models\ds4-2bit.gguf'
+ $nsys = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2024.5.1\target-windows-x64\nsys.exe'
+-$outputRoot = Join-Path $workspace 'outputs\p0p1_runtime'
++$outputRoot = Join-Path $projectRoot 'outputs\a2_runtime'
+ $safeTrace = $TraceMode.ToLowerInvariant()
+ $safePacked = $PackedCopy.ToLowerInvariant()
+ $safePublish = $BatchedPublish.ToLowerInvariant()
+ $safeHostSelected = $G73HostSelected.ToLowerInvariant()
+ $safeRouteIo = $RouteIoQd.ToLowerInvariant()
+ $safeGraphTensorDevice = $GraphTensorDevice.ToLowerInvariant()
+-$runId = '{0}_a1_m0_p0_trace-{1}_packed-{2}_publish-{3}_hostsel-{4}_routeio-{5}_graphdev-{6}' -f (
+-    Get-Date -Format 'yyyyMMdd_HHmmss'), $safeTrace, $safePacked, $safePublish,
+-    $safeHostSelected, $safeRouteIo, $safeGraphTensorDevice
++$safeG73Open = $G73Open.ToLowerInvariant()
++$runId = '{0}_a2_p0_g73-{1}_trace-{2}_packed-{3}_publish-{4}_hostsel-{5}_routeio-{6}_graphdev-{7}' -f (
++    Get-Date -Format 'yyyyMMdd_HHmmss'), $safeG73Open, $safeTrace, $safePacked,
++    $safePublish, $safeHostSelected, $safeRouteIo, $safeGraphTensorDevice
+ $runDirectory = Join-Path $outputRoot $runId
+ 
+-$expectedExeHash = '2B11AA8160191F9AC44802451CDEC2EF36334C52B06F0ECF5FCC2068990562BA'
++$expectedExeHash = 'F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF'
+ $expectedModelHash = 'efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668'
+ $expectedTurn1ContentHash = '7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b'
+ $expectedTurn2ContentHash = '0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb'
+ $expectedSourceHashes = [ordered]@{
+-    'ds4.c' = '54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466'
+-    'ds4_cuda.cu' = '53B152FA67FC8155F1391C27CB807001E7B3DBB39BBD5F863CC2338BFB684182'
+-    'ds4_gpu.h' = '625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C'
+-    'ds4_metal.m' = '81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D'
++    'ds4.c' = '2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4'
++    'ds4_cuda.cu' = 'FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496'
++    'ds4_gpu.h' = 'EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06'
+ }
+ 
+ New-Item -ItemType Directory -Path $runDirectory -Force | Out-Null
+@@ -85,6 +95,7 @@ $monitorStop = Join-Path $runDirectory 'monitor.stop'
+ $monitorOut = Join-Path $runDirectory 'monitor.stdout.log'
+ $monitorErr = Join-Path $runDirectory 'monitor.stderr.log'
+ $manifestPath = Join-Path $runDirectory 'manifest_47.env'
++$manifestDiffPath = Join-Path $runDirectory 'manifest_diff.txt'
+ $instrumentationPath = Join-Path $runDirectory 'instrumentation_manifest.txt'
+ $experimentPath = Join-Path $runDirectory 'experiment_manifest.txt'
+ $controlPath = Join-Path $runDirectory 'control_manifest.txt'
+@@ -100,6 +111,7 @@ $turn2RequestPath = Join-Path $runDirectory 'turn2.request.json'
+ $turn2ResponsePath = Join-Path $runDirectory 'turn2.response.json'
+ $turn2LogPath = Join-Path $runDirectory 'turn2.server.log'
+ $shutdownReceiptPath = Join-Path $runDirectory 'shutdown.receipt.json'
++$postflightPath = Join-Path $runDirectory 'postflight.txt'
+ $allocSummaryPath = Join-Path $runDirectory 'cuda_alloc_summaries.log'
+ $nsysOutputBase = Join-Path $runDirectory 'decode_position_100'
+ $nsysReportPath = "$nsysOutputBase.nsys-rep"
+@@ -204,25 +216,101 @@ foreach ($line in $manifestLines) {
+ if ([string]$manifestNames['DS4_MODEL_SHA256'] -ne $expectedModelHash) {
+     throw 'manifest model hash drift'
+ }
++if ([string]$manifestNames['DS4_G73_OPEN'] -ne '1') {
++    throw 'source manifest must contain exactly DS4_G73_OPEN=1'
++}
++if ([string]$manifestNames['DS4_G73_PAGEABLE_OVERFLOW_GB'] -ne '0') {
++    throw 'A2 requires DS4_G73_PAGEABLE_OVERFLOW_GB=0'
++}
++$g73Value = if ($G73Open -eq 'On') { '1' } else { '0' }
++$effectiveManifestLines = @(
++    foreach ($line in $manifestLines) {
++        if ($line -match '^DS4_G73_OPEN=') {
++            "DS4_G73_OPEN=$g73Value"
++        } else {
++            $line
++        }
++    }
++)
++if ($effectiveManifestLines.Count -ne 47) {
++    throw 'effective manifest must remain 47/47'
++}
++$manifestDiff = @()
++for ($manifestIndex = 0;
++     $manifestIndex -lt $manifestLines.Count;
++     $manifestIndex++) {
++    if ($manifestLines[$manifestIndex] -cne
++        $effectiveManifestLines[$manifestIndex]) {
++        $manifestDiff += [pscustomobject]@{
++            line = $manifestIndex + 1
++            source = $manifestLines[$manifestIndex]
++            effective = $effectiveManifestLines[$manifestIndex]
++        }
++    }
++}
++$expectedManifestDiffCount = if ($G73Open -eq 'On') { 0 } else { 1 }
++if ($manifestDiff.Count -ne $expectedManifestDiffCount) {
++    throw "effective manifest diff count must be $expectedManifestDiffCount"
++}
++if ($G73Open -eq 'Off' -and
++    ($manifestDiff[0].line -ne 41 -or
++     $manifestDiff[0].source -cne 'DS4_G73_OPEN=1' -or
++     $manifestDiff[0].effective -cne 'DS4_G73_OPEN=0')) {
++    throw 'the only OFF-arm manifest change must be line 41 DS4_G73_OPEN=1 -> 0'
++}
++$manifestNames['DS4_G73_OPEN'] = $g73Value
+ 
+ $actualExeHash = (Get-FileHash -LiteralPath $exe -Algorithm SHA256).Hash
+ if ($actualExeHash -ne $expectedExeHash) {
+     throw "binary hash drift: expected=$expectedExeHash actual=$actualExeHash"
+ }
+ $sourceReceipt = @()
++$sourceHashGatePass = $true
+ foreach ($entry in $expectedSourceHashes.GetEnumerator()) {
+     $path = Join-Path $sourceRoot $entry.Key
+     $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+     if ($actual -ne $entry.Value) {
+-        throw "source hash drift for $($entry.Key): expected=$($entry.Value) actual=$actual"
++        $sourceHashGatePass = $false
+     }
+-    $sourceReceipt += "$($entry.Key)_SHA256=$actual"
++    $sourceReceipt += "$($entry.Key)_expected_SHA256=$($entry.Value)"
++    $sourceReceipt += "$($entry.Key)_actual_SHA256=$actual"
++}
++if (-not $sourceHashGatePass -and
++    -not ($ValidateOnly -and $AllowSourceDriftForValidation)) {
++    throw 'source hash drift from the frozen F2F6A256 binary build receipt'
+ }
+ if ((Get-Item -LiteralPath $model).Length -ne [UInt64]86720111488) {
+     throw 'model byte-size drift'
+ }
+ 
+-$manifestLines | Set-Content -LiteralPath $manifestPath -Encoding ascii
++$effectiveManifestLines |
++    Set-Content -LiteralPath $manifestPath -Encoding ascii
++$manifestDiffLines = if ($manifestDiff.Count -eq 0) {
++    @('diff_count=0')
++} else {
++    @(
++        "diff_count=$($manifestDiff.Count)"
++        foreach ($difference in $manifestDiff) {
++            "line=$($difference.line) source=$($difference.source) effective=$($difference.effective)"
++        }
++    )
++}
++$manifestDiffLines |
++    Set-Content -LiteralPath $manifestDiffPath -Encoding ascii
++$sourceManifestHash = (Get-FileHash -LiteralPath $manifestSource -Algorithm SHA256).Hash
++$effectiveManifestHash = (Get-FileHash -LiteralPath $manifestPath -Algorithm SHA256).Hash
++$normalizedManifestText = (
++    @(
++        foreach ($line in $effectiveManifestLines) {
++            if ($line -match '^DS4_G73_OPEN=') {
++                'DS4_G73_OPEN=<ARM>'
++            } else {
++                $line
++            }
++        }
++    ) -join "`n"
++) + "`n"
++$normalizedManifestHash = Get-TextSha256 -Text $normalizedManifestText
+ $traceManifest = @(
+     "TraceMode=$TraceMode"
+     'DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>'
+@@ -257,10 +345,8 @@ if ($TraceMode -eq 'Nsys') {
+     )
+ }
+ $traceManifest += @(
+-    'DS4_CUDA_ALLOC_TRACE=1'
+-    'DS4_CUDA_ALLOC_TRACE_MIN_MIB=1048576'
+-    'cuda_alloc_event_lines=suppressed'
+-    'cuda_alloc_summary_phases=decode-start,request-end'
++    'DS4_CUDA_ALLOC_TRACE=<UNSET>'
++    'DS4_CUDA_ALLOC_TRACE_MIN_MIB=<UNSET>'
+ )
+ $traceManifest | Set-Content -LiteralPath $instrumentationPath -Encoding ascii
+ @(
+@@ -311,13 +397,20 @@ $serverArguments | Set-Content -LiteralPath $serverArgsPath -Encoding ascii
+     "run_directory=$runDirectory"
+     "git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae"
+     $sourceReceipt
++    "source_hash_gate_pass=$sourceHashGatePass"
+     "ds4_server.exe_SHA256=$actualExeHash"
+     "ds4_server.exe_bytes=$((Get-Item -LiteralPath $exe).Length)"
+     "model_path=$model"
+     "model_bytes=$((Get-Item -LiteralPath $model).Length)"
+     "model_SHA256_receipt=$expectedModelHash"
+-    'experiment=A1_graph_tensor_device'
+-    'foundation=M0_P0'
++    'experiment=A2_G73_OPEN_same_binary'
++    'foundation=P0'
++    "g73_open=$G73Open"
++    "g73_open_value=$g73Value"
++    "source_manifest_SHA256=$sourceManifestHash"
++    "effective_manifest_SHA256=$effectiveManifestHash"
++    "normalized_pair_manifest_SHA256=$normalizedManifestHash"
++    "manifest_diff_count=$($manifestDiff.Count)"
+     'ctx_capacity=150000'
+     'live_position_150000=not_claimed'
+     'mtp_draft=1'
+@@ -326,8 +419,7 @@ $serverArguments | Set-Content -LiteralPath $serverArgsPath -Encoding ascii
+     "g73_host_selected=$G73HostSelected"
+     "g73_route_io_qd=$RouteIoQd"
+     "graph_tensor_device=$GraphTensorDevice"
+-    'cuda_alloc_trace=1'
+-    'cuda_alloc_trace_min_mib=1048576'
++    'cuda_alloc_trace=Off'
+     'temperature=0.7'
+     'seed=12345'
+     'think=false'
+@@ -338,8 +430,27 @@ $serverArguments | Set-Content -LiteralPath $serverArgsPath -Encoding ascii
+ ) | Set-Content -LiteralPath $provenancePath -Encoding utf8
+ 
+ if ($ValidateOnly) {
+-    Write-Status "validation=PASS experiment=A1 foundation=M0_P0 manifest_count=47 declared_parameter_count=52 packed_copy=$PackedCopy batched_publish=$BatchedPublish g73_host_selected=$G73HostSelected route_io_qd=$RouteIoQd graph_tensor_device=$GraphTensorDevice alloc_trace=1 hashes=PASS server_started=no"
+-    "run_dir=$runDirectory`nvalidation=PASS`nexperiment=A1`nfoundation=M0_P0`nmanifest_count=47`ndeclared_parameter_count=52`npacked_copy=$PackedCopy`nbatched_publish=$BatchedPublish`ng73_host_selected=$G73HostSelected`nroute_io_qd=$RouteIoQd`ngraph_tensor_device=$GraphTensorDevice`nalloc_trace=1`nserver_started=no" |
++    Write-Status "validation=PASS experiment=A2 foundation=P0 g73_open=$G73Open manifest_count=47 manifest_diff_count=$($manifestDiff.Count) normalized_manifest_sha256=$normalizedManifestHash source_hash_gate_pass=$sourceHashGatePass server_started=no"
++    @(
++        "run_dir=$runDirectory"
++        'validation=PASS'
++        'experiment=A2'
++        'foundation=P0'
++        "g73_open=$G73Open"
++        "g73_open_value=$g73Value"
++        'manifest_count=47'
++        "manifest_diff_count=$($manifestDiff.Count)"
++        "source_manifest_sha256=$sourceManifestHash"
++        "effective_manifest_sha256=$effectiveManifestHash"
++        "normalized_pair_manifest_sha256=$normalizedManifestHash"
++        "source_hash_gate_pass=$sourceHashGatePass"
++        "packed_copy=$PackedCopy"
++        "batched_publish=$BatchedPublish"
++        "g73_host_selected=$G73HostSelected"
++        "route_io_qd=$RouteIoQd"
++        "graph_tensor_device=$GraphTensorDevice"
++        'server_started=no'
++    ) |
+         Set-Content -LiteralPath $resultPath -Encoding ascii
+     exit 0
+ }
+@@ -372,8 +483,6 @@ Get-ChildItem Env: |
+ foreach ($entry in $manifestNames.GetEnumerator()) {
+     Set-Item -LiteralPath "Env:$($entry.Key)" -Value ([string]$entry.Value)
+ }
+-$env:DS4_CUDA_ALLOC_TRACE = '1'
+-$env:DS4_CUDA_ALLOC_TRACE_MIN_MIB = '1048576'
+ if ($TraceMode -eq 'Sampled') {
+     $env:DS4_CUDA_DECODE_TRACE_POSITIONS = '13,141'
+     $env:DS4_CUDA_DECODE_TRACE_LAYERS = '0,4,20,42'
+@@ -423,6 +532,12 @@ $turn1Receipt = $null
+ $turn2Receipt = $null
+ $runError = $null
+ $ds4Pid = 0
++$monitorStoppedPass = $false
++$postflightProcessCount = -1
++$postflightListenerPid = -1
++$postflightAvailableGiB = -1.0
++$postflightGpuUsedMiB = -1
++$postflightGatePass = $false
+ 
+ try {
+     $launchFile = $exe
+@@ -597,14 +712,6 @@ try {
+     $runError = $_.Exception.Message
+     Write-Status "run_error=$runError"
+ } finally {
+-    New-Item -ItemType File -Path $monitorStop -Force | Out-Null
+-    if ($monitor -and -not $monitor.HasExited) {
+-        $null = $monitor.WaitForExit(10000)
+-        if (-not $monitor.HasExited) {
+-            Stop-Process -Id $monitor.Id -Force -ErrorAction SilentlyContinue
+-        }
+-    }
+-
+     if ($server) {
+         try {
+             $currentListenerPid = Get-Ds4ListenerPid
+@@ -689,7 +796,53 @@ try {
+             }
+         }
+     }
++    for ($postflightAttempt = 1; $postflightAttempt -le 60; $postflightAttempt++) {
++        $postflightProcessCount = @(
++            Get-Process ds4_server -ErrorAction SilentlyContinue
++        ).Count
++        $postflightListenerPid = Get-Ds4ListenerPid
++        $postflightGpuText = & nvidia-smi `
++            --query-gpu=memory.used `
++            --format=csv,noheader,nounits 2>$null |
++            Select-Object -First 1
++        if ($postflightGpuText -match '^\s*([0-9]+)') {
++            $postflightGpuUsedMiB = [int]$matches[1]
++        }
++        if ($postflightProcessCount -eq 0 -and
++            $postflightListenerPid -eq 0 -and
++            $postflightGpuUsedMiB -ge 0 -and
++            $postflightGpuUsedMiB -lt 1200) {
++            break
++        }
++        Start-Sleep -Milliseconds 500
++    }
++    $postflightMemory = New-Object Microsoft.VisualBasic.Devices.ComputerInfo
++    $postflightAvailableGiB =
++        $postflightMemory.AvailablePhysicalMemory / 1GB
++    $postflightGatePass =
++        $postflightProcessCount -eq 0 -and
++        $postflightListenerPid -eq 0 -and
++        $postflightGpuUsedMiB -ge 0 -and
++        $postflightGpuUsedMiB -lt 1200
++    @(
++        "process_count=$postflightProcessCount"
++        "port8000_pid=$postflightListenerPid"
++        ('available_ram_gib={0:F3}' -f $postflightAvailableGiB)
++        "gpu_used_mib=$postflightGpuUsedMiB"
++        "gate_pass=$postflightGatePass"
++    ) | Set-Content -LiteralPath $postflightPath -Encoding ascii
++
++    New-Item -ItemType File -Path $monitorStop -Force | Out-Null
++    if ($monitor -and -not $monitor.HasExited) {
++        $null = $monitor.WaitForExit(10000)
++        if (-not $monitor.HasExited) {
++            Stop-Process -Id $monitor.Id -Force -ErrorAction SilentlyContinue
++            $null = $monitor.WaitForExit(5000)
++        }
++    }
++    $monitorStoppedPass = -not $monitor -or $monitor.HasExited
+     Write-Status "shutdown_mode=$shutdownMode"
++    Write-Status "postflight_gate_pass=$postflightGatePass monitor_stopped=$monitorStoppedPass"
+ }
+ 
+ if ($TraceMode -eq 'Nsys' -and (Test-Path -LiteralPath $nsysSqlitePath)) {
+@@ -724,10 +877,353 @@ $allLog = if (Test-Path -LiteralPath $serverLog) {
+ } else {
+     ''
+ }
++
++function Get-SummaryInt64 {
++    param(
++        [string]$Line,
++        [string]$Name,
++        [Int64]$Default = -1L
++    )
++    $fieldPattern = '(?:^|\s)' +
++        [regex]::Escape($Name) +
++        '=(\d+)(?:\s|$)'
++    if ($Line -match $fieldPattern) {
++        return [Int64]$matches[1]
++    }
++    return $Default
++}
++
++function Get-SummaryDouble {
++    param(
++        [string]$Line,
++        [string]$Name,
++        [double]$Default = [double]::NaN
++    )
++    $fieldPattern = '(?:^|\s)' +
++        [regex]::Escape($Name) +
++        '=([-+]?[0-9]+(?:\.[0-9]+)?)(?:\s|$)'
++    if ($Line -match $fieldPattern) {
++        return [double]::Parse(
++            $matches[1],
++            [System.Globalization.CultureInfo]::InvariantCulture)
++    }
++    return $Default
++}
++
++function Get-NumericSeries {
++    param(
++        [object[]]$Rows,
++        [string]$Property
++    )
++    $series = @()
++    foreach ($row in $Rows) {
++        $text = [string]$row.$Property
++        if ([string]::IsNullOrWhiteSpace($text)) {
++            continue
++        }
++        try {
++            $number = [double]::Parse(
++                $text,
++                [System.Globalization.CultureInfo]::InvariantCulture)
++            if ($number -ge 0) {
++                $series += $number
++            }
++        } catch {}
++    }
++    return @($series)
++}
++
++$terminalReadyMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[g73-open\] terminal ready[^\r\n]*$')
++$arenaCapMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[arena-cap\][^\r\n]*$')
++$arenaCapLine = if ($arenaCapMatches.Count -eq 1) {
++    $arenaCapMatches[0].Value
++} else {
++    ''
++}
++$wrapReadyMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[q1-0-ssd-wrap\] result=ready[^\r\n]*$')
++$wrapFinalMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[q1-0-ssd-wrap\] result=(?:complete|failed)[^\r\n]*$')
++$wrapFinalLine = if ($wrapFinalMatches.Count -eq 1) {
++    $wrapFinalMatches[0].Value
++} else {
++    ''
++}
++$wrapErrorCount = [regex]::Matches(
++    $allLog,
++    '(?im)(job read failed|partial_or_pread|advisory rotator detached|' +
++    'worker detached|safe-leaked)').Count
++$attributionMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[g130-attrib\] token=\d+[^\r\n]*$')
++$g73AttributionLineCount = @(
++    $attributionMatches | Where-Object {
++        $_.Value -match '(?:^|\s)out_of_mask_routes=' -and
++        $_.Value -match '(?:^|\s)served_transient=' -and
++        $_.Value -match '(?:^|\s)served_promoted=' -and
++        $_.Value -match '(?:^|\s)served_selected_fallback=' -and
++        $_.Value -match '(?:^|\s)served_terminal_exact=' -and
++        $_.Value -match '(?:^|\s)clamped=' -and
++        $_.Value -match '(?:^|\s)request_refused='
++    }
++).Count
++$outOfMaskRoutes = 0.0
++$servedTransient = 0.0
++$servedPromoted = 0.0
++$servedSelectedFallback = 0.0
++$servedTerminalExact = 0.0
++$clampedRoutes = 0.0
++$requestRefusedRoutes = 0.0
++$attributionConservationGatePass = $true
++foreach ($attributionMatch in $attributionMatches) {
++    $line = $attributionMatch.Value
++    if ($G73Open -eq 'On') {
++        $out = Get-SummaryDouble -Line $line -Name 'out_of_mask_routes'
++        $transient = Get-SummaryDouble -Line $line -Name 'served_transient'
++        $promoted = Get-SummaryDouble -Line $line -Name 'served_promoted'
++        $selectedFallback = Get-SummaryDouble -Line $line -Name 'served_selected_fallback'
++        $terminalExact = Get-SummaryDouble -Line $line -Name 'served_terminal_exact'
++        $clamped = Get-SummaryDouble -Line $line -Name 'clamped'
++        $refused = Get-SummaryDouble -Line $line -Name 'request_refused'
++        $values = @(
++            $out, $transient, $promoted, $selectedFallback,
++            $terminalExact, $clamped, $refused
++        )
++        if (@($values | Where-Object { [double]::IsNaN($_) }).Count -ne 0) {
++            $attributionConservationGatePass = $false
++            continue
++        }
++        if ([Math]::Abs(
++                $out - (
++                    $transient + $promoted + $selectedFallback +
++                    $terminalExact + $clamped + $refused)) -gt 0.000001) {
++            $attributionConservationGatePass = $false
++        }
++        $outOfMaskRoutes += $out
++        $servedTransient += $transient
++        $servedPromoted += $promoted
++        $servedSelectedFallback += $selectedFallback
++        $servedTerminalExact += $terminalExact
++        $clampedRoutes += $clamped
++        $requestRefusedRoutes += $refused
++    }
++}
++
++$arenaOnGatePass =
++    $arenaCapMatches.Count -eq 1 -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'chosen_bytes') -eq 32239779840L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'chosen_slots') -eq 4551L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'pageable_bytes') -eq 0L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'pageable_slots') -eq 0L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'ring_slots') -eq 4L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'host_budget_bytes') -eq 32239779840L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'ssd_wrap') -eq 1L
++$arenaOffGatePass =
++    $arenaCapMatches.Count -eq 1 -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'chosen_bytes') -eq 32211468288L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'chosen_slots') -eq 4551L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'pageable_bytes') -eq 0L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'pageable_slots') -eq 0L -and
++    (Get-SummaryInt64 -Line $arenaCapLine -Name 'total_slots') -eq 4551L -and
++    $arenaCapLine -notmatch '(?:^|\s)(?:ring_slots|host_budget_bytes|ssd_wrap)='
++$wrapOnGatePass =
++    $wrapReadyMatches.Count -eq 1 -and
++    (Get-SummaryInt64 -Line $wrapReadyMatches[0].Value -Name 'pinned_resident_slots') -eq 4551L -and
++    (Get-SummaryInt64 -Line $wrapReadyMatches[0].Value -Name 'pageable_resident_slots') -eq 0L -and
++    (Get-SummaryInt64 -Line $wrapReadyMatches[0].Value -Name 'ssd_ring_slots') -eq 2L -and
++    (Get-SummaryInt64 -Line $wrapReadyMatches[0].Value -Name 'h2d_ring_slots') -eq 2L -and
++    $wrapFinalMatches.Count -eq 1 -and
++    $wrapFinalLine -match 'result=complete' -and
++    (Get-SummaryInt64 -Line $wrapFinalLine -Name 'failures') -eq 0L -and
++    (Get-SummaryInt64 -Line $wrapFinalLine -Name 'structural_rejects') -eq 0L -and
++    (Get-SummaryInt64 -Line $wrapFinalLine -Name 'dropped') -eq 0L -and
++    $wrapErrorCount -eq 0
++$wrapOffGatePass =
++    $wrapReadyMatches.Count -eq 0 -and
++    $wrapFinalMatches.Count -eq 0 -and
++    $wrapErrorCount -eq 0
++$engagementGatePass = if ($G73Open -eq 'On') {
++    $terminalReadyMatches.Count -eq 1 -and
++    $arenaOnGatePass -and
++    $wrapOnGatePass -and
++    $attributionMatches.Count -eq 160 -and
++    $g73AttributionLineCount -eq 160 -and
++    $outOfMaskRoutes -gt 0 -and
++    $attributionConservationGatePass -and
++    $servedSelectedFallback -eq 0 -and
++    $servedTerminalExact -eq 0 -and
++    $clampedRoutes -eq 0 -and
++    $requestRefusedRoutes -eq 0
++} else {
++    $terminalReadyMatches.Count -eq 0 -and
++    $arenaOffGatePass -and
++    $wrapOffGatePass -and
++    $attributionMatches.Count -eq 160 -and
++    $g73AttributionLineCount -eq 0
++}
++
++$graphTokenMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: metal graph token pos=(\d+) ' +
++    'encode=[0-9.]+ ms execute=[0-9.]+ ms read=[0-9.]+ ms ' +
++    'total=([0-9.]+) ms logits=1$')
++$turn1GraphCount = 0
++$turn1GraphTotalMs = 0.0
++$suffixPrefillGraphCount = 0
++$suffixPrefillGraphTotalMs = 0.0
++$turn2GraphCount = 0
++$turn2GraphTotalMs = 0.0
++foreach ($graphTokenMatch in $graphTokenMatches) {
++    $position = [int]$graphTokenMatch.Groups[1].Value
++    $totalMs = [double]::Parse(
++        $graphTokenMatch.Groups[2].Value,
++        [System.Globalization.CultureInfo]::InvariantCulture)
++    if ($position -ge 13 -and $position -le 140) {
++        $turn1GraphCount++
++        $turn1GraphTotalMs += $totalMs
++    } elseif ($position -ge 141 -and $position -le 159) {
++        $suffixPrefillGraphCount++
++        $suffixPrefillGraphTotalMs += $totalMs
++    } elseif ($position -ge 160 -and $position -le 191) {
++        $turn2GraphCount++
++        $turn2GraphTotalMs += $totalMs
++    }
++}
++$graphGatePass =
++    $graphTokenMatches.Count -eq 179 -and
++    $turn1GraphCount -eq 128 -and
++    $suffixPrefillGraphCount -eq 19 -and
++    $turn2GraphCount -eq 32 -and
++    $turn1GraphTotalMs -gt 0 -and
++    $suffixPrefillGraphTotalMs -gt 0 -and
++    $turn2GraphTotalMs -gt 0
++$turn1GraphTps = if ($turn1GraphTotalMs -gt 0) {
++    128.0 / ($turn1GraphTotalMs / 1000.0)
++} else { 0.0 }
++$turn2GraphTps = if ($turn2GraphTotalMs -gt 0) {
++    32.0 / ($turn2GraphTotalMs / 1000.0)
++} else { 0.0 }
++
++$tierSummaryMatches = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[expert-tiering\] final[^\r\n]*$')
++$tierCommonGatePass = $tierSummaryMatches.Count -ge 2
++$tierCold = 0L
++$tierRamHits = 0L
++$tierVramHits = 0L
++$tierTransient = 0L
++$tierSsdBytes = 0L
++$tierRamH2dBytes = 0L
++foreach ($tierSummaryMatch in $tierSummaryMatches) {
++    $line = $tierSummaryMatch.Value
++    $failures = Get-SummaryInt64 -Line $line -Name 'failures'
++    $forbidden = Get-SummaryInt64 -Line $line -Name 'forbidden_cold_ssd_to_vram'
++    if ($failures -ne 0 -or $forbidden -ne 0) {
++        $tierCommonGatePass = $false
++    }
++    $tierCold += Get-SummaryInt64 -Line $line -Name 'cold' -Default 0
++    $tierRamHits += Get-SummaryInt64 -Line $line -Name 'ram_hits' -Default 0
++    $tierVramHits += Get-SummaryInt64 -Line $line -Name 'vram_hits' -Default 0
++    $tierTransient += Get-SummaryInt64 -Line $line -Name 'transient' -Default 0
++    $tierSsdBytes += Get-SummaryInt64 -Line $line -Name 'ssd_bytes' -Default 0
++    $tierRamH2dBytes += Get-SummaryInt64 -Line $line -Name 'ram_h2d_bytes' -Default 0
++}
++$shutdownRequestedCount = [regex]::Matches(
++    $allLog,
++    '(?m)ds4-server: shutdown requested, draining requests$').Count
++$arenaFinalCount = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: \[arena\] final[^\r\n]*$').Count
++$startupCachePreparedCount = [regex]::Matches(
++    $allLog,
++    '(?m)^ds4: CUDA startup model cache prepared[^\r\n]*$').Count
++$forbiddenFallbackCount = [regex]::Matches(
++    $allLog,
++    '(?im)(\[g73-open\] (?:contract|device) error|' +
++    'decode route unavailable|refusing fallback|' +
++    'exact transient route unavailable|' +
++    'selected-load[^\r\n]*unavailable|' +
++    'terminal[^\r\n]*unavailable|' +
++    'route-mailbox[^\r\n]*(?:failed|quarant|mismatch|poison)|' +
++    'decode refused)').Count
++$shutdownReceiptGatePass = $false
++if (Test-Path -LiteralPath $shutdownReceiptPath) {
++    try {
++        $parsedShutdownReceipt =
++            Get-Content -LiteralPath $shutdownReceiptPath -Raw |
++            ConvertFrom-Json
++        $shutdownReceiptGatePass =
++            [string]$parsedShutdownReceipt.status -eq 'draining'
++    } catch {}
++}
++
++$monitorRows = if (Test-Path -LiteralPath $monitorCsv) {
++    @(Import-Csv -LiteralPath $monitorCsv)
++} else {
++    @()
++}
++$monitorAvailRam = @(Get-NumericSeries -Rows $monitorRows -Property 'avail_phys_mb')
++$monitorWorkingSet = @(Get-NumericSeries -Rows $monitorRows -Property 'server_ws_mb')
++$monitorPrivate = @(Get-NumericSeries -Rows $monitorRows -Property 'server_private_mb')
++$monitorRead = @(Get-NumericSeries -Rows $monitorRows -Property 'server_read_mb')
++$monitorWrite = @(Get-NumericSeries -Rows $monitorRows -Property 'server_write_mb')
++$monitorPageFaults = @(Get-NumericSeries -Rows $monitorRows -Property 'server_page_faults')
++$monitorGpuUsed = @(Get-NumericSeries -Rows $monitorRows -Property 'gpu_used_mb')
++$monitorGpuUtil = @(Get-NumericSeries -Rows $monitorRows -Property 'gpu_util_pct')
++$monitorGpuPower = @(Get-NumericSeries -Rows $monitorRows -Property 'gpu_power_w')
++$monitorGatePass =
++    $monitorRows.Count -gt 0 -and
++    $monitorAvailRam.Count -gt 0 -and
++    $monitorWorkingSet.Count -gt 0 -and
++    $monitorPrivate.Count -gt 0 -and
++    $monitorGpuUsed.Count -gt 0
++$monitorRamFirst = if ($monitorAvailRam.Count) { $monitorAvailRam[0] } else { -1 }
++$monitorRamMin = if ($monitorAvailRam.Count) {
++    ($monitorAvailRam | Measure-Object -Minimum).Minimum
++} else { -1 }
++$monitorRamLast = if ($monitorAvailRam.Count) { $monitorAvailRam[-1] } else { -1 }
++$monitorWsPeak = if ($monitorWorkingSet.Count) {
++    ($monitorWorkingSet | Measure-Object -Maximum).Maximum
++} else { -1 }
++$monitorPrivatePeak = if ($monitorPrivate.Count) {
++    ($monitorPrivate | Measure-Object -Maximum).Maximum
++} else { -1 }
++$monitorReadDelta = if ($monitorRead.Count -gt 1) {
++    $monitorRead[-1] - $monitorRead[0]
++} else { -1 }
++$monitorWriteDelta = if ($monitorWrite.Count -gt 1) {
++    $monitorWrite[-1] - $monitorWrite[0]
++} else { -1 }
++$monitorPageFaultDelta = if ($monitorPageFaults.Count -gt 1) {
++    $monitorPageFaults[-1] - $monitorPageFaults[0]
++} else { -1 }
++$monitorGpuFirst = if ($monitorGpuUsed.Count) { $monitorGpuUsed[0] } else { -1 }
++$monitorGpuPeak = if ($monitorGpuUsed.Count) {
++    ($monitorGpuUsed | Measure-Object -Maximum).Maximum
++} else { -1 }
++$monitorGpuLast = if ($monitorGpuUsed.Count) { $monitorGpuUsed[-1] } else { -1 }
++$monitorGpuUtilAverage = if ($monitorGpuUtil.Count) {
++    ($monitorGpuUtil | Measure-Object -Average).Average
++} else { -1 }
++$monitorGpuUtilMax = if ($monitorGpuUtil.Count) {
++    ($monitorGpuUtil | Measure-Object -Maximum).Maximum
++} else { -1 }
++$monitorGpuPowerAverage = if ($monitorGpuPower.Count) {
++    ($monitorGpuPower | Measure-Object -Average).Average
++} else { -1 }
++$monitorGpuPowerMax = if ($monitorGpuPower.Count) {
++    ($monitorGpuPower | Measure-Object -Maximum).Maximum
++} else { -1 }
++
+ $allocLogMatches = [regex]::Matches(
+     $allLog,
+-    '(?m)^ds4: \[cuda-alloc-(?:summary|row|kind|balance)\]' +
+-    '[^\r\n]*(?=\r?$)')
++    '(?m)^ds4: \[cuda-alloc-(?:summary|row|kind|balance)\][^\r\n]*$')
+ $allocLogLines = @($allocLogMatches | ForEach-Object { $_.Value })
+ if ($allocLogLines.Count -gt 0) {
+     $allocLogLines | Set-Content -LiteralPath $allocSummaryPath -Encoding ascii
+@@ -737,28 +1233,26 @@ if ($allocLogLines.Count -gt 0) {
+ $decodeAllocSummaryMatches = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-summary\] phase=decode-start ' +
+-    'sites=\d+ events=\d+ site_overflow=0 untracked_frees=0(?=\r?$)')
++    'sites=\d+ events=\d+ site_overflow=0 untracked_frees=0$')
+ $requestEndAllocSummaryMatches = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-summary\] phase=request-end ' +
+-    'sites=\d+ events=\d+ site_overflow=0 untracked_frees=0(?=\r?$)')
++    'sites=\d+ events=\d+ site_overflow=0 untracked_frees=0$')
+ $decodeAllocBalanceMatches = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-balance\] phase=decode-start ' +
+-    '[^\r\n]* status=ok(?=\r?$)')
++    '[^\r\n]* status=ok$')
+ $requestEndAllocBalanceMatches = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-balance\] phase=request-end ' +
+-    '[^\r\n]* status=ok(?=\r?$)')
++    '[^\r\n]* status=ok$')
+ $allocationFailureMatches = [regex]::Matches(
+     $allLog,
+-    '(?m)^ds4: \[cuda-alloc-row\][^\r\n]* ' +
+-    'fails=([1-9]\d*)(?=\r?$)')
++    '(?m)^ds4: \[cuda-alloc-row\][^\r\n]* fails=([1-9]\d*)$')
+ $genericDeviceRows = [regex]::Matches(
+     $allLog,
+     '(?m)^ds4: \[cuda-alloc-row\][^\r\n]* ' +
+-    'tag=device/ds4_gpu_tensor_alloc_backing@\d+' +
+-    '[^\r\n]*(?=\r?$)')
++    'tag=device/ds4_gpu_tensor_alloc_backing@\d+[^\r\n]*$')
+ $genericDeviceRowsExact = @($genericDeviceRows | Where-Object {
+     $_.Value -match ' calls=310 fails=0$'
+ })
+@@ -783,10 +1277,11 @@ foreach ($match in $requestEndAllocBalanceMatches) {
+     }
+ }
+ $allocTraceGatePass =
+-    $decodeAllocSummaryMatches.Count -eq 2 -and
+-    $requestEndAllocSummaryMatches.Count -eq 2 -and
+-    $decodeAllocBalanceMatches.Count -eq 2 -and
+-    $requestEndAllocBalanceMatches.Count -eq 2 -and
++    $allocLogLines.Count -eq 0 -and
++    $decodeAllocSummaryMatches.Count -eq 0 -and
++    $requestEndAllocSummaryMatches.Count -eq 0 -and
++    $decodeAllocBalanceMatches.Count -eq 0 -and
++    $requestEndAllocBalanceMatches.Count -eq 0 -and
+     $allocationFailureMatches.Count -eq 0
+ $graphTensorDeviceGatePass = if ($GraphTensorDevice -eq 'On') {
+     $genericDeviceRows.Count -eq 4 -and
+@@ -911,6 +1406,51 @@ if ($routeSummary -match 'route_io_qd_fallbacks=(\d+)') {
+ if ($routeSummary -match 'route_io_qd_max_inflight=(\d+)') {
+     $routeIoMaxInflight = [Int64]$matches[1]
+ }
++$routeCommonGatePass = $routeSummaryMatches.Count -ge 2
++$g73D2hBranchGatePass = $routeSummaryMatches.Count -ge 2
++foreach ($routeSummaryMatch in $routeSummaryMatches) {
++    $line = $routeSummaryMatch.Value
++    $summaryCalls = Get-SummaryInt64 -Line $line -Name 'calls'
++    $summaryErrors = Get-SummaryInt64 -Line $line -Name 'errors'
++    $summaryMissExperts = Get-SummaryInt64 -Line $line -Name 'miss_experts'
++    $summaryLegacyCopy = Get-SummaryInt64 -Line $line -Name 'legacy_copy_submissions'
++    $summaryLegacyPublish = Get-SummaryInt64 -Line $line -Name 'legacy_publish_kernels'
++    $summaryD2h = Get-SummaryInt64 -Line $line -Name 'g73_classification_d2h'
++    if ($summaryCalls -le 0 -or
++        $summaryErrors -ne 0 -or
++        $summaryMissExperts -le 0 -or
++        $summaryLegacyCopy -ne (3 * $summaryMissExperts) -or
++        $summaryLegacyPublish -ne $summaryMissExperts -or
++        (Get-SummaryInt64 -Line $line -Name 'packed_copy_requested') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'packed_copy_experts') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'packed_copy_submissions') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'packed_copy_bytes') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'batched_publish_requested') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'batched_publish_kernels') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'batched_publish_routes') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'g73_host_selected_requested') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'g73_host_selected_reuse') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'g73_host_selected_fallbacks') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_requested') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_calls') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_routes') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_spans') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_submits') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_completions') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_bytes') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_failures') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_fallbacks') -ne 0 -or
++        (Get-SummaryInt64 -Line $line -Name 'route_io_qd_max_inflight') -ne 0) {
++        $routeCommonGatePass = $false
++    }
++    if ($G73Open -eq 'On') {
++        if ($summaryD2h -ne $summaryCalls) {
++            $g73D2hBranchGatePass = $false
++        }
++    } elseif ($summaryD2h -ne 0) {
++        $g73D2hBranchGatePass = $false
++    }
++}
+ $packedGatePass = if ($PackedCopy -eq 'On') {
+     $packedRuntimeRequested -eq 1 -and
+     $packedExperts -gt 0 -and
+@@ -922,7 +1462,8 @@ $packedGatePass = if ($PackedCopy -eq 'On') {
+     $packedExperts -eq 0 -and
+     $packedSubmissions -eq 0 -and
+     $packedBytes -eq 0 -and
+-    $legacySubmissions -gt 0
++    $missExperts -gt 0 -and
++    $legacySubmissions -eq (3 * $missExperts)
+ }
+ $batchedPublishGatePass = if ($BatchedPublish -eq 'On') {
+     $batchedPublishRuntimeRequested -eq 1 -and
+@@ -936,19 +1477,14 @@ $batchedPublishGatePass = if ($BatchedPublish -eq 'On') {
+     $batchedPublishRuntimeRequested -eq 0 -and
+     $batchedPublishKernels -eq 0 -and
+     $batchedPublishRoutes -eq 0 -and
+-    $legacyPublishKernels -gt 0
++    $missExperts -gt 0 -and
++    $legacyPublishKernels -eq $missExperts
+ }
+-$g73HostSelectedGatePass = if ($G73HostSelected -eq 'On') {
+-    $g73HostSelectedRuntimeRequested -eq 1 -and
+-    $g73HostSelectedReuse -gt 0 -and
+-    $g73HostSelectedFallbacks -eq 0 -and
+-    $g73ClassificationD2h -eq 0
+-} else {
++$g73HostSelectedGatePass =
+     $g73HostSelectedRuntimeRequested -eq 0 -and
+     $g73HostSelectedReuse -eq 0 -and
+     $g73HostSelectedFallbacks -eq 0 -and
+-    $g73ClassificationD2h -gt 0
+-}
++    $g73D2hBranchGatePass
+ $routeIoGatePass = if ($RouteIoQd -eq 'Qd4') {
+     $routeIoRuntimeRequested -eq 4 -and
+     $routeIoCalls -gt 0 -and
+@@ -1031,14 +1567,22 @@ if ($preserveLine -match 'resident_before=(\d+).*resident_after=(\d+)') {
+ 
+ $turn1Completion = 0
+ $turn2Completion = 0
++$turn1PromptTokens = 0
++$turn2PromptTokens = 0
++$turn1FinishReason = ''
++$turn2FinishReason = ''
+ $turn1ContentHash = ''
+ $turn2ContentHash = ''
++$turn1RequestHash = ''
++$turn2RequestHash = ''
+ if (Test-Path -LiteralPath $turn1ResponsePath) {
+     try {
+         $parsed = [System.IO.File]::ReadAllText(
+             $turn1ResponsePath,
+             [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+         $turn1Completion = [int]$parsed.usage.completion_tokens
++        $turn1PromptTokens = [int]$parsed.usage.prompt_tokens
++        $turn1FinishReason = [string]$parsed.choices[0].finish_reason
+         $turn1ContentHash = Get-TextSha256 `
+             -Text ([string]$parsed.choices[0].message.content)
+     } catch {}
+@@ -1049,51 +1593,110 @@ if (Test-Path -LiteralPath $turn2ResponsePath) {
+             $turn2ResponsePath,
+             [System.Text.Encoding]::UTF8) | ConvertFrom-Json
+         $turn2Completion = [int]$parsed.usage.completion_tokens
++        $turn2PromptTokens = [int]$parsed.usage.prompt_tokens
++        $turn2FinishReason = [string]$parsed.choices[0].finish_reason
+         $turn2ContentHash = Get-TextSha256 `
+             -Text ([string]$parsed.choices[0].message.content)
+     } catch {}
+ }
++if (Test-Path -LiteralPath $turn1RequestPath) {
++    $turn1RequestHash =
++        (Get-FileHash -LiteralPath $turn1RequestPath -Algorithm SHA256).Hash
++}
++if (Test-Path -LiteralPath $turn2RequestPath) {
++    $turn2RequestHash =
++        (Get-FileHash -LiteralPath $turn2RequestPath -Algorithm SHA256).Hash
++}
+ 
+-$gatePass = if ($TraceMode -eq 'Nsys') {
+-    -not $runError -and
++$httpGatePass =
++    $null -ne $turn1Receipt -and
++    $null -ne $turn2Receipt -and
++    [string]$turn1Receipt.http_code -eq '200' -and
++    [string]$turn2Receipt.http_code -eq '200'
++$responseGatePass =
++    $turn1PromptTokens -eq 13 -and
++    $turn2PromptTokens -eq 160 -and
++    $turn1Completion -eq 128 -and
++    $turn2Completion -eq 32 -and
++    $turn1FinishReason -eq 'length' -and
++    $turn2FinishReason -eq 'length' -and
+     $turn1ContentHash -eq $expectedTurn1ContentHash -and
+     $turn2ContentHash -eq $expectedTurn2ContentHash -and
+-    $allocTraceGatePass -and
+-    $graphTensorDeviceGatePass -and
+-    $nsysGatePass -and
+-    $shutdownMode -eq 'graceful_http_verified'
+-} else {
+-    -not $runError -and
++    -not [string]::IsNullOrWhiteSpace($turn1RequestHash) -and
++    -not [string]::IsNullOrWhiteSpace($turn2RequestHash)
++$correctnessGatePass =
+     $cachedPrefix -gt 0 -and
+-    $suffixTokens -gt 0 -and
+-    $suffixTokens -lt 32 -and
++    $suffixTokens -eq 19 -and
+     $preserveMatches.Count -ge 1 -and
+     $snapshotUnchanged -and
+     $residentUnchanged -and
+     $decodeRefusedCount -eq 0 -and
+     $mailboxQuarantineCount -eq 0 -and
++    $forbiddenFallbackCount -eq 0 -and
++    $startupCachePreparedCount -eq 1 -and
++    $routeCommonGatePass -and
++    $tierCommonGatePass -and
++    $httpGatePass -and
++    $responseGatePass
++$shutdownGatePass =
++    $shutdownMode -eq 'graceful_http_verified' -and
++    $shutdownReceiptGatePass -and
++    $shutdownRequestedCount -eq 1 -and
++    $routeSummaryMatches.Count -ge 2 -and
++    $tierSummaryMatches.Count -ge 2 -and
++    $arenaFinalCount -eq 1 -and
++    $postflightGatePass -and
++    $monitorStoppedPass
++
++$gatePass = if ($TraceMode -eq 'Nsys') {
++    -not $runError -and
+     $turn1ContentHash -eq $expectedTurn1ContentHash -and
+     $turn2ContentHash -eq $expectedTurn2ContentHash -and
++    $allocTraceGatePass -and
++    $graphTensorDeviceGatePass -and
++    $nsysGatePass -and
++    $shutdownMode -eq 'graceful_http_verified'
++} else {
++    -not $runError -and
++    $correctnessGatePass -and
++    $engagementGatePass -and
++    $graphGatePass -and
++    $monitorGatePass -and
++    $shutdownGatePass -and
+     $packedGatePass -and
+     $batchedPublishGatePass -and
+     $g73HostSelectedGatePass -and
+     $routeIoGatePass -and
+     $allocTraceGatePass -and
+     $graphTensorDeviceGatePass -and
+-    $nsysGatePass -and
+-    $shutdownMode -eq 'graceful_http_verified'
++    $nsysGatePass
+ }
+ 
+ @(
+     "run_dir=$runDirectory"
+     "gate_pass=$gatePass"
++    "correctness_gate_pass=$correctnessGatePass"
++    "engagement_gate_pass=$engagementGatePass"
++    "graph_gate_pass=$graphGatePass"
++    "monitor_gate_pass=$monitorGatePass"
++    "shutdown_gate_pass=$shutdownGatePass"
++    "postflight_gate_pass=$postflightGatePass"
+     "trace_mode=$TraceMode"
++    "g73_open=$G73Open"
++    "g73_open_value=$g73Value"
+     "packed_copy=$PackedCopy"
+     "batched_publish=$BatchedPublish"
+     "g73_host_selected=$G73HostSelected"
+     "route_io_qd=$RouteIoQd"
+     "graph_tensor_device=$GraphTensorDevice"
+     'manifest_count=47'
++    "manifest_diff_count=$($manifestDiff.Count)"
++    "source_manifest_sha256=$sourceManifestHash"
++    "effective_manifest_sha256=$effectiveManifestHash"
++    "normalized_pair_manifest_sha256=$normalizedManifestHash"
++    "binary_sha256=$actualExeHash"
++    "model_sha256=$expectedModelHash"
++    "source_hash_gate_pass=$sourceHashGatePass"
+     'declared_parameter_count=52'
+     'ctx_capacity=150000'
+     'live_position_150000=not_claimed'
+@@ -1122,6 +1725,27 @@ $gatePass = if ($TraceMode -eq 'Nsys') {
+     "g73_host_selected_reuse=$g73HostSelectedReuse"
+     "g73_host_selected_fallbacks=$g73HostSelectedFallbacks"
+     "g73_classification_d2h=$g73ClassificationD2h"
++    "g73_d2h_branch_gate_pass=$g73D2hBranchGatePass"
++    "terminal_ready_count=$($terminalReadyMatches.Count)"
++    "arena_on_gate_pass=$arenaOnGatePass"
++    "arena_off_gate_pass=$arenaOffGatePass"
++    "arena_cap_line=$arenaCapLine"
++    "wrap_ready_count=$($wrapReadyMatches.Count)"
++    "wrap_final_count=$($wrapFinalMatches.Count)"
++    "wrap_on_gate_pass=$wrapOnGatePass"
++    "wrap_off_gate_pass=$wrapOffGatePass"
++    "wrap_error_count=$wrapErrorCount"
++    "wrap_final_line=$wrapFinalLine"
++    "g130_attribution_count=$($attributionMatches.Count)"
++    "g73_attribution_line_count=$g73AttributionLineCount"
++    "attribution_conservation_gate_pass=$attributionConservationGatePass"
++    "out_of_mask_routes=$outOfMaskRoutes"
++    "served_transient=$servedTransient"
++    "served_promoted=$servedPromoted"
++    "served_selected_fallback=$servedSelectedFallback"
++    "served_terminal_exact=$servedTerminalExact"
++    "clamped_routes=$clampedRoutes"
++    "request_refused_routes=$requestRefusedRoutes"
+     "route_io_qd_gate_pass=$routeIoGatePass"
+     "route_io_qd_runtime_requested=$routeIoRuntimeRequested"
+     "route_io_qd_calls=$routeIoCalls"
+@@ -1155,11 +1779,61 @@ $gatePass = if ($TraceMode -eq 'Nsys') {
+     "nsys_report_bytes=$nsysReportBytes"
+     "nsys_sqlite_bytes=$nsysSqliteBytes"
+     "turn1_completion_tokens=$turn1Completion"
++    "turn1_prompt_tokens=$turn1PromptTokens"
++    "turn1_finish_reason=$turn1FinishReason"
++    "turn1_request_sha256=$turn1RequestHash"
+     "turn1_content_sha256=$turn1ContentHash"
+     "turn1_wall_tps=$(if ($turn1Receipt) { [Math]::Round($turn1Completion / $turn1Receipt.elapsed_seconds, 6) } else { 0 })"
++    "turn1_graph_token_count=$turn1GraphCount"
++    "turn1_graph_total_ms=$([Math]::Round($turn1GraphTotalMs, 6))"
++    "turn1_graph_tps=$([Math]::Round($turn1GraphTps, 6))"
++    "suffix_prefill_graph_token_count=$suffixPrefillGraphCount"
++    "suffix_prefill_graph_total_ms=$([Math]::Round($suffixPrefillGraphTotalMs, 6))"
+     "turn2_completion_tokens=$turn2Completion"
++    "turn2_prompt_tokens=$turn2PromptTokens"
++    "turn2_finish_reason=$turn2FinishReason"
++    "turn2_request_sha256=$turn2RequestHash"
+     "turn2_content_sha256=$turn2ContentHash"
+     "turn2_wall_tps=$(if ($turn2Receipt) { [Math]::Round($turn2Completion / $turn2Receipt.elapsed_seconds, 6) } else { 0 })"
++    "turn2_graph_token_count=$turn2GraphCount"
++    "turn2_graph_total_ms=$([Math]::Round($turn2GraphTotalMs, 6))"
++    "turn2_graph_tps=$([Math]::Round($turn2GraphTps, 6))"
++    "tier_cold=$tierCold"
++    "tier_ram_hits=$tierRamHits"
++    "tier_vram_hits=$tierVramHits"
++    "tier_transient=$tierTransient"
++    "tier_ssd_bytes=$tierSsdBytes"
++    "tier_ram_h2d_bytes=$tierRamH2dBytes"
++    "monitor_sample_count=$($monitorRows.Count)"
++    "monitor_ram_first_mb=$monitorRamFirst"
++    "monitor_ram_min_mb=$monitorRamMin"
++    "monitor_ram_last_mb=$monitorRamLast"
++    "monitor_ws_peak_mb=$monitorWsPeak"
++    "monitor_private_peak_mb=$monitorPrivatePeak"
++    "monitor_read_delta_mb=$monitorReadDelta"
++    "monitor_write_delta_mb=$monitorWriteDelta"
++    "monitor_page_fault_delta=$monitorPageFaultDelta"
++    "monitor_gpu_first_mb=$monitorGpuFirst"
++    "monitor_gpu_peak_mb=$monitorGpuPeak"
++    "monitor_gpu_last_mb=$monitorGpuLast"
++    "monitor_gpu_util_average_pct=$monitorGpuUtilAverage"
++    "monitor_gpu_util_max_pct=$monitorGpuUtilMax"
++    "monitor_gpu_power_average_w=$monitorGpuPowerAverage"
++    "monitor_gpu_power_max_w=$monitorGpuPowerMax"
++    "preflight_ram_available_gib=$availableGiB"
++    "preflight_gpu_used_mib=$gpuUsedMiB"
++    "postflight_process_count=$postflightProcessCount"
++    "postflight_port8000_pid=$postflightListenerPid"
++    "postflight_ram_available_gib=$postflightAvailableGiB"
++    "postflight_gpu_used_mib=$postflightGpuUsedMiB"
++    "monitor_stopped=$monitorStoppedPass"
++    "shutdown_receipt_gate_pass=$shutdownReceiptGatePass"
++    "shutdown_requested_count=$shutdownRequestedCount"
++    "route_final_count=$($routeSummaryMatches.Count)"
++    "tier_final_count=$($tierSummaryMatches.Count)"
++    "arena_final_count=$arenaFinalCount"
++    "forbidden_fallback_count=$forbiddenFallbackCount"
++    "startup_model_cache_prepared_count=$startupCachePreparedCount"
+     "shutdown_mode=$shutdownMode"
+     "run_error=$(if ($runError) { $runError } else { 'none' })"
+     "preserve_line=$preserveLine"

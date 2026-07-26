@@ -1,0 +1,17 @@
+test=PASS
+syntax_errors=0
+on_validate_exit=0
+off_validate_exit=0
+ds4_process_count_before=0
+ds4_process_count_after=0
+ds4_pids_before=
+ds4_pids_after=
+server_started=no
+on_run_directory=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-g73-branch-ab\outputs\a2_runtime\20260726_151404_a2_p0_g73-on_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+off_run_directory=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-g73-branch-ab\outputs\a2_runtime\20260726_151406_a2_p0_g73-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+manifest_count_on=47
+manifest_count_off=47
+manifest_diff_count=1
+manifest_diff_line=41
+normalized_pair_manifest_sha256=6793cda094b09a23b033c13679a4394a5418a549fc5827c29400d207d3128621
+source_hash_gate_pass=False

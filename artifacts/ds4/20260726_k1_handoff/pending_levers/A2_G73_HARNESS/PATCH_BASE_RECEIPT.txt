@@ -1,0 +1,8 @@
+patch_kind=reference_only
+base_shared_runner_path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\runtime_p0p1\run_two_turn_lifecycle.ps1
+base_shared_runner_sha256=358EF45ABDBDC398182441C66658F33FA4BAFF1E735B69192536B64378C15ACD
+base_snapshot_taken_local=2026-07-26T15:15+02:00
+target_path=runtime_p0p1\run_two_turn_lifecycle.ps1
+apply_only_if_base_hash_matches=no
+merge_mode=port_A2_sections_after_A1_freeze
+shared_tree_modified_by_A2=no

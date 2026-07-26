@@ -1,0 +1,499 @@
+diff --git a/runtime_p0p1/run_two_turn_lifecycle.ps1 b/runtime_p0p1/run_two_turn_lifecycle.ps1
+index 471e4c8..6386c6e 100644
+--- a/runtime_p0p1/run_two_turn_lifecycle.ps1
++++ b/runtime_p0p1/run_two_turn_lifecycle.ps1
+@@ -44,7 +44,7 @@ $manifestSource = Join-Path $root 'manifest_47.env'
+ $monitorScript = Join-Path $root 'runtime_monitor.ps1'
+ $nsysStreamExtractor = Join-Path $root 'extract_nsys_process_streams.py'
+ $python = 'C:\Users\imanu\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe'
+-$buildRoot = Join-Path $workspace 'work\build-p0-ssd-rotator'
++$buildRoot = Join-Path $workspace 'work\build-p0-1-ssd-service-deadline'
+ $exe = Join-Path $buildRoot 'ds4_server.exe'
+ $model = 'C:\ds4-models\ds4-2bit.gguf'
+ $nsys = 'C:\Program Files\NVIDIA Corporation\Nsight Systems 2024.5.1\target-windows-x64\nsys.exe'
+@@ -60,13 +60,13 @@ $runId = '{0}_a1_m0_p0_trace-{1}_packed-{2}_publish-{3}_hostsel-{4}_routeio-{5}_
+     $safeHostSelected, $safeRouteIo, $safeGraphTensorDevice
+ $runDirectory = Join-Path $outputRoot $runId
+ 
+-$expectedExeHash = '070A450ECD5E4AB94A7C6CCB2FED73D8FDB6EF45E0E700CF506D647BA3F54E5D'
++$expectedExeHash = 'C3EAC30683C5636905BF3C483CC0EC391A89A2772F7826D2B8D1BDCF8D595AFC'
+ $expectedModelHash = 'efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668'
+ $expectedTurn1ContentHash = '7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b'
+ $expectedTurn2ContentHash = '0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb'
+ $expectedSourceHashes = [ordered]@{
+     'ds4.c' = '54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466'
+-    'ds4_cuda.cu' = '313A8CCC8BCA6B8EC08E3205621B18D8BA7E58624EF20D568063EC86784B90AD'
++    'ds4_cuda.cu' = '92DB43E8050115255617F665CF830814ADBC09347B14849B5C81BE003FAD4ECC'
+     'ds4_gpu.h' = '625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C'
+     'ds4_metal.m' = '81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D'
+ }
+diff --git a/runtime_p0p1/test_a1_graph_tensor_device_runner_static.ps1 b/runtime_p0p1/test_a1_graph_tensor_device_runner_static.ps1
+index be2b71d..9f60b30 100644
+--- a/runtime_p0p1/test_a1_graph_tensor_device_runner_static.ps1
++++ b/runtime_p0p1/test_a1_graph_tensor_device_runner_static.ps1
+@@ -18,7 +18,8 @@ $beforeProcesses = @(Get-Process -Name 'ds4_server' -ErrorAction SilentlyContinu
+ 
+ foreach ($contract in @(
+         @("[string]`$GraphTensorDevice = 'Off'", 'default-off parameter'),
+-        @('build-p0-ssd-rotator', 'isolated P0 build path'),
++        @('build-p0-1-ssd-service-deadline',
++          'isolated P0.1 build path'),
+         @('DS4_CUDA_GRAPH_TENSOR_DEVICE=1', 'candidate manifest'),
+         @('DS4_CUDA_GRAPH_TENSOR_DEVICE=<UNSET>', 'control manifest'),
+         @('$env:DS4_CUDA_GRAPH_TENSOR_DEVICE = ''1''', 'candidate environment'),
+diff --git a/wt-hot-reserve/ds4_cuda.cu b/wt-hot-reserve/ds4_cuda.cu
+index 9697b77..f888240 100644
+--- a/wt-hot-reserve/ds4_cuda.cu
++++ b/wt-hot-reserve/ds4_cuda.cu
+@@ -29674,6 +29674,31 @@ static const char *cuda_q1_0_ssd_wrap_io_status_name(
+     }
+ }
+ 
++struct cuda_q1_0_ssd_wrap_service_timing {
++    double queue_age_seconds;
++    double service_budget_seconds;
++    double service_deadline;
++    double io_deadline;
++};
++
++static cuda_q1_0_ssd_wrap_service_timing
++cuda_q1_0_ssd_wrap_service_timing_for_job(
++        const cuda_q1_0_ssd_wrap_job &job, double io_started) {
++    cuda_q1_0_ssd_wrap_service_timing timing = {};
++    timing.queue_age_seconds = std::max(
++        0.0, io_started - job.queued_at);
++    timing.service_budget_seconds = std::min(
++        cuda_g133_rotator_io_timeout_seconds(),
++        cuda_g133_transient_io_timeout_seconds());
++    timing.service_deadline = io_started + timing.service_budget_seconds;
++    timing.io_deadline =
++        !job.g73_open_rotation && job.request.absolute_deadline > 0.0
++            ? std::min(
++                timing.service_deadline, job.request.absolute_deadline)
++            : timing.service_deadline;
++    return timing;
++}
++
+ static cuda_q1_0_ssd_wrap_read_result cuda_q1_0_ssd_wrap_read_job(
+         cuda_q1_0_ssd_wrap_job *job, double absolute_deadline) {
+     cuda_q1_0_ssd_wrap_read_result result = {};
+@@ -29857,10 +29882,12 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+         uint64_t wave_useful = 0;
+         uint32_t wave_ranges_requested = 0;
+         uint32_t wave_ranges_read = 0;
+-        uint32_t wave_coalesced = 0;
+-        uint32_t wave_ready = 0;
+-        uint32_t wave_failed = 0;
+-        for (uint32_t index : selected) {
++        uint32_t wave_coalesced = 0;
++        uint32_t wave_ready = 0;
++        uint32_t wave_failed = 0;
++        double wave_queue_age_max_seconds = 0.0;
++        double wave_service_budget_seconds = 0.0;
++        for (uint32_t index : selected) {
+             cuda_q1_0_ssd_wrap_job local;
+             os_mutex_lock(&state.mutex);
+             if (index >= state.jobs.size() || state.stop || state.failed ||
+@@ -29873,23 +29900,17 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+             os_mutex_unlock(&state.mutex);
+             const double io_started = cuda_wall_sec();
+             os_pread_cancellable_reset(&state.pread);
+-            const double rotator_deadline =
+-                local.queued_at + std::min(
+-                    cuda_g133_rotator_io_timeout_seconds(),
+-                    cuda_g133_transient_io_timeout_seconds());
+             /* G73 rotation is advisory and starts only after exact transient
+-             * serving has succeeded. It therefore owns a fresh rotator-local
+-             * I/O budget and must never inherit the serving request deadline.
+-             * Non-G73 Q1 promotion retains the original fail-closed request
+-             * deadline coupling. */
+-            const double io_deadline =
+-                !local.g73_open_rotation &&
+-                local.request.absolute_deadline > 0.0
+-                    ? std::min(
+-                        rotator_deadline, local.request.absolute_deadline)
+-                    : rotator_deadline;
++             * serving has succeeded. Queue residence is governed separately by
++             * max_age_calls/admission backpressure; it must not consume the
++             * per-job I/O budget. Each acquired job receives the configured
++             * service budget from io_started. Non-G73 promotion additionally
++             * retains the original fail-closed request deadline coupling. */
++            const cuda_q1_0_ssd_wrap_service_timing timing =
++                cuda_q1_0_ssd_wrap_service_timing_for_job(
++                    local, io_started);
+             const cuda_q1_0_ssd_wrap_read_result read_result =
+-                cuda_q1_0_ssd_wrap_read_job(&local, io_deadline);
++                cuda_q1_0_ssd_wrap_read_job(&local, timing.io_deadline);
+             const int read_ok =
+                 read_result.status == CUDA_Q1_0_SSD_WRAP_IO_OK;
+             const double io_seconds = cuda_wall_sec() - io_started;
+@@ -29935,14 +29956,17 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+                 if (job->g73_open_rotation) state.advisory_failures++;
+                 fprintf(stderr,
+                         "ds4: [q1-0-ssd-wrap-io] result=%s mode=%s "
+-                        "action=%s wave_id=%llu job=%u sequence=%llu "
++                        "action=%s status=%s wave_id=%llu job=%u sequence=%llu "
+                         "layer=%u expert=%u range=%u expected=%llu "
+                         "actual=%lld errno=%d deadline=%s "
++                        "queue_age_ms=%.9g service_budget_ms=%.9g "
+                         "service_seconds=%.9g\n",
+                         job->g73_open_rotation ? "degraded" : "failed",
+                         job->g73_open_rotation ? "advisory" : "terminal",
+                         job->g73_open_rotation ? "release-job-local" :
+                                                 "fail-closed",
++                        cuda_q1_0_ssd_wrap_io_status_name(
++                            read_result.status),
+                         (unsigned long long)wave_id, index,
+                         (unsigned long long)job->enqueue_sequence,
+                         job->layer, job->expert,
+@@ -29952,6 +29976,8 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+                         read_result.os_error,
+                         job->g73_open_rotation ? "rotator-local" :
+                                                 "request-bounded",
++                        timing.queue_age_seconds * 1000.0,
++                        timing.service_budget_seconds * 1000.0,
+                         io_seconds);
+             }
+             os_cond_broadcast(&state.cond);
+@@ -29962,7 +29988,10 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+             wave_ranges_requested += local.ranges_requested;
+             wave_ranges_read += read_result.ranges_read;
+             wave_coalesced += read_result.coalesced;
+-        }
++            wave_queue_age_max_seconds = std::max(
++                wave_queue_age_max_seconds, timing.queue_age_seconds);
++            wave_service_budget_seconds = timing.service_budget_seconds;
++        }
+         const double wave_seconds = cuda_wall_sec() - wave_started;
+         os_mutex_lock(&state.mutex);
+         state.service_seconds += wave_seconds;
+@@ -29971,9 +30000,10 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+         fprintf(stderr,
+                 "ds4: [q1-0-ssd-wrap-wave] result=%s wave_id=%llu "
+                 "regime=%s requests=%u ranges_requested=%u ranges_read=%u "
+-                "coalesced_ranges=%u bytes_requested=%llu bytes_read=%llu "
+-                "bytes_useful=%llu queue_depth=%llu service_seconds=%.9g "
+-                "ram_ready=%u failures=%u coalesce_ratio=%.9g\n",
++                "coalesced_ranges=%u bytes_requested=%llu bytes_read=%llu "
++                "bytes_useful=%llu queue_depth=%llu service_seconds=%.9g "
++                "queue_age_ms=%.9g service_budget_ms=%.9g "
++                "ram_ready=%u failures=%u coalesce_ratio=%.9g\n",
+                 wave_failed ? "failed" : "ready",
+                 (unsigned long long)wave_id,
+                 prefill_wave ? "prefill-rebuild" : "decode-micro",
+@@ -29981,9 +30011,11 @@ static void *cuda_q1_0_ssd_wrap_worker(void *) {
+                 wave_ranges_read, wave_coalesced,
+                 (unsigned long long)wave_requested,
+                 (unsigned long long)wave_read,
+-                (unsigned long long)wave_useful,
+-                (unsigned long long)queue_depth, wave_seconds,
+-                wave_ready, wave_failed,
++                (unsigned long long)wave_useful,
++                (unsigned long long)queue_depth, wave_seconds,
++                wave_queue_age_max_seconds * 1000.0,
++                wave_service_budget_seconds * 1000.0,
++                wave_ready, wave_failed,
+                 wave_ranges_read == 0u ? 0.0 :
+                     (double)wave_ranges_requested / wave_ranges_read);
+     }
+@@ -38972,13 +39004,66 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+     os_mutex_unlock(&state.mutex);
+     cuda_q1_0_ssd_wrap_flush();
+     const uint64_t rotation_promotions_after = state.successes;
+-    const int cross_request_rearm_ok =
+-        !state.failed && !state.stop && second_request_submitted == 1 &&
+-        rotation_promotions_after == rotation_promotions_before + 2u &&
+-        g_moe_tiering.entries[1u].ram_slot != UINT32_MAX &&
+-        g_moe_tiering.entries[2u].ram_slot != UINT32_MAX;
+-    if (!cross_request_rearm_ok) ok = 0;
+-
++    const int cross_request_rearm_ok =
++        !state.failed && !state.stop && second_request_submitted == 1 &&
++        rotation_promotions_after == rotation_promotions_before + 2u &&
++        g_moe_tiering.entries[1u].ram_slot != UINT32_MAX &&
++        g_moe_tiering.entries[2u].ram_slot != UINT32_MAX;
++    if (!cross_request_rearm_ok) ok = 0;
++
++    /* A queued advisory job owns no I/O deadline until the worker acquires it.
++     * Queue age remains independently observable and the configured service
++     * budget is unchanged. Each job in a wave gets its own acquisition time. */
++    const double timing_started = cuda_wall_sec();
++    cuda_q1_0_ssd_wrap_job aged_advisory_job = {};
++    aged_advisory_job.g73_open_rotation = 1u;
++    aged_advisory_job.queued_at = timing_started - 1.0;
++    aged_advisory_job.request.absolute_deadline = timing_started - 0.5;
++    const cuda_q1_0_ssd_wrap_service_timing aged_advisory_timing =
++        cuda_q1_0_ssd_wrap_service_timing_for_job(
++            aged_advisory_job, timing_started);
++    const int service_deadline_fresh_ok =
++        aged_advisory_timing.queue_age_seconds >= 0.999 &&
++        aged_advisory_timing.service_budget_seconds > 0.0 &&
++        fabs(aged_advisory_timing.service_deadline -
++             (timing_started +
++              aged_advisory_timing.service_budget_seconds)) < 1e-9 &&
++        aged_advisory_timing.io_deadline ==
++            aged_advisory_timing.service_deadline &&
++        cuda_deadline_remaining_ms(aged_advisory_timing.io_deadline) > 0u;
++
++    cuda_q1_0_ssd_wrap_job second_aged_advisory_job =
++        aged_advisory_job;
++    second_aged_advisory_job.queued_at = timing_started - 2.0;
++    const double second_service_started = timing_started + 0.010;
++    const cuda_q1_0_ssd_wrap_service_timing second_advisory_timing =
++        cuda_q1_0_ssd_wrap_service_timing_for_job(
++            second_aged_advisory_job, second_service_started);
++    const int per_job_service_budget_ok =
++        second_advisory_timing.queue_age_seconds >= 1.999 &&
++        fabs(second_advisory_timing.service_deadline -
++             (second_service_started +
++              second_advisory_timing.service_budget_seconds)) < 1e-9 &&
++        second_advisory_timing.service_deadline >
++            aged_advisory_timing.service_deadline;
++
++    cuda_q1_0_ssd_wrap_job non_g73_deadline_job = {};
++    non_g73_deadline_job.queued_at = timing_started - 1.0;
++    non_g73_deadline_job.request.absolute_deadline =
++        timing_started +
++        aged_advisory_timing.service_budget_seconds * 0.5;
++    const cuda_q1_0_ssd_wrap_service_timing non_g73_timing =
++        cuda_q1_0_ssd_wrap_service_timing_for_job(
++            non_g73_deadline_job, timing_started);
++    const int non_g73_request_deadline_ok =
++        non_g73_timing.io_deadline ==
++            non_g73_deadline_job.request.absolute_deadline &&
++        non_g73_timing.io_deadline < non_g73_timing.service_deadline;
++    if (!service_deadline_fresh_ok || !per_job_service_budget_ok ||
++        !non_g73_request_deadline_ok) {
++        ok = 0;
++    }
++
+     /* Restore empty synthetic ownership and inject the worker terminal for one
+      * advisory I/O failure. It must release only that job; a later rotation
+      * must still submit and publish without replaying or serving the failure. */
+@@ -39261,6 +39346,8 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+             "rotator=production sequential_consistency_hook=real "
+             "cross_request_rearm=%s first_submit=%d second_submit=%d "
+             "promotion_delta=%llu "
++            "service_deadline=%s per_job_service_budget=%s "
++            "queue_aging=separate non_g73_deadline=%s "
+             "advisory_failure=%s advisory_followup=%s "
+             "advisory_failure_delta=%llu advisory_release_delta=%llu "
+             "structural_failure=terminal "
+@@ -39271,6 +39358,9 @@ extern "C" int ds4_gpu_g73_open_selftest(const char *read_path) {
+             first_request_submitted, second_request_submitted,
+             (unsigned long long)(rotation_promotions_after -
+                                  rotation_promotions_before),
++            service_deadline_fresh_ok ? "job-acquisition-fresh" : "failed",
++            per_job_service_budget_ok ? "per-job-fresh" : "failed",
++            non_g73_request_deadline_ok ? "request-bounded" : "failed",
+             advisory_cleanup_ok ? "job-local-clean" : "failed",
+             advisory_followup_ok ? "subsequent-promoted" : "failed",
+             (unsigned long long)(state.advisory_failures -
+diff --git a/wt-hot-reserve/tests/test_p0_1_ssd_rotator_service_deadline_static.ps1 b/wt-hot-reserve/tests/test_p0_1_ssd_rotator_service_deadline_static.ps1
+new file mode 100644
+index 0000000..a750525
+--- /dev/null
++++ b/wt-hot-reserve/tests/test_p0_1_ssd_rotator_service_deadline_static.ps1
+@@ -0,0 +1,139 @@
++$ErrorActionPreference = 'Stop'
++Set-StrictMode -Version 2.0
++
++$sourceRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
++$workspace = Split-Path -Parent $sourceRoot
++$runtimeRoot = Join-Path $workspace 'runtime_p0p1'
++$source = [System.IO.File]::ReadAllText(
++    (Join-Path $sourceRoot 'ds4_cuda.cu'))
++$runner = [System.IO.File]::ReadAllText(
++    (Join-Path $runtimeRoot 'run_two_turn_lifecycle.ps1'))
++$manifest = [System.IO.File]::ReadAllText(
++    (Join-Path $runtimeRoot 'manifest_47.env'))
++
++function Assert-True([bool]$Condition, [string]$Message) {
++    if (-not $Condition) {
++        throw "P0.1 SSD service-deadline contract failed: $Message"
++    }
++}
++
++function Assert-Contains(
++        [string]$Text, [string]$Needle, [string]$Message) {
++    Assert-True ($Text.Contains($Needle)) $Message
++}
++
++function Slice-Between(
++        [string]$Text, [string]$Start, [string]$End) {
++    $begin = $Text.IndexOf($Start, [StringComparison]::Ordinal)
++    if ($begin -lt 0) { throw "missing slice start: $Start" }
++    $finish = $Text.IndexOf(
++        $End, $begin + $Start.Length, [StringComparison]::Ordinal)
++    if ($finish -lt 0) { throw "missing slice end: $End" }
++    return $Text.Substring($begin, $finish - $begin)
++}
++
++$timing = Slice-Between $source `
++    'static cuda_q1_0_ssd_wrap_service_timing' `
++    'static cuda_q1_0_ssd_wrap_read_result cuda_q1_0_ssd_wrap_read_job('
++$worker = Slice-Between $source `
++    'static void *cuda_q1_0_ssd_wrap_worker(void *) {' `
++    'static int cuda_q1_0_ssd_wrap_init(void) {'
++$poll = Slice-Between $source `
++    'static int cuda_q1_0_ssd_wrap_poll_internal(int force) {' `
++    'static int cuda_q1_0_ssd_wrap_poll(void) {'
++$submit = Slice-Between $source `
++    'static int cuda_q1_0_ssd_wrap_submit(' `
++    'static void cuda_g73_open_maybe_schedule_rotation('
++$finish = Slice-Between $source `
++    'static int cuda_q1_0_ssd_wrap_finish_one(' `
++    'static void *cuda_q1_0_ssd_wrap_selftest_finish_one('
++
++# 1. An old queued_at cannot expire a freshly acquired G73 service budget.
++Assert-Contains $timing `
++    'timing.service_deadline = io_started + timing.service_budget_seconds;' `
++    'deadline is not based on io_started'
++Assert-Contains $timing 'io_started - job.queued_at' `
++    'queue age is not independently measured'
++Assert-True (-not $timing.Contains(
++    'job.queued_at + timing.service_budget_seconds')) `
++    'queued_at still anchors the service deadline'
++Assert-Contains $source `
++    'cuda_deadline_remaining_ms(aged_advisory_timing.io_deadline) > 0u' `
++    'selftest does not prove that an aged G73 job can enter pread'
++
++# 2. Every selected job acquires timing inside the per-job service loop.
++Assert-Contains $worker `
++    'const double io_started = cuda_wall_sec();' `
++    'worker lacks per-job service acquisition'
++Assert-Contains $worker `
++    'cuda_q1_0_ssd_wrap_service_timing_for_job(' `
++    'worker does not calculate per-job timing'
++Assert-Contains $source `
++    '"service_deadline=%s per_job_service_budget=%s "' `
++    'selftest does not cover independent jobs in one wave'
++
++# 3. A real service timeout remains explicit, advisory, and degraded.
++Assert-Contains $worker `
++    'cuda_q1_0_ssd_wrap_io_status_name(' `
++    'I/O status is absent from failure telemetry'
++Assert-Contains $worker `
++    '"queue_age_ms=%.9g service_budget_ms=%.9g "' `
++    'event/wave queue and service telemetry is absent'
++Assert-Contains $finish 'return ok || advisory_io_failure;' `
++    'advisory timeout still poisons poll/submit'
++Assert-Contains $source `
++    '(state.advisory_failures ? "degraded" : "complete")' `
++    'advisory timeout is hidden from the final summary'
++
++# 4. Queue aging and admission pressure remain outside the I/O deadline.
++Assert-Contains $poll 'state.max_age_calls' `
++    'logical queue aging is missing'
++Assert-True (-not $poll.Contains('cuda_q1_0_ssd_wrap_read_job')) `
++    'queue aging invokes the SSD read path'
++Assert-Contains $submit 'state.backpressure++;' `
++    'admission pressure telemetry is missing'
++Assert-Contains $submit 'return 3;' `
++    'admission pressure is not a distinct submit result'
++
++# 5. Non-G73 remains request-bounded and structurally fail-closed.
++Assert-Contains $timing '!job.g73_open_rotation &&' `
++    'G73/non-G73 deadline split is missing'
++Assert-Contains $timing 'job.request.absolute_deadline > 0.0' `
++    'non-G73 request deadline is missing'
++Assert-Contains $finish `
++    'cuda_q1_0_ssd_wrap_fail_and_release_all_locked(' `
++    'non-advisory failure is no longer terminal'
++Assert-Contains $source `
++    '"queue_aging=separate non_g73_deadline=%s "' `
++    'selftest does not cover the request-bounded non-G73 deadline'
++
++# 6. Single counting, clean release, and later rotation remain covered.
++Assert-Contains $source 'if (!job.failure_counted) {' `
++    'terminal teardown can double-count a worker failure'
++Assert-Contains $source `
++    'state.failures == failures_before + 1u' `
++    'selftest does not require single failure accounting'
++Assert-Contains $source `
++    'advisory_followup_ok ? "subsequent-promoted" : "failed"' `
++    'selftest does not require a later successful rotation'
++Assert-Contains $source `
++    'g_moe_tiering.entries[3u].state == CUDA_MOE_TIER_SSD_COLD' `
++    'failed advisory route can leave SSD-cold serving'
++
++# 7. Benchmark health remains fail-closed for advisory/degraded telemetry.
++Assert-Contains $runner '$result -eq ''complete''' `
++    'runner accepts result=degraded'
++Assert-Contains $runner '$fields.advisory_failures -eq 0' `
++    'runner accepts advisory failures'
++Assert-Contains $runner '$fields.advisory_degraded -eq 0' `
++    'runner accepts explicit degraded state'
++Assert-Contains $runner '$rotatorGate.gate_pass -and' `
++    'overall gate does not require rotator health'
++
++Assert-True (
++    [regex]::Matches(
++        $manifest,
++        '(?m)^DS4_G133_ROTATOR_IO_TIMEOUT_S=0\.05\r?$').Count -eq 1) `
++    'the configured 50ms service budget changed'
++
++Write-Output 'test_p0_1_ssd_rotator_service_deadline_static.ps1: PASS'
+diff --git a/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1 b/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1
+index 69cc411..db7b777 100644
+--- a/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1
++++ b/wt-hot-reserve/tests/test_p0_ssd_rotator_advisory_static.ps1
+@@ -30,12 +30,11 @@ function Slice-Between(
+ $worker = Slice-Between $source `
+     'static void *cuda_q1_0_ssd_wrap_worker(void *) {' `
+     'static int cuda_q1_0_ssd_wrap_init(void) {'
+-Assert-Contains $worker 'const double rotator_deadline =' `
+-    'worker lacks a rotator-local deadline'
+-Assert-Contains $worker '!local.g73_open_rotation &&' `
+-    'G73 advisory reads still inherit the serving deadline'
+-Assert-Contains $worker 'local.request.absolute_deadline > 0.0' `
+-    'non-G73 promotion lost its fail-closed request deadline'
++Assert-Contains $worker `
++    'cuda_q1_0_ssd_wrap_service_timing_for_job(' `
++    'worker does not acquire per-job service timing'
++Assert-Contains $worker 'timing.io_deadline' `
++    'worker does not use the acquired service deadline'
+ Assert-Contains $worker 'job->failure_counted = 1u;' `
+     'worker failure is not marked as already counted'
+ Assert-Contains $worker 'state.advisory_failures++;' `
+@@ -44,6 +43,27 @@ Assert-Contains $worker '"rotator-local"' `
+     'failure telemetry does not identify the deadline domain'
+ Assert-Contains $worker 'job->layer, job->expert' `
+     'failure telemetry does not identify the failed route'
++Assert-Contains $worker '"action=%s status=%s wave_id=%llu job=%u sequence=%llu "' `
++    'failure telemetry does not expose the precise I/O status'
++Assert-Contains $worker '"queue_age_ms=%.9g service_budget_ms=%.9g "' `
++    'event and wave timing telemetry is missing'
++
++$serviceTiming = Slice-Between $source `
++    'static cuda_q1_0_ssd_wrap_service_timing' `
++    'static cuda_q1_0_ssd_wrap_read_result cuda_q1_0_ssd_wrap_read_job('
++Assert-Contains $serviceTiming `
++    'timing.service_deadline = io_started + timing.service_budget_seconds;' `
++    'service deadline is not anchored to job acquisition'
++Assert-Contains $serviceTiming `
++    'io_started - job.queued_at' `
++    'queued_at is not retained as independent queue-age telemetry'
++Assert-Contains $serviceTiming '!job.g73_open_rotation &&' `
++    'G73 advisory reads still inherit the serving deadline'
++Assert-Contains $serviceTiming 'job.request.absolute_deadline > 0.0' `
++    'non-G73 promotion lost its fail-closed request deadline'
++Assert-True (-not $serviceTiming.Contains(
++    'job.queued_at + timing.service_budget_seconds')) `
++    'queue residence still consumes the service budget'
+ 
+ $finishOne = Slice-Between $source `
+     'static int cuda_q1_0_ssd_wrap_finish_one(' `
+@@ -80,6 +100,12 @@ Assert-Contains $source 'advisory_releases=%llu' `
+     'final telemetry lacks job-local release count'
+ Assert-Contains $source 'advisory_failure=%s advisory_followup=%s' `
+     'self-test does not report advisory failure and subsequent rotation'
++Assert-Contains $source `
++    '"service_deadline=%s per_job_service_budget=%s "' `
++    'self-test does not report service-acquisition deadline coverage'
++Assert-Contains $source `
++    '"queue_aging=separate non_g73_deadline=%s "' `
++    'self-test does not report queue/non-G73 deadline separation'
+ Assert-Contains $source '"job-local-clean"' `
+     'self-test does not assert clean advisory teardown'
+ Assert-Contains $source '"subsequent-promoted"' `
