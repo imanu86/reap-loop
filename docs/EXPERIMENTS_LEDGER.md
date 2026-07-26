@@ -13109,3 +13109,1675 @@ RAM_free=54.03_GiB
 
 Decisione: **K1 non promossa. Nessun K2 o altro runtime autorizzato. Il lavoro
 Codex si chiude con sorgente, receipt e handoff committati per Claude.**
+
+## AE) P4a demand promotion pipeline — exact/counter PASS, performance FAIL (2026-07-26)
+
+Mandato P4a della sezione P4 del piano operativo, task pinnata
+`P4_DEMAND_PROMOTION_PIPELINE=019f9e6d-9fa8-7792-afeb-1bbe6eab7c34`.
+Lo scope e' esclusivamente la compattazione per layer delle submission H2D dei
+miss e del relativo publish demand. P4b non e' inclusa.
+
+### Provenienza congelata
+
+Il sorgente parte direttamente da P0/P1 `8ec491b`; il successivo K1
+`eb03f72`, respinto exact nella sezione AD, non appartiene alla history attiva.
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-p4a
+source_branch=codex/ds4-p4a-demand-pipeline-20260726
+source_base=8ec491b175406c9f95b380b65ab0da5ebdc589ec
+source_commit=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+excluded_k1_commit=eb03f7203d8c4cc95781bc73a181f3fe972a6a12
+ds4.c_SHA256=6AF63E151ACB86A71AD6C626C3E5CF46D55E6A8B1E6BDE1964E81DA3F817264E
+ds4_cuda.cu_SHA256=6C57A0E953CBCC38BF6EE6A6D77AD7E97508AE6E6C5B6761A2E98641682468DB
+ds4_gpu.h_SHA256=1473B8239C5834C3544DC0464F172E1CBE17712D5BE1616B459A048C54259590
+ds4_server.exe_SHA256=95FC09CF1ADAFA47B6C58EAB25B479CC15B34E1BF826465C7768C1361FE6C2A4
+ds4_server.exe_bytes=12475904
+p4a_demand_pipeline_runner.ps1_SHA256=4C043AB1FB88A38CE441B4FAFC0B1C42EBC07EBB68B9CF6C810741A8CE893242
+test_p4a_demand_pipeline_static.ps1_SHA256=CA526CDC640803A68EAD542D502847418E17FBEB03A89E66B08149F1C750D54F
+test_p4a_demand_budget_static.ps1_SHA256=7EB8023888F22ACAC72F57A47A0E206769DF90A240BB893B43F4DDECC7BA7C97
+```
+
+### Contratto implementato
+
+`DS4_CUDA_MOE_DEMAND_PIPELINE=1` e' l'unico valore che abilita P4a; variabile
+assente, vuota o `0` conserva il ramo base, mentre qualunque altro valore
+fallisce `ds4_gpu_init` prima dell'inizializzazione CUDA. Il ramo ON e'
+limitato a `tiering-enforce`; `route_q1_0` continua a bypassare il worker GPU e
+il nested residual resta esplicitamente legacy.
+
+Il worker conserva nello stesso ordine il loop di routing, I/O, admission e
+accounting, ma per ogni miss copia il payload nella staging pinned compatta.
+Solo dopo l'intero layer emette:
+
+1. una `cudaMemcpy2DAsync` gate+up;
+2. una `cudaMemcpyAsync` down;
+3. un solo `moe_publish_demand_batch_kernel`.
+
+Il kernel materializza gli slot residenti dalla staging transiente, poi
+aggiorna mappe e route pointer; gli slot transienti pubblicano direttamente il
+proprio slot compatto. Il drain preesistente dello stream avviene prima del
+commit delle reservation. Un errore di copia, launch o drain fallisce l'intero
+layer e attiva refund/invalidate, senza fallback legacy.
+
+P2-A e P2-B possono essere ON contemporaneamente: P4a usa il layout packed e
+assorbe i publish nel singolo kernel demand; P3-B QD4 conserva l'I/O overlapped
+e scrive negli stessi slot `miss` poi usati dal batch. Con P4a OFF i branch
+P2-A/P2-B/P3-B e il legacy restano invariati.
+
+Righe sorgente toccate:
+
+```text
+ds4_cuda.cu:595-598,1898,7118-7124,24297-24370,26030-26035,
+             26434-26440,28576-28593,33012-33249,34156-34736,
+             35027-35158,35742-36420
+p4a_demand_pipeline_runner.ps1:1-136
+tests/test_p4a_demand_pipeline_static.ps1:1-177
+tests/test_p4a_demand_budget_static.ps1:1-108
+serial_miss_loop=ds4_cuda.cu:35873
+per_miss_accumulation=ds4_cuda.cu:36168-36172,36300-36304
+single_layer_flush=ds4_cuda.cu:36409-36415
+```
+
+### Riconciliazione quantitativa col codice
+
+Il codice fissa 43 layer e 6 route. P4a fissa due submission H2D e un publish
+per ogni layer che abbia almeno un miss:
+
+```text
+H2D/token = 2 * layers_with_miss <= 2 * 43 = 86
+publish/token = 1 * layers_with_miss <= 1 * 43 = 43
+H2D_bytes/layer = miss_count * (2 * gate_expert_bytes + down_expert_bytes)
+```
+
+Quindi i byte restano identici al payload legacy. Le cifre S/AA-2 sono misure,
+non costanti statiche: H2D medio `603.75` (arrotondato a circa 604), publish
+medio `201.25`, kernel di controllo medio `287.25`; divisi per 43 producono
+rispettivamente `14.0407` submission H2D/layer e `4.6802` publish/layer.
+Il nuovo limite statico 86/43 sostituisce solo il numero di chiamate.
+
+### Gate statici e build
+
+```text
+test_p4a_demand_pipeline_static.ps1=PASS
+test_p4a_demand_budget_static.ps1=PASS layers=43 routes=6 max_h2d_per_token=86 max_publish_per_token=43
+test_g127p_hetero_route_packed_copy_static.ps1=PASS (WhatIf; server non avviato)
+test_p1_decode_trace_static.ps1=PASS
+test_p1_decode_trace_parser_static.ps1=PASS
+test_p2c_nsys_capture_static.ps1=PASS
+native_CUDA_clean_build=PASS 26/26 targets
+CUDA_toolkit=12.6
+CUDA_architectures=80;86;89;90
+new_warning_classes_vs_8ec491b=0
+existing_CTest=PASS 1/1 ds4_bake_test
+ValidateOnly_OFF=PASS manifest=47 server_started=no
+ValidateOnly_ON_composed_P2A_P2B_P3B_QD4=PASS manifest=47 server_started=no
+post_ds4_server_process_count=0
+physical_runtime=NOT_RUN_BY_MANDATE
+```
+
+Decisione pre-runtime: **P4a supera implementazione, static gate e build. La
+promozione restava subordinata a un A/B fisico separato.**
+
+### Scout runtime OFF -> ON, stesso binario
+
+Mandato runtime separato eseguito in ordine OFF, ON, con un solo
+`ds4_server` fisico alla volta. Lo scout cambia una sola variabile:
+`DS4_CUDA_MOE_DEMAND_PIPELINE` e' assente in OFF e vale `1` in ON. P2-A,
+P2-B, P3-A, P3-B, GraphTensorDevice, sampled/Nsight trace e KV persistent
+lifecycle restano OFF.
+
+Due tentativi di trasporto nascosto precedono i run validi:
+
+```text
+20:25:28=outer PowerShell exited before runner entry; server_started=no
+20:26:02=runner prepared and launched PID 4448, then sandbox reaped the child
+server_ready=no
+requests=0
+responses=0
+server_log_bytes=0
+native_shutdown=not_applicable_before_readiness
+postflight=ds4_0+port8000_free
+classification=HARNESS_TRANSPORT_ABORT_NOT_A_BENCHMARK
+```
+
+Il runner e' stato quindi mantenuto sincrono nella cella persistente della chat;
+non e' stato modificato il binario e non e' stata rilassata alcuna soglia.
+Entrambi i run validi hanno usato shutdown HTTP autenticato e drain nativo.
+
+#### Provenienza runtime e preparazione
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-p4a
+source_branch=codex/ds4-p4a-demand-pipeline-20260726
+source_commit=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+ds4.c_SHA256=6AF63E151ACB86A71AD6C626C3E5CF46D55E6A8B1E6BDE1964E81DA3F817264E
+ds4_cuda.cu_SHA256=6C57A0E953CBCC38BF6EE6A6D77AD7E97508AE6E6C5B6761A2E98641682468DB
+ds4_gpu.h_SHA256=1473B8239C5834C3544DC0464F172E1CBE17712D5BE1616B459A048C54259590
+ds4_metal.m_SHA256=598F8FE634AE653A63D45D208CEF88AF8C6CC2EE966B245B83453E0A2B26B3C2
+ds4_server.exe_SHA256=95FC09CF1ADAFA47B6C58EAB25B479CC15B34E1BF826465C7768C1361FE6C2A4
+ds4_server.exe_bytes=12475904
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+model_bytes=86720111488
+p4a_validate_only_runner_SHA256=4C043AB1FB88A38CE441B4FAFC0B1C42EBC07EBB68B9CF6C810741A8CE893242
+atomic_runner_basis_SHA256=E8A746195C5BD09C6C034E1F3EBC8C482146600843F56DDD2AADCEF9BBD200E5
+p4a_atomic_runtime_runner_SHA256=9C564BC502E0B6AEB142DC9961EA5E46267B0A5DF4E4EAE81B0DB3D796E466A2
+runtime_monitor.ps1_SHA256=5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858
+analyze_p4a_ab.ps1_SHA256=44AC26106D674BAF6C75C22930226CBBCE70FBED93CAB872E6AAF43DC4F2A179
+ab_analysis.json_SHA256=457BC56F37330DFF6DCEA9721C07A83B7AB570B8D428640CD88C0CC5AA17F9D9
+manifest_source_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+manifest_materialized_both_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+manifest_semantics=47/47_identical; materialized hash differs only by PowerShell line endings
+P4a_ValidateOnly_OFF=PASS server_started=no
+P4a_ValidateOnly_ON=PASS server_started=no
+atomic_ValidateOnly_OFF=PASS server_started=no
+atomic_ValidateOnly_ON=PASS server_started=no
+test_p4a_demand_pipeline_static.ps1=PASS
+test_p4a_demand_budget_static.ps1=PASS
+```
+
+Run validi:
+
+```text
+OFF=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_202753_p4a_demand-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+ON=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_203138_p4a_demand-on_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+OFF_preflight_RAM=53.06_GiB
+ON_preflight_RAM=53.14_GiB
+```
+
+#### Manifest, overlay e richieste
+
+Il manifest base e' lo stesso 47/47 delle sezioni precedenti. La copia
+materializzata e' byte-identica fra OFF e ON. Overlay esplicito:
+
+```text
+common:
+  TraceMode=Off
+  DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+  DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+  DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+  DS4_CUDA_NSYS_CAPTURE=<UNSET>
+  DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+  DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+  DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+  DS4_CUDA_G73_ROUTE_IO_QD=<UNSET>
+  DS4_CUDA_GRAPH_TENSOR_DEVICE=<UNSET>
+  DS4_CUDA_KV_PERSISTENT_STAGED=<UNSET>
+  DS4_CUDA_KV_PHASE_VALIDATE=<UNSET>
+  DS4_CUDA_ALLOC_TRACE=1
+  DS4_CUDA_ALLOC_TRACE_MIN_MIB=1048576
+
+OFF:
+  DS4_CUDA_MOE_DEMAND_PIPELINE=<UNSET>
+
+ON:
+  DS4_CUDA_MOE_DEMAND_PIPELINE=1
+```
+
+`DS4_CUDA_KV_STAGED_RING=1` resta nel manifest storico 47/47; K1
+`DS4_CUDA_KV_PERSISTENT_STAGED` e la validazione K1 sono entrambe assenti.
+
+```text
+backend=CUDA
+ctx_capacity=150000
+live_position_end=191
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_prompt_tokens=13
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+computed_suffix_tokens=19
+turn2_max_tokens=32
+```
+
+#### Gate 1 — exactness PASS
+
+```text
+metric                                 OFF  ON
+turn1_completion_tokens                128  128
+turn1_content_SHA256  7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_completion_tokens                 32   32
+turn2_content_SHA256  0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+cached_prefix_tokens                   141  141
+suffix_tokens                           19   19
+snapshot_unchanged                    true true
+resident_unchanged                    true true
+decode_refused_count                     0    0
+```
+
+I checksum logits/live-KV del K1 non sono disponibili in `877a903`: il
+sorgente P4a parte da `8ec491b` ed esclude esplicitamente il commit K1
+`eb03f72` che aveva introdotto quella diagnostica. Non vengono inventati
+checksum mancanti.
+
+#### Gate 2 — identita' contatori PASS
+
+| Turno | Miss expert OFF/ON | H2D OFF legacy | H2D ON | Layer con miss ON | H2D/token ON | Publish OFF | Publish ON | Publish/token ON | Byte OFF/ON |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| 1, 128 token | 25.410 / 25.410 | 76.230 | 10.996 | 5.498 | 85,90625 | 25.410 | 5.498 | 42,953125 | 179.849.134.080 |
+| 2, 32 token | 7.394 / 7.394 | 22.182 | 2.752 | 1.376 | 86,00000 | 7.394 | 1.376 | 43,000000 | 52.333.903.872 |
+
+Per entrambi i turni:
+
+```text
+demand_pipeline_requested_ON=1
+demand_pipeline_routes=miss_experts
+demand_pipeline_h2d_submissions=2*demand_pipeline_layers
+demand_pipeline_publish_kernels=demand_pipeline_layers
+demand_pipeline_legacy_layers=0
+legacy_copy_submissions_ON=0
+legacy_publish_kernels_ON=0
+byte_identity_OFF_ON=true
+route_errors=0
+mailbox_quarantine=0
+mailbox_failed_closed=0
+demand_failure=0
+tiering_enforce_failure=0
+g73_host_selected_fallbacks=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+kv_sticky_off=0
+refund_path_observed=0
+```
+
+Le submission H2D scendono dell'85,575% nel turno 1 e dell'87,594% nel
+turno 2. I publish scendono del 78,363% e dell'81,390%. I byte sono
+esattamente invariati.
+
+#### Gate 3 — performance FAIL, non varianza
+
+| Metrica | OFF t/s | ON t/s | Delta ON vs OFF | Classe |
+|---|---:|---:|---:|---|
+| turn1 decode wall, 128 token | 2,676089 | 2,238428 | -16,354501% | FAIL oltre 10% |
+| turn1 graph pos 13..140 | 2,807187 | 2,301649 | -18,008704% | FAIL oltre 10% |
+| turn1 mature pos 50..140 | 3,423868 | 2,739077 | -20,000508% | FAIL oltre 10% |
+| turn2 decode wall, 32 token | 2,918377 | 2,339181 | -19,846511% | FAIL oltre 10% |
+| turn2 graph pos 160..191 | 3,111581 | 2,416933 | -22,324600% | FAIL oltre 10% |
+| weighted decode wall, 160 token | 2,721274 | 2,257878 | -17,028642% | FAIL oltre 10% |
+| weighted decode graph, 160 token | 2,863206 | 2,323818 | -18,838603% | FAIL oltre 10% |
+
+La regola preregistrata `abs(delta) < 10% = varianza` non si applica: tutti
+i segmenti decode peggiorano oltre il 10%. P4a non abbatte il rendezvous del
+route worker:
+
+| Metrica worker | OFF | ON | Delta |
+|---|---:|---:|---:|
+| turn1 worker ms/job | 5,819 | 7,482 | +28,579% |
+| turn1 wait ms/call | 6,000 | 7,687 | +28,117% |
+| turn2 worker ms/job | 5,188 | 7,321 | +41,114% |
+| turn2 wait ms/call | 5,482 | 7,674 | +39,985% |
+
+Il tempo graph aggiunto e' 78,242 ms/token nel turno 1 e 92,367 ms/token nel
+turno 2. Normalizzato sui 5.498/1.376 lanci del nuovo kernel demand, e'
+1,822/2,148 ms per lancio come **costo aggregato superiore** della variazione
+P4a; non e' una durata CUDA isolata, perche' include staging CPU, copie,
+materializzazione e wait. Con `TraceMode=Off` non esiste un evento temporale
+dedicato al solo `moe_publish_demand_batch_kernel`, quindi il costo kernel
+diretto resta non disponibile e non viene inferito come misura.
+
+La latenza worker aggiunta equivale a 71,431/91,719 ms per token; la latenza
+wait aggiunta equivale a 72,541/94,256 ms per token. Questo spiega quasi tutto
+il delta graph e rende osservato il rischio della consolidazione `memmove`
+CPU/staging e del nuovo percorso di materializzazione.
+
+Il primo prompt/WRAP e' un outlier separato:
+
+```text
+turn1_prompt_seconds_OFF=57.140
+turn1_prompt_seconds_ON=437.997
+turn1_request_wall_tps_OFF=1.174608
+turn1_request_wall_tps_ON=0.256419
+turn2_suffix_graph_tps_OFF=1.113032
+turn2_suffix_graph_tps_ON=1.130700
+turn2_suffix_graph_delta=+1.587376pct
+```
+
+Il page-in avviene prima del decode e ha GPU quasi idle; non viene attribuito
+a P4a. Anche escludendolo, tutti i decode wall/graph restano regressivi oltre
+il 10%.
+
+#### Monitor, shutdown e postflight
+
+```text
+OFF_monitor_samples=29
+OFF_min_available_RAM_MiB=17083.2
+OFF_max_GPU_used_MiB=12027
+OFF_max_GPU_util_pct=50
+OFF_max_GPU_power_W=72.73
+
+ON_monitor_samples=106
+ON_min_available_RAM_MiB=17325.5
+ON_max_GPU_used_MiB=12020
+ON_max_GPU_util_pct=71
+ON_max_GPU_power_W=66.00
+
+OFF_shutdown=graceful_http_verified
+ON_shutdown=graceful_http_verified
+forced_kill_valid_runs=0
+postflight_ds4=0
+postflight_nsys=0
+postflight_port8000_listeners=0
+postflight_RAM_free_GiB=53.40
+postflight_GPU=P8,util_0pct,used_451MiB
+```
+
+Hash artefatti OFF:
+
+```text
+result.txt=BBB502A5DD5F02DE5136F44844ABE2016566FB773A7D2B9FA81127873FAF7798
+provenance.txt=7E769B32C6E6D81FADA06429431F92E168FD3289E7C211641E5EC7CF6A08F05B
+experiment_manifest.txt=D0AD8713A0106C9D22F58B76D756DE6C0AC756B96770D68D323BC317DB342962
+server.stderr.log=13493B049DE3FD34C8924952EEDF6D7C21207B8B316FB30082CF044CE24DD3D5
+monitor.csv=40668FC97239703BDA00CE5ADB253C01234E9F6B9B141DDC7BCFA9691149D0C8
+shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+turn1.request.json=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json=BE4AAB7D464F8C7CAF0976FFB9A735B2C2403158AAEF08E83901630E41E0E6CD
+turn2.request.json=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json=58AECCCCCCED27D4137B9FA13E9B37F5657721D87FA71E28A32EC5D1E4A8B3E1
+```
+
+Hash artefatti ON:
+
+```text
+result.txt=F12065D5E38CC01E81B8048C03B1DF9A66A2E3C4A386F1F608FB6A1CC65D8E45
+provenance.txt=4DB8DBD449390F58CEFC56CBDA590CC3A21E644E6E61F97275E11F61B8815DAF
+experiment_manifest.txt=D054206D48811855B8FABD4E63524677EE85E8F50D59CD1920AD31F1A072941B
+server.stderr.log=2BDB4D910598BCD523F4AD0342BF2B6757160AA48CDEE4BBE0D355B4E8A0703B
+monitor.csv=8A74CD9725A035F89AE2EE647DAF1A5D8A9D8729582E3D4F708CDD63E2551018
+shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+turn1.request.json=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json=2E9E649FD0DA7169A204BB32164F6EEE1F68FC4EC02C886E566B6C6B1114BB51
+turn2.request.json=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json=3B9DC6FAFBA1B549A4E725431427B7E5542DB9EF2748B309F4152A6E2E0C0D21
+```
+
+Decisione finale: **exactness PASS, identita' contatori PASS, performance
+FAIL. P4a non e' promossa. Nessuna replica ABBA e nessun fix sono stati
+eseguiti nel run slot.**
+
+### Batch 2 SOLO-ENV — cache esperti VRAM 140/320 e PAGEABLE 0/10
+
+Mandato eseguito in quattro run sequenziali con un solo `ds4_server` fisico
+alla volta, senza build e senza fix. In tutti i bracci
+`DS4_CUDA_MOE_DEMAND_PIPELINE` e' assente, `TraceMode=Off`, le micro-patch
+restano OFF e il protocollo e' lo stesso dello scout: due turni, 128/32 token,
+temperature `0.7`, seed `12345`, `think=false`, contesto `150000`.
+
+Un primo tentativo A-OFF e' stato respinto dalla execution policy prima
+dell'ingresso nel runner:
+
+```text
+server_started=no
+requests=0
+responses=0
+postflight=ds4_0+port8000_free
+classification=HARNESS_TRANSPORT_REJECT_NOT_A_BENCHMARK
+```
+
+I quattro run fisici del batch sono:
+
+```text
+A-OFF=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_210247_p4a_demand-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+A-ON=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_210844_p4a_demand-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+B-OFF=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_211226_p4a_demand-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+B-ON=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\p4a_scout\outputs\20260726_211913_p4a_demand-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+```
+
+#### Provenienza e overlay
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-p4a
+source_commit=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+ds4_server.exe_SHA256=95FC09CF1ADAFA47B6C58EAB25B479CC15B34E1BF826465C7768C1361FE6C2A4
+p4a_atomic_runtime_runner_SHA256=9C564BC502E0B6AEB142DC9961EA5E46267B0A5DF4E4EAE81B0DB3D796E466A2
+runtime_monitor.ps1_SHA256=5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858
+manifest_source_restored_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+manifest_semantics=47/47_plus_explicit_arm_overlay
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+| Braccio | `HOT_RESERVE_MB` | `EXPERT_CACHE_N` | `PAGEABLE_OVERFLOW_GB` | Manifest materializzato SHA-256 |
+|---|---:|---:|---:|---|
+| A-OFF | 256 | 140 | 0 | `F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC` |
+| A-ON | 256 | 320 | 0 | `EFDD9BFB173AA1389F2D4B228CD4ADF2F632CDEE5EE12DB9A8C195ECF00B6C6F` |
+| B-OFF | 256 | 140 | 0 | `F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC` |
+| B-ON | 256 | 140 | 10 | `F3FC965D00C8038665CA3329934361A11C0E697255D9F560C328D4EC61E35907` |
+
+Ogni preflight ha ricontrollato commit, SHA-256 dell'eseguibile, copertura
+47/47, overlay, assenza della demand pipeline, assenza di processi DS4 e
+listener sulla porta 8000. RAM libera preflight: 53,67 / 53,67 / 53,65 /
+53,56 GiB.
+
+#### Tabella cumulativa dei quattro run
+
+Lo scout OFF di confronto e' `2,676089 / 2,918377 t/s` wall nei due turni,
+con weighted wall/graph `2,721274 / 2,863206 t/s`. `worker/wait` e' espresso
+in `ms/job / ms/call`; hit/miss sono quelli della cache esperti VRAM.
+
+| Run | Stato | T1 wall / graph / mature t/s | T2 wall / graph t/s | Weighted wall / graph t/s | Cache VRAM T1; T2; hit-rate pesato | Worker/wait T1; T2 | Pageable hit | Hard-fault read ops sistema | RAM min | Delta wall vs scout T1 / T2 |
+|---|---|---:|---:|---:|---|---|---:|---:|---:|---:|
+| A-OFF | PASS runner/exact | 2,705673 / 2,830351 / 3,447243 | 0,642557 / 0,657494 | 1,647633 / 1,704054 | 7.614/25.410; 862/7.394; 20,532946% | 5,750/5,950; 30,259/30,571 | 0 | n/d | 17,138 GiB | +1,105494% / -77,982385% |
+| A-ON | **FAIL gate, abort dopo 1 token** | n/d | n/d | n/d | 0/258 parziale; T2 n/d; non comparabile | 16,000/16,022 parziale; T2 n/d | n/d | n/d | 18,135 GiB | n/d |
+| B-OFF | PASS runner/exact | 2,712324 / 2,834978 / 3,450570 | 3,022575 / 3,206776 | 2,769172 / 2,902277 | 7.614/25.410; 862/7.394; 20,532946% | 5,744/5,941; 5,034/5,345 | 0 | 452.704 stimate | 17,125 GiB | +1,354028% / +3,570409% |
+| B-ON | PASS gate RAM/exact, perf FAIL | 0,581258 / 0,589867 / 0,809750 | 0,745122 / 0,761090 | 0,608000 / 0,617658 | 7.614/25.410; 862/7.394; 20,532946% | 31,149/31,271; 26,044/26,224 | 2.933 | 638.824 stimate | 7,423 GiB | -78,279571% / -74,467932% |
+
+Il secondo turno A-OFF e' un outlier operativo, non un effetto attribuibile
+alla leva: cache e output sono identici, non compaiono reload fd-cache o
+eviction nel turno 2, ma worker/wait sale a circa 30 ms. B-OFF replica lo
+scout entro la soglia di varianza: +1,354% / +3,570% wall e +1,365% weighted
+graph.
+
+#### Exactness
+
+```text
+expected_turn1_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+expected_turn2_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+A-OFF=PASS_both
+A-ON=NOT_REACHED; abort del gate durante il primo token, nessuna response
+B-OFF=PASS_both
+B-ON=PASS_both
+B_pair_byte_exact=PASS
+```
+
+Non si dichiara identita' A-OFF/A-ON: il braccio ON e' stato fermato dal gate
+prima di produrre un testo. Non e' una divergenza silenziosamente ignorata,
+ma exactness non raggiunta per un FAIL puntuale del braccio.
+
+#### Coppia A — gate backbone e cache VRAM
+
+A-OFF osserva hit-rate cache `23,055959%` nel turno 1, `10,440891%` nel
+turno 2 e `20,532946%` pesato, vicino alla baseline storica di circa 22%.
+Il page-in del turno 1 ricarica 7.372,84 MiB, cioe' 57,60 MiB/token, con
+15 evictions; il turno 2 ha zero reload e zero eviction.
+
+A-ON non arriva a rendere utile la cache 320. Dopo il primo token
+(`route_calls=43`) il log parziale contiene:
+
+```text
+fd_cache_reload=20774,57_MiB
+fd_cache_reload_per_completed_token=20,288_GiB
+evictions_watchdog_trigger=1044
+evictions_final_log_counter=1079
+cache_count_at_abort=0
+cache_hits=0
+cache_misses=258
+```
+
+Il gate `reload >1 GiB/token` e il gate di eviction esplosiva sono entrambi
+violati. Il watchdog ha richiesto con successo lo shutdown HTTP nativo
+durante la richiesta; il client ha quindi ricevuto `curl (52) Empty reply`
+e il runner ha chiuso `gate_pass=False`. Il runner registra
+`shutdown_mode=forced_after_grace_error` perche' il server era gia' stato
+chiuso dal watchdog esterno; postflight fisico: zero DS4 e porta libera.
+
+Verdetto Coppia A: **FAIL**. La metrica decisiva OFF/ON non e' promuovibile:
+il braccio 320 entra in thrash del backbone prima di produrre una misura
+completa dell'hit-rate.
+
+#### Coppia B — PAGEABLE 0/10
+
+Il gate RAM passa in entrambi i bracci: minimo 17,125 GiB con PAGEABLE0 e
+7,423 GiB con PAGEABLE10, margine `+1,423 GiB` sopra il floor. PAGEABLE10
+alloca 10,00 GiB/1.517 slot, osserva 2.933 pageable hit
+(`11,023829%` di pinned+pageable hit), zero
+`pageable_paged_out_before_copy` e nessun failure/fallback di allocazione.
+
+Il sampler esterno usa i contatori Windows localizzati
+`Memory/Page Reads/sec` e `Pages Input/sec`. Sono contatori di sistema, non
+un'attribuzione process-local:
+
+| Metrica hard-fault | B-OFF | B-ON | Delta |
+|---|---:|---:|---:|
+| Campioni | 342 | 491 | — |
+| Hard-fault read ops integrate | 452.704 | 638.824 | +41,113% totale |
+| Hard-fault read ops/s normalizzate sulla durata | 1.303,119 | 1.283,810 | -1,482% |
+| Pages input integrate | 12.499.899 | 16.867.977 | +34,945% totale |
+| Pages input/s normalizzate | 35.981,285 | 33.898,667 | -5,788% |
+| Picco hard-fault read ops/s | 14.234,350 | 15.077,182 | +5,921% |
+
+La crescita dei totali segue la maggiore durata; i rate restano entro la
+fascia `<10%`. Il FAIL prestazionale non viene attribuito a hard-fault
+rate: e' osservato direttamente nel route worker.
+
+```text
+B-ON_vs_B-OFF_turn1_wall=-78,569743%
+B-ON_vs_B-OFF_turn1_graph=-79,193242%
+B-ON_vs_B-OFF_turn1_mature=-76,532863%
+B-ON_vs_B-OFF_turn2_wall=-75,348106%
+B-ON_vs_B-OFF_turn2_graph=-76,266194%
+B-ON_vs_B-OFF_weighted_wall=-78,043978%
+B-ON_vs_B-OFF_weighted_graph=-78,718158%
+turn1_worker_delta=+442,287604%
+turn1_wait_delta=+426,359199%
+turn2_worker_delta=+417,361939%
+turn2_wait_delta=+390,626754%
+```
+
+Verdetto Coppia B: **FAIL**. La replica trace-OFF non conferma il precedente
+segnale HOLD/PROMISING: la regressione e' molto oltre la soglia del 10%,
+pur con exactness e gate RAM PASS.
+
+#### Receipt, shutdown e postflight cumulativo
+
+```text
+A-OFF:
+  result.txt=D75FB1A1AFA58EF6DD595055BC2B533BBCFAD6F3DDC498DF2A4CF94EAA8B3BCD
+  server.stderr.log=167B9B685EC6D0CB495356FF6C534ECFB4F0AD241844991B73F47DE9192E8FEE
+  monitor.csv=298B7865BFF53E7415F186115FF2885DDE3D3E2B14AA27FCED3E55C045378877
+  shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+A-ON:
+  result.txt=44F54C9C42E7E722067E8A63F128D3E7ADA191C819487BA16AA050D77F0AA0D0
+  server.stderr.log=941E45FE38409CEE554659A68D16DAD0BE3F711A54FDE21FC8FD54D55B676B4C
+  monitor.csv=8B23B5C5BB4A0FEF6B6F95F1D885C3EE4D4C79ED3AFDAFE45EA33448EBFCBC6F
+  shutdown.receipt.json=ABSENT_watchdog_native_abort
+B-OFF:
+  result.txt=509E2963550852284C7B36ED39C04DBB1809C22D11D6094C1777DEF30AF2A408
+  server.stderr.log=AFD7FF38233C437D49DF0092A6270A2B7201BCDDE0AD7A1946E6EED36F69CEA1
+  monitor.csv=A6F0944D5F3CDBCC02FEB0C2AB0C0A156F0C4ECF7D4FA6F06985F731AF489910
+  shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+B-ON:
+  result.txt=A8C1833B01FA2F91ED906D6414AD1CE15CCDBC38D675E7909FBA6F9BFA5641F0
+  server.stderr.log=BD2C7847B5A6C7FE3672612A49D88CC368A319631BD573FAE607858A225BC4CB
+  monitor.csv=08E529C25366D1DF8169FC03972F47D4568B06989DA55A0EF7E6AADAAB0CD0B4
+  shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+
+A-OFF_shutdown=graceful_http_verified
+A-ON_shutdown=watchdog_native_http_requested; runner_post_abort_forced_after_grace_error
+B-OFF_shutdown=graceful_http_verified
+B-ON_shutdown=graceful_http_verified
+postflight_ds4=0
+postflight_nsys=0
+postflight_port8000_listeners=0
+postflight_RAM_free_GiB=53,59
+postflight_GPU=P8,used_427MiB
+manifest_source_restored=PASS
+builds=0
+fixes=0
+```
+
+Decisione finale del batch: **Coppia A FAIL; Coppia B FAIL. Nessuna leva e'
+PROMOTE-CANDIDATE. Il batch resta valido per i tre run completi e registra
+A-ON come FAIL puntuale del gate, senza invalidare gli altri bracci.**
+
+## AF) PREP-3 A4 MTP draft2 batch verify — harness/overlay static PASS, runtime non eseguito (2026-07-26)
+
+Mandato PREP-3 della leva A4, task pinnata
+`A4_MTP_BATCH_VERIFY=019f9e6d-375d-7651-996e-8e4a4a7f2f59`.
+Lo scope e' soltanto runner, overlay, receipt e validazione statica. Non sono
+stati eseguiti build CUDA/nvcc, server, richieste o benchmark.
+
+### AF1 — Contratto harness
+
+Artefatto autorevole:
+
+```text
+runner=C:\Users\imanu\source\repos\moe-aggressive-commit\reap-loop-p4a-ledger-sparse\artifacts\ds4\20260726_k1_handoff\pending_levers\A4_MTP_HARNESS\run_a4_mtp_lifecycle.ps1
+runner_bytes=70932
+runner_SHA256=BB1C8BD3EABB6BEC55E30686E1D0C4F78C32E8F74EDB1438F79CA9BD0DF4E880
+manifest_count=47
+manifest_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+binary=C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\build-p0-1-ssd-service-deadline\ds4_server.exe
+binary_bytes=12418560
+binary_SHA256=C3EAC30683C5636905BF3C483CC0EC391A89A2772F7826D2B8D1BDCF8D595AFC
+source_tree_matches_binary_receipt=0
+```
+
+`-OverlayPath` e' obbligatorio. Il runner legge dal JSON path MTP, SHA-256,
+byte-size, draft, margin, strict, batch verify, temperature, think e seed.
+Valida fail-closed le sole coppie A4 ammesse e genera gli argomenti
+`--mtp <file> --mtp-draft <n> --mtp-margin 3`. Il receipt conserva path e hash
+dell'overlay, path/size/hash MTP e metodo di verifica.
+
+Il `ValidateOnly` esce prima di ogni `Start-Process`. Per non leggere 3,8 GB
+durante un run concorrente, usa size live piu' l'identity receipt proveniente
+dal full SHA-256 PREP-3. Un run fisico non usa questa scorciatoia e ricalcola
+integralmente il GGUF prima del preflight server.
+
+### AF2 — Overlay A4 congelati
+
+Comune a entrambi: stesso GGUF MTP, `mtp_margin=3`, `mtp_strict=true`,
+`temperature=0`, `think=false`, `seed=12345`, trace Off e identica fondazione.
+La temperatura greedy e' un gate di exactness, non un parametro facoltativo.
+
+```text
+OFF_overlay=a4_mtp_off.overlay.json
+OFF_overlay_SHA256=5B98F2C8993FE7189B282A45BAD2321D273755BAA791EFF5C80BC373774933EF
+OFF_mtp_draft=1
+OFF_DS4_MTP_BATCH_VERIFY=unset
+
+ON_overlay=a4_mtp_on.overlay.json
+ON_overlay_SHA256=40C5B1715CC351729BC2395BF7096B560841CD9B4692E17164B080BDC006C872
+ON_mtp_draft=2
+ON_DS4_MTP_BATCH_VERIFY=1
+```
+
+La diagnostica ON abilita `DS4_MTP_TIMING=1` e `DS4_MTP_SPEC_LOG=1` solo con
+`-DiagnosticMtp`. Il relativo receipt di engagement e' obbligatorio per i run
+ON performance, cosi' l'accept-rate resta derivato dal log MTP ma il logging
+per-ciclo non contamina la misura finale.
+
+### AF3 — Identita' GGUF MTP verificata
+
+```text
+mtp_path=C:\ds4-models\DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf
+mtp_exists=true
+mtp_bytes=3807602400
+mtp_SHA256=AFD481EE689DCE9037F70F39085FCDAE5A5B096D521CDAD43B19FA52BF8F4083
+verification=Get-FileHash SHA256 full file
+identity_receipt=a4_mtp_identity.receipt.json
+identity_receipt_SHA256=43F4A918CCF09F73134D63C0A0DE0FE4C875AA8A061E719BCCC60672BB30CC53
+```
+
+Il valore coincide col piano/receipt A4 precedente. Esistenza, byte-size e
+hash sono stati verificati nuovamente in PREP-3.
+
+### AF4 — Gate A4 implementati
+
+1. Engagement: un ON diagnostico deve caricare una sola volta il MTP con
+   draft 2, produrre cicli `mtp timing micro`, drafted maggiore di zero, zero
+   decode2/margin-skip/sequential/fallback e riconciliazione dei cicli.
+2. Accept-rate: `accepted_drafts / drafted_total`, con source
+   `current_server_log`; i run performance riportano lo stesso valore e
+   `verify_ms_per_drafted_token` dal receipt diagnostico.
+3. Exactness: per entrambi i turni l'ON deve avere gli stessi request hash,
+   token count, finish reason e SHA-256 UTF-8 del testo del receipt OFF.
+4. Throughput: ogni turno riporta `wall_tps`, `graph_tps`, graph call count e
+   graph total ms; sono presenti anche `combined_wall_tps` e
+   `combined_graph_tps`.
+5. Lifecycle: restano obbligatori prefix reuse, assenza di refusal/quarantine,
+   gate route/fondazione, shutdown HTTP nativo verificato e postflight pulito.
+
+Il riassuntore usa `combined_wall_tps` come metrica primaria, conserva delta
+graph e t/s wall+graph per turno, riporta accept-rate/costo verify e mantiene
+la soglia del 10% per distinguere segnale da varianza.
+
+### AF5 — Static test e ValidateOnly
+
+```text
+A4_STATIC_PASS parser=PASS manifest_count=47 overlays=OFF|ON off=draft1/batch0 on=draft2/batch1 greedy_overlays=2 think_false_overlays=2 fixed_seed_overlays=2 graph_tps=per_turn acceptance_source=mtp_log validate_before_start=PASS
+
+OFF_ValidateOnly=PASS
+OFF_result_SHA256=03A0BFD3B9D2AEF15ADF525551C00AB4516B1FCC7178B0DEC47BFC834C0299EB
+OFF_server_started=no
+
+ON_ValidateOnly=PASS
+ON_result_SHA256=79CE40F2A775CBD2DAC6019CDF5BB8476528865E166473DCEEBCAF3A32C8C3BA
+ON_server_started=no
+
+build_executed=no
+physical_runtime_executed=no
+engine_source_modified=no
+```
+
+Entrambi i receipt registrano
+`C:\ds4-models\DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf` e
+`AFD481EE689DCE9037F70F39085FCDAE5A5B096D521CDAD43B19FA52BF8F4083`.
+Gli argomenti statici sono rispettivamente draft 1 e draft 2; anche OFF
+registra `temperature=0` e `think=false`.
+
+### AF6 — Primo gate del futuro run
+
+Prima di interpretare il delta t/s, eseguire OFF e poi ON diagnostico. Verificare
+subito che l'accept-rate sia non nullo e stabile per dominio/turno e che
+`verify_ms_per_drafted_token` non consumi il risparmio dei draft accettati.
+Solo dopo engagement, fallback zero ed exactness testo PASS ha senso eseguire
+la sequenza performance OFF-ON-ON-OFF.
+
+Decisione: **harness A4 PREP-3 pronto e validato staticamente. Nessun risultato
+di performance e nessuna promozione vengono dichiarati.**
+
+## AG) BATCH 3 A4 MTP draft2 batch verify - FAIL nel controllo OFF prima di exactness (2026-07-26)
+
+Mandato runtime A4 sul binario P4a congelato a commit
+`877a9030d4fc57c8a81e9664a16eaef69efe4bc6`, base M0/P0 e slot DS4
+esclusivo. La sequenza e' stata fermata nel controllo OFF alla prima richiesta:
+il server ha restituito HTTP 500 `cuda prefill failed`. Nessun ON e nessun run
+performance sono stati avviati.
+
+### AG1 - Preflight e correzione minima dell'identita' harness
+
+Il binario richiesto dal mandato differiva dal pin PREP-3 nel runner. Il primo
+`ValidateOnly`, senza server, ha fallito fail-closed:
+
+```text
+expected_exe_SHA256=C3EAC30683C5636905BF3C483CC0EC391A89A2772F7826D2B8D1BDCF8D595AFC
+actual_exe_SHA256=95FC09CF1ADAFA47B6C58EAB25B479CC15B34E1BF826465C7768C1361FE6C2A4
+runtime_runner_SHA256=1C4498113428153ED6E9BC30F40588338C722F483A291901CE09F5D1D08A6E3E
+authoritative_PREP3_bundle_restored_after_run=yes
+postflight_runner_SHA256=BB1C8BD3EABB6BEC55E30686E1D0C4F78C32E8F74EDB1438F79CA9BD0DF4E880
+```
+
+E' stata applicata la modifica minima consentita: soltanto pin SHA-256 del
+binario, tre hash sorgente e `git_head` nel runner. Overlay, manifest,
+argomenti MTP, richieste, gate, parser e lifecycle non sono stati modificati.
+Il test statico e i due `ValidateOnly` successivi hanno dato:
+
+```text
+A4_STATIC_PASS parser=PASS manifest_count=47 overlays=OFF|ON
+OFF_ValidateOnly=PASS source_tree_match=1 server_started=no
+ON_ValidateOnly=PASS source_tree_match=1 server_started=no
+```
+
+Preflight fisico:
+
+```text
+ds4_server_processes=0
+port8000_listeners=0
+available_RAM=53.55_GiB
+GPU=P8,435_MiB
+DS4_CUDA_MOE_DEMAND_PIPELINE=<UNSET>
+TraceMode=Off
+help_exit=0
+help_flags=--mtp,--mtp-draft,--mtp-margin
+```
+
+Il GGUF MTP e' stato ricalcolato integralmente prima dello start:
+
+```text
+mtp_bytes=3807602400
+mtp_SHA256=AFD481EE689DCE9037F70F39085FCDAE5A5B096D521CDAD43B19FA52BF8F4083
+mtp_hash_verification=live_full_file_sha256
+```
+
+### AG2 - Controllo OFF e stop
+
+```text
+run_id=20260726_214553_a4_mtp-control_diag-0_trace-off_packed-off_publish-off_hostsel-off_routeio-off
+overlay_arm=OFF
+mtp_draft=1
+DS4_MTP_BATCH_VERIFY=<UNSET>
+temperature=0
+think=false
+seed=12345
+MTP_loaded_count=1
+MTP_loaded_draft=1
+turn1_http=500
+turn1_response={"error":{"message":"cuda prefill failed","type":"invalid_request_error"}}
+gate_pass=false
+shutdown_mode=graceful_http_verified
+```
+
+Righe bloccanti del log:
+
+```text
+server.stderr.log:31 ds4: [g73-open] bounded selected-load unavailable at layer=0; using preallocated exact terminal
+server.stderr.log:32 ds4: [g73-open] contract error layer=0 reason=terminal-contract
+runner.status.log:6 run_error=request failed: curl=0 http=500
+```
+
+Il codice del binario spiega il fallimento senza richiedere inferenze di
+performance: `ds4.c:19787-19790` registra la mappa primaria, poi con MTP pronto
+`ds4.c:19800-19804` registra la mappa MTP usando la stessa
+`ds4_gpu_set_model_map_range`. Questa chiama `ds4_gpu_set_model_map`
+(`ds4_cuda.cu:15341-15342`), che sostituisce lo stato globale
+`g_model_host_base` (`ds4_cuda.cu:15248-15250`). Il terminale G73 del backbone
+richiede invece che `model_map == g_model_host_base`
+(`ds4_cuda.cu:40151-40154`), percio' il primo prefill del modello primario
+fallisce il contratto dopo che la mappa globale e' stata sostituita dalla MTP.
+
+La correzione richiederebbe una modifica del codice engine e un nuovo build,
+entrambi fuori dallo scope del mandato. Non e' stato tentato alcun workaround.
+
+### AG3 - Gate non raggiunti e verdetto
+
+Stop point: **controllo OFF, prima del gate 1 exactness**. Il controllo non ha
+prodotto token e quindi non esiste un testo OFF valido da confrontare.
+
+```text
+OFF=FAIL
+ON=NOT_RUN
+exactness=NOT_AVAILABLE
+accept_rate=NOT_AVAILABLE
+accepted_rejected_per_turn=NOT_AVAILABLE
+wall_graph_mature_weighted_tps=NOT_AVAILABLE
+verify_cost=NOT_AVAILABLE
+wait_ms_per_call=NOT_AVAILABLE
+summarize_a4_mtp_ab=NOT_RUN
+batch2_B_OFF_baseline_wall=2.71/3.02
+comparison_to_batch2_B_OFF=NOT_POSSIBLE
+verdict=FAIL
+reason=MTP map registration overwrites CUDA primary-model provenance required by G73
+```
+
+Non e' comparso un reload fd-cache maggiore di 1 GiB/token: il run non ha
+raggiunto il decode. Questo non cambia il FAIL del controllo.
+
+### AG4 - Postflight e artefatti
+
+```text
+post_ds4_server_processes=0
+post_port8000_listeners=0
+post_GPU=P8,435_MiB
+post_RAM_free=53.62_GiB
+result.txt_SHA256=31B6DC3268D7470366F7875B602E67CA2AFDBE139686230DE4EC590048770181
+server.stderr.log_SHA256=F5223D245BDB1175085ED83532D5F0EE553B3CEB49CE55D06956E81C725355EA
+runner.status.log_SHA256=74A36DA25111974F03C14DF179A594B2699F41020C54060D1F9A84B5764C2EFF
+turn1.response.json_SHA256=27DA18F08DED4384A8C744B89A34DEB02CAA6EA6C2B15A542CBD167FC4B0A09F
+engine_source_modified=no
+build_executed=no
+```
+
+Decisione: **FAIL. A4 non e' promuovibile sul binario P4a `877a903` perche'
+il controllo OFF con MTP non supera il primo prefill.**
+
+## AH) PREP-4 MTP secondary map - implementazione/static PASS, build e runtime non eseguiti (2026-07-26)
+
+Mandato PREP-4 conseguente al FAIL A4 della sezione AG. Lo scope e' limitato
+al caricamento del GGUF MTP accanto al backbone, senza sostituire la mappa CUDA
+primaria, piu' test statici e ledger. Non sono stati eseguiti build CUDA/nvcc,
+server, richieste, inferenze o benchmark.
+
+### AH1 - Provenienza e causa radice
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-p4a
+source_branch=codex/prep4-mtp-secondary-map
+source_base=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+source_commit=9f3768ea1384640e7f114e5c57a9c3b4522065c9
+root_cause_ledger_commit=fc5177f5c048e654b6b20042478b5d3be827b908
+mtp_path=C:\ds4-models\DeepSeek-V4-Flash-MTP-Q4K-Q8_0-F32.gguf
+mtp_bytes=3807602400
+mtp_SHA256=AFD481EE689DCE9037F70F39085FCDAE5A5B096D521CDAD43B19FA52BF8F4083
+ds4.c_SHA256=C03D3A15D5D8144C7E28463F6BE860632B0A59CF995762F23D5E783F4035EE67
+ds4_cuda.cu_SHA256=B05078D8AE3AD7F97A10A8DF1F8261973C4D51E3306E3172AC54294E0B7EF59F
+ds4_gpu.h_SHA256=7275758A19BF87CF1F9FABB1E0765D3112F8550B7608C3CDE16A93F03FF1E6A6
+ds4_metal.m_SHA256=A996DFCDA4469F3BB6D4961E81FD8ED6062480009A0E664542AAE20BF6E32063
+test_mtp_secondary_map_static.ps1_SHA256=B643DD0684E22043B30253DD73CEA1ECE62ADDA32E19BC0677A9E3C3A75F75C3
+```
+
+La causa e' quella falsificata dal batch 3: dopo la registrazione primaria,
+`ds4.c:19800-19804` invocava ancora `ds4_gpu_set_model_map_range` con
+`e->mtp_model.map`. Il wrapper CUDA richiamava `ds4_gpu_set_model_map`, che
+rilascia terminale G73, gather, expert cache, dynamic arena, router bias, range
+cache, zero-copy window e full-model device image prima di assegnare
+`g_model_host_base` alla MTP. Il primo prefill backbone arrivava quindi al
+terminale G73 con una provenance non piu' primaria e falliva
+`terminal-contract` a layer 0.
+
+### AH2 - Disegno scelto e alternative scartate
+
+Il disegno scelto e' una sola finestra MTP secondaria, read-only,
+host-pinned/device-mapped, che copre esclusivamente il tensor payload del mmap
+GGUF. Ha identita', range logico, base registrata, device pointer e cleanup
+propri (`g_mtp_model_*`). `cuda_model_range_ptr` risolve questa identita' prima
+di qualunque window/range/fd-cache primaria. La registrazione usa
+`cudaHostRegisterMapped | cudaHostRegisterReadOnly` e
+`cudaHostGetDevicePointer`; non esegue `cudaMalloc` o copia integrale in VRAM.
+
+E' l'opzione a minor rischio sul target osservato: RTX 3060 da 12 GiB, context
+buffers da circa 2,03 GiB e backbone G73 con propri cache/scratch. Una copia
+MTP da circa 3,55 GiB in VRAM ridurrebbe materialmente il margine del backbone e
+potrebbe fallire OOM. La finestra host-pinned conserva invece la VRAM e sfrutta
+lo stesso meccanismo mapped read-only gia' usato dalla finestra primaria.
+
+Alternative scartate:
+
+1. seconda chiamata al setter globale: scartata per definizione, perche'
+   distrugge proprio lo stato primario richiesto da G73;
+2. copia integrale in VRAM: scartata per il rischio di capacity/OOM sulla GPU
+   da 12 GiB e perche' cambierebbe il budget VRAM del backbone;
+3. riuso di `g_model_ranges`/fd-cache: scartato perche' range index, eviction,
+   file handle e budget sono globali e primari; gli offset MTP possono collidere
+   e il solo fd installato e' quello del backbone;
+4. copia in un nuovo buffer host-pinned: scartata perche' duplicherebbe 3,55
+   GiB e abbandonerebbe inutilmente il mmap read-only gia' disponibile.
+
+Su Metal l'API equivalente aggiunge view MTP al registry senza sostituire
+`g_model_map_ptr`; e' inclusa per mantenere il contratto backend, ma non e'
+stata compilata o eseguita in questo mandato CUDA.
+
+### AH3 - Contratto implementato e righe toccate
+
+Il bootstrap ora completa in ordine:
+
+1. registrazione della mappa primaria;
+2. installazione router mask e normale startup cache backbone, anche con
+   `--mtp`;
+3. registrazione MTP tramite la sola API secondaria.
+
+Il setter MTP non chiama il setter primario e non legge/scrive
+`g_model_host_base`, `g_model_device_base`, window, range map, cache, terminale
+o dynamic arena primari. Ogni errore di range, host registration o device
+pointer ritorna zero; `ds4_engine_open` emette un errore MTP esplicito, esegue
+cleanup e abortisce lo startup. Non esiste fallback silenzioso.
+
+Il routed-MoE MTP considera la finestra secondaria completamente mappata e usa
+la specializzazione non-G73. Non pubblica offset/outcome MTP nel terminale
+primario e non consuma bias/telemetria REAP del backbone. Senza `--mtp` la
+nuova API e tutti i branch `g_mtp_model_*` restano inattivi; il percorso
+primario conserva lo stesso ordine e le stesse operazioni.
+
+```text
+ds4_gpu.h:174-181
+ds4.c:19787-19834
+ds4_cuda.cu:727-752,3241-3282,3308-3315,3395-3410,7253-7262,
+             15437-15524,22832-22904,37229-37236,44117-44135
+ds4_metal.m:362-375,4421-4463
+tests/test_mtp_secondary_map_static.ps1:1-162
+```
+
+### AH4 - Test statici
+
+```text
+test_mtp_secondary_map_static.ps1=PASS
+result=MTP_SECONDARY_MAP_STATIC_PASS
+primary_before_cache=PASS
+cache_before_mtp=PASS
+mtp_never_calls_primary_setter=PASS
+primary_state_isolated=PASS
+host_pinned_zero_copy=PASS
+fail_closed=PASS
+cleanup=PASS
+
+test_p4a_demand_pipeline_static.ps1=PASS
+test_p4a_demand_budget_static.ps1=PASS layers=43 routes=6 max_h2d_per_token=86 max_publish_per_token=43
+test_p1_decode_trace_static.ps1=PASS
+
+test_g73_open_static.ps1=BASELINE_FAIL
+baseline_reason=test expects DS4_CUDA_MOE_SPLIT_FUSED='0' while tracked phase-2 preset sets '1'
+prep4_relation=none; source/preset discrepancy predates this diff and was not changed
+
+nvcc_build=NOT_RUN_BY_MANDATE
+physical_runtime=NOT_RUN_BY_MANDATE
+```
+
+Il test PREP-4 verifica in particolare che nessuna chiamata
+`ds4_gpu_set_model_map*` riceva `e->mtp_model.map` dopo la registrazione
+primaria, che cache e mapping backbone precedano la MTP, che il setter
+secondario non contenga release o assegnazioni primarie, che non copi in VRAM,
+che resolver/routed-MoE isolino la MTP e che cleanup/fail-closed siano presenti.
+
+### AH5 - Ordine obbligatorio del prossimo run e rischi residui
+
+Il prossimo mandato runtime deve verificare, in quest'ordine:
+
+1. il braccio control draft1 completa il prefill, senza
+   `bounded selected-load unavailable`, `terminal-contract` o HTTP 500;
+2. exactness OFF completa entrambi i turni e produce il baseline autorevole;
+3. solo dopo, ON con draft2 + batch verify dimostra engagement, fallback zero
+   ed exactness contro OFF prima di interpretare throughput/accept-rate.
+
+Rischi residui: la registrazione mapped read-only da circa 3,55 GiB non e'
+stata provata fisicamente sotto il budget WDDM insieme all'arena pinned da 30
+GiB; se non disponibile, il comportamento atteso e' un errore chiaro a startup.
+La banda/latency zero-copy MTP non e' misurata e puo' rendere la leva non
+profittevole pur restando corretta. Non essendo autorizzato nvcc, resta da
+confermare la compilazione CUDA/Metal. Il regressore G73 statico preesistente
+resta non verde finche' test e preset phase-2 non vengono riallineati.
+
+Decisione: **PREP-4 supera implementazione e contratto statico. Nessuna build,
+exactness o promozione runtime viene dichiarata.**
+
+## AI) PREP-1 cache esperti VRAM per massa - source/static PASS, build e runtime non eseguiti (2026-07-26)
+
+Mandato PREP-1: aggiungere una policy opzionale di ammissione/rimpiazzo
+RAM->VRAM basata sulla stessa massa mass-LFRU del tiering host, senza build
+CUDA e senza avviare DS4. Il lavoro parte direttamente dal commit P4a della
+sezione AE e non modifica il relativo worktree.
+
+### Provenienza
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-vram-mass-prep1
+source_branch=codex/ds4-vram-mass-prep1-20260726
+source_base=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+source_commit=a0f583e88c08a8d5b2ec35050b3b3ba52dd1ace8
+ds4_cuda.cu_SHA256=845DE9E717CE8E66B0B67FEAF24BD5EFAEFD99337FE65C08C75B4F4E0C241E98
+test_prep1_vram_cache_mass_static.ps1_SHA256=CAE27DFA73C944FCFB5D2D718518B61C7E0EBCCE9B8F7878980AB9E3C6868FFE
+```
+
+### Contratto implementato
+
+`DS4_CUDA_MOE_CACHE_MASS=1` e' l'unico valore presente valido. Variabile
+assente significa OFF; stringa vuota, `0` e qualsiasi altro valore falliscono
+prima di `cudaSetDevice`. ON richiede cache non vuota, route GPU residenti,
+`DS4_EXPERT_TIERING=enforce` e `DS4_EXPERT_TIER_POLICY=mass-lfru`;
+`DS4_CUDA_MOE_CACHE_POLICY=layer-top1` e' rifiutata esplicitamente.
+`DS4_CUDA_MOE_CACHE_POLICY=lru` resta una stringa inerte: il solo valore letto
+da quel parser e' ancora `layer-top1`.
+
+La policy non introduce una seconda formula o una seconda tabella heat.
+Riusa gli stessi `cuda_moe_tier_entry` del tiering host:
+
+```text
+mass update = old_mass * 0.95 + abs(gate_weight)
+frequency++
+last_call = call_tick
+score = mass * (1 + log1p(frequency)) *
+        1 / (1 + age / policy_clock_calls)
+```
+
+L'update resta unico in `cuda_moe_tiering_observe_route`; ogni route selezionata,
+inclusi gli hit VRAM, lo attraversa prima della scelta di rimpiazzo. Con la
+flag ON `cuda_moe_tiering_pick_vram_slot` sceglie lo slot eleggibile col minimo
+score condiviso e ammette il candidato soltanto oltre l'isteresi mass-LFRU.
+I guard di demozione e i budget G133 restano attivi; cambia solo il ranking
+RAM->VRAM. Con flag assente i branch LRU/second-touch e G133 preesistenti
+restano quelli originali.
+
+Telemetria aggiunta:
+
+```text
+mass_evictions=numero di rimpiazzi per massa committati
+mass_protected=ammissioni rifiutate per isteresi di massa
+[moecache-mass] final requested=... hits=... misses=... hit_rate=...
+                admissions=... evictions=...
+                mass_evictions=... mass_protected=...
+```
+
+P4a compone perche' la scelta dello slot precede staging e flush del batch.
+P2-A packed-copy, P2-B batched-publish, P3-A host-selected e P3-B route-I/O
+QD4 non sono rifiutate: operano sul trasporto dopo la scelta comune. La riga
+startup `[moecache-mass] active` rende osservabile la composizione richiesta.
+
+### Righe sorgente toccate
+
+```text
+ds4_cuda.cu:1899-1900,7120-7124,26345-26362,28697-28715,
+             28769-28788,32495-32514,33020-33073,33234-33238,
+             34207-34214,34333-34334,34615-34616,34781-34793,
+             35246-35479,35490-35527,39009-40015
+tests/test_prep1_vram_cache_mass_static.ps1:1-233
+```
+
+### Gate statici PREP-1
+
+```text
+test_prep1_vram_cache_mass_static.ps1=PASS
+test_p4a_demand_pipeline_static.ps1=PASS
+test_p4a_demand_budget_static.ps1=PASS layers=43 routes=6 max_h2d_per_token=86 max_publish_per_token=43
+test_g127p_hetero_route_packed_copy_static.ps1=PASS WhatIf; server non avviato
+test_p1_decode_trace_static.ps1=PASS
+test_p1_decode_trace_parser_static.ps1=PASS
+test_p2c_nsys_capture_static.ps1=PASS
+git_diff_check=PASS
+native_CUDA_build=NOT_RUN_BY_MANDATE
+nvcc=NOT_RUN_BY_MANDATE
+compiled_binary=NOT_RUN_BY_MANDATE
+physical_runtime=NOT_RUN_BY_MANDATE
+```
+
+### Primo gate A/B autorizzabile
+
+Il primo confronto deve cambiare una sola variabile: flag assente contro
+`DS4_CUDA_MOE_CACHE_MASS=1`, con stesso binario, seed, prompt, cap cache e
+ordine ABBA/BAAB. Il verdetto primario e' `cache_hits/(cache_hits+cache_misses)`
+OFF contro ON; subito dopo vanno confrontati miss/SSD byte per token,
+`mass_evictions`, `mass_protected`, transient route, t/s e invarianti P4a.
+
+Nota di audit: nel manifest W con enforce mass-LFRU e G133 attivo, il ramo
+effettivo pre-PREP-1 usa il decayed heat G133, non il semplice helper LRU
+`age/tick`. Quell'helper resta reale nei branch legacy/second-touch. Quindi
+l'A/B W-like piu' fedele misura **G133 decayed heat OFF contro mass-LFRU
+condiviso ON**, mantenendo invariati eligibility, budget e trasporto.
+
+## AJ) PREP-2 super-chunk prefill — implementazione statica, build/runtime non eseguiti (2026-07-26)
+
+Mandato PREP-2 della leva P4 descritta nella sezione S: separare il tile di
+calcolo dalla finestra usata per unire e caricare gli esperti. Lo scope resta
+limitato al prefill, al loader selected-expert, al tap gia' presente sul read,
+alla telemetria e al contratto statico. La regia ha vietato build `nvcc`,
+avvio del binario, test e misure per non interferire con il run fisico attivo.
+
+### Provenienza congelata
+
+Il sorgente parte direttamente dal commit P4a `877a903`; nessun commit
+successivo e nessun artefatto della misura concorrente entra nel worktree.
+Sorgente e ledger sono repository Git separati, quindi il mandato produce due
+commit coordinati invece di un commit cross-repository impossibile.
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-superchunk-prep2
+source_branch=codex/ds4-superchunk-prep2-20260726
+source_base=877a9030d4fc57c8a81e9664a16eaef69efe4bc6
+source_commit=8862b809a9d2525bbc5a0832bcafbcd7ec89a4c9
+ledger_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\reap-loop-superchunk-prep2-ledger
+ledger_branch=docs/ds4-superchunk-prep2-20260726
+ledger_base=5efde7c12ec441b17c79912b75208cc62acbc375
+ds4.c_SHA256=D5ECF5E4F70CEA9B31A61CE95C81ED71CDFA732D10C01BC89678073D8559C490
+ds4_cuda.cu_SHA256=2FFE236179AA14C3CE653A6B1735B615860D40B068A2135CDD692F106B853F44
+ds4_gpu.h_SHA256=E90435D89E714443C348CE88822928D6F0FEA926FE14D1EB7444A9E4C2F8FA5F
+test_prefill_superchunk_static.ps1_SHA256=4EDA2095BBF81A9ED7911C1DB9AA14D7E7CB5758594ADB77314E075EE2BEEA77
+```
+
+### Percorso reale e correzione delle approssimazioni
+
+Il percorso base non esegue tutti i chunk di un layer prima di passare al
+layer successivo. `metal_graph_prefill_chunked_range` ha il chunk come loop
+esterno e attraversa tutti i 43 layer prima del chunk seguente
+(`ds4.c:16300-16459`). Il dedup effettivo avviene nel loader CUDA dopo il D2H
+dei top-6: `e2s`, `compact` e `slots` sono ricostruiti per ogni chiamata
+`(layer, chunk)` (`ds4_cuda.cu:39174-39192`). Quindi la causa strutturale
+descritta in S e' confermata, ma l'unita' di riuso necessaria e' una union per
+layer dentro una finestra, non una union globale di tutti i layer.
+
+Nel checkout non esiste un file autonomo `DS4_OPERATIONAL_PLAN.md`; il testo
+operativo disponibile e' la sezione S/P4 di questo ledger. Questa e' stata
+usata come fonte del contratto. La cifra `77.5 GiB/pass` resta la stima
+misurata/contabile di S per una passata satura, non una costante del sorgente:
+il codice reale carica solo l'unione selezionata e cache/arena possono ridurre
+ulteriormente source e H2D.
+
+### Contratto implementato
+
+`DS4_METAL_PREFILL_UNION_SPAN=<n>` e' opt-in stretto. Variabile assente o vuota
+lascia `prefill_union_span=0`, non alloca buffer aggiuntivi e dispatcha il corpo
+legacy invariato. `DS4_METAL_PREFILL_CHUNK` resta il compute tile. Con la nuova
+flag attiva il parser richiede:
+
+```text
+0 < union_span <= context
+0 < compute_tile <= raw_cap
+union_span >= compute_tile
+union_span % compute_tile == 0
+DS4_METAL_PREFILL_CHUNK, se presente, deve essere un decimale valido
+```
+
+Qualunque violazione fallisce l'allocazione/prefill con
+`prefill union/tile contract failed` o `prefill super-chunk failed closed`;
+non esiste fallback al chunk legacy.
+
+Il nuovo loop (`ds4.c:16004-16294`) opera cosi':
+
+1. materializza gli embedding della `union_span` in tile;
+2. per ogni layer esegue attention + router su tutti i tile, conservando solo
+   HC/intermedi FFN e top-k nella storage della union;
+3. chiama una volta `ds4_gpu_prefill_union_prepare`
+   (`ds4.c:16162-16173`, `ds4_cuda.cu:40091-40245`), che esegue il dedup su
+   tutti i token della finestra e pubblica gather/remap stabili;
+4. fa scorrere i tile nella sola fase routed/shared/post; ogni invocazione
+   valida che selected/weights/probs siano viste contigue della union preparata
+   e riusa gli stessi pesi (`ds4_cuda.cu:40248-40308,42240-42246`);
+5. chiude esplicitamente la union del layer prima di avanzare.
+
+Il ramo e' limitato al trasporto primary IQ2/Q2. Waves, nested residual, sparse
+bake, selected-load disabilitato, sidecar IQ1/Q1 e mixed-direct cache falliscono
+chiusi con motivo esplicito. I normali hit arena, le copie dalla cache e il
+caso cache all-hit restano supportati. Questa restrizione e' intenzionale:
+riadattare wave remap o route-pointer misti senza un ownership contract per
+l'intera union avrebbe reso possibile una rilettura o un riuso stale.
+
+### Tap-on-read e confine WRAP
+
+Il loader preesistente possiede gia' il punto naturale di tap: ogni span
+riceve, quando disponibile, un `mirror` dall'observer
+(`ds4_cuda.cu:39530-39542`). Sul percorso I/O il payload completato nella
+staging alimenta sia mirror sia H2D senza un secondo `pread`
+(`ds4_cuda.cu:37286-37304`). PREP-2 conserva questo percorso, lo usa una sola
+volta per la union e contabilizza `tap_bytes`.
+
+Non e' stata rimossa la pubblicazione finale `prefill-mass WRAP`. Il WRAP deve
+selezionare l'esatto target globale solo dopo aver visto l'intero prompt; gli
+esperti candidati non intercettati nel mirror durante il prefill possono
+ancora essere letti/pubblicati in `cuda_dynamic_arena_wrap_publish_target`
+(`ds4_cuda.cu:12422-12438`). Eliminarlo in modo exact richiederebbe un'arena
+online con eviction/generation atomiche, fuori dallo scope sicuro. Il confine
+residuo e' visibile confrontando `tap_bytes` con i byte/carichi del log WRAP.
+
+### Telemetria e riconciliazione quantitativa
+
+Ogni prefill opt-in emette sempre una riga `[prefill-superchunk]` con:
+
+```text
+result start tokens union_span compute_tile
+passes compute_tiles layer_unions
+selected_slots unique_experts tile_unique_experts
+source_bytes h2d_bytes cache_d2d_bytes tap_bytes
+router_ms union_ms compute_ms output_ms total_ms
+```
+
+`unique_experts` e' la somma delle unioni per `(union pass, layer)`;
+`tile_unique_experts` ricalcola la baseline che il loader legacy avrebbe
+caricato per i singoli compute tile. Il loro rapporto dimostra il dedup
+cross-tile. `source_bytes` misura gli span letti dal backing,
+`h2d_bytes=source_span_bytes+arena_h2d_bytes`, e `cache_d2d_bytes` resta
+separato.
+
+Per 150000 token e la stima satura di S pari a `77.5 GiB` logici per pass:
+
+```text
+union_span=2048:
+  passes=ceil(150000/2048)=74
+  layer_unions=74*43=3182
+  logical_read=74*77.5 GiB=5735 GiB=5.6005859375 TiB
+
+union_span=4096:
+  passes=ceil(150000/4096)=37
+  layer_unions=37*43=1591
+  logical_read=37*77.5 GiB=2867.5 GiB=2.80029296875 TiB
+```
+
+Le passate attese sono quindi 74 e 37, non una nuova interpretazione per
+layer: `layer_unions` e' il contatore separato. Con compute tile 256,
+`compute_tiles=ceil(150000/256)=586` in entrambi i casi; il vantaggio nasce
+dalla riduzione dei load/dedup, non dall'aumento del tile di calcolo. I byte
+fisici precisi devono essere letti da `source_bytes`, `h2d_bytes` e
+`cache_d2d_bytes`, perche' unioni non sature e residency possono renderli
+inferiori alla stima logica.
+
+### Footprint e interazione col tiering
+
+La storage persistente aggiunta e' esattamente `148624 byte/token`:
+
+```text
+2 * (4*4096) float HC
++ 24 float HC split
++ 4096 float FFN norm
++ 256 float router probabilities
++ 6 float router weights
++ 6 int router selected
+
+union 2048 = 304381952 byte = 290.28125 MiB
+union 4096 = 608763904 byte = 580.56250 MiB
+```
+
+A questo si aggiunge il gather per il layer corrente:
+`unique_experts * (2*gate_expert_bytes + down_expert_bytes)`, fino a 256
+esperti, oltre allo scratch compute-tile preesistente. Il rischio principale
+su 12 GiB e' quindi il picco VRAM quando una union satura forza il grow-only
+gather, non la tabella top-k.
+
+Arena e cache possono ridurre source/H2D, ma l'unione piu' ampia cambia
+ammissioni, eviction e working set; una cache parzialmente diretta che richieda
+route pointer misti viene rifiutata. Il tiering decode/promotion successivo
+resta separato, ma il WRAP puo' ancora pubblicare la snapshot finale. L'A/B
+deve osservare sia il picco VRAM sia cache admissions/evictions e non assumere
+che un H2D basso significhi automaticamente meno traffico D2D.
+
+### Gate statici e handoff runtime
+
+```text
+git_diff_check=PASS
+test_prefill_superchunk_static.ps1=WRITTEN_NOT_RUN_BY_MANDATE
+native_CUDA_build=NOT_RUN_BY_MANDATE
+existing_tests=NOT_RUN_BY_MANDATE
+physical_runtime=NOT_RUN_BY_MANDATE
+```
+
+Il test statico scritto copre parsing/default OFF, validazione e raw-cap,
+dispatch opt-in prima del legacy, ordine router/prepare/reuse/end, fail-closed,
+campi di telemetria, API CUDA e marker tap-on-read.
+
+Il primo A/B autorizzato deve tenere fisso il compute tile e confrontare OFF,
+union 2048 e union 4096. Ordine dei gate:
+
+1. exact output/logit e assenza assoluta di fallback o `result=failed`;
+2. `passes=74/37`, `layer_unions=3182/1591` a 150k e
+   `tile_unique_experts > unique_experts`;
+3. picco VRAM/OOM prima del tempo, iniziando da 2048;
+4. riduzione `source_bytes`/`h2d_bytes`, con `cache_d2d_bytes` separato;
+5. `tap_bytes` contro i load residui WRAP;
+6. TTFT e breakdown `router/union/compute/output`.
+
+Decisione: **PREP-2 e' pronto solo come sorgente statico committato. Nessuna
+claim di build, correttezza runtime o velocita' viene promossa finche' la regia
+non apre una finestra A/B.**
+
+### Correzione T5/T6 PREP-2 (2026-07-26)
+
+La build falliva perche' `ds4_cuda.cu`, che rispecchia localmente i tipi ABI
+GPU senza includere `ds4_gpu.h`, non aveva la definizione del nuovo POD
+`ds4_gpu_prefill_union_telemetry`. Il test statico non vedeva inoltre marker
+runtime spezzati tra literal C o il `%` escapato per `fprintf`.
+
+- `ds4_cuda.cu:515-526`: aggiunto il mirror ABI del POD di telemetria.
+- `ds4.c:7338-7346`: mantenuto il check startup fail-closed e reso letterale
+  il contratto `union_span % compute_tile == 0`.
+- `ds4.c:7355-7357,16139-16142,16229-16232`: resi contigui i marker diagnostici
+  gia' richiesti dal contratto statico, senza cambiare dispatch o fallback.
+
+```text
+source_fix_commit=b58d6a12390f44111ce2efcde1caaa09f14fd1d5
+source_fix_message=ds4: fix super-chunk CUDA compile contract
+compile_only=PASS CMakeFiles/ds4.dir/ds4.c.obj CMakeFiles/ds4_cuda.dir/ds4_cuda.cu.obj
+patch_static=PASS tests/test_prefill_superchunk_static.ps1
+full_nvcc_build_or_link=NOT_RUN
+server_benchmark_inference=NOT_RUN
+next_build_window=READY
+```
+
+## AK) PREP-1/PREP-2 - build Windows CUDA e gate ValidateOnly (2026-07-26)
+
+Baseline warning comune: clean build del parent esatto
+`877a9030d4fc57c8a81e9664a16eaef69efe4bc6`; classi
+`#177-D,#221-D,#550-D,C4018,C4244,C4267,C4311`.
+Nessun `ds4_server` e' stato avviato per inferenza o misura.
+
+### T5/T6 - Branch 1: cache VRAM mass-policy
+
+```text
+branch=codex/ds4-vram-mass-prep1-20260726
+source_commit=a0f583e88c08a8d5b2ec35050b3b3ba52dd1ace8
+build=PASS (fresh Ninja Release CUDA, --clean-first, 26/26)
+new_warning_classes=NONE
+CTest=PASS 1/1; failing_tests=NONE; passed=ds4_bake_test
+patch_static=PASS test_prep1_vram_cache_mass_static.ps1
+ValidateOnly_OFF=PASS flag_unset server_started=no exit=0
+ValidateOnly_ON=PASS DS4_CUDA_MOE_CACHE_MASS=1 server_started=no exit=0
+exe=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-vram-mass-prep1\build-native\ds4_server.exe
+exe_SHA256=CF60AA3835322F6844FB8D8B9DFB6B526D97300D731EBA55967F142666AEBBD7
+```
+
+### T5/T6 - Branch 2: super-chunk prefill
+
+```text
+branch=codex/ds4-superchunk-prep2-20260726
+source_commit=8862b809a9d2525bbc5a0832bcafbcd7ec89a4c9
+build=FAIL (fresh Ninja Release CUDA, --clean-first)
+new_warning_classes_observed_before_failure=NONE
+CTest=PASS 1/1; failing_tests=NONE; passed=ds4_bake_test
+patch_static=FAIL test_prefill_superchunk_static.ps1
+patch_static_error=flag/validation marker missing: union_span % compute_tile == 0
+ValidateOnly_OFF=FAIL flag_unset exit=1 executable missing
+ValidateOnly_ON=FAIL DS4_METAL_PREFILL_UNION_SPAN=2048 exit=1 executable missing
+exe=NOT_PRODUCED
+exe_SHA256=NOT_REPORTED
+```
+
+Output compiler esatto:
+
+```text
+C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-superchunk-prep2\ds4_cuda.cu(40106): error: identifier "ds4_gpu_prefill_union_telemetry" is undefined
+C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-superchunk-prep2\ds4_cuda.cu(40107): error: identifier "ds4_gpu_prefill_union_telemetry" is undefined
+C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-superchunk-prep2\ds4_cuda.cu(40107): error: expected a ";"
+3 errors detected in the compilation of "C:/Users/imanu/source/repos/moe-aggressive-commit/ds4-superchunk-prep2/ds4_cuda.cu".
+ninja: build stopped: subcommand failed.
+```
+
+Decisione: **PREP-1 supera il gate build/static/ValidateOnly ed e' pronto per
+un A/B separato. PREP-2 resta fail-closed e non produce un exe utilizzabile.**
+
+## AL) RUN BATCH 4 - cache esperti VRAM mass-policy OFF/ON (2026-07-26)
+
+Mandato runtime eseguito in ordine OFF, ON, con un solo `ds4_server` alla
+volta, senza build e senza fix. La sola variabile sperimentale e'
+`DS4_CUDA_MOE_CACHE_MASS`: assente in OFF, `1` in ON. Entrambi i bracci
+mantengono M0/P0, `TraceMode=Off`, cache esperti 140, hot reserve 256 MiB e
+`DS4_CUDA_MOE_DEMAND_PIPELINE` assente.
+
+Il runner atomico storico e' path/hash-locked al precedente worktree P4a e
+all'exe `95FC09CF...`. Per non modificarlo, il file e' rimasto byte-identico
+e la stessa logica e' stata materializzata solo in memoria con i nuovi
+path/hash e l'overlay della mass-policy. Prompt, seed, richieste, monitor,
+gate, shutdown HTTP e parser sono quelli del protocollo storico.
+
+Due tentativi non fisici precedono OFF:
+
+```text
+direct_inline_wrapper=execution_policy_reject
+first_in_memory_retarget=failed_before_runner_root_resolution
+server_started=no
+requests=0
+responses=0
+physical_output_directories=0
+classification=HARNESS_TRANSPORT_REJECT_NOT_A_BENCHMARK
+```
+
+I due run fisici, non sovrapposti, sono:
+
+```text
+OFF=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\vram_mass_batch4\outputs\20260726_222921_p4a_demand-mass-off_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+ON=C:\Users\imanu\source\repos\moe-aggressive-commit\.codex_runs\vram_mass_batch4\outputs\20260726_223721_p4a_demand-mass-on_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+OFF_shutdown=2026-07-26T22:35:45.1892853+02:00 graceful_http_verified
+ON_start=2026-07-26T22:37:21.5329610+02:00
+ON_shutdown=2026-07-26T22:46:01.6599960+02:00 graceful_http_verified
+forced_kill=0
+```
+
+### Provenienza e protocollo congelati
+
+```text
+source_worktree=C:\Users\imanu\source\repos\moe-aggressive-commit\ds4-vram-mass-prep1
+source_branch=codex/ds4-vram-mass-prep1-20260726
+source_commit=a0f583e88c08a8d5b2ec35050b3b3ba52dd1ace8
+ds4.c_SHA256=6AF63E151ACB86A71AD6C626C3E5CF46D55E6A8B1E6BDE1964E81DA3F817264E
+ds4_cuda.cu_SHA256=845DE9E717CE8E66B0B67FEAF24BD5EFAEFD99337FE65C08C75B4F4E0C241E98
+ds4_gpu.h_SHA256=1473B8239C5834C3544DC0464F172E1CBE17712D5BE1616B459A048C54259590
+ds4_metal.m_SHA256=598F8FE634AE653A63D45D208CEF88AF8C6CC2EE966B245B83453E0A2B26B3C2
+ds4_server.exe_SHA256=CF60AA3835322F6844FB8D8B9DFB6B526D97300D731EBA55967F142666AEBBD7
+ds4_server.exe_bytes=12478976
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_bytes=86720111488
+model_SHA256_manifest=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+runner_on_disk_SHA256=9C564BC502E0B6AEB142DC9961EA5E46267B0A5DF4E4EAE81B0DB3D796E466A2
+runtime_monitor.ps1_SHA256=5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858
+manifest_source_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+runner_file_modified=no
+manifest_count=47
+ctx_capacity=150000
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+```
+
+Overlay:
+
+```text
+common:
+  TraceMode=Off
+  DS4_CUDA_MOE_DEMAND_PIPELINE=<UNSET>
+  DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+  DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+OFF:
+  DS4_CUDA_MOE_CACHE_MASS=<UNSET>
+ON:
+  DS4_CUDA_MOE_CACHE_MASS=1
+```
+
+### Gate 1 - exactness PASS
+
+```text
+expected_turn1_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+expected_turn2_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+OFF_turn1=128_tokens; expected_hash_PASS
+OFF_turn2=32_tokens; expected_hash_PASS
+ON_turn1=128_tokens; expected_hash_PASS
+ON_turn2=32_tokens; expected_hash_PASS
+OFF_vs_ON_text_identity=PASS_both_turns
+cached_prefix_tokens_OFF_ON=141
+suffix_tokens_OFF_ON=19
+snapshot_unchanged_OFF_ON=true
+resident_unchanged_OFF_ON=true
+decode_refused_OFF_ON=0
+runner_gate_pass_OFF_ON=true
+```
+
+### Gate 2 - telemetria policy e cache PASS
+
+I record `[moecache-mass] final` sono presenti per entrambi i turni e in
+entrambi i bracci. ON contiene inoltre due record startup
+`[moecache-mass] active policy=shared-mass-lfru`; non sono assunti dal
+contratto statico.
+
+| Braccio/turno | Hit | Miss | Hit rate | Admission | Eviction | `mass_evictions` | `mass_protected` |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| OFF T1 | 7.614 | 25.410 | 23,0559593% | 169 | 29 | 0 | 0 |
+| ON T1 | 7.599 | 25.425 | 23,0105378% | 169 | 29 | 29 | 0 |
+| OFF T2 | 862 | 7.394 | 10,4408915% | 93 | 0 | 0 | 0 |
+| ON T2 | 861 | 7.395 | 10,4287791% | 93 | 0 | 0 | 0 |
+
+La metrica decisiva peggiora:
+
+```text
+OFF_weighted_hits_misses=8476/32804
+OFF_weighted_hit_rate=20.5329457%
+ON_weighted_hits_misses=8460/32820
+ON_weighted_hit_rate=20.4941860%
+ON_minus_OFF=-0.038760_percentage_points
+relative_delta=-0.188768%
+turn1_ON_minus_OFF=-15_hits; +15_misses; -0.045422_percentage_points
+turn2_ON_minus_OFF=-1_hit; +1_miss; -0.012112_percentage_points
+```
+
+La baseline storica del primo turno era circa 22%; OFF a 23,056% la
+riproduce come ordine di grandezza. ON non aumenta gli hit e non attiva
+alcuna protezione per isteresi (`mass_protected=0`).
+
+### Gate 3 - performance non interpretabile per outlier alternato
+
+`wall` usa la somma dei 160 record `[g130-attrib] decode_ms`; `graph` usa
+`metal graph token ... total`. Mature e' T1 posizioni 50..140. Il weighted
+usa 128+32 token ed esclude il suffix-prefill 141..159.
+
+| Metrica | OFF t/s | ON t/s | Delta ON vs OFF |
+|---|---:|---:|---:|
+| T1 wall decode | 0,601757 | 2,589194 | +330,272352% |
+| T1 graph pos 13..140 | 0,608900 | 2,763153 | +353,794219% |
+| T1 mature pos 50..140 | 0,601898 | 3,354298 | +457,286783% |
+| T2 wall decode | 3,003842 | 0,625666 | -79,171141% |
+| T2 graph pos 160..191 | 3,143711 | 0,647219 | -79,412261% |
+| Weighted wall, 160 token | 0,716322 | 1,590746 | +122,071359% |
+| Weighted graph, 160 token | 0,725972 | 1,670736 | +130,137801% |
+
+Il turno lento cambia braccio: OFF T1 e ON T2. Anche worker/wait lo rende
+esplicito:
+
+| Braccio/turno | Worker ms/job | Wait ms/call |
+|---|---:|---:|
+| OFF T1 | 32,548 | 32,719 |
+| ON T1 | 5,892 | 6,064 |
+| OFF T2 | 5,105 | 5,425 |
+| ON T2 | 30,491 | 30,684 |
+
+Il request wall, che include prompt/page-in, e' `0,465483 / 0,368104 t/s`
+OFF e `0,357615 / 0,227264 t/s` ON. Il suffix-prefill graph T2 e'
+`0,263308 t/s` OFF e `0,232250 t/s` ON. Nessun delta prestazionale
+ON-vs-OFF viene promosso: la coppia contiene due outlier grossi e alternati.
+
+### Gate 4 - BINARY-DRIFT FAIL prima di ON-vs-OFF
+
+Il controllo OFF del nuovo exe deve precedere ogni interpretazione della
+policy. La baseline storica sul binario
+`95FC09CF1ADAFA47B6C58EAB25B479CC15B34E1BF826465C7768C1361FE6C2A4`
+era T1 wall `2,68..2,71 t/s`. OFF sul nuovo exe misura `0,601757 t/s`:
+
+```text
+OFF_vs_baseline_low_2.68=-77.546381%
+OFF_vs_baseline_high_2.71=-77.794945%
+threshold=10%
+classification=BINARY-DRIFT_FAIL
+```
+
+Il superamento e' molto oltre la soglia. Il fatto che ON T1 torni a
+`2,589194 t/s` non ripara il controllo: ON T2 manifesta lo stesso tipo di
+stallo a `0,625666 t/s`. La performance della policy resta non causale in
+questa singola coppia.
+
+### Gate backbone fd-cache PASS
+
+Le righe `CUDA fd-cached` sono state sommate nelle slice per turno:
+
+| Braccio | T1 reload | T1 GiB/token | T2 reload | Gate 1 GiB/token |
+|---|---:|---:|---:|---|
+| OFF | 7.372,84 MiB | 0,056250 | 0 MiB | PASS |
+| ON | 7.372,84 MiB | 0,056250 | 0 MiB | PASS |
+
+Non compare thrash del backbone e non e' stato necessario un abort.
+
+### Monitor, receipt e postflight
+
+```text
+OFF_monitor_samples=72
+OFF_min_available_RAM_MiB=17319.5
+OFF_max_GPU_used_MiB=12014
+OFF_max_GPU_util_pct=89
+OFF_max_GPU_power_W=71.32
+
+ON_monitor_samples=99
+ON_min_available_RAM_MiB=16845.8
+ON_max_GPU_used_MiB=12022
+ON_max_GPU_util_pct=100
+ON_max_GPU_power_W=69.22
+
+postflight_timestamp=2026-07-26T22:46:35.2863368+02:00
+postflight_ds4_processes=0
+postflight_port8000_listeners=0
+postflight_RAM_free_GiB=52.958
+postflight_GPU=NVIDIA_GeForce_RTX_3060,P8,434MiB/12288MiB
+postflight_clean=PASS
+```
+
+Hash artefatti OFF:
+
+```text
+result.txt=D65A3C7B53BD7E3A80694096D32D27069ED665EB9CD7E2D7DDC3A32E62A3904A
+server.stderr.log=D1814AB80C643DC74414C80B9E98CB868C966615A1A0A8C8CA6AF7494EC8FD41
+monitor.csv=2271CC67AED55B61F5EAAFC98E3D5EE152032F3F4F741A37BB247B55A72004FA
+shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+turn1.request.json=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json=F882F49FA7510A5DFFA037B47B3D88B2CD48B772A5D543255F577AA0CF6D8AF6
+turn2.request.json=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json=82956B5B6049F2AB6D8F1DB96A0C3B79D9444529813A5FFF7721F17FDF711F7C
+mass_policy_overlay.txt=3C64C14567AD17FA593B3A9FDBEAAFC6F8A02037968C5F29193C87653564A686
+```
+
+Hash artefatti ON:
+
+```text
+result.txt=1C655016988B837B8F9957A06C07C6A98B3F671E7DF90E9FF5BC8604E12A6416
+server.stderr.log=1B98563D45571E38C58F4D31F413946081B16B1A261CEF21458163DA2361BF59
+monitor.csv=4DCD9E6CFE5478558D3805C59493CBF687C3CBD15B52318353DCAF5A546C721B
+shutdown.receipt.json=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+turn1.request.json=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json=0542D3DD88A661B42C1E4D4C9B67CDFD6ABE664A1C32A287F6DAE918CCC56E9C
+turn2.request.json=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json=356A22392AAEC29F1AF82EA031707B0137D38D7DFF740D94A02DD741C6B9A0D0
+mass_policy_overlay.txt=719F87A0523E94369D75444AD0C6F0B8C0CDF749ABE42D8B2CD187E0CF1DC5C9
+```
+
+Analisi aggregata:
+
+```text
+batch4_analysis.json_SHA256=CD777FB76162E3972B68C9F3388E5DF50E24C5AE3CE52364FC08904F67551FC4
+```
+
+Decisione finale: **FAIL.** Exactness, telemetria, gate fd-cache e
+postflight sono PASS, ma OFF fallisce il gate preliminare con
+`BINARY-DRIFT` oltre il 77% e la mass-policy non migliora la metrica
+decisiva: perde 16 hit pesati e `0,038760` punti di hit-rate. Non e'
+`PROMOTE-CANDIDATE`; nessuna replica e nessun fix sono stati eseguiti nel
+run slot.
+
+## AM) Consolidamento campagna 26/7 (2026-07-26)
+
+Nota di consolidamento: le sezioni sorgente sono state accodate integralmente
+in ordine AE-AL; sono cambiate soltanto le etichette delle intestazioni
+collidenti. La mappa e' `AE P4a -> AE`, `AF harness A4 -> AF`,
+`AG batch 3 -> AG`, `AH PREP-4 -> AH`, `AF mass-policy -> AI`,
+`AF super-chunk -> AJ`, `AG build window -> AK`, `AH batch 4 -> AL`. La
+correzione T5/T6 resta con il super-chunk in AJ. Il blocco build window,
+byte-identico nei due rami PREP-1/PREP-2, e' riportato una sola volta in AK.
+
+### Risultati runtime cumulativi
+
+| Run o confronto | Risultato cumulativo | Verdetto | Sezione |
+|---|---|---|---|
+| P4a ON contro OFF | weighted decode wall `-17,03%`; exactness e identita' contatori PASS | performance FAIL | AE, Gate 3 |
+| cache esperti VRAM 320 contro 140 | ABORT dopo un token; fd-cache reload `20,29 GiB/token`, eviction esplosiva, cache count finale zero | gate FAIL, hit-rate ON non misurabile | AE, Batch 2, Coppia A |
+| PAGEABLE10 contro PAGEABLE0 | weighted wall `-78,04%`; exactness e gate RAM PASS | performance FAIL | AE, Batch 2, Coppia B |
+| batch 3 MTP, controllo OFF draft1 | HTTP 500 `cuda prefill failed` prima di exactness; la registrazione MTP sovrascrive la provenance CUDA primaria richiesta dal terminale G73 | prefill control FAIL, ON non eseguito | AG; causa isolata in AH |
+| Baseline T1 wall su tre run/exe congelati | `2,676 / 2,706 / 2,712 t/s` per scout OFF / A-OFF / B-OFF | baseline replicata entro varianza | AE, scout e Batch 2 |
+| batch 4 mass-policy OFF/ON | weighted hit-rate `20,5329457% -> 20,4941860%`, `-16` hit; outlier alternati e controllo OFF `BINARY-DRIFT` oltre il 77% | exactness/telemetria PASS, policy FAIL, performance non causale | AL |
+
+### Quattro falsificazioni
+
+1. **Meno submission implica piu' throughput:** falsificata; P4a riduce
+   H2D/publish ma peggiora il weighted decode wall del 17,03% (AE, Gate 3).
+2. **Una cache VRAM da 320 slot migliora il regime da 140 slot:** falsificata;
+   il braccio entra in thrash a 20,29 GiB/token e viene abortito (AE, Batch 2,
+   Coppia A).
+3. **PAGEABLE10 conferma il precedente segnale promettente:** falsificata;
+   il braccio resta exact e sopra il floor RAM ma perde il 78,04% weighted wall
+   (AE, Batch 2, Coppia B).
+4. **Il controllo MTP puo' riusare il setter globale della mappa primaria:**
+   falsificata; la mappa MTP sostituisce `g_model_host_base` e il backbone
+   fallisce `terminal-contract` al layer 0 (AG, causa radice; isolamento
+   secondario in AH).
