@@ -11886,3 +11886,219 @@ Verdetto: **SCOUT ABORTED AFTER INVALID OFF; ON NOT RUN**. Il bug storico
 device-pointer non riappare e il control è exact, ma il confronto A/B non è
 valido né completo. Serve una decisione esplicita dell'orchestratore sul gate
 q1-wrap prima di qualsiasi nuovo slot; non parte alcuna replica automatica.
+
+### 2026-07-26 — A1 scout su P0 rotator congelato: OFF degraded, ON non eseguito
+
+```text
+classification=SCOUT_ABORTED_AFTER_INVALID_OFF
+experiment=A1_graph_tensor_device
+foundation=M0_P0_composed_frozen_rotator
+GraphTensorDevice_Off=INVALID_STRICT_GATE
+GraphTensorDevice_On=NOT_RUN_BY_PROTOCOL
+automatic_replicates=0
+```
+
+È stato concesso un nuovo run slot fisico esclusivo con binario e runner P0
+rotator congelati. Il solo comando eseguito è:
+
+```powershell
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\runtime_p0p1\run_two_turn_lifecycle.ps1" -TraceMode Off -PackedCopy Off -BatchedPublish Off -G73HostSelected Off -RouteIoQd Off -GraphTensorDevice Off -Turn1MaxTokens 128 -Turn2MaxTokens 32
+```
+
+Run e pin:
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_155302_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+runner_SHA256=E4809471B3AC68A4633D1FB77D4855ABF922FE79B9EAF97305C90A61131A006D
+ds4_server.exe_SHA256=070A450ECD5E4AB94A7C6CCB2FED73D8FDB6EF45E0E700CF506D647BA3F54E5D
+ds4_server.exe_bytes=12416512
+ds4.c_SHA256=54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466
+ds4_cuda.cu_SHA256=313A8CCC8BCA6B8EC08E3205621B18D8BA7E58624EF20D568063EC86784B90AD
+ds4_gpu.h_SHA256=625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C
+ds4_metal.m_SHA256=81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+seed=12345
+manifest_count=47
+declared_parameter_count=52
+TraceMode=Off
+PackedCopy=Off
+BatchedPublish=Off
+G73HostSelected=Off
+RouteIoQd=Off
+GraphTensorDevice=Off
+DS4_CUDA_GRAPH_TENSOR_DEVICE=<UNSET>
+DS4_CUDA_ALLOC_TRACE=1
+```
+
+Correctness, lifecycle e allocator:
+
+```text
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn1_exact=true
+turn2_exact=true
+cached_prefix_tokens=141
+suffix_tokens=19
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+served_selected_fallback_nonzero_count=0
+route_final_errors_nonzero_count=0
+expert_tiering_final_failures_nonzero_count=0
+alloc_trace_gate_pass=true
+alloc_decode_start_summary_count=2
+alloc_request_end_summary_count=2
+alloc_decode_start_balance_count=2
+alloc_request_end_balance_count=2
+alloc_failure_row_count=0
+alloc_generic_device_row_count=0
+run_error=none
+shutdown_mode=graceful_http_verified
+```
+
+Il gate rotatore P0 fallisce senza ambiguità:
+
+```text
+rotator_summary_count=1
+rotator_result=degraded
+rotator_terminal_marker_count=77
+rotator_requested=407
+rotator_attempts=407
+rotator_successes=362
+rotator_failures=45
+rotator_advisory_failures=45
+rotator_advisory_releases=45
+rotator_advisory_degraded=1
+rotator_structural_rejects=0
+rotator_stale=0
+rotator_dropped=0
+rotator_accounting_pass=true
+rotator_io_degraded_count=45
+rotator_io_errno_138_count=45
+rotator_failed_wave_count=31
+failed_wave_failure_sum=45
+first_failed_wave_id=5
+last_failed_wave_id=354
+falling_back_to_exact_selected_load_text_count=817
+```
+
+L'accounting è coerente (`407 = 362 + 45 + 0`), ma il contratto richiede
+`result=complete` e zero failure/advisory. ON non è quindi stato avviato.
+
+Engagement OFF e safety dei 124 state tensor:
+
+```text
+first_decode_start_generic_managed_calls=310
+first_decode_start_generic_managed_failures=0
+first_decode_start_generic_managed_requested_mib=327.93
+state_tensor_calls=41+41+21+21=124
+state_tensor_requested_mib=11.64
+OFF_device_only_count=0
+OFF_managed_count=124
+ON_expected_device_only_count=124
+ON_expected_managed_count=0
+ON_runtime_engagement=NOT_EVALUATED
+```
+
+Il numero 124 è il sottoinsieme state inizializzato da
+`metal_tensor_fill_f32`, non il totale delle 310 allocazioni generiche cambiate
+dalla leva. Il sorgente congelato mantiene il fix: host temporary +
+`ds4_gpu_tensor_write`; nel backend device il write usa
+`cudaMemcpyHostToDevice`; l'accessor host raw storico non esiste. Poiché ON non
+è partito, il target runtime `device_only_count=124, managed_count=0` non viene
+inventato.
+
+Memoria effettiva OFF:
+
+```text
+phase,turn,used_mib,free_mib,tracked_vram_mib,residual_mib,device_live_mib,managed_live_mib,hostpin_live_mib
+decode-start,1,8556.4,3731.0,7137.3,1419.1,6809.36,327.93,33020.53
+request-end,1,12287.4,0.0,11153.3,1134.0,8813.87,2339.46,33061.04
+decode-start,2,10766.8,1520.6,9141.8,1625.0,8813.83,327.93,33061.04
+request-end,2,12287.4,0.0,11153.3,1134.0,8813.87,2339.46,33061.04
+memory_delta_ON_vs_OFF=NOT_AVAILABLE
+```
+
+Performance OFF, sempre in token/secondo:
+
+```text
+turn1_wall_tps=1.076165
+turn1_graph_pos13_140_tps=2.236573
+turn1_mature_pos50_140_tps=2.602229
+turn2_wall_tps=0.907693
+turn2_suffix_prefill_pos141_159_tps=1.081058
+turn2_decode_graph_pos160_191_tps=2.436381
+weighted_decode_tps=2.273869
+performance_delta_ON_vs_OFF=NOT_AVAILABLE
+delta_below_10pct_rule=variance
+```
+
+Route/cache OFF:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25410
+turn1_cache_count=140
+turn1_legacy_copy_submissions=76230
+turn1_legacy_publish_kernels=25410
+turn2_route_calls=1376
+turn2_miss_experts=7394
+turn2_cache_count=93
+turn2_legacy_copy_submissions=22182
+turn2_legacy_publish_kernels=7394
+all_P2_P3_runtime_requested=0
+cache_route_comparison_with_ON=NOT_AVAILABLE
+```
+
+Monitor e postflight:
+
+```text
+monitor_samples=31
+min_available_RAM_mb=19833.0
+max_memory_load_pct=69
+max_server_working_set_mb=35212.0
+max_server_private_mb=45654.9
+max_server_read_mb=87450.9
+min_GPU_used_mb=9941
+max_GPU_used_mb=12012
+avg_GPU_util_pct=32.355
+max_GPU_util_pct=75
+avg_GPU_power_w=29.077
+max_GPU_power_w=43.36
+preflight_DS4=0
+preflight_Nsight=0
+preflight_port8000=0
+postflight_DS4=0
+postflight_Nsight=0
+postflight_runner_monitor=0
+postflight_port8000=0
+postflight_available_RAM_mib=56812.9
+postflight_GPU=P8,used_441MiB
+forced_kill=0
+```
+
+Artefatti principali:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+experiment_manifest.txt_SHA256=CEFBF393BA066460589381CA42A914758E0FFA60C9A26C0A8AC77F6908ECE538
+instrumentation_manifest.txt_SHA256=5FE8DD26916C7DD7E16720898313C2C1D0D564FB102671346F5F5FD456D3976E
+control_manifest.txt_SHA256=4D51A4397107947C73CF591614329A2E20BF19B364E5362FA1F7157DBD7C1CEB
+provenance.txt_SHA256=337C2686DA7583A068D6AAD39BB88A9A933414FDC634B1B2E3B26430D4DDE1C0
+result.txt_SHA256=3BC9FB245C350506386271DB8C1E014433DB8856316E4951999CEA2A306660BF
+cuda_alloc_summaries.log_SHA256=9AA6F13F8234A32B47D668CB92D1E4F3F39B1053216500CEDF8897DB28D7886E
+server.stderr.log_SHA256=C8D20E3B9DAC9901F4399E5E743E7F305AA9D60AFB0FC4CAE66B0EE4C13D5FC5
+monitor.csv_SHA256=D6C01A5C0B8AC5B318525C6E4AA67252A0AA67709AA455257D3106DF634C8C0A
+turn1.response.json_SHA256=A99AAB2496CBDA36306C2D5F5E624E1D21461541ACCC6362AACCBE330BB98820
+turn2.response.json_SHA256=B4349A8B0BC55974A989B4361BDB518F4E3F4F46456F2640AAAD6A71D6FA0820
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+report=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-graph-tensor-device\outputs\A1_P0_FROZEN_SCOUT_RESULT.md
+```
+
+`ctx_capacity=150000` non è una posizione viva 150000. Verdetto: **OFF
+INVALID; ON NOT RUN; READY_FOR_RUN_SLOT=no**. Serve una decisione esplicita
+dell'orchestratore sul failure `q1-0-ssd-wrap-io errno=138`; il gate non è
+stato rilassato.
