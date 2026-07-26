@@ -211,3 +211,37 @@ Il piano operativo persistente aggiornato e':
 path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\DS4_OPERATIONAL_PLAN.md
 SHA256=5E99F27467B8D032404ABB9996886C75D5BDBEA11C3C1156854423464B0B64A3
 ```
+
+## A1 valido su P0.1
+
+P0.1 ha separato correttamente queue age e budget I/O: il timeout configurato
+resta 50 ms ma parte quando il worker acquisisce ciascun job. Il successivo A/B
+GraphTensor e' valido:
+
+```text
+OFF_run=20260726_161517_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+ON_run=20260726_161920_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-on
+OFF_rotator=complete_371_of_371
+ON_rotator=complete_373_of_373
+correctness_engagement=PASS
+weighted_decode_OFF_tps=2.294284
+weighted_decode_ON_tps=2.296465
+weighted_delta=+0.095pct
+max_throughput_delta=+6.188pct
+performance=NEUTRAL_VARIANCE
+observed_decode_start_vram_recovery=42.0_to_96.7_MiB
+promotion=NO
+baseline=GraphTensorDevice_OFF
+ledger_commit=e50abb5240d84635bcf83e6f1109e12b64bf4e45
+```
+
+P1 ha ora lo slot sorgente/build esclusivo per correggere l'underflow
+`pread_bytes` e implementare il tracing campionato v2 con 178 CUDA timing
+events preallocati. Nessun run o capture Nsight e' autorizzato durante la build.
+
+Piano operativo:
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\DS4_OPERATIONAL_PLAN.md
+SHA256=F6A8FC7528DC4A4D1E1568087A87E042164EB26D01DD25A730F8E1D820EF93A8
+```
