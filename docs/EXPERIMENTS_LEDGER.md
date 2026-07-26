@@ -12861,3 +12861,251 @@ La futura matrice corretta e' PAGEABLE0/10/14 con trace OFF, una sola variabile
 alla volta, metriche di hit SSD evitati, H2D per tier, queue age, hard fault e
 RAM minima. Nessuna delle due capacita' e' promossa o respinta da questa
 singola coppia; READY_FOR_RUN_SLOT=no in questa fase di chiusura K1**.
+
+## AD) K0/K1 KV persistent staged short-follow-up - runtime FAIL exact (2026-07-26)
+
+Sono stati eseguiti esclusivamente i quattro arm autorizzati:
+`K0p -> K1p -> K0c -> K1c`. Nessun K2, nessuna KV realmente viva a 150k,
+nessun Nsight, PAGEABLE sweep o altra leva. Ogni arm ha usato un solo
+`ds4_server`, shutdown HTTP nativo e postflight pulito.
+
+Verdetto:
+
+```text
+final_status=RUNTIME_FAIL_CORRECTNESS
+promotion=false
+round_trip_eliminated=true
+short_followup_performance=variance
+text_output_exact=true
+turn1_logits_exact=true
+turn1_live_kv_exact=true
+turn2_logits_exact=false
+turn2_live_kv_exact=false
+fallback_count=0
+sticky_off_count=0
+```
+
+### Provenienza congelata
+
+```text
+source_worktree=D:\ds4_work\wt-codex-k1-handoff
+source_branch=codex/ds4-k1-handoff-20260726
+source_base=f64cc89baf5ba890c11317b8a0283e25ace85eae
+p0_p1_commit=8ec491b175406c9f95b380b65ab0da5ebdc589ec
+k1_commit=eb03f7203d8c4cc95781bc73a181f3fe972a6a12
+ds4.c_SHA256=BB24C86FFAB9665B4406113363A08D9144FE68C595C8C604EFC1E64FBF3D73D8
+ds4_cuda.cu_SHA256=F64290214FCBF94D1C852386852143012D7DB8E713C7334654A8E17616129C8E
+ds4_gpu.h_SHA256=535CF8AB13FD57933129FE1E7A247C5D0B9F062A4DD51EEBEC9BAF453FFBB4D0
+ds4_server.exe_SHA256=82FA2E60EC778A058E079C794E6D147D370539A502870640ABDC6AE6DD603EDE
+manifest_47_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+model_bytes=86720111488
+```
+
+### Parametri comuni e overlay dei quattro arm
+
+```text
+ctx_capacity=150000
+ctx_live_turn1_end=141
+ctx_live_turn2_prompt_end=160
+ctx_live_turn2_decode_end=192
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+TraceMode=Off
+PackedCopy=Off
+BatchedPublish=Off
+G73HostSelected=Off
+RouteIoQd=Off
+GraphTensorDevice=Off
+ValidateOnly=false
+
+K0p: KvLifecycle=Off ChecksumMode=Off
+K1p: KvLifecycle=On  ChecksumMode=Off
+K0c: KvLifecycle=Off ChecksumMode=Exact
+K1c: KvLifecycle=On  ChecksumMode=Exact
+
+KvLifecycle=Off -> DS4_CUDA_KV_PERSISTENT_STAGED=<UNSET>
+KvLifecycle=On  -> DS4_CUDA_KV_PERSISTENT_STAGED=1
+ChecksumMode=Off   -> DS4_CUDA_KV_PHASE_VALIDATE=<UNSET>
+ChecksumMode=Exact -> DS4_CUDA_KV_PHASE_VALIDATE=1
+```
+
+Manifest base 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+### Performance in t/s
+
+I record graph coprono turn1 posizioni 13-140, mature 50-140, suffix 141-159
+e follow-up decode 160-191.
+
+```text
+metric                            K0p       K1p       K0c       K1c
+turn1_wall_tps               1.128046  0.321301  1.133151  1.150785
+turn1_graph_tps              2.722257  0.741649  2.725652  2.728207
+turn1_mature_graph_tps       3.294191  2.482412  3.312857  3.342339
+turn2_suffix_graph_tps       0.993709  0.990207  1.008919  0.991488
+turn2_decode_graph_tps       3.090835  3.050100  3.051504  3.079346
+turn2_wall_tps               0.922020  0.927223  0.923378  0.932680
+turn2_suffix_ttft_s         22.213890 22.044127 21.839922 22.039279
+```
+
+Delta K1p contro K0p:
+
+```text
+turn1_wall=-71.5170% -> FAIL >10%
+turn1_graph=-72.7561% -> FAIL >10%
+mature_graph=-24.6427% -> FAIL >10%
+suffix_graph=-0.3524% -> varianza
+turn2_decode_graph=-1.3179% -> varianza
+turn2_wall=+0.5643% -> varianza
+suffix_TTFT=-0.7642% -> varianza/miglioramento
+```
+
+K1p ha incontrato un bulk-wrap/load freddo molto lento: a token 50 era a
+0,33 t/s, poi 50-100 a 3,10 t/s e 100-128 a 3,53 t/s. K1c non ha riprodotto
+l'anomalia e resta entro +/-1,73% da K0c salvo suffix TTFT. Il cold outlier
+resta un failure osservato senza attribuzione causale al lifecycle.
+
+### Round-trip KV, RAM e VRAM
+
+```text
+full_operation_bytes=2109242368
+K0_migrations=2
+K0_restores=2
+K1_migrations=1
+K1_request_end_retains=2
+K1_staged_reuses=1
+K1_request_end_restore_count=0
+K1_shutdown_live_restore_bytes=13893632
+interturn_bytes_avoided=4218484736
+K1_initial_live_copy_bytes=1306112
+K1_first_request_end_live_bytes=13194752
+K1_after_suffix_live_bytes=13463552
+K1_final_live_bytes=13893632
+K1_append_D2H_cumulative_bytes=20199936
+```
+
+```text
+metric                         K0p       K1p       K0c       K1c
+RAM_min_MiB                17773.9   17674.8   18013.1   18278.2
+memory_load_max_pct             72        72        72        72
+VRAM_max_MiB                 12041     10552     11999     10608
+request_end_free_VRAM_MiB       0/0 1370.1/1359.0 0/0 1336.3/1334.3
+```
+
+Non e' stato osservato peggioramento RAM/paging. Il pinned arena conserva
+comunque la capacita' full-size da 2.109.242.368 byte. Il margine VRAM K1
+dimostra 1,33-1,37 GiB liberi al request-end, ma la patch non li riusa per gli
+esperti.
+
+### Correctness exact
+
+Output testuale identico:
+
+```text
+turn1_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+```
+
+Raw checksum:
+
+```text
+turn1_logits_FNV1a64: K0c=7b650de41e6f0a81 K1c=7b650de41e6f0a81
+turn1_liveKV_FNV1a64: K0c=4ebf6dc070e81428 K1c=4ebf6dc070e81428
+turn2_logits_FNV1a64: K0c=e614bf7154a5ce97 K1c=308afa9400eed81f
+turn2_liveKV_FNV1a64: K0c=5104b8dcc73fdb76 K1c=0b4184e2392b3ddd
+exact_comparator_exit=1
+exact_error=exact logits checksum mismatch
+```
+
+La localizzazione e' netta: il primo turno e' bit-exact. La divergenza compare
+solo dopo che K1 consuma il suffisso con authority `HOST_STAGED`, mentre K0
+aveva ripristinato la KV su device. Il difetto resta circoscritto al resumed
+short-suffix staged path/frontier ordering. L'uguaglianza testuale non supera
+il gate P0: K1 e' respinta.
+
+### Artefatti e shutdown
+
+```text
+runtime_report=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-kv-phase-aware-followup\outputs\DS4_KV_RUNTIME_FINAL_REPORT.md
+runtime_report_SHA256=C04975B76D9BD0D56A9210837FF988E72A062F8C67951032876AA9DD8A2DE576
+runtime_receipt=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-kv-phase-aware-followup\outputs\ds4_kv_runtime_final_receipt.json
+runtime_receipt_SHA256=315FB368584BD105E1950FD698023B296E51E8799D31244427E3DDC7B8DBBD37
+artifact_manifest=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-kv-phase-aware-followup\outputs\DS4_KV_RUNTIME_ARTIFACT_HASHES.sha256
+artifact_manifest_SHA256=1BDBFFBD58A2B52638ECC7AD6A2059E79BEC2B71C434DCBE79F7B3CE3399BE04
+artifact_count=111
+```
+
+Ogni arm:
+
+```text
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_port8000_listeners=0
+nsight_processes=0
+```
+
+Postflight finale:
+
+```text
+GPU_used=489_MiB
+GPU_pstate=P8
+RAM_free=54.03_GiB
+```
+
+Decisione: **K1 non promossa. Nessun K2 o altro runtime autorizzato. Il lavoro
+Codex si chiude con sorgente, receipt e handoff committati per Claude.**

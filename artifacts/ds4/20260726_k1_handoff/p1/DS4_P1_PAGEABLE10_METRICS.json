@@ -1,0 +1,359 @@
+{
+  "schema": "ds4.p1.pageable10.runtime.v1",
+  "date": "2026-07-26",
+  "classification": "VALID_AB_CORRECTNESS_PASS_PERFORMANCE_HARD_FAIL",
+  "foundation": "P0.1 frozen; GraphTensor, P2 and P3 OFF",
+  "pageable_overflow_gb": 10,
+  "replicates_per_arm": 1,
+  "nsight_runs": 0,
+  "provenance": {
+    "exe_sha256": "185E46A057CE6BFFA7605638DDC5A3994FAFF3DBC48A3F7FF9B0B6617F3B9717",
+    "dedicated_runner_sha256": "C1F3C7A90BB6974CE205C83605EF32DCE912169BD9B8AC8D3F7C180DD3E19BA0",
+    "frozen_pageable0_runner_sha256": "E8A746195C5BD09C6C034E1F3EBC8C482146600843F56DDD2AADCEF9BBD200E5",
+    "dedicated_manifest_source_sha256": "7A10410DBB436DF7067D3FACE1E571FF892EDE9B98A2321E2230566023EE2BD8",
+    "run_manifest_sha256": "F3FC965D00C8038665CA3329934361A11C0E697255D9F560C328D4EC61E35907",
+    "model_sha256_receipt": "efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668",
+    "ctx_capacity": 150000,
+    "seed": 12345,
+    "temperature": 0.7,
+    "turn1_max_tokens": 128,
+    "turn2_max_tokens": 32,
+    "manifest_count": 47,
+    "instrumentation_overlay_count": 9
+  },
+  "manifest_47": [
+    "DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts",
+    "DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1",
+    "DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1",
+    "DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4",
+    "DS4_CUDA_DYNAMIC_ARENA_GB=30",
+    "DS4_CUDA_EMBED_ROW_STAGING=1",
+    "DS4_CUDA_KV_STAGED_RING=1",
+    "DS4_CUDA_MOE_CACHE_POLICY=lru",
+    "DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1",
+    "DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1",
+    "DS4_CUDA_MOE_SPLIT_FUSED=1",
+    "DS4_CUDA_MOE_SPLIT_HIT_MISS=0",
+    "DS4_CUDA_NO_Q8_F16_CACHE=1",
+    "DS4_CUDA_PREFILL_MASS_OBSERVE=1",
+    "DS4_CUDA_PREFILL_MASS_WRAP=1",
+    "DS4_CUDA_PREFILL_TIER_COMPOSE=1",
+    "DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128",
+    "DS4_CUDA_PREFILL_TIER_ROUTER=open",
+    "DS4_CUDA_RELEASE_PREFILL_SCRATCH=1",
+    "DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2",
+    "DS4_CUDA_STREAM_HOT_RESERVE_MB=256",
+    "DS4_CUDA_STREAM_RESERVE_MB=1024",
+    "DS4_CUDA_STREAMING_EXPERT_CACHE_N=140",
+    "DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125",
+    "DS4_CUDA_WEIGHT_CACHE_VERBOSE=1",
+    "DS4_EXPERT_TIER_CLOCK_CALLS=430",
+    "DS4_EXPERT_TIER_HYSTERESIS=1.25",
+    "DS4_EXPERT_TIER_MIN_FREQUENCY=3",
+    "DS4_EXPERT_TIER_POLICY=mass-lfru",
+    "DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32",
+    "DS4_EXPERT_TIERING=enforce",
+    "DS4_G130_U1_ATTRIBUTION=1",
+    "DS4_G133_DECAY=0.98",
+    "DS4_G133_KNOCK_X=3",
+    "DS4_G133_KNOCK_Y=5",
+    "DS4_G133_PROMOTE_BUDGET=8",
+    "DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05",
+    "DS4_G133_SEED_DYNAMIC=1",
+    "DS4_G133_TIER=1",
+    "DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25",
+    "DS4_G73_OPEN=1",
+    "DS4_G73_PAGEABLE_OVERFLOW_GB=10",
+    "DS4_METAL_GRAPH_TOKEN_PROFILE=1",
+    "DS4_METAL_PREFILL_CHUNK=250",
+    "DS4_MODEL_BYTES=86720111488",
+    "DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668",
+    "DS4_REAP_PREFETCH_THREADS=8"
+  ],
+  "instrumentation_overlay_9": {
+    "off": [
+      "TraceMode=Off",
+      "DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>",
+      "DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>",
+      "DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>",
+      "DS4_CUDA_NSYS_CAPTURE=<UNSET>",
+      "DS4_CUDA_ALLOC_TRACE=1",
+      "DS4_CUDA_ALLOC_TRACE_MIN_MIB=1048576",
+      "cuda_alloc_event_lines=suppressed",
+      "cuda_alloc_summary_phases=decode-start,request-end"
+    ],
+    "sampled": [
+      "TraceMode=Sampled",
+      "DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>",
+      "DS4_CUDA_DECODE_TRACE_POSITIONS=13,141",
+      "DS4_CUDA_DECODE_TRACE_LAYERS=0,4,20,42",
+      "DS4_CUDA_NSYS_CAPTURE=<UNSET>",
+      "DS4_CUDA_ALLOC_TRACE=1",
+      "DS4_CUDA_ALLOC_TRACE_MIN_MIB=1048576",
+      "cuda_alloc_event_lines=suppressed",
+      "cuda_alloc_summary_phases=decode-start,request-end"
+    ]
+  },
+  "validate_only": {
+    "off_path": "C:\\Users\\imanu\\Documents\\Codex\\2026-07-25\\legg\\outputs\\p0p1_runtime\\20260726_173657_p1_pageable10_trace-v2_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off",
+    "sampled_path": "C:\\Users\\imanu\\Documents\\Codex\\2026-07-25\\legg\\outputs\\p0p1_runtime\\20260726_173657_p1_pageable10_trace-v2_trace-sampled_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off",
+    "off_result_sha256": "A4387F846593AD2BBC9DA43B01EB58FFEC2AA4E312370B1BE33B9BAFEC288D6D",
+    "sampled_result_sha256": "E7B9506DC3846B94FF1BC147FB2234DF2003A0440B4B6103B6C3DB13F8D2C0EE",
+    "manifest_47_plus_overlay_9": "PASS",
+    "hashes": "PASS",
+    "server_started": false
+  },
+  "runs": {
+    "off10": {
+      "path": "C:\\Users\\imanu\\Documents\\Codex\\2026-07-25\\legg\\outputs\\p0p1_runtime\\20260726_173725_p1_pageable10_trace-v2_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off",
+      "gate_pass": true,
+      "turn1_content_sha256": "7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b",
+      "turn2_content_sha256": "0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb",
+      "performance_tps": {
+        "turn1_wall": 0.983530,
+        "turn1_graph_pos13_140": 2.471015,
+        "turn1_mature_pos50_140": 2.854573,
+        "turn2_wall": 0.899589,
+        "turn2_suffix_prefill_pos141_159": 1.013097,
+        "turn2_decode_graph_pos160_191": 2.695061,
+        "weighted_decode": 2.512794
+      },
+      "graph_ms": {
+        "turn1_pos13_140": 51800.575,
+        "turn1_mature_pos50_140": 31878.678,
+        "suffix_pos141_159": 18754.377,
+        "turn2_decode_pos160_191": 11873.573,
+        "weighted_decode": 63674.148
+      },
+      "timing": {
+        "wrap_seconds": 49.095,
+        "turn1_prompt_done_seconds": 72.014,
+        "first_decode_graph_ms": 3602.257,
+        "server_first_output_proxy_seconds": 75.616257,
+        "turn2_prompt_suffix_seconds": 19.119,
+        "client_http_ttft": "not measurable: non-streaming request"
+      },
+      "monitor": {
+        "samples": 34,
+        "available_ram_min_mib": 9544.2,
+        "server_working_set_max_mib": 44546.9,
+        "server_private_max_mib": 55929.9,
+        "gpu_used_avg_mib": 10454.353,
+        "gpu_used_max_mib": 12025,
+        "gpu_util_avg_pct": 25.294,
+        "gpu_util_max_pct": 82,
+        "gpu_power_avg_w": 27.061,
+        "gpu_power_max_w": 46.15
+      },
+      "pageable": {
+        "pageable_bytes": 10737156096,
+        "pageable_slots": 1517,
+        "pinned_slots": 4551,
+        "total_slots": 6068,
+        "pinned_ready": 300,
+        "pageable_ready": 0,
+        "pinned_hits": 23671,
+        "pageable_hits": 2933,
+        "pageable_paged_out_before_copy": 0,
+        "allocation_failures_or_fallbacks": 0
+      },
+      "rotator": {
+        "result": "complete",
+        "requested": 300,
+        "attempts": 300,
+        "successes": 300,
+        "failures": 0,
+        "advisory_failures": 0,
+        "structural_rejects": 0
+      }
+    },
+    "sampled10": {
+      "path": "C:\\Users\\imanu\\Documents\\Codex\\2026-07-25\\legg\\outputs\\p0p1_runtime\\20260726_174145_p1_pageable10_trace-v2_trace-sampled_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off",
+      "gate_pass": true,
+      "turn1_content_sha256": "7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b",
+      "turn2_content_sha256": "0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb",
+      "performance_tps": {
+        "turn1_wall": 0.429300,
+        "turn1_graph_pos13_140": 0.598526,
+        "turn1_mature_pos50_140": 0.767330,
+        "turn2_wall": 0.392869,
+        "turn2_suffix_prefill_pos141_159": 0.297511,
+        "turn2_decode_graph_pos160_191": 2.682215,
+        "weighted_decode": 0.708626
+      },
+      "graph_ms": {
+        "turn1_pos13_140": 213858.645,
+        "turn1_mature_pos50_140": 118593.032,
+        "suffix_pos141_159": 63863.116,
+        "turn2_decode_pos160_191": 11930.440,
+        "weighted_decode": 225789.085
+      },
+      "timing": {
+        "wrap_seconds": 50.836,
+        "turn1_prompt_done_seconds": 73.681,
+        "first_decode_graph_ms": 7104.656,
+        "server_first_output_proxy_seconds": 80.785656,
+        "turn2_prompt_suffix_seconds": 64.471,
+        "client_http_ttft": "not measurable: non-streaming request"
+      },
+      "monitor": {
+        "samples": 76,
+        "available_ram_min_mib": 9048.4,
+        "server_working_set_max_mib": 44106.0,
+        "server_private_max_mib": 55962.4,
+        "gpu_used_avg_mib": 10435.342,
+        "gpu_used_max_mib": 12019,
+        "gpu_util_avg_pct": 18.368,
+        "gpu_util_max_pct": 95,
+        "gpu_power_avg_w": 24.054,
+        "gpu_power_max_w": 39.92
+      },
+      "pageable": {
+        "pageable_bytes": 10737156096,
+        "pageable_slots": 1517,
+        "pinned_slots": 4551,
+        "total_slots": 6068,
+        "pinned_ready": 304,
+        "pageable_ready": 0,
+        "pinned_hits": 23654,
+        "pageable_hits": 2933,
+        "pageable_paged_out_before_copy": 0,
+        "allocation_failures_or_fallbacks": 0
+      },
+      "rotator": {
+        "result": "complete",
+        "requested": 304,
+        "attempts": 304,
+        "successes": 304,
+        "failures": 0,
+        "advisory_failures": 0,
+        "structural_rejects": 0
+      },
+      "trace": {
+        "schema": "ds4.cuda.decode_trace.v2",
+        "record_count": 10,
+        "token_positions": [13, 141],
+        "layers_per_position": [0, 4, 20, 42],
+        "timing_event_count": 178,
+        "event_sync_count": 0,
+        "record_complete_count": 2,
+        "io_counter_valid_count": 2,
+        "layer_sample_id_match_count": 8,
+        "dropped_records": 0,
+        "worker_attribution_errors": 0,
+        "position_13": {
+          "host_wall_ms": 7114.831700,
+          "gpu_default_window_ms": 7103.881836,
+          "host_minus_device_window_ms": 10.949864,
+          "h2d_api_ms": 0.772100,
+          "h2d_count": 80,
+          "h2d_bytes": 170010624,
+          "d2h_api_ms": 6.884900,
+          "d2h_count": 5,
+          "d2h_bytes": 517216,
+          "pread_wait_ms": 0.0,
+          "pread_count": 0,
+          "pread_bytes": 0,
+          "sampled_layer_worker_queue_ms_sum": 12.9973,
+          "sampled_layer_worker_service_ms_sum": 25.5213,
+          "sampled_layer_worker_ready_ms_sum": 31.1036,
+          "sampled_layer_upload_drain_ms_sum": 24.1551
+        },
+        "position_141": {
+          "phase": "suffix prefill, not route-worker decode",
+          "host_wall_ms": 36732.695100,
+          "gpu_default_window_ms": 36717.578125,
+          "host_minus_device_window_ms": 15.116975,
+          "h2d_api_ms": 0.317100,
+          "h2d_count": 1,
+          "d2h_api_ms": 0.253700,
+          "d2h_count": 1,
+          "pread_wait_ms": 0.0,
+          "pread_count": 0
+        }
+      }
+    }
+  },
+  "sampled10_vs_off10": {
+    "turn1_wall_throughput_delta_pct": -56.351103,
+    "turn1_graph_throughput_delta_pct": -75.778124,
+    "turn1_mature_throughput_delta_pct": -73.119266,
+    "turn2_wall_throughput_delta_pct": -56.327945,
+    "suffix_throughput_delta_pct": -70.633476,
+    "turn2_decode_throughput_delta_pct": -0.476655,
+    "weighted_decode_throughput_delta_pct": -71.799280,
+    "weighted_decode_latency_overhead_pct": 254.600873,
+    "overhead_target_le_1pct": "FAIL",
+    "overhead_hard_fail_gt_2pct": "HARD_FAIL"
+  },
+  "cross_pageable_comparison": {
+    "off10_vs_off0": {
+      "turn1_graph_throughput_delta_pct": 8.642651,
+      "turn1_mature_throughput_delta_pct": 8.271315,
+      "suffix_throughput_delta_pct": 0.217400,
+      "turn2_decode_throughput_delta_pct": 11.159042,
+      "weighted_decode_throughput_delta_pct": 9.111893,
+      "primary_class": "variance: absolute delta below 10 percent"
+    },
+    "sampled10_vs_sampled0": {
+      "turn1_graph_throughput_delta_pct": -73.530442,
+      "turn1_mature_throughput_delta_pct": -70.778751,
+      "suffix_throughput_delta_pct": -73.490288,
+      "turn2_decode_throughput_delta_pct": 9.554409,
+      "weighted_decode_throughput_delta_pct": -69.140332,
+      "primary_class": "material regression"
+    }
+  },
+  "regression_observations": {
+    "turn1_graph_token_distribution_ms": {
+      "off10": {"p50": 360.598, "p95": 586.592, "max": 3602.257, "over_1000ms": 1},
+      "sampled10": {"p50": 1364.376, "p95": 3875.579, "max": 7104.656, "over_1000ms": 83}
+    },
+    "q1_worker_queue_age": {
+      "off10": {"sum_ms": 3495.920900, "max_ms": 181.8363, "over_500ms": 0, "service_sum_s": 0.3913542},
+      "sampled10": {"sum_ms": 16939.322800, "max_ms": 1955.1911, "over_500ms": 8, "service_sum_s": 0.3770689}
+    },
+    "sampled10_suffix_fail_closed_exact_terminal": {
+      "bounded_selected_load_unavailable_layers": 31,
+      "terminal_plain_pread_parts": 556,
+      "terminal_h2d_copies": 186,
+      "allocation_fallback": false,
+      "interpretation": "correctness-preserving route fallback during suffix; distinct from allocation fallback"
+    },
+    "causal_status": "single sequential pair; regression is observed and gate-failing, but trace causality is not isolated"
+  },
+  "memory_pressure": {
+    "gate_min_available_ram_mib": 6144,
+    "off10_min_available_ram_mib": 9544.2,
+    "sampled10_min_available_ram_mib": 9048.4,
+    "working_set_thrash_observed": false,
+    "pageable_paged_out_before_copy": 0,
+    "sustained_os_pagefile_io_claim": "not made; monitor had no valid page-fault column",
+    "explicit_q1_reads_are_model_route_io_not_pagefile_proof": true
+  },
+  "kv_phase_correlation": {
+    "bytes_each_restore_or_migrate": 2109242368,
+    "tensors": 105,
+    "off10_request_end_vram_monitor_mib": "10199 to 12020",
+    "off10_followup_decode_start_vram_monitor_mib": "12020 to 10032",
+    "sampled10_request_end_vram_monitor_mib": "10067 to 12014",
+    "sampled10_followup_decode_start_vram_monitor_mib": "11993 to 10005",
+    "allocator_request_end_free_mib": 0.0,
+    "interpretation": "phase correlation only; no isolated causal claim",
+    "facts": [
+      "request-end has zero measured VRAM headroom",
+      "each follow-up lifecycle performs a 2.109 GB KV restore/migrate round-trip"
+    ]
+  },
+  "postflight": {
+    "ds4_processes": 0,
+    "nsight_processes": 0,
+    "runner_processes": 0,
+    "port_8000_listeners": 0,
+    "ram_free_gib": 55.32,
+    "gpu_pstate": "P8",
+    "gpu_used_mib": 471,
+    "forced_kill": 0
+  },
+  "verdict": "PAGEABLE10_NOT_PROMOTED; retain PAGEABLE0 baseline and opt-in sampled trace only under its validated PAGEABLE0 contract"
+}

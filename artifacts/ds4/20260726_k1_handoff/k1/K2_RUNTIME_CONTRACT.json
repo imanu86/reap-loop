@@ -1,0 +1,25 @@
+{
+  "schema": "ds4.kv_phase.k2_contract.v1",
+  "status": "prepared_not_run",
+  "context_size_min": 163840,
+  "required_live_kv_tokens_min": 150000,
+  "capacity_is_not_live_proof": true,
+  "accepted_state_sources": [
+    "validated_decode_state_capsule",
+    "complete_prefill"
+  ],
+  "recovery_tokens_excluded": 16,
+  "measured_tokens": 256,
+  "watermark_target_bytes": 1073741824,
+  "watermark_floor_bytes": 536870912,
+  "fallback": "exact_full_live_restore",
+  "required_gates": [
+    "K0_K1_output_hash_exact",
+    "K0_K1_logits_checksum_exact",
+    "K0_K1_live_kv_checksum_exact",
+    "no_silent_fallback",
+    "no_paging_regression",
+    "no_memory_watermark_violation"
+  ]
+}
+

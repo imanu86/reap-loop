@@ -1,0 +1,2197 @@
+diff --git a/ds4.c b/ds4.c
+index a7049ae..d60deb4 100644
+--- a/ds4.c
++++ b/ds4.c
+@@ -18023,7 +18023,7 @@ static void ds4_acquire_instance_lock(void) {
+ #endif
+ }
+ 
+-struct ds4_session {
++struct ds4_session {
+     ds4_engine *engine;
+ #ifndef DS4_NO_GPU
+     ds4_gpu_graph graph;
+@@ -18038,13 +18038,78 @@ struct ds4_session {
+     uint64_t mtp_probe_hit;
+     ds4_session_progress_fn progress;
+     void *progress_ud;
+-    uint32_t prefill_cap;
+-    int ctx_size;
+-    bool checkpoint_valid;
+-    bool mtp_draft_valid;
+-};
+-
+-/* =========================================================================
++    uint32_t prefill_cap;
++    int ctx_size;
++    uint64_t kv_session_generation;
++    uint64_t kv_checkpoint_generation;
++    uint64_t kv_validation_logits_hash;
++    uint64_t kv_validation_logits_samples;
++    bool checkpoint_valid;
++    bool mtp_draft_valid;
++};
++
++static uint64_t g_ds4_kv_session_generation;
++
++static uint64_t ds4_next_kv_session_generation(void) {
++    g_ds4_kv_session_generation++;
++    if (g_ds4_kv_session_generation == 0) {
++        g_ds4_kv_session_generation++;
++    }
++    return g_ds4_kv_session_generation;
++}
++
++static void ds4_session_advance_kv_checkpoint_generation(ds4_session *s) {
++    if (!s) return;
++    s->kv_checkpoint_generation++;
++    if (s->kv_checkpoint_generation == 0) {
++        s->kv_checkpoint_generation++;
++    }
++}
++
++static uint64_t ds4_session_checkpoint_fingerprint(const ds4_session *s) {
++    uint64_t hash = UINT64_C(14695981039346656037);
++    if (!s || !s->checkpoint_valid) return hash;
++    for (int i = 0; i < s->checkpoint.len; i++) {
++        const uint32_t token = (uint32_t)s->checkpoint.v[i];
++        for (uint32_t shift = 0; shift < 32; shift += 8) {
++            hash ^= (uint8_t)(token >> shift);
++            hash *= UINT64_C(1099511628211);
++        }
++    }
++    hash ^= (uint32_t)s->checkpoint.len;
++    hash *= UINT64_C(1099511628211);
++    return hash;
++}
++
++static bool ds4_session_cuda_kv_persistent_requested(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *value = getenv("DS4_CUDA_KV_PERSISTENT_STAGED");
++        cached = value && strcmp(value, "1") == 0 ? 1 : 0;
++    }
++    return cached != 0;
++}
++
++static bool ds4_session_cuda_kv_validation_requested(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *value = getenv("DS4_CUDA_KV_PHASE_VALIDATE");
++        cached = value && strcmp(value, "1") == 0 ? 1 : 0;
++    }
++    return cached != 0;
++}
++
++static uint64_t ds4_fnv1a64_update(
++        uint64_t hash, const void *data, uint64_t bytes) {
++    const uint8_t *cursor = (const uint8_t *)data;
++    for (uint64_t i = 0; i < bytes; i++) {
++        hash ^= cursor[i];
++        hash *= UINT64_C(1099511628211);
++    }
++    return hash;
++}
++
++/* =========================================================================
+  * Session Snapshot Payloads.
+  * =========================================================================
+  *
+@@ -18818,12 +18883,25 @@ int ds4_session_load_payload(ds4_session *s, FILE *fp, uint64_t payload_bytes, c
+         payload_set_err(err, errlen, "KV checkpoint raw ring layout does not match current context");
+         return 1;
+     }
+-    if (saved_comp_cap > g->comp_cap) {
+-        payload_set_err(err, errlen, "KV checkpoint compressed cache is larger than current context");
+-        return 1;
+-    }
+-
+-    token_vec new_checkpoint = {0};
++    if (saved_comp_cap > g->comp_cap) {
++        payload_set_err(err, errlen, "KV checkpoint compressed cache is larger than current context");
++        return 1;
++    }
++#if !defined(__APPLE__)
++    if (s->engine && s->engine->backend == DS4_BACKEND_CUDA &&
++        ds4_session_cuda_kv_persistent_requested()) {
++        ds4_session_advance_kv_checkpoint_generation(s);
++        if (!ds4_gpu_kv_staged_invalidate(
++                s->kv_session_generation, "payload-load")) {
++            payload_set_err(
++                err, errlen,
++                "failed to restore staged KV before payload load");
++            return 1;
++        }
++    }
++#endif
++
++    token_vec new_checkpoint = {0};
+     for (uint32_t i = 0; i < saved_tokens; i++) {
+         uint32_t tok = 0;
+         if (payload_read_u32(fp, &tok, &remaining, err, errlen) != 0) {
+@@ -20194,10 +20272,12 @@ static bool dynamic_arena_abort_fixture(
+ int ds4_session_create(ds4_session **out, ds4_engine *e, int ctx_size) {
+     if (!out || !e || ctx_size <= 0) return 1;
+     if (e->backend == DS4_BACKEND_CPU) {
+-        ds4_session *s = xcalloc(1, sizeof(*s));
+-        s->engine = e;
+-        s->ctx_size = ctx_size;
+-        s->prefill_cap = ds4_default_prefill_cap_for_prompt(ctx_size);
++        ds4_session *s = xcalloc(1, sizeof(*s));
++        s->engine = e;
++        s->ctx_size = ctx_size;
++        s->kv_session_generation = ds4_next_kv_session_generation();
++        s->kv_checkpoint_generation = 1;
++        s->prefill_cap = ds4_default_prefill_cap_for_prompt(ctx_size);
+         kv_cache_init(&s->cpu_cache, (uint32_t)ctx_size, 0);
+         cpu_decode_scratch_init(&s->cpu_scratch, (uint32_t)ctx_size);
+         s->logits = xmalloc((size_t)DS4_N_VOCAB * sizeof(s->logits[0]));
+@@ -20213,10 +20293,12 @@ int ds4_session_create(ds4_session **out, ds4_engine *e, int ctx_size) {
+         return 1;
+     }
+ 
+-    ds4_session *s = xcalloc(1, sizeof(*s));
+-    s->engine = e;
+-    s->ctx_size = ctx_size;
+-    s->prefill_cap = metal_graph_prefill_cap_for_prompt(ctx_size);
++    ds4_session *s = xcalloc(1, sizeof(*s));
++    s->engine = e;
++    s->ctx_size = ctx_size;
++    s->kv_session_generation = ds4_next_kv_session_generation();
++    s->kv_checkpoint_generation = 1;
++    s->prefill_cap = metal_graph_prefill_cap_for_prompt(ctx_size);
+     const uint32_t raw_cap = metal_graph_raw_cap_for_context(ctx_size, s->prefill_cap);
+     if (!metal_graph_alloc_raw_cap(&s->graph, &e->model, &e->weights, &e->weights.layer[0],
+                                    raw_cap, (uint32_t)ctx_size, s->prefill_cap, e->mtp_ready))
+@@ -20443,9 +20525,16 @@ int ds4_session_create(ds4_session **out, ds4_engine *e, int ctx_size) {
+ #endif
+ }
+ 
+-void ds4_session_free(ds4_session *s) {
+-    if (!s) return;
+-    if (ds4_session_is_cpu(s)) {
++void ds4_session_free(ds4_session *s) {
++    if (!s) return;
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (s->engine && s->engine->backend == DS4_BACKEND_CUDA &&
++        ds4_session_cuda_kv_persistent_requested()) {
++        (void)ds4_gpu_kv_staged_invalidate(
++            s->kv_session_generation, "session-free");
++    }
++#endif
++    if (ds4_session_is_cpu(s)) {
+         kv_cache_free(&s->cpu_cache);
+         cpu_decode_scratch_free(&s->cpu_scratch);
+     }
+@@ -20460,27 +20549,221 @@ void ds4_session_free(ds4_session *s) {
+     free(s);
+ }
+ 
+-void ds4_session_set_progress(ds4_session *s, ds4_session_progress_fn fn, void *ud) {
++void ds4_session_set_progress(ds4_session *s, ds4_session_progress_fn fn, void *ud) {
+     if (!s) return;
+     s->progress = fn;
+-    s->progress_ud = ud;
+-}
+-
+-void ds4_session_vram_ledger_decode_start(ds4_session *s) {
+-#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
+-    if (s && s->engine && s->engine->backend == DS4_BACKEND_CUDA) {
+-        ds4_gpu_vram_ledger_decode_start();
+-    }
++    s->progress_ud = ud;
++}
++
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++static bool ds4_session_hash_cuda_kv_range(
++        const ds4_gpu_tensor *tensor,
++        uint64_t offset,
++        uint64_t bytes,
++        uint64_t *hash,
++        uint8_t *scratch,
++        uint64_t scratch_bytes) {
++    if (!tensor || !hash || !scratch || scratch_bytes == 0 ||
++        offset > ds4_gpu_tensor_bytes(tensor) ||
++        bytes > ds4_gpu_tensor_bytes(tensor) - offset) {
++        return false;
++    }
++    const uint64_t descriptor[2] = {offset, bytes};
++    *hash = ds4_fnv1a64_update(
++        *hash, descriptor, sizeof(descriptor));
++    uint64_t done = 0;
++    while (done < bytes) {
++        const uint64_t chunk = bytes - done < scratch_bytes
++            ? bytes - done : scratch_bytes;
++        if (!ds4_gpu_tensor_read(
++                tensor, offset + done, scratch, chunk)) {
++            return false;
++        }
++        *hash = ds4_fnv1a64_update(*hash, scratch, chunk);
++        done += chunk;
++    }
++    return true;
++}
++
++static bool ds4_session_cuda_kv_live_checksum(
++        ds4_session *s, uint64_t *checksum) {
++    if (!s || !checksum || !s->checkpoint_valid ||
++        s->checkpoint.len <= 0) {
++        return false;
++    }
++    const uint64_t scratch_bytes = UINT64_C(1) << 20;
++    uint8_t *scratch = (uint8_t *)malloc((size_t)scratch_bytes);
++    if (!scratch) return false;
++
++    ds4_gpu_graph *g = &s->graph;
++    uint64_t hash = UINT64_C(14695981039346656037);
++    const uint64_t raw_row_bytes =
++        (uint64_t)DS4_N_HEAD_DIM * sizeof(float);
++    const uint32_t raw_live =
++        session_raw_live_rows(g, (uint32_t)s->checkpoint.len);
++    const uint32_t raw_first =
++        (uint32_t)s->checkpoint.len - raw_live;
++    const uint32_t raw_start = raw_first % g->raw_cap;
++    const uint32_t raw_rows0 =
++        raw_live < g->raw_cap - raw_start
++            ? raw_live : g->raw_cap - raw_start;
++    const uint32_t raw_rows1 = raw_live - raw_rows0;
++    bool ok = true;
++
++    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
++        const uint64_t raw_tag[2] = {il, 0};
++        hash = ds4_fnv1a64_update(hash, raw_tag, sizeof(raw_tag));
++        ok = ds4_session_hash_cuda_kv_range(
++            g->layer_raw_cache[il],
++            (uint64_t)raw_start * raw_row_bytes,
++            (uint64_t)raw_rows0 * raw_row_bytes,
++            &hash, scratch, scratch_bytes);
++        if (ok && raw_rows1 != 0) {
++            ok = ds4_session_hash_cuda_kv_range(
++                g->layer_raw_cache[il],
++                0,
++                (uint64_t)raw_rows1 * raw_row_bytes,
++                &hash, scratch, scratch_bytes);
++        }
++
++        const uint32_t ratio = ds4_layer_compress_ratio(il);
++        if (!ok || ratio == 0) continue;
++        const uint64_t comp_tag[2] = {il, 1};
++        hash = ds4_fnv1a64_update(hash, comp_tag, sizeof(comp_tag));
++        ok = ds4_session_hash_cuda_kv_range(
++            g->layer_attn_comp_cache[il],
++            0,
++            (uint64_t)g->layer_n_comp[il] * raw_row_bytes,
++            &hash, scratch, scratch_bytes);
++        if (ok && ratio == 4) {
++            const uint64_t index_tag[2] = {il, 2};
++            const uint64_t index_row_bytes =
++                (uint64_t)DS4_N_INDEXER_HEAD_DIM * sizeof(float);
++            hash = ds4_fnv1a64_update(
++                hash, index_tag, sizeof(index_tag));
++            ok = ds4_session_hash_cuda_kv_range(
++                g->layer_index_comp_cache[il],
++                0,
++                (uint64_t)g->layer_n_index_comp[il] *
++                    index_row_bytes,
++                &hash, scratch, scratch_bytes);
++        }
++    }
++    free(scratch);
++    if (ok) *checksum = hash;
++    return ok;
++}
++
++static bool ds4_session_publish_cuda_kv_frontier(ds4_session *s) {
++    if (!s || !s->checkpoint_valid || s->checkpoint.len <= 0) return false;
++    ds4_gpu_graph *g = &s->graph;
++    const uint64_t fingerprint = ds4_session_checkpoint_fingerprint(s);
++    if (!ds4_gpu_kv_staged_frontier_begin(
++            s->kv_session_generation,
++            s->kv_checkpoint_generation,
++            fingerprint,
++            (uint32_t)s->checkpoint.len)) {
++        return false;
++    }
++
++    bool ok = true;
++    const uint64_t raw_row_bytes =
++        (uint64_t)DS4_N_HEAD_DIM * sizeof(float);
++    const uint32_t raw_live =
++        session_raw_live_rows(g, (uint32_t)s->checkpoint.len);
++    const uint32_t raw_first =
++        (uint32_t)s->checkpoint.len - raw_live;
++    const uint32_t raw_start = raw_first % g->raw_cap;
++    const uint32_t raw_rows0 =
++        raw_live < g->raw_cap - raw_start
++            ? raw_live : g->raw_cap - raw_start;
++    const uint32_t raw_rows1 = raw_live - raw_rows0;
++
++    for (uint32_t il = 0; ok && il < DS4_N_LAYER; il++) {
++        ok = ds4_gpu_kv_staged_frontier_tensor(
++            g->layer_raw_cache[il],
++            (uint64_t)raw_start * raw_row_bytes,
++            (uint64_t)raw_rows0 * raw_row_bytes,
++            0,
++            (uint64_t)raw_rows1 * raw_row_bytes) != 0;
++        const uint32_t ratio = ds4_layer_compress_ratio(il);
++        if (!ok || ratio == 0) continue;
++        ok = ds4_gpu_kv_staged_frontier_tensor(
++            g->layer_attn_comp_cache[il],
++            0,
++            (uint64_t)g->layer_n_comp[il] * raw_row_bytes,
++            0,
++            0) != 0;
++        if (ok && ratio == 4) {
++            const uint64_t index_row_bytes =
++                (uint64_t)DS4_N_INDEXER_HEAD_DIM * sizeof(float);
++            ok = ds4_gpu_kv_staged_frontier_tensor(
++                g->layer_index_comp_cache[il],
++                0,
++                (uint64_t)g->layer_n_index_comp[il] * index_row_bytes,
++                0,
++                0) != 0;
++        }
++    }
++    const int committed = ds4_gpu_kv_staged_frontier_commit();
++    return ok && committed != 0;
++}
++#endif
++
++void ds4_session_vram_ledger_decode_start(ds4_session *s) {
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (s && s->engine && s->engine->backend == DS4_BACKEND_CUDA) {
++        if (ds4_session_cuda_kv_persistent_requested()) {
++            ds4_session_advance_kv_checkpoint_generation(s);
++            if (!ds4_session_publish_cuda_kv_frontier(s)) {
++                fprintf(stderr,
++                        "ds4: [kv-phase] event=decode-frontier result=failed "
++                        "fallback=exact-device-or-request-failure\n");
++            }
++        }
++        ds4_gpu_vram_ledger_decode_start();
++    }
+ #else
+     (void)s;
+ #endif
+ }
+ 
+-void ds4_session_vram_ledger_request_end(ds4_session *s) {
+-#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
+-    if (s && s->engine && s->engine->backend == DS4_BACKEND_CUDA) {
+-        ds4_gpu_vram_ledger_request_end();
+-    }
++void ds4_session_vram_ledger_request_end(ds4_session *s) {
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (s && s->engine && s->engine->backend == DS4_BACKEND_CUDA) {
++        if (ds4_session_cuda_kv_persistent_requested()) {
++            ds4_session_advance_kv_checkpoint_generation(s);
++            const bool frontier_ok =
++                ds4_session_publish_cuda_kv_frontier(s);
++            const int commit_ok = frontier_ok
++                ? ds4_gpu_kv_staged_request_commit() : 0;
++            if (!frontier_ok || !commit_ok) {
++                fprintf(stderr,
++                        "ds4: [kv-phase] event=request-commit result=failed "
++                        "fallback=exact-device-or-next-request-failure\n");
++            }
++        }
++        if (ds4_session_cuda_kv_validation_requested()) {
++            uint64_t kv_checksum = 0;
++            const bool kv_ok =
++                ds4_session_cuda_kv_live_checksum(s, &kv_checksum);
++            fprintf(stderr,
++                    "ds4: [kv-validation] event=request-end result=%s "
++                    "session=%llu generation=%llu tokens=%d "
++                    "logits_samples=%llu logits_fnv1a64=%016llx "
++                    "kv_live_fnv1a64=%016llx scope=live-ranges-only\n",
++                    kv_ok ? "ok" : "failed",
++                    (unsigned long long)s->kv_session_generation,
++                    (unsigned long long)s->kv_checkpoint_generation,
++                    s->checkpoint_valid ? s->checkpoint.len : 0,
++                    (unsigned long long)
++                        s->kv_validation_logits_samples,
++                    (unsigned long long)
++                        s->kv_validation_logits_hash,
++                    (unsigned long long)kv_checksum);
++        }
++        ds4_gpu_vram_ledger_request_end();
++    }
+ #else
+     (void)s;
+ #endif
+@@ -20523,10 +20806,15 @@ static void ds4_session_note_prefill_progress(void *ud, const char *event, int c
+  * A non-matching prompt discards the checkpoint and prefills from token zero.
+  */
+ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t errlen) {
+-    if (!s || !prompt || prompt->len <= 0 || prompt->len >= s->ctx_size) {
+-        snprintf(err, errlen, "prompt exceeds context");
+-        return 1;
+-    }
++    if (!s || !prompt || prompt->len <= 0 || prompt->len >= s->ctx_size) {
++        snprintf(err, errlen, "prompt exceeds context");
++        return 1;
++    }
++    if (ds4_session_cuda_kv_validation_requested()) {
++        s->kv_validation_logits_hash =
++            UINT64_C(14695981039346656037);
++        s->kv_validation_logits_samples = 0;
++    }
+     if (ds4_session_is_cpu(s)) {
+         ds4_engine *e = s->engine;
+         ds4_reap_mask_poll(&e->model, &e->weights, false);
+@@ -20578,21 +20866,43 @@ int ds4_session_sync(ds4_session *s, const ds4_tokens *prompt, char *err, size_t
+     ds4_engine *e = s->engine;
+     const char *backend_name = ds4_backend_name(e->backend);
+     ds4_reap_mask_poll(&e->model, &e->weights, e->backend == DS4_BACKEND_CUDA);
+-    if (e->backend == DS4_BACKEND_CUDA) {
+-        if (!ds4_gpu_dynamic_arena_request_begin()) {
++    if (e->backend == DS4_BACKEND_CUDA) {
++        if (!ds4_gpu_dynamic_arena_request_begin()) {
+             snprintf(err, errlen,
+                      "CUDA request boundary failed to quiesce prior route work");
+-            return 1;
+-        }
+-    }
+-
+-    if (s->checkpoint_valid &&
+-        prompt->len >= s->checkpoint.len &&
+-        ds4_tokens_starts_with(prompt, &s->checkpoint))
+-    {
+-        s->mtp_draft_valid = false;
+-        const int suffix = prompt->len - s->checkpoint.len;
+-        const uint32_t resume_min = metal_graph_resume_prefill_min_tokens();
++            return 1;
++        }
++    }
++
++    const bool exact_checkpoint_prefix =
++        s->checkpoint_valid &&
++        prompt->len >= s->checkpoint.len &&
++        ds4_tokens_starts_with(prompt, &s->checkpoint);
++    const int checkpoint_suffix = exact_checkpoint_prefix
++        ? prompt->len - s->checkpoint.len : 0;
++    const uint32_t resume_min = metal_graph_resume_prefill_min_tokens();
++#if !defined(__APPLE__)
++    if (e->backend == DS4_BACKEND_CUDA) {
++        if (!ds4_gpu_kv_staged_request_begin(
++                s->kv_session_generation,
++                s->kv_checkpoint_generation,
++                ds4_session_checkpoint_fingerprint(s),
++                s->checkpoint_valid ? (uint32_t)s->checkpoint.len : 0,
++                (uint32_t)checkpoint_suffix,
++                exact_checkpoint_prefix ? 1 : 0,
++                exact_checkpoint_prefix &&
++                    (uint32_t)checkpoint_suffix < resume_min ? 1 : 0)) {
++            snprintf(err, errlen,
++                     "CUDA failed to acquire or exactly restore staged KV");
++            return 1;
++        }
++    }
++#endif
++
++    if (exact_checkpoint_prefix)
++    {
++        s->mtp_draft_valid = false;
++        const int suffix = checkpoint_suffix;
+         if (suffix > 0 && (uint32_t)suffix >= resume_min) {
+             ds4_sync_progress progress = {
+                 .session = s,
+@@ -20771,9 +21081,17 @@ int ds4_session_argmax_excluding(ds4_session *s, int excluded_id) {
+     return best;
+ }
+ 
+-int ds4_session_sample(ds4_session *s, float temperature, int top_k, float top_p, float min_p, uint64_t *rng) {
+-    return sample_top_p_min_p(s->logits, DS4_N_VOCAB, temperature, top_k, top_p, min_p, rng);
+-}
++int ds4_session_sample(ds4_session *s, float temperature, int top_k, float top_p, float min_p, uint64_t *rng) {
++    if (s && s->logits &&
++        ds4_session_cuda_kv_validation_requested()) {
++        s->kv_validation_logits_hash = ds4_fnv1a64_update(
++            s->kv_validation_logits_hash,
++            s->logits,
++            (uint64_t)DS4_N_VOCAB * sizeof(s->logits[0]));
++        s->kv_validation_logits_samples++;
++    }
++    return sample_top_p_min_p(s->logits, DS4_N_VOCAB, temperature, top_k, top_p, min_p, rng);
++}
+ 
+ int ds4_session_top_logprobs(ds4_session *s, ds4_token_score *out, int k) {
+     if (!s || !out || k <= 0) return 0;
+@@ -21519,18 +21837,46 @@ int ds4_session_eval_speculative_argmax(ds4_session *s, int first_token,
+ #endif
+ }
+ 
+-void ds4_session_invalidate(ds4_session *s) {
+-    s->checkpoint_valid = false;
+-    s->checkpoint.len = 0;
+-    s->mtp_draft_valid = false;
+-}
+-
+-void ds4_session_rewind(ds4_session *s, int pos) {
+-    if (pos < 0) pos = 0;
+-    if (pos > s->checkpoint.len) pos = s->checkpoint.len;
+-    s->checkpoint.len = pos;
+-    s->mtp_draft_valid = false;
+-}
++void ds4_session_invalidate(ds4_session *s) {
++    if (!s) return;
++    if (ds4_session_cuda_kv_persistent_requested()) {
++        ds4_session_advance_kv_checkpoint_generation(s);
++    }
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++    if (s->engine && s->engine->backend == DS4_BACKEND_CUDA &&
++        ds4_session_cuda_kv_persistent_requested()) {
++        (void)ds4_gpu_kv_staged_invalidate(
++            s->kv_session_generation, "session-invalidated");
++    }
++#endif
++    s->checkpoint_valid = false;
++    s->checkpoint.len = 0;
++    s->mtp_draft_valid = false;
++}
++
++void ds4_session_rewind(ds4_session *s, int pos) {
++    if (!s) return;
++    if (pos < 0) pos = 0;
++    if (pos > s->checkpoint.len) pos = s->checkpoint.len;
++    if (pos < s->checkpoint.len) {
++        if (ds4_session_cuda_kv_persistent_requested()) {
++            ds4_session_advance_kv_checkpoint_generation(s);
++        }
++#if !defined(DS4_NO_GPU) && !defined(__APPLE__)
++        if (s->engine && s->engine->backend == DS4_BACKEND_CUDA &&
++            ds4_session_cuda_kv_persistent_requested()) {
++            (void)ds4_gpu_kv_staged_invalidate(
++                s->kv_session_generation, "session-rewind");
++        }
++#endif
++        /* No in-memory frontier snapshot exists at an arbitrary rewind point.
++         * Force the next sync to rebuild instead of pairing shorter tokens with
++         * the still-newer device KV tail. */
++        s->checkpoint_valid = false;
++    }
++    s->checkpoint.len = pos;
++    s->mtp_draft_valid = false;
++}
+ 
+ int ds4_session_pos(ds4_session *s) {
+     return s->checkpoint.len;
+diff --git a/ds4_cuda.cu b/ds4_cuda.cu
+index 8cdfbbe..8ae8153 100644
+--- a/ds4_cuda.cu
++++ b/ds4_cuda.cu
+@@ -505,12 +505,39 @@ enum {
+     DS4_CUDA_TOPK_MERGE_GROUP = 8u
+ };
+ 
+-struct ds4_gpu_tensor {
+-    void *ptr;
+-    void *host_ptr;
+-    uint64_t bytes;
+-    int owner;
+-};
++enum cuda_kv_tensor_phase {
++    CUDA_KV_TENSOR_DEVICE = 0,
++    CUDA_KV_TENSOR_MIGRATING_TO_HOST = 1,
++    CUDA_KV_TENSOR_HOST_STAGED = 2,
++    CUDA_KV_TENSOR_RESTORING = 3,
++    CUDA_KV_TENSOR_DIRTY = 4,
++    CUDA_KV_TENSOR_ERROR = 5
++};
++
++struct cuda_kv_live_range {
++    uint64_t offset;
++    uint64_t bytes;
++};
++
++struct cuda_kv_tensor_meta {
++    std::atomic<int> phase;
++    std::atomic<uint32_t> view_count;
++    uint64_t generation;
++    uint64_t marked_generation;
++    cuda_kv_live_range live[2];
++    uint32_t live_count;
++    int backing_managed;
++};
++
++struct ds4_gpu_tensor {
++    void *ptr;
++    void *host_ptr;
++    uint64_t bytes;
++    int owner;
++    cuda_kv_tensor_meta *kv_meta;
++    uint64_t kv_meta_offset;
++    int backing_managed;
++};
+ 
+ enum {
+     DS4_CUDA_KV_STAGED_RING_BYTES = 4u * 1024u * 1024u,
+@@ -536,20 +563,37 @@ struct cuda_kv_staged_ring {
+     int append_pending;
+ };
+ 
+-struct cuda_kv_staged_registry {
+-    std::vector<ds4_gpu_tensor *> tensors;
+-    void *host_arena;
+-    uint64_t host_bytes;
+-    int host_resident;
+-};
++struct cuda_kv_staged_registry {
++    std::vector<ds4_gpu_tensor *> tensors;
++    void *host_arena;
++    uint64_t host_bytes;
++    int host_resident;
++    int frontier_open;
++    uint64_t session_generation;
++    uint64_t checkpoint_generation;
++    uint64_t checkpoint_fingerprint;
++    uint32_t checkpoint_tokens;
++    uint64_t pending_session_generation;
++    uint64_t pending_checkpoint_generation;
++    uint64_t pending_checkpoint_fingerprint;
++    uint32_t pending_checkpoint_tokens;
++    uint64_t migrate_d2h_bytes;
++    uint64_t restore_h2d_bytes;
++    uint64_t append_d2h_bytes;
++    uint64_t retain_hits;
++    uint64_t exact_fallbacks;
++};
+ 
+ static cuda_kv_staged_ring g_kv_staged_ring;
+ static cuda_kv_staged_registry g_kv_staged_registry;
+ static std::mutex g_kv_staged_ring_mutex;
+-static std::atomic<int> g_kv_staged_sticky_off(0);
+-static std::atomic<int> g_kv_staged_error_logged(0);
+-static void cuda_kv_staged_registry_release(void);
+-static void cuda_kv_staged_ring_release(void);
++static std::atomic<int> g_kv_staged_sticky_off(0);
++static std::atomic<int> g_kv_staged_error_logged(0);
++static void cuda_kv_staged_registry_release(void);
++static void cuda_kv_staged_ring_release(void);
++static void cuda_kv_staged_note_sticky_off_locked(const char *reason);
++static int cuda_kv_tensor_contains_live(
++    const ds4_gpu_tensor *tensor, uint64_t offset, uint64_t bytes);
+ 
+ struct ds4_gpu_g133_epoch {
+     uint64_t request_epoch;
+@@ -7273,41 +7317,100 @@ static void cuda_kv_staged_ring_release(void) {
+     memset(&ring, 0, sizeof(ring));
+ }
+ 
+-static void cuda_kv_staged_registry_release(void) {
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    cuda_kv_staged_registry &state = g_kv_staged_registry;
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        if (tensor) tensor->host_ptr = NULL;
+-    }
+-    if (state.host_arena) (void)cudaFreeHost(state.host_arena);
+-    state.host_arena = NULL;
+-    state.host_bytes = 0;
+-    state.host_resident = 0;
+-    state.tensors.clear();
+-    g_kv_staged_sticky_off.store(0, std::memory_order_release);
+-    g_kv_staged_error_logged.store(0, std::memory_order_release);
+-}
++static void cuda_kv_staged_registry_release(void) {
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (!tensor) continue;
++        tensor->host_ptr = NULL;
++        if (tensor->kv_meta) {
++            tensor->kv_meta->phase.store(
++                CUDA_KV_TENSOR_ERROR, std::memory_order_release);
++            delete tensor->kv_meta;
++            tensor->kv_meta = NULL;
++        }
++    }
++    if (state.host_arena) (void)cudaFreeHost(state.host_arena);
++    state.host_arena = NULL;
++    state.host_bytes = 0;
++    state.host_resident = 0;
++    state.frontier_open = 0;
++    state.session_generation = 0;
++    state.checkpoint_generation = 0;
++    state.checkpoint_fingerprint = 0;
++    state.checkpoint_tokens = 0;
++    state.pending_session_generation = 0;
++    state.pending_checkpoint_generation = 0;
++    state.pending_checkpoint_fingerprint = 0;
++    state.pending_checkpoint_tokens = 0;
++    state.migrate_d2h_bytes = 0;
++    state.restore_h2d_bytes = 0;
++    state.append_d2h_bytes = 0;
++    state.retain_hits = 0;
++    state.exact_fallbacks = 0;
++    state.tensors.clear();
++    g_kv_staged_sticky_off.store(0, std::memory_order_release);
++    g_kv_staged_error_logged.store(0, std::memory_order_release);
++}
+ 
+-static int ds4_gpu_staged_kv_gate_requested(void) {
++static int ds4_gpu_staged_kv_gate_requested(void) {
+     static int cached = -1;
+     if (cached < 0) {
+         const char *env = getenv("DS4_CUDA_KV_STAGED_RING");
+         cached = (env != NULL && strcmp(env, "1") == 0) ? 1 : 0;
+     }
+     return cached;
+-}
+-
+-static int ds4_gpu_should_use_staged_kv_cache(void) {
++}
++
++static int ds4_gpu_persistent_staged_kv_requested(void) {
++    static int cached = -1;
++    if (cached < 0) {
++        const char *env = getenv("DS4_CUDA_KV_PERSISTENT_STAGED");
++        cached = (env != NULL && strcmp(env, "1") == 0) ? 1 : 0;
++        if (cached && !ds4_gpu_staged_kv_gate_requested()) {
++            fprintf(stderr,
++                    "ds4: [kv-phase] requested=1 result=disabled "
++                    "reason=DS4_CUDA_KV_STAGED_RING-not-enabled\n");
++            cached = 0;
++        }
++    }
++    return cached;
++}
++
++static int ds4_gpu_should_use_staged_kv_cache(void) {
+     return ds4_gpu_staged_kv_gate_requested() &&
+            !g_kv_staged_sticky_off.load(std::memory_order_acquire);
+ }
+ 
+-static void cuda_kv_staged_register_tensor(ds4_gpu_tensor *tensor) {
+-    if (!tensor || !ds4_gpu_should_use_staged_kv_cache()) return;
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    if (g_kv_staged_sticky_off.load(std::memory_order_relaxed)) return;
+-    g_kv_staged_registry.tensors.push_back(tensor);
+-}
++static int cuda_kv_staged_register_tensor(ds4_gpu_tensor *tensor) {
++    if (!tensor || !ds4_gpu_should_use_staged_kv_cache()) return 0;
++    cuda_kv_tensor_meta *meta =
++        new (std::nothrow) cuda_kv_tensor_meta;
++    if (!meta) {
++        g_kv_staged_sticky_off.store(1, std::memory_order_release);
++        fprintf(stderr,
++                "ds4: [kv-staged] sticky-off reason=tensor metadata "
++                "allocation failed; device KV remains authoritative\n");
++        return 0;
++    }
++    meta->phase.store(CUDA_KV_TENSOR_DEVICE, std::memory_order_relaxed);
++    meta->view_count.store(0, std::memory_order_relaxed);
++    meta->generation = 0;
++    meta->marked_generation = 0;
++    meta->live[0] = {0, 0};
++    meta->live[1] = {0, 0};
++    meta->live_count = 0;
++    meta->backing_managed = tensor->backing_managed;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    if (g_kv_staged_sticky_off.load(std::memory_order_relaxed)) {
++        delete meta;
++        return 0;
++    }
++    tensor->kv_meta = meta;
++    tensor->kv_meta_offset = 0;
++    g_kv_staged_registry.tensors.push_back(tensor);
++    return 1;
++}
+ 
+ static int cuda_kv_staged_unregister_tensor(ds4_gpu_tensor *tensor) {
+     if (!tensor || !ds4_gpu_staged_kv_gate_requested()) return 0;
+@@ -7320,14 +7423,28 @@ static int cuda_kv_staged_unregister_tensor(ds4_gpu_tensor *tensor) {
+         const uintptr_t ptr = (uintptr_t)tensor->host_ptr;
+         arena_backed = ptr >= base && ptr < end;
+     }
+-    for (std::vector<ds4_gpu_tensor *>::iterator it = state.tensors.begin();
++    for (std::vector<ds4_gpu_tensor *>::iterator it = state.tensors.begin();
+          it != state.tensors.end(); ++it) {
+         if (*it == tensor) {
+             state.tensors.erase(it);
+             break;
+         }
+-    }
+-    if (arena_backed) tensor->host_ptr = NULL;
++    }
++    if (arena_backed) tensor->host_ptr = NULL;
++    if (tensor->kv_meta) {
++        const uint32_t views = tensor->kv_meta->view_count.load(
++            std::memory_order_acquire);
++        if (views != 0) {
++            fprintf(stderr,
++                    "ds4: [kv-phase] invariant=owner-free-with-live-views "
++                    "views=%u result=failed-closed\n",
++                    views);
++        }
++        tensor->kv_meta->phase.store(
++            CUDA_KV_TENSOR_ERROR, std::memory_order_release);
++        delete tensor->kv_meta;
++        tensor->kv_meta = NULL;
++    }
+     if (state.tensors.empty() && state.host_arena) {
+         (void)cudaFreeHost(state.host_arena);
+         state.host_arena = NULL;
+@@ -7337,13 +7454,27 @@ static int cuda_kv_staged_unregister_tensor(ds4_gpu_tensor *tensor) {
+     return arena_backed;
+ }
+ 
+-static int cuda_kv_staged_host_quiesce(void) {
+-    if (!g_kv_staged_ring.copy_stream) return 1;
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    if (!g_kv_staged_ring.copy_stream) return 1;
+-    return cuda_ok(cudaStreamSynchronize(g_kv_staged_ring.copy_stream),
+-                   "staged KV host quiesce");
+-}
++static int cuda_kv_staged_host_quiesce(void) {
++    if (!g_kv_staged_ring.copy_stream) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    if (!g_kv_staged_ring.copy_stream) return 1;
++    const int ok = cuda_ok(
++        cudaStreamSynchronize(g_kv_staged_ring.copy_stream),
++        "staged KV host quiesce");
++    if (ok) {
++        g_kv_staged_ring.append_pending = 0;
++        for (ds4_gpu_tensor *tensor : g_kv_staged_registry.tensors) {
++            if (tensor && tensor->kv_meta &&
++                tensor->kv_meta->phase.load(std::memory_order_acquire) ==
++                    CUDA_KV_TENSOR_DIRTY) {
++                tensor->kv_meta->phase.store(
++                    CUDA_KV_TENSOR_HOST_STAGED,
++                    std::memory_order_release);
++            }
++        }
++    }
++    return ok;
++}
+ 
+ /* Graph tensors are never dereferenced from the host: every access goes through
+  * ds4_gpu_tensor_read/write, which use cudaMemcpy for the device path (the only
+@@ -7377,11 +7508,12 @@ static ds4_gpu_tensor *ds4_gpu_tensor_alloc_backing(uint64_t bytes, int force_ma
+     if (!cuda_ok(err, use_managed ? "tensor alloc" : "tensor alloc (device)")) {
+         free(t);
+         return NULL;
+-    }
+-    t->bytes = bytes;
+-    t->owner = 1;
+-    return t;
+-}
++    }
++    t->bytes = bytes;
++    t->owner = 1;
++    t->backing_managed = use_managed;
++    return t;
++}
+ 
+ extern "C" ds4_gpu_tensor *ds4_gpu_tensor_alloc(uint64_t bytes) {
+     return ds4_gpu_tensor_alloc_backing(bytes, 0);
+@@ -7399,11 +7531,11 @@ static int ds4_gpu_should_use_managed_kv_cache(void) {
+     return cached;
+ }
+ 
+-extern "C" ds4_gpu_tensor *ds4_gpu_tensor_alloc_kv_cache(uint64_t bytes) {
+-    if (ds4_gpu_should_use_staged_kv_cache()) {
+-        ds4_gpu_tensor *t = ds4_gpu_tensor_alloc(bytes);
+-        if (t) cuda_kv_staged_register_tensor(t);
+-        return t;
++extern "C" ds4_gpu_tensor *ds4_gpu_tensor_alloc_kv_cache(uint64_t bytes) {
++    if (ds4_gpu_should_use_staged_kv_cache()) {
++        ds4_gpu_tensor *t = ds4_gpu_tensor_alloc(bytes);
++        if (t) (void)cuda_kv_staged_register_tensor(t);
++        return t;
+     }
+     /* cudaMemAdvise below requires managed backing, so ask for it explicitly
+      * rather than inheriting whatever the graph-tensor default happens to be. */
+@@ -7439,16 +7571,26 @@ extern "C" ds4_gpu_tensor *ds4_gpu_tensor_view(const ds4_gpu_tensor *base, uint6
+     ds4_gpu_tensor *t = (ds4_gpu_tensor *)calloc(1, sizeof(*t));
+     if (!t) return NULL;
+     t->ptr = base->ptr ? (char *)base->ptr + offset : NULL;
+-    t->host_ptr = base->host_ptr ? (char *)base->host_ptr + offset : NULL;
+-    t->bytes = bytes;
+-    t->owner = 0;
+-    return t;
+-}
+-
+-extern "C" void ds4_gpu_tensor_free(ds4_gpu_tensor *tensor) {
+-    if (!tensor) return;
+-    const int arena_host = tensor->owner
+-        ? cuda_kv_staged_unregister_tensor(tensor) : 0;
++    t->host_ptr = base->host_ptr ? (char *)base->host_ptr + offset : NULL;
++    t->bytes = bytes;
++    t->owner = 0;
++    t->kv_meta = base->kv_meta;
++    t->kv_meta_offset = base->kv_meta_offset + offset;
++    t->backing_managed = base->backing_managed;
++    if (t->kv_meta) {
++        t->kv_meta->view_count.fetch_add(1, std::memory_order_acq_rel);
++    }
++    return t;
++}
++
++extern "C" void ds4_gpu_tensor_free(ds4_gpu_tensor *tensor) {
++    if (!tensor) return;
++    if (!tensor->owner && tensor->kv_meta) {
++        tensor->kv_meta->view_count.fetch_sub(1, std::memory_order_acq_rel);
++        tensor->kv_meta = NULL;
++    }
++    const int arena_host = tensor->owner
++        ? cuda_kv_staged_unregister_tensor(tensor) : 0;
+     if (tensor->owner && tensor->host_ptr && !arena_host) {
+         (void)cudaFreeHost(tensor->host_ptr);
+     }
+@@ -7465,8 +7607,16 @@ extern "C" uint64_t ds4_gpu_tensor_bytes(const ds4_gpu_tensor *tensor) {
+ extern "C" int ds4_gpu_tensor_write(ds4_gpu_tensor *tensor, uint64_t offset, const void *data, uint64_t bytes) {
+     if (!tensor || !data || offset > tensor->bytes || bytes > tensor->bytes - offset) return 0;
+     if (tensor->host_ptr) {
+-        if (!cuda_kv_staged_host_quiesce()) return 0;
+-        memcpy((char *)tensor->host_ptr + offset, data, (size_t)bytes);
++        if (!cuda_kv_staged_host_quiesce()) return 0;
++        if (ds4_gpu_persistent_staged_kv_requested() &&
++            tensor->kv_meta &&
++            !cuda_kv_tensor_contains_live(tensor, offset, bytes)) {
++            fprintf(stderr,
++                    "ds4: [kv-phase] event=host-write result=blocked "
++                    "reason=outside-live-frontier\n");
++            return 0;
++        }
++        memcpy((char *)tensor->host_ptr + offset, data, (size_t)bytes);
+         return 1;
+     }
+     return cuda_ok(cudaMemcpy((char *)tensor->ptr + offset, data, (size_t)bytes, cudaMemcpyHostToDevice), "tensor write");
+@@ -7474,9 +7624,17 @@ extern "C" int ds4_gpu_tensor_write(ds4_gpu_tensor *tensor, uint64_t offset, con
+ 
+ extern "C" int ds4_gpu_tensor_read(const ds4_gpu_tensor *tensor, uint64_t offset, void *data, uint64_t bytes) {
+     if (!tensor || !data || offset > tensor->bytes || bytes > tensor->bytes - offset) return 0;
+-    if (tensor->host_ptr) {
+-        if (!cuda_kv_staged_host_quiesce()) return 0;
+-        memcpy(data, (const char *)tensor->host_ptr + offset, (size_t)bytes);
++    if (tensor->host_ptr) {
++        if (!cuda_kv_staged_host_quiesce()) return 0;
++        if (ds4_gpu_persistent_staged_kv_requested() &&
++            tensor->kv_meta &&
++            !cuda_kv_tensor_contains_live(tensor, offset, bytes)) {
++            fprintf(stderr,
++                    "ds4: [kv-phase] event=host-read result=blocked "
++                    "reason=outside-live-frontier\n");
++            return 0;
++        }
++        memcpy(data, (const char *)tensor->host_ptr + offset, (size_t)bytes);
+         return 1;
+     }
+     return cuda_ok(cudaMemcpy(data, (const char *)tensor->ptr + offset, (size_t)bytes, cudaMemcpyDeviceToHost), "tensor read");
+@@ -19601,16 +19759,22 @@ struct cuda_kv_staged_span {
+     uint32_t rows;
+ };
+ 
+-struct cuda_kv_staged_batch {
++struct cuda_kv_staged_batch {
+     std::vector<cuda_kv_staged_span> spans;
+     uint32_t rows;
+     uint32_t logical_base;
+     const float *mask;
+-};
+-
+-static int cuda_tensor_has_staged_host(const ds4_gpu_tensor *tensor) {
+-    return tensor && tensor->host_ptr != NULL;
+-}
++};
++
++static int cuda_tensor_has_staged_host(const ds4_gpu_tensor *tensor) {
++    if (!tensor || !tensor->host_ptr) return 0;
++    if (!tensor->kv_meta) return 1;
++    const int phase = tensor->kv_meta->phase.load(std::memory_order_acquire);
++    return phase == CUDA_KV_TENSOR_HOST_STAGED ||
++           phase == CUDA_KV_TENSOR_DIRTY;
++}
++
++static int cuda_kv_staged_prepare_compute_slot_locked(void);
+ 
+ static int cuda_kv_staged_ring_ensure_locked(uint32_t n_head) {
+     cuda_kv_staged_ring &ring = g_kv_staged_ring;
+@@ -19666,10 +19830,11 @@ static int cuda_kv_staged_ring_ensure_locked(uint32_t n_head) {
+     return 1;
+ }
+ 
+-static int cuda_kv_staged_begin_locked(void) {
+-    cuda_kv_staged_ring &ring = g_kv_staged_ring;
+-    return cuda_ok(cudaEventRecord(ring.producer_ready, 0),
+-                   "staged KV producer event record") &&
++static int cuda_kv_staged_begin_locked(void) {
++    cuda_kv_staged_ring &ring = g_kv_staged_ring;
++    return cuda_kv_staged_prepare_compute_slot_locked() &&
++           cuda_ok(cudaEventRecord(ring.producer_ready, 0),
++                   "staged KV producer event record") &&
+            cuda_ok(cudaStreamWaitEvent(ring.copy_stream,
+                                       ring.producer_ready, 0),
+                    "staged KV producer wait");
+@@ -19686,68 +19851,290 @@ static void cuda_kv_staged_note_sticky_off_locked(const char *reason) {
+     }
+ }
+ 
+-static uint64_t cuda_kv_staged_align_bytes(uint64_t bytes) {
+-    const uint64_t align = DS4_CUDA_KV_STAGED_ARENA_ALIGN;
+-    return (bytes + align - 1u) & ~(align - 1u);
+-}
+-
+-static int cuda_kv_staged_restore_to_device_locked(
+-        const char *reason,
+-        int release_arena) {
+-    cuda_kv_staged_registry &state = g_kv_staged_registry;
+-    cuda_kv_staged_ring &ring = g_kv_staged_ring;
+-    if (!state.host_resident) return 1;
+-    if (!ring.copy_stream) return 0;
+-
+-    int ok = 1;
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        if (!tensor || !tensor->host_ptr) {
+-            ok = 0;
+-            break;
+-        }
+-        if (!tensor->ptr &&
+-            !cuda_ok(cudaMallocManaged(&tensor->ptr, (size_t)tensor->bytes),
+-                     "staged KV restore device alloc")) {
+-            ok = 0;
+-            break;
+-        }
+-    }
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        if (!ok) break;
+-        ok = cuda_ok(cudaMemcpyAsync(tensor->ptr,
+-                                     tensor->host_ptr,
+-                                     (size_t)tensor->bytes,
+-                                     cudaMemcpyHostToDevice,
+-                                     ring.copy_stream),
+-                     "staged KV restore H2D");
+-    }
+-    if (ok) {
+-        ok = cuda_ok(cudaStreamSynchronize(ring.copy_stream),
+-                     "staged KV restore drain");
+-    }
+-    if (!ok) {
+-        return 0;
+-    }
+-
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        tensor->host_ptr = NULL;
+-    }
+-    state.host_resident = 0;
++static uint64_t cuda_kv_staged_align_bytes(uint64_t bytes) {
++    const uint64_t align = DS4_CUDA_KV_STAGED_ARENA_ALIGN;
++    return (bytes + align - 1u) & ~(align - 1u);
++}
++
++static int cuda_kv_staged_no_live_views_locked(const char *operation) {
++    for (ds4_gpu_tensor *tensor : g_kv_staged_registry.tensors) {
++        if (!tensor || !tensor->kv_meta) return 0;
++        const uint32_t views = tensor->kv_meta->view_count.load(
++            std::memory_order_acquire);
++        if (views != 0) {
++            fprintf(stderr,
++                    "ds4: [kv-phase] event=transition result=blocked "
++                    "operation=%s reason=live-view views=%u\n",
++                    operation ? operation : "unknown", views);
++            return 0;
++        }
++    }
++    return 1;
++}
++
++static uint64_t cuda_kv_meta_live_bytes(const cuda_kv_tensor_meta *meta) {
++    if (!meta) return 0;
++    uint64_t bytes = 0;
++    for (uint32_t i = 0; i < meta->live_count; i++) {
++        bytes += meta->live[i].bytes;
++    }
++    return bytes;
++}
++
++static int cuda_kv_meta_set_live_ranges(
++        cuda_kv_tensor_meta *meta,
++        uint64_t capacity,
++        uint64_t offset0,
++        uint64_t bytes0,
++        uint64_t offset1,
++        uint64_t bytes1) {
++    if (!meta) return 0;
++    cuda_kv_live_range input[2] = {
++        {offset0, bytes0},
++        {offset1, bytes1}
++    };
++    cuda_kv_live_range compact[2] = {};
++    uint32_t count = 0;
++    for (uint32_t i = 0; i < 2; i++) {
++        if (input[i].bytes == 0) continue;
++        if (input[i].offset > capacity ||
++            input[i].bytes > capacity - input[i].offset) {
++            return 0;
++        }
++        compact[count++] = input[i];
++    }
++    if (count == 2 && compact[1].offset < compact[0].offset) {
++        std::swap(compact[0], compact[1]);
++    }
++    if (count == 2) {
++        const uint64_t first_end =
++            compact[0].offset + compact[0].bytes;
++        if (compact[1].offset <= first_end) {
++            const uint64_t second_end =
++                compact[1].offset + compact[1].bytes;
++            if (second_end > first_end) {
++                compact[0].bytes = second_end - compact[0].offset;
++            }
++            count = 1;
++        }
++    }
++    meta->live[0] = count > 0 ? compact[0] : cuda_kv_live_range{0, 0};
++    meta->live[1] = count > 1 ? compact[1] : cuda_kv_live_range{0, 0};
++    meta->live_count = count;
++    return 1;
++}
++
++static int cuda_kv_meta_contains(
++        const cuda_kv_tensor_meta *meta,
++        uint64_t offset,
++        uint64_t bytes) {
++    if (!meta) return 0;
++    if (bytes == 0) return 1;
++    if (offset > UINT64_MAX - bytes) return 0;
++    const uint64_t end = offset + bytes;
++    for (uint32_t i = 0; i < meta->live_count; i++) {
++        const uint64_t live_end =
++            meta->live[i].offset + meta->live[i].bytes;
++        if (offset >= meta->live[i].offset && end <= live_end) return 1;
++    }
++    return 0;
++}
++
++static int cuda_kv_tensor_contains_live(
++        const ds4_gpu_tensor *tensor,
++        uint64_t offset,
++        uint64_t bytes) {
++    if (!tensor || !tensor->kv_meta ||
++        offset > tensor->bytes || bytes > tensor->bytes - offset ||
++        tensor->kv_meta_offset > UINT64_MAX - offset) {
++        return 0;
++    }
++    return cuda_kv_meta_contains(
++        tensor->kv_meta, tensor->kv_meta_offset + offset, bytes);
++}
++
++static int cuda_kv_meta_add_live_range(
++        cuda_kv_tensor_meta *meta,
++        uint64_t capacity,
++        uint64_t offset,
++        uint64_t bytes) {
++    if (!meta || offset > capacity || bytes > capacity - offset) return 0;
++    if (bytes == 0 || cuda_kv_meta_contains(meta, offset, bytes)) return 1;
++    cuda_kv_live_range ranges[3] = {};
++    uint32_t count = 0;
++    for (uint32_t i = 0; i < meta->live_count; i++) {
++        ranges[count++] = meta->live[i];
++    }
++    ranges[count++] = {offset, bytes};
++    std::sort(ranges, ranges + count,
++              [](const cuda_kv_live_range &a,
++                 const cuda_kv_live_range &b) {
++                    return a.offset < b.offset;
++              });
++    cuda_kv_live_range merged[3] = {};
++    uint32_t merged_count = 0;
++    for (uint32_t i = 0; i < count; i++) {
++        if (merged_count == 0) {
++            merged[merged_count++] = ranges[i];
++            continue;
++        }
++        cuda_kv_live_range &last = merged[merged_count - 1u];
++        const uint64_t last_end = last.offset + last.bytes;
++        if (ranges[i].offset <= last_end) {
++            const uint64_t range_end = ranges[i].offset + ranges[i].bytes;
++            if (range_end > last_end) last.bytes = range_end - last.offset;
++        } else {
++            merged[merged_count++] = ranges[i];
++        }
++    }
++    if (merged_count > 2) return 0;
++    meta->live[0] = merged[0];
++    meta->live[1] = merged_count > 1
++        ? merged[1] : cuda_kv_live_range{0, 0};
++    meta->live_count = merged_count;
++    return 1;
++}
++
++static int cuda_kv_staged_validate_registry_locked(
++        uint64_t generation,
++        int require_marked) {
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (state.tensors.empty()) return 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (!tensor || !tensor->kv_meta) return 0;
++        cuda_kv_tensor_meta *meta = tensor->kv_meta;
++        if (require_marked && meta->marked_generation != generation) return 0;
++        if (!require_marked && meta->generation != generation) return 0;
++        if (meta->live_count > 2) return 0;
++        for (uint32_t i = 0; i < meta->live_count; i++) {
++            if (meta->live[i].offset > tensor->bytes ||
++                meta->live[i].bytes >
++                    tensor->bytes - meta->live[i].offset) {
++                return 0;
++            }
++        }
++        const int phase = meta->phase.load(std::memory_order_acquire);
++        if (phase == CUDA_KV_TENSOR_ERROR ||
++            phase == CUDA_KV_TENSOR_MIGRATING_TO_HOST ||
++            phase == CUDA_KV_TENSOR_RESTORING) {
++            return 0;
++        }
++    }
++    return 1;
++}
++
++static int cuda_kv_staged_restore_to_device_locked(
++        const char *reason,
++        int release_arena) {
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    cuda_kv_staged_ring &ring = g_kv_staged_ring;
++    if (!state.host_resident) return 1;
++    if (!ring.copy_stream) return 0;
++    if (!cuda_kv_staged_no_live_views_locked("restore")) return 0;
++
++    const int selective = ds4_gpu_persistent_staged_kv_requested();
++    if (selective &&
++        !cuda_kv_staged_validate_registry_locked(
++            state.checkpoint_generation, 0)) {
++        fprintf(stderr,
++                "ds4: [kv-phase] event=restore result=failed "
++                "reason=invalid-live-frontier generation=%llu\n",
++                (unsigned long long)state.checkpoint_generation);
++        return 0;
++    }
++
++    int ok = 1;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (!tensor || !tensor->host_ptr || !tensor->kv_meta) {
++            ok = 0;
++            break;
++        }
++        tensor->kv_meta->phase.store(
++            CUDA_KV_TENSOR_RESTORING, std::memory_order_release);
++        if (!tensor->ptr) {
++            const cudaError_t alloc_err = tensor->kv_meta->backing_managed
++                ? cudaMallocManaged(&tensor->ptr, (size_t)tensor->bytes)
++                : cudaMalloc(&tensor->ptr, (size_t)tensor->bytes);
++            if (!cuda_ok(
++                    alloc_err,
++                    tensor->kv_meta->backing_managed
++                        ? "staged KV restore managed alloc"
++                        : "staged KV restore device alloc")) {
++                ok = 0;
++                break;
++            }
++        }
++    }
++    uint64_t copied_bytes = 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (!ok) break;
++        if (!selective) {
++            ok = cuda_ok(cudaMemcpyAsync(tensor->ptr,
++                                         tensor->host_ptr,
++                                         (size_t)tensor->bytes,
++                                         cudaMemcpyHostToDevice,
++                                         ring.copy_stream),
++                         "staged KV restore H2D");
++            if (ok) copied_bytes += tensor->bytes;
++            continue;
++        }
++        for (uint32_t i = 0; ok && i < tensor->kv_meta->live_count; i++) {
++            const cuda_kv_live_range &live = tensor->kv_meta->live[i];
++            ok = cuda_ok(cudaMemcpyAsync(
++                             (char *)tensor->ptr + live.offset,
++                             (const char *)tensor->host_ptr + live.offset,
++                             (size_t)live.bytes,
++                             cudaMemcpyHostToDevice,
++                             ring.copy_stream),
++                         "staged KV selective restore H2D");
++            if (ok) copied_bytes += live.bytes;
++        }
++    }
++    if (ok) {
++        ok = cuda_ok(cudaStreamSynchronize(ring.copy_stream),
++                     "staged KV restore drain");
++    }
++    if (!ok) {
++        for (ds4_gpu_tensor *tensor : state.tensors) {
++            if (tensor && tensor->kv_meta) {
++                tensor->kv_meta->phase.store(
++                    CUDA_KV_TENSOR_HOST_STAGED,
++                    std::memory_order_release);
++            }
++        }
++        fprintf(stderr,
++                "ds4: [kv-phase] event=restore result=failed "
++                "reason=%s copied_bytes=%llu authority=HOST_STAGED\n",
++                reason ? reason : "unknown",
++                (unsigned long long)copied_bytes);
++        return 0;
++    }
++
++    const uint64_t pinned_bytes = state.host_bytes;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        tensor->host_ptr = NULL;
++        tensor->kv_meta->phase.store(
++            CUDA_KV_TENSOR_DEVICE, std::memory_order_release);
++    }
++    state.host_resident = 0;
+     if (release_arena && state.host_arena) {
+         if (cudaFreeHost(state.host_arena) == cudaSuccess) {
+             state.host_arena = NULL;
+             state.host_bytes = 0;
+         } else {
+-            (void)cudaGetLastError();
+-        }
+-    }
+-    fprintf(stderr,
+-            "ds4: [kv-staged] restored tensors=%llu bytes=%llu reason=%s\n",
+-            (unsigned long long)state.tensors.size(),
+-            (unsigned long long)state.host_bytes,
+-            reason ? reason : "request-end");
+-    return 1;
+-}
++            (void)cudaGetLastError();
++        }
++    }
++    state.restore_h2d_bytes += copied_bytes;
++    fprintf(stderr,
++            "ds4: [kv-staged] restored tensors=%llu bytes=%llu "
++            "pinned_bytes=%llu reason=%s\n",
++            (unsigned long long)state.tensors.size(),
++            (unsigned long long)copied_bytes,
++            (unsigned long long)pinned_bytes,
++            reason ? reason : "request-end");
++    return 1;
++}
+ 
+ static int cuda_kv_staged_disable_and_restore(const char *reason) {
+     std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+@@ -19764,15 +20151,30 @@ static int cuda_kv_staged_restore_to_device(void) {
+         sticky ? "sticky-off retry" : "request-end", sticky);
+ }
+ 
+-static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
++static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
+     if (released_bytes) *released_bytes = 0;
+     if (!ds4_gpu_should_use_staged_kv_cache()) return 1;
+ 
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    cuda_kv_staged_registry &state = g_kv_staged_registry;
+-    cuda_kv_staged_ring &ring = g_kv_staged_ring;
+-    if (state.host_resident || state.tensors.empty()) return 1;
+-    if (!cuda_kv_staged_ring_ensure_locked(64u)) {
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    cuda_kv_staged_ring &ring = g_kv_staged_ring;
++    if (state.host_resident || state.tensors.empty()) return 1;
++    if (!cuda_kv_staged_no_live_views_locked("migrate")) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "migration blocked by live KV view");
++        return 0;
++    }
++    const int selective = ds4_gpu_persistent_staged_kv_requested();
++    if (selective &&
++        (!state.session_generation ||
++         !state.checkpoint_generation ||
++         !cuda_kv_staged_validate_registry_locked(
++             state.checkpoint_generation, 0))) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "missing or invalid persistent live frontier");
++        return 0;
++    }
++    if (!cuda_kv_staged_ring_ensure_locked(64u)) {
+         cuda_kv_staged_note_sticky_off_locked("ring initialization failed");
+         return 0;
+     }
+@@ -19780,8 +20182,8 @@ static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
+     uint64_t arena_bytes = 0;
+     uint64_t device_bytes = 0;
+     for (ds4_gpu_tensor *tensor : state.tensors) {
+-        if (!tensor || !tensor->ptr || tensor->host_ptr ||
+-            tensor->bytes > UINT64_MAX - device_bytes) {
++        if (!tensor || !tensor->ptr || tensor->host_ptr || !tensor->kv_meta ||
++            tensor->bytes > UINT64_MAX - device_bytes) {
+             cuda_kv_staged_note_sticky_off_locked("invalid migration registry");
+             return 0;
+         }
+@@ -19809,27 +20211,52 @@ static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
+         state.host_arena = new_arena;
+         state.host_bytes = arena_bytes;
+     }
+-
+-    int ok = cuda_kv_staged_begin_locked();
+-    uint64_t offset = 0;
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        if (!ok) break;
+-        ok = cuda_ok(cudaMemcpyAsync(
+-                         (char *)state.host_arena + offset,
+-                         tensor->ptr,
+-                         (size_t)tensor->bytes,
+-                         cudaMemcpyDeviceToHost,
+-                         ring.copy_stream),
+-                     "staged KV migration D2H");
+-        offset += cuda_kv_staged_align_bytes(tensor->bytes);
++
++    int ok = cuda_kv_staged_begin_locked();
++    uint64_t offset = 0;
++    uint64_t copied_bytes = 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (!ok) break;
++        tensor->kv_meta->phase.store(
++            CUDA_KV_TENSOR_MIGRATING_TO_HOST,
++            std::memory_order_release);
++        if (!selective) {
++            ok = cuda_ok(cudaMemcpyAsync(
++                             (char *)state.host_arena + offset,
++                             tensor->ptr,
++                             (size_t)tensor->bytes,
++                             cudaMemcpyDeviceToHost,
++                             ring.copy_stream),
++                         "staged KV migration D2H");
++            if (ok) copied_bytes += tensor->bytes;
++        } else {
++            for (uint32_t i = 0; ok && i < tensor->kv_meta->live_count; i++) {
++                const cuda_kv_live_range &live = tensor->kv_meta->live[i];
++                ok = cuda_ok(cudaMemcpyAsync(
++                                 (char *)state.host_arena + offset + live.offset,
++                                 (const char *)tensor->ptr + live.offset,
++                                 (size_t)live.bytes,
++                                 cudaMemcpyDeviceToHost,
++                                 ring.copy_stream),
++                             "staged KV selective migration D2H");
++                if (ok) copied_bytes += live.bytes;
++            }
++        }
++        offset += cuda_kv_staged_align_bytes(tensor->bytes);
+     }
+     if (ring.copy_stream) {
+         const int drained = cuda_ok(cudaStreamSynchronize(ring.copy_stream),
+                                     "staged KV migration drain");
+         ok = ok && drained;
+     }
+-    if (!ok) {
+-        cuda_kv_staged_note_sticky_off_locked("migration copy failed");
++    if (!ok) {
++        for (ds4_gpu_tensor *tensor : state.tensors) {
++            if (tensor && tensor->kv_meta) {
++                tensor->kv_meta->phase.store(
++                    CUDA_KV_TENSOR_DEVICE, std::memory_order_release);
++            }
++        }
++        cuda_kv_staged_note_sticky_off_locked("migration copy failed");
+         if (state.host_arena) {
+             (void)cudaFreeHost(state.host_arena);
+             state.host_arena = NULL;
+@@ -19839,9 +20266,11 @@ static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
+     }
+ 
+     offset = 0;
+-    for (ds4_gpu_tensor *tensor : state.tensors) {
+-        tensor->host_ptr = (char *)state.host_arena + offset;
+-        offset += cuda_kv_staged_align_bytes(tensor->bytes);
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        tensor->host_ptr = (char *)state.host_arena + offset;
++        tensor->kv_meta->phase.store(
++            CUDA_KV_TENSOR_HOST_STAGED, std::memory_order_release);
++        offset += cuda_kv_staged_align_bytes(tensor->bytes);
+     }
+     state.host_resident = 1;
+ 
+@@ -19861,37 +20290,329 @@ static int cuda_kv_staged_migrate_to_host(uint64_t *released_bytes) {
+             "device KV release failed", 1);
+         return 0;
+     }
+-
+-    if (released_bytes) *released_bytes = device_bytes;
+-    fprintf(stderr,
+-            "ds4: [kv-staged] migrated tensors=%llu device_bytes=%llu "
+-            "pinned_bytes=%llu mapped=0\n",
+-            (unsigned long long)state.tensors.size(),
+-            (unsigned long long)device_bytes,
+-            (unsigned long long)state.host_bytes);
+-    return 1;
+-}
+-
+-static int cuda_kv_staged_prepare_compute_slot_locked(void) {
+-    cuda_kv_staged_ring &ring = g_kv_staged_ring;
+-    if (!ring.append_pending) return 1;
++
++    if (released_bytes) *released_bytes = device_bytes;
++    state.migrate_d2h_bytes += copied_bytes;
++    fprintf(stderr,
++            "ds4: [kv-staged] migrated tensors=%llu device_bytes=%llu "
++            "copied_bytes=%llu pinned_bytes=%llu mapped=0 "
++            "generation=%llu tokens=%u\n",
++            (unsigned long long)state.tensors.size(),
++            (unsigned long long)device_bytes,
++            (unsigned long long)copied_bytes,
++            (unsigned long long)state.host_bytes,
++            (unsigned long long)state.checkpoint_generation,
++            state.checkpoint_tokens);
++    return 1;
++}
++
++extern "C" int ds4_gpu_kv_staged_request_begin(
++        uint64_t session_generation,
++        uint64_t checkpoint_generation,
++        uint64_t checkpoint_fingerprint,
++        uint32_t checkpoint_tokens,
++        uint32_t suffix_tokens,
++        int exact_prefix,
++        int suffix_ring_supported) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (!state.host_resident) {
++        fprintf(stderr,
++                "ds4: [kv-phase] event=acquire action=device "
++                "session=%llu generation=%llu tokens=%u suffix=%u\n",
++                (unsigned long long)session_generation,
++                (unsigned long long)checkpoint_generation,
++                checkpoint_tokens,
++                suffix_tokens);
++        return 1;
++    }
++
++    const char *reason = NULL;
++    if (g_kv_staged_sticky_off.load(std::memory_order_acquire)) {
++        reason = "sticky-off";
++    } else if (!exact_prefix) {
++        reason = "prefix-mismatch";
++    } else if (!suffix_ring_supported) {
++        reason = "unsupported-suffix-prefill";
++    } else if (state.session_generation != session_generation) {
++        reason = "session-generation-mismatch";
++    } else if (state.checkpoint_generation != checkpoint_generation) {
++        reason = "checkpoint-generation-mismatch";
++    } else if (state.checkpoint_fingerprint != checkpoint_fingerprint) {
++        reason = "checkpoint-fingerprint-mismatch";
++    } else if (state.checkpoint_tokens != checkpoint_tokens) {
++        reason = "checkpoint-token-count-mismatch";
++    } else if (!cuda_kv_staged_validate_registry_locked(
++                   state.checkpoint_generation, 0)) {
++        reason = "invalid-live-frontier";
++    }
++
++    if (!reason) {
++        state.retain_hits++;
++        fprintf(stderr,
++                "ds4: [kv-phase] event=acquire action=reuse-staged "
++                "state=HOST_STAGED session=%llu generation=%llu "
++                "tokens=%u suffix=%u fallback=none\n",
++                (unsigned long long)session_generation,
++                (unsigned long long)checkpoint_generation,
++                checkpoint_tokens,
++                suffix_tokens);
++        return 1;
++    }
++
++    state.exact_fallbacks++;
++    fprintf(stderr,
++            "ds4: [kv-phase] event=fallback action=full-live-restore "
++            "reason=%s session=%llu expected_session=%llu "
++            "generation=%llu expected_generation=%llu suffix=%u\n",
++            reason,
++            (unsigned long long)session_generation,
++            (unsigned long long)state.session_generation,
++            (unsigned long long)checkpoint_generation,
++            (unsigned long long)state.checkpoint_generation,
++            suffix_tokens);
++    const int restored =
++        cuda_kv_staged_restore_to_device_locked(reason, 0);
++    if (!restored) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "planned persistent restore failed");
++    }
++    return restored;
++}
++
++extern "C" int ds4_gpu_kv_staged_frontier_begin(
++        uint64_t session_generation,
++        uint64_t checkpoint_generation,
++        uint64_t checkpoint_fingerprint,
++        uint32_t checkpoint_tokens) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (g_kv_staged_sticky_off.load(std::memory_order_acquire)) {
++        if (state.host_resident) {
++            (void)cuda_kv_staged_restore_to_device_locked(
++                "sticky-off frontier begin", 1);
++        }
++        return 0;
++    }
++    if (state.frontier_open || !session_generation ||
++        !checkpoint_generation || state.tensors.empty()) {
++        fprintf(stderr,
++                "ds4: [kv-phase] event=frontier-begin result=failed "
++                "reason=invalid-generation-or-state\n");
++        return 0;
++    }
++    if (state.host_resident && g_kv_staged_ring.copy_stream) {
++        if (!cuda_ok(
++                cudaStreamSynchronize(g_kv_staged_ring.copy_stream),
++                "persistent staged frontier drain")) {
++            cuda_kv_staged_note_sticky_off_locked(
++                "frontier drain failed");
++            (void)cuda_kv_staged_restore_to_device_locked(
++                "frontier drain failed", 1);
++            return 0;
++        }
++        g_kv_staged_ring.append_pending = 0;
++        for (ds4_gpu_tensor *tensor : state.tensors) {
++            if (tensor && tensor->kv_meta) {
++                tensor->kv_meta->phase.store(
++                    CUDA_KV_TENSOR_HOST_STAGED,
++                    std::memory_order_release);
++            }
++        }
++    }
++    if (!cuda_kv_staged_no_live_views_locked("frontier-begin")) {
++        return 0;
++    }
++    state.pending_session_generation = session_generation;
++    state.pending_checkpoint_generation = checkpoint_generation;
++    state.pending_checkpoint_fingerprint = checkpoint_fingerprint;
++    state.pending_checkpoint_tokens = checkpoint_tokens;
++    state.frontier_open = 1;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (tensor && tensor->kv_meta) {
++            tensor->kv_meta->marked_generation = 0;
++        }
++    }
++    return 1;
++}
++
++extern "C" int ds4_gpu_kv_staged_frontier_tensor(
++        ds4_gpu_tensor *tensor,
++        uint64_t offset0,
++        uint64_t bytes0,
++        uint64_t offset1,
++        uint64_t bytes1) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (!state.frontier_open || !tensor || !tensor->owner ||
++        !tensor->kv_meta || tensor->kv_meta_offset != 0 ||
++        !cuda_kv_meta_set_live_ranges(
++            tensor->kv_meta, tensor->bytes,
++            offset0, bytes0, offset1, bytes1)) {
++        fprintf(stderr,
++                "ds4: [kv-phase] event=frontier-tensor result=failed "
++                "reason=invalid-range\n");
++        return 0;
++    }
++    tensor->kv_meta->marked_generation =
++        state.pending_checkpoint_generation;
++    return 1;
++}
++
++extern "C" int ds4_gpu_kv_staged_frontier_commit(void) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (!state.frontier_open ||
++        !cuda_kv_staged_validate_registry_locked(
++            state.pending_checkpoint_generation, 1)) {
++        state.frontier_open = 0;
++        cuda_kv_staged_note_sticky_off_locked(
++            "frontier commit validation failed");
++        if (state.host_resident) {
++            (void)cuda_kv_staged_restore_to_device_locked(
++                "frontier commit validation failed", 1);
++        }
++        return 0;
++    }
++
++    uint64_t live_bytes = 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        tensor->kv_meta->generation =
++            state.pending_checkpoint_generation;
++        live_bytes += cuda_kv_meta_live_bytes(tensor->kv_meta);
++    }
++    state.session_generation = state.pending_session_generation;
++    state.checkpoint_generation = state.pending_checkpoint_generation;
++    state.checkpoint_fingerprint = state.pending_checkpoint_fingerprint;
++    state.checkpoint_tokens = state.pending_checkpoint_tokens;
++    state.frontier_open = 0;
++    fprintf(stderr,
++            "ds4: [kv-phase] event=frontier-commit result=ok "
++            "session=%llu generation=%llu tokens=%u tensors=%llu "
++            "live_bytes=%llu authority=%s\n",
++            (unsigned long long)state.session_generation,
++            (unsigned long long)state.checkpoint_generation,
++            state.checkpoint_tokens,
++            (unsigned long long)state.tensors.size(),
++            (unsigned long long)live_bytes,
++            state.host_resident ? "HOST_STAGED" : "DEVICE");
++    return 1;
++}
++
++extern "C" int ds4_gpu_kv_staged_request_commit(void) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    if (!state.host_resident) return 1;
++    if (state.frontier_open ||
++        !g_kv_staged_ring.copy_stream ||
++        (g_kv_staged_ring.append_pending &&
++         !cuda_ok(
++             cudaStreamSynchronize(g_kv_staged_ring.copy_stream),
++             "persistent staged request commit drain"))) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "request commit drain failed");
++        (void)cuda_kv_staged_restore_to_device_locked(
++            "request commit drain failed", 1);
++        return 0;
++    }
++    g_kv_staged_ring.append_pending = 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (tensor && tensor->kv_meta) {
++            tensor->kv_meta->phase.store(
++                CUDA_KV_TENSOR_HOST_STAGED,
++                std::memory_order_release);
++        }
++    }
++    if (!cuda_kv_staged_validate_registry_locked(
++            state.checkpoint_generation, 0)) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "request commit validation failed");
++        (void)cuda_kv_staged_restore_to_device_locked(
++            "request commit validation failed", 1);
++        return 0;
++    }
++    fprintf(stderr,
++            "ds4: [kv-phase] event=release action=retain-staged "
++            "state=HOST_STAGED session=%llu generation=%llu tokens=%u "
++            "request_end_restore_count=0 request_end_restore_bytes=0 "
++            "migrate_d2h_bytes=%llu append_d2h_bytes=%llu "
++            "restore_h2d_bytes=%llu fallback_count=%llu\n",
++            (unsigned long long)state.session_generation,
++            (unsigned long long)state.checkpoint_generation,
++            state.checkpoint_tokens,
++            (unsigned long long)state.migrate_d2h_bytes,
++            (unsigned long long)state.append_d2h_bytes,
++            (unsigned long long)state.restore_h2d_bytes,
++            (unsigned long long)state.exact_fallbacks);
++    return 1;
++}
++
++extern "C" int ds4_gpu_kv_staged_invalidate(
++        uint64_t session_generation,
++        const char *reason) {
++    if (!ds4_gpu_persistent_staged_kv_requested()) return 1;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    cuda_kv_staged_registry &state = g_kv_staged_registry;
++    const int restored = !state.host_resident ||
++        cuda_kv_staged_restore_to_device_locked(
++            reason ? reason : "session-invalidated", 0);
++    if (!restored) {
++        cuda_kv_staged_note_sticky_off_locked(
++            "session invalidation restore failed");
++        return 0;
++    }
++    fprintf(stderr,
++            "ds4: [kv-phase] event=invalidate result=ok "
++            "session=%llu reason=%s authority=DEVICE\n",
++            (unsigned long long)session_generation,
++            reason ? reason : "session-invalidated");
++    state.session_generation = 0;
++    state.checkpoint_generation = 0;
++    state.checkpoint_fingerprint = 0;
++    state.checkpoint_tokens = 0;
++    for (ds4_gpu_tensor *tensor : state.tensors) {
++        if (tensor && tensor->kv_meta) {
++            tensor->kv_meta->generation = 0;
++            tensor->kv_meta->marked_generation = 0;
++        }
++    }
++    return 1;
++}
++
++static int cuda_kv_staged_prepare_compute_slot_locked(void) {
++    cuda_kv_staged_ring &ring = g_kv_staged_ring;
++    if (!ring.append_pending) return 1;
+     if (!cuda_ok(cudaStreamWaitEvent(0, ring.append_done, 0),
+                  "staged KV append completion wait")) {
+         return 0;
+-    }
+-    ring.append_pending = 0;
+-    return 1;
+-}
++    }
++    ring.append_pending = 0;
++    for (ds4_gpu_tensor *tensor : g_kv_staged_registry.tensors) {
++        if (tensor && tensor->kv_meta &&
++            tensor->kv_meta->phase.load(std::memory_order_acquire) ==
++                CUDA_KV_TENSOR_DIRTY) {
++            tensor->kv_meta->phase.store(
++                CUDA_KV_TENSOR_HOST_STAGED,
++                std::memory_order_release);
++        }
++    }
++    return 1;
++}
+ 
+ static int cuda_kv_staged_append_device_locked(
+         ds4_gpu_tensor *cache,
+         uint64_t dst_offset,
+         const void *device_src,
+         uint64_t bytes) {
+-    cuda_kv_staged_ring &ring = g_kv_staged_ring;
+-    if (!cache || !cache->host_ptr || !device_src ||
+-        dst_offset > cache->bytes || bytes > cache->bytes - dst_offset) {
+-        return 0;
++    cuda_kv_staged_ring &ring = g_kv_staged_ring;
++    if (!cache || !cache->host_ptr || !cache->kv_meta || !device_src ||
++        dst_offset > cache->bytes || bytes > cache->bytes - dst_offset) {
++        return 0;
+     }
+     if (bytes == 0) return 1;
+     if (device_src == ring.slot[0] &&
+@@ -19935,12 +20656,22 @@ static int cuda_kv_staged_append_device_locked(
+                      "staged KV append done event record")) {
+             return 0;
+         }
+-        ring.append_pending = 1;
+-        ring.slot_used[0] = 0;
+-        done += chunk;
+-    }
+-    return 1;
+-}
++        ring.append_pending = 1;
++        ring.slot_used[0] = 0;
++        done += chunk;
++    }
++    if (!cuda_kv_meta_add_live_range(
++            cache->kv_meta,
++            cache->kv_meta_offset + cache->bytes,
++            cache->kv_meta_offset + dst_offset,
++            bytes)) {
++        return 0;
++    }
++    cache->kv_meta->phase.store(
++        CUDA_KV_TENSOR_DIRTY, std::memory_order_release);
++    g_kv_staged_registry.append_d2h_bytes += bytes;
++    return 1;
++}
+ 
+ static int cuda_kv_staged_append_device(
+         ds4_gpu_tensor *cache,
+@@ -20223,13 +20954,28 @@ static int cuda_kv_staged_attention_launch(
+             "unsupported staged attention layout");
+         return 0;
+     }
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    if (!cuda_kv_staged_ring_ensure_locked(n_head)) {
+-        return cuda_kv_staged_abort_locked("ring ensure failed");
+-    }
+-
+-    const uint64_t row_bytes = (uint64_t)head_dim * sizeof(float);
+-    const uint32_t row_capacity =
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    if (!cuda_kv_staged_ring_ensure_locked(n_head)) {
++        return cuda_kv_staged_abort_locked("ring ensure failed");
++    }
++
++    const uint64_t row_bytes = (uint64_t)head_dim * sizeof(float);
++    const uint32_t first_raw =
++        n_raw < raw_cap - raw_start ? n_raw : raw_cap - raw_start;
++    if (ds4_gpu_persistent_staged_kv_requested() &&
++        (!cuda_kv_tensor_contains_live(
++             raw_kv, (uint64_t)raw_start * row_bytes,
++             (uint64_t)first_raw * row_bytes) ||
++         (first_raw < n_raw &&
++          !cuda_kv_tensor_contains_live(
++              raw_kv, 0, (uint64_t)(n_raw - first_raw) * row_bytes)) ||
++         (n_comp != 0 &&
++          !cuda_kv_tensor_contains_live(
++              comp_kv, 0, (uint64_t)n_comp * row_bytes)))) {
++        return cuda_kv_staged_abort_locked(
++            "staged attention requested outside live frontier");
++    }
++    const uint32_t row_capacity =
+         (uint32_t)(DS4_CUDA_KV_STAGED_RING_BYTES / row_bytes);
+     std::vector<cuda_kv_staged_batch> batches;
+     batches.reserve(2u + (n_comp + row_capacity - 1u) / row_capacity);
+@@ -20260,14 +21006,20 @@ static int cuda_kv_staged_indexer_launch(
+         uint32_t ratio,
+         float scale,
+         uint32_t causal) {
+-    if (!cuda_tensor_has_staged_host(index_comp)) return 0;
+-    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
+-    if (!cuda_kv_staged_ring_ensure_locked(64u)) {
+-        return cuda_kv_staged_abort_locked("indexer ring ensure failed");
+-    }
+-
+-    const uint64_t row_bytes = 128u * sizeof(float);
+-    const uint32_t row_capacity =
++    if (!cuda_tensor_has_staged_host(index_comp)) return 0;
++    std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++    const uint64_t row_bytes = 128u * sizeof(float);
++    if (ds4_gpu_persistent_staged_kv_requested() &&
++        !cuda_kv_tensor_contains_live(
++            index_comp, 0, (uint64_t)n_comp * row_bytes)) {
++        return cuda_kv_staged_abort_locked(
++            "staged indexer requested outside live frontier");
++    }
++    if (!cuda_kv_staged_ring_ensure_locked(64u)) {
++        return cuda_kv_staged_abort_locked("indexer ring ensure failed");
++    }
++
++    const uint32_t row_capacity =
+         (uint32_t)(DS4_CUDA_KV_STAGED_RING_BYTES / row_bytes);
+     std::vector<cuda_kv_staged_batch> batches;
+     batches.reserve((n_comp + row_capacity - 1u) / row_capacity);
+@@ -27910,10 +28662,11 @@ static void cuda_vram_ledger_log(
+             mem_err == cudaSuccess ? "ok" : cudaGetErrorString(mem_err));
+ }
+ 
+-extern "C" void ds4_gpu_vram_ledger_decode_start(void) {
+-    uint64_t released_bytes = 0;
+-    uint64_t staged_released_bytes = 0;
+-    (void)cuda_kv_staged_migrate_to_host(&staged_released_bytes);
++extern "C" void ds4_gpu_vram_ledger_decode_start(void) {
++    uint64_t released_bytes = 0;
++    uint64_t staged_released_bytes = 0;
++    const int staged_ok =
++        cuda_kv_staged_migrate_to_host(&staged_released_bytes);
+     const char *release_status = "disabled";
+     const char *release = getenv("DS4_CUDA_RELEASE_PREFILL_SCRATCH");
+     if (release && strcmp(release, "1") == 0) {
+@@ -27948,9 +28701,9 @@ extern "C" void ds4_gpu_vram_ledger_decode_start(void) {
+             }
+         }
+     }
+-    cuda_vram_ledger_log("decode-start",
+-                         released_bytes + staged_released_bytes,
+-                         release_status);
++    cuda_vram_ledger_log("decode-start",
++                         released_bytes + staged_released_bytes,
++                         staged_ok ? release_status : "kv-migration-error");
+     ds4_gpu_alloc_trace_summary("decode-start");
+ 
+     if (cuda_moe_expert_cache_grow_requested()) {
+@@ -28001,9 +28754,17 @@ extern "C" void ds4_gpu_vram_ledger_request_end(void) {
+     if (cuda_moe_expert_cache_grow_requested()) {
+         g_moe_expert_cache_decode_started = 0;
+     }
+-    const int restored = cuda_kv_staged_restore_to_device();
+-    cuda_vram_ledger_log("request-end", 0,
+-                         restored ? "n/a" : "kv-restore-pending");
++    int retain = 0;
++    if (ds4_gpu_persistent_staged_kv_requested()) {
++        std::lock_guard<std::mutex> lock(g_kv_staged_ring_mutex);
++        retain = g_kv_staged_registry.host_resident &&
++            !g_kv_staged_sticky_off.load(std::memory_order_acquire);
++    }
++    const int restored = retain ? 1 : cuda_kv_staged_restore_to_device();
++    cuda_vram_ledger_log(
++        "request-end", 0,
++        retain ? "kv-retained" :
++        restored ? "n/a" : "kv-restore-pending");
+     ds4_gpu_alloc_trace_summary("request-end");
+ }
+ 
+diff --git a/ds4_gpu.h b/ds4_gpu.h
+index 26bf820..35b2ad1 100644
+--- a/ds4_gpu.h
++++ b/ds4_gpu.h
+@@ -70,9 +70,44 @@ void ds4_gpu_decode_trace_logits_end(
+     uint64_t position, uint64_t bytes, int success);
+ void ds4_gpu_decode_trace_token_end(uint64_t position, int success);
+ 
++/*
++ * Persistent staged-KV lifecycle (strict opt-in).
++ *
++ * DS4_CUDA_KV_PERSISTENT_STAGED=1 is meaningful only together with
++ * DS4_CUDA_KV_STAGED_RING=1.  The session publishes an exact token/checkpoint
++ * generation and exact live byte ranges before a cache may become
++ * host-authoritative.  A matching short suffix may consume that state through
++ * the existing staged ring; every mismatch or unsupported suffix restores the
++ * complete live frontier to device before prefill starts.
++ */
++int ds4_gpu_kv_staged_request_begin(
++    uint64_t session_generation,
++    uint64_t checkpoint_generation,
++    uint64_t checkpoint_fingerprint,
++    uint32_t checkpoint_tokens,
++    uint32_t suffix_tokens,
++    int exact_prefix,
++    int suffix_ring_supported);
++int ds4_gpu_kv_staged_frontier_begin(
++    uint64_t session_generation,
++    uint64_t checkpoint_generation,
++    uint64_t checkpoint_fingerprint,
++    uint32_t checkpoint_tokens);
++int ds4_gpu_kv_staged_frontier_tensor(
++    ds4_gpu_tensor *tensor,
++    uint64_t offset0,
++    uint64_t bytes0,
++    uint64_t offset1,
++    uint64_t bytes1);
++int ds4_gpu_kv_staged_frontier_commit(void);
++int ds4_gpu_kv_staged_request_commit(void);
++int ds4_gpu_kv_staged_invalidate(
++    uint64_t session_generation,
++    const char *reason);
++
+ /* Process-global CUDA VRAM accounting at generation boundaries. */
+-void ds4_gpu_vram_ledger_decode_start(void);
+-void ds4_gpu_vram_ledger_request_end(void);
++void ds4_gpu_vram_ledger_decode_start(void);
++void ds4_gpu_vram_ledger_request_end(void);
+ 
+ /* Allocation tracer (diagnostic, enabled by DS4_CUDA_ALLOC_TRACE=1).  The mark
+  * prints one cudaMemGetInfo snapshot next to the tracked device+managed total,
+diff --git a/tests/test_kv_phase_lifecycle_static.ps1 b/tests/test_kv_phase_lifecycle_static.ps1
+new file mode 100644
+index 0000000..6ea6f2f
+--- /dev/null
++++ b/tests/test_kv_phase_lifecycle_static.ps1
+@@ -0,0 +1,140 @@
++param(
++    [string]$SourceRoot = (Split-Path -Parent $PSScriptRoot)
++)
++
++$ErrorActionPreference = 'Stop'
++
++function Assert-True {
++    param([bool]$Condition, [string]$Message)
++    if (-not $Condition) {
++        throw "KV phase lifecycle static contract failed: $Message"
++    }
++}
++
++function Assert-Contains {
++    param([string]$Text, [string]$Needle, [string]$Message)
++    Assert-True ($Text.Contains($Needle)) $Message
++}
++
++$corePath = Join-Path $SourceRoot 'ds4.c'
++$cudaPath = Join-Path $SourceRoot 'ds4_cuda.cu'
++$headerPath = Join-Path $SourceRoot 'ds4_gpu.h'
++
++$core = [IO.File]::ReadAllText($corePath)
++$cuda = [IO.File]::ReadAllText($cudaPath)
++$header = [IO.File]::ReadAllText($headerPath)
++
++# The candidate is a separate strict opt-in. Exact string comparison makes
++# unset, "0", and malformed values use the frozen P1 request-end behavior.
++Assert-Contains $core 'DS4_CUDA_KV_PERSISTENT_STAGED' 'missing session-side opt-in'
++Assert-Contains $cuda 'strcmp(env, "1") == 0' 'opt-in is not exact-value gated'
++Assert-Contains $cuda 'DS4_CUDA_KV_STAGED_RING-not-enabled' 'ring dependency is not explicit'
++Assert-Contains $core 'DS4_CUDA_KV_PHASE_VALIDATE' 'exact validation opt-in is missing'
++
++# Per-tensor state and generation must be explicit and acquire/release
++# published. The state list intentionally distinguishes motion from authority.
++foreach ($state in @(
++    'CUDA_KV_TENSOR_DEVICE',
++    'CUDA_KV_TENSOR_MIGRATING_TO_HOST',
++    'CUDA_KV_TENSOR_HOST_STAGED',
++    'CUDA_KV_TENSOR_RESTORING',
++    'CUDA_KV_TENSOR_DIRTY',
++    'CUDA_KV_TENSOR_ERROR'
++)) {
++    Assert-Contains $cuda $state "missing tensor state $state"
++}
++Assert-Contains $cuda 'std::memory_order_release' 'state publication lacks release ordering'
++Assert-Contains $cuda 'std::memory_order_acquire' 'state acquisition lacks acquire ordering'
++Assert-Contains $cuda 'marked_generation' 'frontier lacks per-tensor generation'
++Assert-Contains $cuda 'checkpoint_fingerprint' 'checkpoint fingerprint is absent'
++Assert-Contains $cuda 'checkpoint-token-count-mismatch' 'token frontier mismatch is not fail-closed'
++
++# The graph has exactly three KV allocation families. Runtime expands these
++# loops to 43 raw + 41 attention compressed + 21 indexer compressed = 105.
++$kvAllocCalls = [regex]::Matches(
++    $core,
++    'ds4_gpu_tensor_alloc_kv_cache\s*\('
++).Count
++Assert-True ($kvAllocCalls -eq 3) "expected 3 KV allocation families, found $kvAllocCalls"
++
++# Raw state is a circular live window (at most two spans); compressed and
++# indexer state are contiguous prefixes based on the runtime row frontiers.
++Assert-Contains $core 'session_raw_live_rows' 'raw live-row authority is not reused'
++Assert-Contains $core 'raw_live - raw_rows0' 'raw wrap is not represented by a second span'
++Assert-Contains $core 'g->layer_n_comp[il] * raw_row_bytes' 'attention live frontier uses capacity'
++Assert-Contains $core 'g->layer_n_index_comp[il] * index_row_bytes' 'indexer live frontier uses capacity'
++Assert-Contains $cuda 'cuda_kv_meta_contains' 'staged reads do not check live spans'
++Assert-Contains $cuda 'outside live frontier' 'invalid live-range reads are not observable'
++
++# Persistent migration and exact restore copy only published live ranges,
++# preserve the original allocation kind, and reject transitions with a live
++# non-owning view.
++Assert-Contains $cuda 'staged KV selective migration D2H' 'selective migration is missing'
++Assert-Contains $cuda 'staged KV selective restore H2D' 'selective restore is missing'
++Assert-Contains $cuda 'meta->backing_managed' 'restore does not preserve allocation kind'
++Assert-Contains $cuda 'view_count' 'KV view lifetime is not tracked'
++Assert-Contains $cuda 'migration blocked by live KV view' 'migration view guard is missing'
++Assert-Contains $cuda 'cuda_kv_staged_no_live_views_locked("restore")' 'restore view guard is missing'
++
++# The lifecycle acquire must run before the exact-prefix branch can enter
++# resumed batched prefill and create transient cache views. Unsupported
++# multi-token suffixes therefore restore at the boundary, not in a leaf.
++$syncStart = $core.IndexOf('int ds4_session_sync(')
++$acquire = $core.IndexOf('ds4_gpu_kv_staged_request_begin(', $syncStart)
++$prefixBranch = $core.IndexOf('if (exact_checkpoint_prefix)', $syncStart)
++$batchedPrefill = $core.IndexOf('metal_graph_prefill_chunked_range(', $syncStart)
++Assert-True ($syncStart -ge 0 -and $acquire -gt $syncStart) 'session acquire is absent'
++Assert-True ($acquire -lt $prefixBranch) 'acquire occurs after prefix branch'
++Assert-True ($acquire -lt $batchedPrefill) 'acquire occurs after batched suffix entry'
++Assert-Contains $cuda 'unsupported-suffix-prefill' 'planned batched-suffix fallback is missing'
++Assert-True (
++    $core.IndexOf('ds4_gpu_dynamic_arena_request_begin()', $syncStart) -lt
++    $acquire
++) 'frozen P0.1 request-boundary quiesce ordering changed'
++
++# Request end retains only after an exact frontier commit. Every other lineage
++# change has a named restore/invalidate path and every fallback is logged.
++Assert-Contains $core 'ds4_gpu_kv_staged_request_commit' 'request-end staged commit is missing'
++Assert-Contains $cuda 'event=release action=retain-staged' 'retain transition telemetry is missing'
++Assert-Contains $cuda 'request_end_restore_count=0 request_end_restore_bytes=0' 'round-trip counters are missing'
++foreach ($reason in @(
++    'prefix-mismatch',
++    'session-generation-mismatch',
++    'checkpoint-generation-mismatch',
++    'unsupported-suffix-prefill',
++    'payload-load',
++    'session-invalidated',
++    'session-rewind',
++    'session-free'
++)) {
++    Assert-True (
++        $core.Contains($reason) -or $cuda.Contains($reason)
++    ) "missing fallback/invalidation reason $reason"
++}
++Assert-Contains $cuda 'event=fallback action=full-live-restore' 'fallback can be silent'
++
++# Validation-only checksums run at the request boundary, hash the logits stream
++# already present on the host, and read only the same exact live KV ranges.
++Assert-Contains $core 'logits_fnv1a64=%016llx' 'exact logits checksum telemetry is missing'
++Assert-Contains $core 'kv_live_fnv1a64=%016llx' 'exact live-KV checksum telemetry is missing'
++Assert-Contains $core 'scope=live-ranges-only' 'KV checksum scope is ambiguous'
++Assert-Contains $core 'ds4_session_hash_cuda_kv_range' 'range-scoped KV checksum helper is missing'
++Assert-Contains $core 's->kv_validation_logits_samples++' 'logits samples are not accumulated'
++
++# Property check for the exact raw-span formula used by ds4.c.
++foreach ($case in @(
++    @{ Tokens = 1; Window = 128; Cap = 378; Expected = 1 },
++    @{ Tokens = 127; Window = 128; Cap = 378; Expected = 127 },
++    @{ Tokens = 128; Window = 128; Cap = 378; Expected = 128 },
++    @{ Tokens = 379; Window = 128; Cap = 378; Expected = 128 },
++    @{ Tokens = 150000; Window = 8192; Cap = 8192; Expected = 8192 }
++)) {
++    $live = [Math]::Min($case.Tokens, [Math]::Min($case.Window, $case.Cap))
++    $start = ($case.Tokens - $live) % $case.Cap
++    $rows0 = [Math]::Min($live, $case.Cap - $start)
++    $rows1 = $live - $rows0
++    Assert-True (($rows0 + $rows1) -eq $case.Expected) "raw span coverage failed for $($case.Tokens)"
++    Assert-True ($rows0 -ge 0 -and $rows1 -ge 0) "negative raw span for $($case.Tokens)"
++}
++
++Write-Output 'PASS test_kv_phase_lifecycle_static'

@@ -1,0 +1,63 @@
+{
+  "schema": "ds4.kv_phase.static_receipt.v1",
+  "status": "READY_FOR_RUNTIME_SLOT",
+  "runtime_slot_used": false,
+  "ds4_process_started": false,
+  "benchmark_started": false,
+  "nsight_started": false,
+  "shared_frozen_source_modified": false,
+  "ledger_written": false,
+  "frozen": {
+    "ds4.c_sha256": "43B2ECE184916AA2731A299BE420A5133248BE24B3F17BCFB396D20B97CA1A2A",
+    "ds4_cuda.cu_sha256": "6D6BE460609C74EEEA60B43F6D62DB812F722D4A270B45797EB6A17909446257",
+    "ds4_gpu.h_sha256": "52AC84C2F10AE1D1EDB3032AFCFBDB1AAE000CDF148D98CCDAC42AA0739223AB",
+    "ds4_server.exe_sha256": "185E46A057CE6BFFA7605638DDC5A3994FAFF3DBC48A3F7FF9B0B6617F3B9717"
+  },
+  "candidate": {
+    "ds4.c_sha256": "BB24C86FFAB9665B4406113363A08D9144FE68C595C8C604EFC1E64FBF3D73D8",
+    "ds4_cuda.cu_sha256": "F64290214FCBF94D1C852386852143012D7DB8E713C7334654A8E17616129C8E",
+    "ds4_gpu.h_sha256": "535CF8AB13FD57933129FE1E7A247C5D0B9F062A4DD51EEBEC9BAF453FFBB4D0",
+    "test_kv_phase_lifecycle_static.ps1_sha256": "DD386837CF5DE6809DA39DAE2961F41D746CAD933ACBDCAA0747C76080F18E7F",
+    "ds4_server.exe_sha256": "82FA2E60EC778A058E079C794E6D147D370539A502870640ABDC6AE6DD603EDE",
+    "ds4_server.exe_bytes": 12467200
+  },
+  "patch": {
+    "file": "ds4_kv_phase_aware.patch",
+    "sha256": "C30A274820C356AFF96089E05823B7A46714C5339E1FF6B7306FA58617588BFC",
+    "git_apply_check": "PASS",
+    "post_apply_exact_hash_match": true
+  },
+  "build": {
+    "configuration": "Release",
+    "generator": "Ninja",
+    "msvc": "19.44.35227",
+    "cuda": "12.6.85",
+    "cuda_architectures": "80;86;89;90",
+    "targets": [
+      "ds4_server",
+      "ds4_bake_test"
+    ],
+    "result": "PASS",
+    "ctest": "1/1 PASS"
+  },
+  "static_tests": {
+    "source_contracts": "8/8 PASS",
+    "harness_contract": "PASS",
+    "validate_only_cases": "4/4 PASS",
+    "validate_only_ds4_process_before": 0,
+    "validate_only_ds4_process_after": 0
+  },
+  "harness": {
+    "manifest_47_sha256": "CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609",
+    "run_kv_phase_matrix.ps1_sha256": "0EC9E0B4BEDF24F3D227BB448EE8C109C5605A7A6BB9860333A7BDB6E39A8137",
+    "compare_kv_phase_runs.ps1_sha256": "2D189323BD8C630CA1E4778093B063FD59B382AB63EF41498B4A19D03EC69727",
+    "test_kv_phase_harness_static.ps1_sha256": "9C0D89B2139BA33A0868C490A9811F8EEF633682E4589479884E15664ED8C6B2",
+    "runtime_monitor.ps1_sha256": "5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858",
+    "extract_nsys_process_streams.py_sha256": "9507A44FFD06FEC2FDC3DC57DE37AA0560A73512A58568E548DB6C24FD0176D3"
+  },
+  "ledger_postflight": {
+    "sha256": "AFD4897FBAE41906AA98BD14F0324F7F2A7E3A4C4F115A9BFF20D361263FF18A",
+    "last_write_local": "2026-07-26T18:06:41+02:00",
+    "note": "read-only in this task; shared file changed externally during the work"
+  }
+}
