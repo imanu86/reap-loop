@@ -12337,7 +12337,7 @@ source_runner_binary_hashes_unchanged=true
 correctness/engagement PASS sul P0.1; performance neutra; beneficio memoria
 modesto e phase-dependent; nessuna promozione automatica; READY_FOR_RUN_SLOT=no**.
 
-## AC) P1 sampled trace v2 + PAGEABLE=10 - correctness PASS, performance HARD FAIL (2026-07-26)
+## AC) P1 sampled trace v2 + PAGEABLE=10 - correctness PASS; trace interaction HARD FAIL; PAGEABLE signal OPEN (2026-07-26)
 
 Estensione autorizzata del P1 PAGEABLE=0 gia' congelato. Sono stati eseguiti
 esattamente due nuovi run fisici, prima trace OFF10 e poi sampled10, senza
@@ -12352,7 +12352,8 @@ La differenza OFF10/sampled10 resta esclusivamente l'overlay trace. Il
 verdetto separa gate runtime/correctness e gate di performance:
 
 ```text
-classification=VALID_AB_CORRECTNESS_PASS_PERFORMANCE_HARD_FAIL
+classification_trace_ab=VALID_AB_CORRECTNESS_PASS_PERFORMANCE_HARD_FAIL
+classification_pageable_capacity=PRELIMINARY_POSITIVE_SIGNAL_REPLICATION_REQUIRED
 OFF10_runner_gate_pass=true
 sampled10_runner_gate_pass=true
 output_exact=PASS
@@ -12372,9 +12373,14 @@ PAGEABLE10_promoted=no
 baseline=PAGEABLE0
 ```
 
-Il confronto e' valido come hard failure del gate osservato. Con una sola
-coppia sequenziale non dimostra causalita' isolata del tracer sullo stato
-runtime; nessuna replica extra e' stata aggiunta.
+Il confronto e' valido come hard failure dell'interazione osservata fra
+sampled tracing e PAGEABLE10. Con una sola coppia sequenziale non dimostra
+causalita' isolata del tracer sullo stato runtime; nessuna replica extra e'
+stata aggiunta. Questo hard failure non va attribuito alla sola capacita'
+pageable: nel confronto trace-OFF, PAGEABLE10 e' piu' veloce di PAGEABLE0 del
+`+9.111893%` sulla metrica primaria. Per la regola sperimentale vigente il
+delta resta sotto la soglia del 10% e non e' ancora promuovibile, ma e' un
+segnale direzionale positivo da replicare, non un risultato negativo.
 
 ### Provenienza, runner dedicato e ValidateOnly
 
@@ -12827,11 +12833,31 @@ forced_kill=0
 extra_replicas=0
 ```
 
-Rischio/payoff: OFF10 migliora il weighted decode di `+9.111893%` rispetto a
-OFF0, quindi resta varianza per la regola `<10%`; in cambio consuma circa
-10 GiB host in piu' e porta la RAM disponibile minima a 9,0-9,5 GiB.
-Sampled10 entra in uno stato materialmente piu' lento pur restando exact.
+Interpretazione corretta del rischio/payoff:
 
-Verdetto finale: **PAGEABLE10 non promosso; PAGEABLE0 resta baseline; tracer
-sampled mantenuto opt-in soltanto nel contratto PAGEABLE0 gia' validato;
-READY_FOR_RUNTIME_SLOT=no**.
+- OFF10 migliora il weighted decode di `+9.111893%` rispetto a OFF0. Il
+  risultato non supera la soglia convenzionale del 10% e ha una sola replica,
+  quindi non e' una promozione statistica; resta tuttavia comparabile per
+  grandezza a varie ottimizzazioni DS4 precedenti e non deve essere scartato.
+- L'arena aggiuntiva e' realmente ingaggiata: 1.517 slot pageable e 2.933 hit
+  pageable in entrambi i bracci, senza allocation fallback e senza buffer
+  dichiarati paged-out-before-copy. Queste hit sono richieste servite dalla
+  cache host invece che dallo storage esplicito.
+- Il costo osservato e' circa 10 GiB host aggiuntivi, con 9,0-9,5 GiB di RAM
+  minima ancora disponibile. Il gate da 6 GiB passa. Per l'uso dedicato
+  dichiarato della macchina, Windows e altre applicazioni non sono carichi
+  concorrenti previsti durante DS4; questo aumenta la plausibilita' operativa
+  di un tier pageable piu' ampio.
+- La regressione `-71.799280%` appartiene a Sampled10 contro OFF10. E'
+  accompagnata da crescita della queue age e fallback exact, mentre il
+  servizio storage Q1 non rallenta. Va trattata come incompatibilita'/limite
+  del setup corrente da isolare, non come prova che piu' RAM pageable rallenti
+  intrinsecamente DS4.
+
+Verdetto rettificato: **PAGEABLE0 resta la baseline congelata solo per
+provenienza; PAGEABLE10 e' HOLD/PROMISING e richiede repliche trace-OFF.
+PAGEABLE14, storicamente usato sulla macchina, resta un candidato separato.
+La futura matrice corretta e' PAGEABLE0/10/14 con trace OFF, una sola variabile
+alla volta, metriche di hit SSD evitati, H2D per tier, queue age, hard fault e
+RAM minima. Nessuna delle due capacita' e' promossa o respinta da questa
+singola coppia; READY_FOR_RUN_SLOT=no in questa fase di chiusura K1**.
