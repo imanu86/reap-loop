@@ -12102,3 +12102,237 @@ report=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-graph-tensor-device\outputs
 INVALID; ON NOT RUN; READY_FOR_RUN_SLOT=no**. Serve una decisione esplicita
 dell'orchestratore sul failure `q1-0-ssd-wrap-io errno=138`; il gate non è
 stato rilassato.
+
+### 2026-07-26 — A1 P0.1 frozen: OFF/ON validi, performance neutra, memoria modesta
+
+```text
+classification=VALID_AB_PASS
+experiment=A1_graph_tensor_device
+foundation=P0_1_frozen_ssd_service_deadline
+GraphTensorDevice_OFF=PASS
+GraphTensorDevice_ON=PASS
+correctness=PASS
+engagement=PASS
+lifecycle_mailbox=PASS
+rotator=PASS
+performance=NEUTRAL_WITHIN_VARIANCE
+memory_effect=MEASURED_MODEST_PHASE_DEPENDENT
+automatic_replicates=0
+profiler_runs=0
+```
+
+Run:
+
+```text
+OFF=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_161517_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+ON=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_161920_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-on
+```
+
+Pin e controllo one-change:
+
+```text
+runner_SHA256=2AD9843B87E7B917BB424951A189C09F1B56A02D728E26BA15DBA73540352F7C
+ds4_server.exe_SHA256=C3EAC30683C5636905BF3C483CC0EC391A89A2772F7826D2B8D1BDCF8D595AFC
+ds4_server.exe_bytes=12418560
+ds4.c_SHA256=54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466
+ds4_cuda.cu_SHA256=92DB43E8050115255617F665CF830814ADBC09347B14849B5C81BE003FAD4ECC
+ds4_gpu.h_SHA256=625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C
+ds4_metal.m_SHA256=81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+seed=12345
+manifest_count=47
+declared_parameter_count=52
+PackedCopy=Off
+BatchedPublish=Off
+G73HostSelected=Off
+RouteIoQd=Off
+TraceMode=Off
+OFF_DS4_CUDA_GRAPH_TENSOR_DEVICE=<UNSET>
+ON_DS4_CUDA_GRAPH_TENSOR_DEVICE=1
+DS4_CUDA_ALLOC_TRACE=1
+```
+
+Correctness e lifecycle:
+
+```text
+metric                                      OFF    ON
+gate_pass                                   true   true
+serving_exact_gate_pass                     true   true
+turn1_completion_tokens                     128    128
+turn1_content_SHA256  7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_completion_tokens                      32     32
+turn2_content_SHA256  0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+cached_prefix_tokens                         141    141
+suffix_tokens                                 19     19
+snapshot_unchanged                           true   true
+resident_unchanged                           true   true
+decode_refused_count                            0      0
+mailbox_quarantine_count                        0      0
+served_selected_fallback_nonzero_count           0      0
+route_final_errors_nonzero_count                 0      0
+expert_tiering_failures_nonzero_count            0      0
+route_io_qd_failures                              0      0
+route_io_qd_fallbacks                             0      0
+g73_host_selected_fallbacks                       0      0
+alloc_failure_row_count                           0      0
+tensor_write_error_lines                          0      0
+shutdown_mode                   graceful_http_verified, both
+forced_kill                                         0
+```
+
+Rotator P0.1:
+
+```text
+metric                         OFF   ON
+summary_count                    1    1
+result                    complete complete
+requested                     371  373
+attempts                      371  373
+successes                     371  373
+failures                        0    0
+advisory_failures               0    0
+advisory_releases               0    0
+advisory_degraded               0    0
+structural_rejects              0    0
+stale                           0    0
+dropped                         0    0
+terminal_marker_count           0    0
+accounting_pass              true true
+```
+
+La differenza 371/373 nel lavoro opportunistico non cambia output e route/cache.
+I due bracci hanno la stessa classe:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25410
+turn1_cache_count=140
+turn1_cache_hits=7614
+turn1_legacy_copy_submissions=76230
+turn1_legacy_publish_kernels=25410
+turn2_route_calls=1376
+turn2_miss_experts=7394
+turn2_cache_count=93
+turn2_cache_hits=862
+turn2_legacy_copy_submissions=22182
+turn2_legacy_publish_kernels=7394
+all_P2_P3_runtime_requested=0
+```
+
+Engagement:
+
+```text
+OFF_generic_managed_calls=310
+OFF_generic_device_rows=0
+OFF_state_managed_count=124
+OFF_state_device_only_count=0
+ON_generic_device_rows=4
+ON_generic_device_calls_each_snapshot=310
+ON_generic_device_failures=0
+ON_generic_managed_state_rows=0
+ON_state_device_only_count=124
+ON_state_managed_count=0
+state_tensor_requested_mib=11.64
+graph_tensor_requested_mib=327.93
+```
+
+In OFF i 124 state sono tracciati nei quattro siti managed
+`41+41+21+21`; in ON il tracer aggrega tutti i 310 call nel sito device
+`ds4_gpu_tensor_alloc_backing@7362` e non resta alcuna riga state managed.
+Il fix host-write passa runtime senza errori: il fill usa host temporary e
+`ds4_gpu_tensor_write`, il device path usa `cudaMemcpyHostToDevice`.
+
+Memoria:
+
+```text
+phase,turn,arm,used_mib,free_mib,tracked_mib,residual_mib,device_mib,managed_mib
+decode-start,1,OFF,8556.4,3731.0,7137.3,1419.1,6809.36,327.93
+decode-start,1,ON,8514.4,3773.0,7137.3,1377.1,7137.29,0.00
+request-end,1,OFF,12287.4,0.0,11153.3,1134.0,8813.87,2339.46
+request-end,1,ON,12287.4,0.0,11153.3,1134.0,9141.80,2011.53
+decode-start,2,OFF,10766.8,1520.6,9141.8,1625.0,8813.83,327.93
+decode-start,2,ON,10670.1,1617.3,9141.8,1528.3,9141.76,0.00
+request-end,2,OFF,12287.4,0.0,11153.3,1134.0,8813.87,2339.46
+request-end,2,ON,12287.4,0.0,11153.3,1134.0,9141.80,2011.53
+
+decode_start_turn1_ON_minus_OFF=-42.0_MiB,-0.491pct
+decode_start_turn2_ON_minus_OFF=-96.7_MiB,-0.898pct
+request_end_ON_minus_OFF=0.0_MiB
+```
+
+Il passaggio di backing sui 327,93 MiB richiesti è esatto. Il beneficio WDDM
+effettivamente osservato è però solo 42,0–96,7 MiB ai decode-start e zero
+quando la GPU è già satura a request-end. La vecchia stima teorica non viene
+convertita in risultato.
+
+Performance in token/secondo:
+
+```text
+metric                                  OFF       ON  delta_ON_vs_OFF  class
+turn1_wall                         1.098196 1.099894          +0.155%  variance
+turn1_graph_pos13_140              2.265051 2.259561          -0.242%  variance
+turn1_mature_pos50_140             2.634457 2.608002          -1.004%  variance
+turn2_wall                         0.914980 0.971598          +6.188%  variance
+turn2_suffix_prefill_pos141_159    1.098631 1.098971          +0.031%  variance
+turn2_decode_graph_pos160_191      2.419177 2.456977          +1.563%  variance
+weighted_decode                    2.294284 2.296465          +0.095%  variance
+```
+
+Tutti i delta throughput sono inferiori al 10% in valore assoluto.
+
+Monitor:
+
+```text
+metric                              OFF       ON   delta
+samples                              31       30
+elapsed_max_s                   151.764  146.639
+available_RAM_min_mib           19566.9  19810.2  +243.3
+server_working_set_max_mib       34923.8  35451.2  +527.4
+server_private_max_mib           45685.1  45692.8    +7.7
+GPU_used_avg_mib                10415.10 10338.53   -76.56
+GPU_used_max_mib                   12020    11997   -23.0
+GPU_util_avg_pct                   26.774   32.533   +5.759
+GPU_util_max_pct                       70       75   +5.0
+GPU_power_avg_w                    30.323   29.899   -0.424
+GPU_power_max_w                     43.13    44.76   +1.63
+```
+
+L'utilizzo GPU medio cresce del 21,51% relativo, su soli 30/31 campioni e
+P-state distribuiti diversamente, senza delta throughput materiale; viene
+registrato senza interpretazione causale.
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+OFF_experiment_manifest.txt_SHA256=CEFBF393BA066460589381CA42A914758E0FFA60C9A26C0A8AC77F6908ECE538
+ON_experiment_manifest.txt_SHA256=8C2C6989AEB882B6509B56569EC4767EBBDAE4A4B7E76BF3181655BBD6BA6E7A
+OFF_result.txt_SHA256=0948712A4E9E4E38029E5ED1B482B484C7B6E3D0436349FE1BEE5A7449CDD7F7
+ON_result.txt_SHA256=0DC6F8990ABB501FB20BD06AA1F610FF054C880FBE850C82D892EBB5AFFC5531
+OFF_provenance.txt_SHA256=746945FA2C305553B6A1450D405911BA19CA66C97906C553E2BF4C7A97FAA212
+ON_provenance.txt_SHA256=360B26BC0839D6F824A994EA139C026F6D235F88E5006FABBA559AFD0B0079AE
+OFF_cuda_alloc_summaries.log_SHA256=DF958D2E103CF62660B2E8B1AE85EACFCE54D52997008F3DD577876B2DF72B48
+ON_cuda_alloc_summaries.log_SHA256=CAE8530F1E254F7916CDC226B38245731DCEE8B258564F40F6AFF8580EDABE04
+OFF_server.stderr.log_SHA256=626439625FC827E0DCEA814B2638D80B7189E91C6A05710E92C27C94E5550DF4
+ON_server.stderr.log_SHA256=C77564DA81F723C6792EC3A8826B2C85BD64611B5D82FA5070ED0EC2B175AD33
+OFF_monitor.csv_SHA256=BBD8313C49522EA7601788BF3597BA1680AE132141DDC939E1FF43216C912BB9
+ON_monitor.csv_SHA256=11187CF68CD276312BC4F105F24656AA66DD4D11A4FD9E2BEC620AC74BA2B222
+report=C:\Users\imanu\Documents\Codex\2026-07-26\ds4-graph-tensor-device\outputs\A1_P0_1_VALID_AB_RESULT.md
+```
+
+Postflight finale:
+
+```text
+DS4=0
+Nsight=0
+runner_monitor=0
+port8000_listeners=0
+available_RAM_mib=56989.8
+GPU=P8,util_0pct,used_425MiB,power_12.91W
+forced_kill=0
+source_runner_binary_hashes_unchanged=true
+```
+
+`ctx_capacity=150000` non è una posizione viva 150000. Verdetto: **A1
+correctness/engagement PASS sul P0.1; performance neutra; beneficio memoria
+modesto e phase-dependent; nessuna promozione automatica; READY_FOR_RUN_SLOT=no**.
