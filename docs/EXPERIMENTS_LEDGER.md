@@ -11551,3 +11551,338 @@ PROMOTED**. Il primo turno e equivalente entro varianza, ma il follow-up ha
 una regressione graph del 65-67% e il decode pesato regredisce del 22-27%.
 Non viene fatto un secondo run. Le patch restano conservate e commutabili;
 questa singola misura non autorizza una nuova baseline.
+
+### 2026-07-26 — A1 pre-run: graph tensor device, difetto storico corretto e build validato
+
+```text
+classification=BUILD_AND_VALIDATE_READY_NO_GPU_RUN
+experiment=A1_graph_tensor_device
+foundation=M0_P0
+manifest_count=47
+declared_parameter_count=52
+PackedCopy=Off
+BatchedPublish=Off
+G73HostSelected=Off
+RouteIoQd=Off
+GraphTensorDevice=Off|On
+```
+
+Difetto storico verificato prima della correzione: `metal_tensor_fill_f32`
+otteneva `ds4_gpu_tensor_contents(t)` e scriveva il risultato con un loop CPU.
+Nel backend CUDA l'accessor restituiva `host_ptr` quando presente, ma ripiegava
+su `tensor->ptr`. Con `DS4_CUDA_GRAPH_TENSOR_DEVICE=1`, le allocazioni graph
+generiche passano a `cudaMalloc`, hanno `host_ptr == NULL` e rendevano quindi
+possibile la dereferenziazione CPU di un device pointer durante
+l'inizializzazione/reset degli state tensor. La precedente assunzione che tali
+tensor non avessero accessi host era falsa.
+
+Correzione verificata:
+
+```text
+metal_tensor_fill_f32=host temporary exact float fill + one ds4_gpu_tensor_write
+raw_tensor_host_accessor=removed_from_ds4.c,ds4_gpu.h,ds4_cuda.cu,ds4_metal.m
+static_contract=test_a1_graph_tensor_device_static.ps1 PASS
+runner_contract=test_a1_graph_tensor_device_runner_static.ps1 PASS
+runner_parse=PASS
+built_binary_contains_DS4_CUDA_GRAPH_TENSOR_DEVICE=true
+```
+
+Build isolato, senza sovrascrivere `build2`/golden e senza avviare DS4:
+
+```text
+build_directory=C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\build-a1-graph-tensor-device
+ds4.c_SHA256=54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466
+ds4_cuda.cu_SHA256=53B152FA67FC8155F1391C27CB807001E7B3DBB39BBD5F863CC2338BFB684182
+ds4_gpu.h_SHA256=625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C
+ds4_metal.m_SHA256=81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D
+ds4_server.exe_SHA256=2B11AA8160191F9AC44802451CDEC2EF36334C52B06F0ECF5FCC2068990562BA
+ds4_server.exe_bytes=12412416
+build_result=PASS
+```
+
+Il runner usa lo stesso nuovo binario nei due bracci, forza tutte le leve P2/P3
+off, applica l'overlay graph dopo il clear `DS4_*`, fissa
+`DS4_CUDA_ALLOC_TRACE=1`, sopprime le righe per-evento e conserva i summary
+`decode-start`/`request-end`. Il gate candidate richiede quattro righe cumulative
+del generic device allocator con `calls=310 fails=0`; il controllo ne richiede
+zero. Entrambi richiedono esattamente due summary e due balance `status=ok` per
+fase, nessun allocation failure, output exact e tutti i gate lifecycle
+preesistenti invariati.
+
+```text
+ValidateOnly_GraphTensorDevice_Off=PASS
+ValidateOnly_GraphTensorDevice_On=PASS
+server_started=no
+ds4_process_state_unchanged=true
+runtime_GPU_run=NOT_RUN
+memory_delta=NOT_MEASURED
+performance_delta=NOT_MEASURED
+ctx_capacity=150000
+live_position_150000=not_claimed
+delta_below_10pct_rule=variance
+```
+
+Verdetto: **BUILD_AND_VALIDATE_READY; runtime non ancora autorizzato in questa
+fase**. Nessuna promozione e nessuna stima WDDM convertita in risultato:
+memoria effettiva e correctness output restano da misurare con A/B M0/P0
+Off/On nello slot GPU dedicato.
+
+### 2026-07-26 — A1 scout M0/P0 OFF invalido; candidate ON non eseguito
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_151009_a1_m0_p0_trace-off_packed-off_publish-off_hostsel-off_routeio-off_graphdev-off
+classification=INVALID_RUNTIME_CONTROL_ABORT_BEFORE_CANDIDATE
+runner_gate_pass=true
+strict_scout_gate_pass=false
+candidate_GraphTensorDevice_On=NOT_RUN
+automatic_replicates=0
+```
+
+Preflight e postflight:
+
+```text
+external_preflight_timestamp=2026-07-26T15:09:56.5330321+02:00
+external_preflight_ds4_processes=0
+external_preflight_nsys_processes=0
+external_preflight_port8000_listeners=0
+external_preflight_available_RAM_GiB=55.603
+external_preflight_GPU=NVIDIA_GeForce_RTX_3060,P8,447MiB/12288MiB,0pct,12.98W
+runner_preflight=PASS
+runner_preflight_available_RAM_GiB=55.64
+runner_preflight_GPU_used_MiB=456
+shutdown_mode=graceful_http_verified
+external_postflight_timestamp=2026-07-26T15:14:11.6561042+02:00
+external_postflight_ds4_processes=0
+external_postflight_nsys_processes=0
+external_postflight_runner_processes=0
+external_postflight_port8000_listeners=0
+external_postflight_available_RAM_GiB=55.629
+external_postflight_GPU=NVIDIA_GeForce_RTX_3060,P8,434MiB/12288MiB,3pct,12.75W
+external_postflight=PASS
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e instrumentation:
+
+```text
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+RouteIoQd=Off
+DS4_CUDA_G73_ROUTE_IO_QD=<UNSET>
+GraphTensorDevice=Off
+DS4_CUDA_GRAPH_TENSOR_DEVICE=<UNSET>
+TraceMode=Off
+DS4_CUDA_ALLOC_TRACE=1
+DS4_CUDA_ALLOC_TRACE_MIN_MIB=1048576
+manifest_count=47
+declared_parameter_count=52
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=54F5E14378B71CC039D1467B5B9D1D7F7512FDC460B1ADC49F24B963C5EC8466
+ds4_cuda.cu_SHA256=53B152FA67FC8155F1391C27CB807001E7B3DBB39BBD5F863CC2338BFB684182
+ds4_gpu.h_SHA256=625F477594EF2C835047A8FDD2512B8715ADA82C72C71DE1B4466EFBE76D436C
+ds4_metal.m_SHA256=81612C353EFCBDEFF58619BD38A9CD9E72382D6A9FDF2AC709BA27FCCD2D6F5D
+ds4_server.exe_SHA256=2B11AA8160191F9AC44802451CDEC2EF36334C52B06F0ECF5FCC2068990562BA
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+ctx_capacity=150000
+live_position_150000=not_claimed
+```
+
+Correctness, engagement e lifecycle:
+
+```text
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn1_exact=true
+turn2_exact=true
+cached_prefix_tokens=141
+suffix_tokens=19
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+alloc_trace_gate_pass=true
+alloc_decode_start_summary_count=2
+alloc_request_end_summary_count=2
+alloc_decode_start_balance_count=2
+alloc_request_end_balance_count=2
+alloc_failure_row_count=0
+alloc_generic_device_row_count=0
+graph_tensor_device_gate_pass=true
+route_errors=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+g73_host_selected_fallbacks=0
+expert_tiering_failures=0
+served_selected_fallback_nonzero_count=0
+arena_fatal=0
+run_error=none
+```
+
+Il gate runner è insufficiente per lo scout strict. La violazione terminale è:
+
+```text
+q1_wrap_failed_wave_count=1
+q1_wrap_failed_terminal_count=1
+q1_wrap_terminal_result=failed
+q1_wrap_attempts=5
+q1_wrap_successes=4
+q1_wrap_failures=2
+q1_wrap_dropped=1
+falling_back_to_exact_selected_load_text_count=817
+```
+
+La riga finale è
+`[q1-0-ssd-wrap] result=failed ... attempts=5 successes=4 failures=2
+dropped=1`. Anche se questi fallimenti opportunistici erano stati tollerati nei
+precedenti M0-M5 e tutti i contatori fallback del serving exact sono zero, il
+protocollo A1 autorizzato richiede esplicitamente nessun wrap final failure e
+vieta di avviare ON quando OFF è invalido. Non viene quindi reinterpretato come
+PASS.
+
+Memoria effettiva OFF, da `cudaMemGetInfo`:
+
+```text
+phase,turn,used_mib,free_mib,tracked_vram_mib,residual_mib,status
+decode-start,1,8556.4,3731.0,7137.3,1419.1,ok
+request-end,1,12287.4,0.0,11153.3,1134.0,ok
+decode-start,2,10766.7,1520.7,9141.8,1624.9,ok
+request-end,2,12287.4,0.0,11153.3,1134.0,ok
+```
+
+Non esiste un delta Off/On: il candidate non è stato eseguito.
+
+Performance OFF:
+
+```text
+turn1_wall_tps=1.058092
+turn1_graph_pos13_140_tps=2.224840
+turn1_mature_pos50_140_tps=2.542815
+turn2_wall_tps=0.918345
+turn2_suffix_prefill_pos141_159_tps=1.067414
+turn2_graph_pos160_191_tps=2.516885
+performance_delta_Off_vs_On=NOT_AVAILABLE
+delta_below_10pct_rule=variance
+```
+
+Route/cache class OFF:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_cache_count=140
+turn1_legacy_copy_submissions=77190
+turn1_legacy_publish_kernels=25730
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_cache_count=83
+turn2_legacy_copy_submissions=22254
+turn2_legacy_publish_kernels=7418
+all_P2_P3_runtime_requested=0
+cache_route_comparison_with_On=NOT_AVAILABLE
+```
+
+Monitor:
+
+```text
+samples=32
+min_available_RAM_mb=19744.6
+max_memory_load_pct=69
+max_server_working_set_mb=34912.5
+max_server_private_mb=45689.8
+max_process_read_mb=101308.6
+max_GPU_used_mb=12021
+avg_GPU_util_pct=26.31
+max_GPU_util_pct=65
+avg_GPU_power_w=29.82
+max_GPU_power_w=45.70
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=5FE8DD26916C7DD7E16720898313C2C1D0D564FB102671346F5F5FD456D3976E
+experiment_manifest.txt_SHA256=CEFBF393BA066460589381CA42A914758E0FFA60C9A26C0A8AC77F6908ECE538
+control_manifest.txt_SHA256=3CEDE96F9C27DBC2AF8EDC4A2D2A4D7DF4A374423D81CC9FAEAB55C681A1DA88
+provenance.txt_SHA256=24F1E28C7BB8C3D1D3EADB8F9006F526B7BD5777E3E88C2CB899D9E12E209B8E
+result.txt_SHA256=431AA1E1C7EAD183EF75891C5CE6150C877D9D0924B06AC67F1DB5F7763AFAEF
+cuda_alloc_summaries.log_SHA256=28E2118EC061C53C9D07E0221A0CAFD8F19B93CBB0D8AC366E16ABFF2376116F
+runner.status.log_SHA256=0AAC6F7BDBFA2481FE05C7CE4800119826372248CAD955023644CA1211B72092
+server.stderr.log_SHA256=08771CB82867E3C9A75B8EF6FD1F16BB6B1C006217CD13393761E6CF415C7C95
+monitor.csv_SHA256=304864B814F61C6D7A37B8DD4C40E5C53E785F06BAAF879657F029D36E92A9BF
+turn1.request.json_SHA256=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json_SHA256=AF3E836FDD1C8040AB5FEF25FA805057F79F4388F6FB307FF37A2FA5B27E58C8
+turn2.request.json_SHA256=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json_SHA256=B0F043E8173CBA66AD5EE179E98C6DDF28FDD60B4A7BB807C41BB01362A4655E
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **SCOUT ABORTED AFTER INVALID OFF; ON NOT RUN**. Il bug storico
+device-pointer non riappare e il control è exact, ma il confronto A/B non è
+valido né completo. Serve una decisione esplicita dell'orchestratore sul gate
+q1-wrap prima di qualsiasi nuovo slot; non parte alcuna replica automatica.
