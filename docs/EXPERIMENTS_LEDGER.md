@@ -5345,3 +5345,5911 @@ Il tracer registra i byte **richiesti**: il sovrapprezzo per-allocazione del dri
 
 ## F) La lezione di metodo
 Interrogare i sospetti a uno a uno ha reso **0 su 5** (expert cache, runtime reserve, LRU Q1, `batch_*`, transient staging). **Avvolgere l'allocatore ha chiuso il conto in un run.** La differenza non è la fatica: è che il tracer risponde alla domanda giusta — *dove va la memoria* — invece che alla domanda sbagliata, *è colpa di questo?*. Stessa forma del salto sulla qualità: smettere di dedurre dai sintomi e **guardare la cosa**.
+
+---
+
+# 2026-07-25 — L'ASSE WDDM: la GPU non è satura, è affamata di lavoro
+
+## Configurazione COMPLETA sotto test (identica in tutti i run di questa sezione)
+
+Binario `wt-converge/build/ds4_server.exe` md5 `2ad689fa6823`, branch `research/ds4-fast-q1-converge`.
+
+```
+DS4_Q1_0_EXPERT_SIDECAR=/d/ds4_work/q1_full_sidecar/full_sidecar_q1_v2.gguf
+DS4_Q1_0_SELECTED_LOAD=1     DS4_Q1_0_RESIDENT_ARENA=1    DS4_Q1_0_DYNAMIC_ARENA_GB=34
+DS4_Q1_0_LAYER_FIRST=3       DS4_Q1_0_LAYER_LAST=42       (40 layer, copertura piena)
+DS4_EXPERT_TIERING=off       DS4_G133_TIER=0              DS4_CUDA_DYNAMIC_ARENA_GB=0
+DS4_CUDA_PREFILL_TIER_COMPOSE=<unset>  DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=0
+DS4_CUDA_PREFILL_VRAM_SEED_TOTAL=0     DS4_CUDA_PREFILL_VRAM_SEED_FLOOR_PER_LAYER=0
+DS4_METAL_PREFILL_CHUNK=600
+richiesta: "think": false, 200 token, ctx=8192
+```
+Ottenuto: `[q1-0-resident-arena] result=bound layers=3..42`, `context buffers 181.56 MiB
+(prefill_chunk=600, raw_kv_rows=768, compressed_kv_rows=2050)`, RELOADS_IN_DECODE=0.
+
+## A) `DS4_METAL_GRAPH_TOKEN_SPLIT_LAYERS`: semantica corretta, e leva NULLA
+
+Il nome inganna. Non spezza il grafo in N parti: **spezza UNA volta, dopo il layer N**,
+mandando il prefisso alla GPU mentre la CPU codifica il resto (`ds4.c:13008-13020`).
+È una leva di **sovrapposizione CPU/GPU**, non un flush. Il commento dichiara 4 come
+"the measured point" — ma misurato **su Metal**, col suo doppio command buffer. Mai su CUDA.
+
+| split | mediana/token | t/s | reload |
+|---|---|---|---|
+| 4 (default, baseline U01) | 235 ms | 4.25 | 0 |
+| **1** (proposta utente) | **239-243 ms** | **4.15** | 0 |
+
+**Verdetto: no-op** (entro il rumore, semmai un filo peggio). Prima indicazione che il
+tempo NON sta nell'`encode` da nascondere.
+
+## B) La misura che riorienta tutto: occupazione GPU durante il decode
+
+240 campioni a 4 Hz su 60 s (196 token emessi), via `nvidia-smi`, impatto nullo sul run:
+
+| grandezza | mediana | p10 | p90 | max |
+|---|---|---|---|---|
+| occupazione GPU | 70 % | 0 % | 93 % | 97 % |
+| occupazione memoria | 23 % | 12 % | 37 % | 46 % |
+| clock SM | 1935 MHz | 210 | 1950 | 1950 |
+| **potenza** | **77,3 W** | 13,4 | 81,0 | 81,8 |
+
+- **Nel 31% dei campioni la GPU è a ≤5%: ferma.**
+- **77 W su una scheda da 170 W, con i clock al massimo.** È il dato che conta:
+  una GPU che macina davvero *beve*. `utilization.gpu` la conta occupata perché
+  *almeno un* kernel gira — ma dentro quel 70% i multiprocessori sono quasi vuoti.
+- Occupazione memoria al 23%: **la banda non è il vincolo.** Chiude definitivamente
+  l'ipotesi "serve più RAM / più banda".
+
+## C) Il profilo statico che spiega il perché (`ds4_cuda.cu`)
+
+| indicatore | valore |
+|---|---|
+| `cudaGraphLaunch` / `BeginCapture` / `Instantiate` | **0 — zero CUDA Graph** |
+| punti di lancio kernel `<<<>>>` | 187 |
+| lanci dentro `routed_moe_launch_impl` (per layer) | **69** |
+| `cudaStreamSynchronize` | 38 |
+| `cudaEventSynchronize` | 22 |
+| `cudaDeviceSynchronize` | 14 |
+
+Su WDDM ogni lancio passa dallo scheduler del sistema operativo e ogni `synchronize`
+è un giro CPU↔driver↔GPU. Con ~40 layer × decine di lanci si arriva a migliaia di
+sottomissioni per token. **Questo è il profilo classico "launch-bound".**
+
+Nota di fattibilità: il commento del codice descrive l'esecutore come **"a fixed DS4 tape"**
+— un nastro fisso. È esattamente ciò che un CUDA Graph cattura in modo naturale.
+L'ostacolo è il routing MoE (gli esperti cambiano a ogni token): **non esiste ancora
+una tabella di puntatori su device**, quindi oggi i puntatori sono argomenti di lancio.
+Renderli indirezione su device è la precondizione per un grafo statico.
+
+## D) Conclusione operativa
+
+Non è banda, non è RAM, non è SSD, non è il 2-bit contro l'1-bit. **È la sottomissione.**
+Le leve di orchestrazione già esposte (come lo split) non bastano perché agiscono sul
+*quando* si sottomette, non sul *quanto spesso*.
+
+## E) IL DIFETTO: budget di memoria pinnata a 2 GiB invece di 24, in tutti i test
+
+`cuda_host_register_budget_bytes()` (`cu:3171`):
+```c
+const char *env = getenv("DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB");
+if (env && env[0]) { const double v = atof(env); if (v > 0.0) return v * 1 GiB; }
+#ifdef _WIN32
+return 24ull * 1073741824ull;      /* default Windows/WDDM */
+```
+
+**L'harness esporta `DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2` in 67 script di `g73_gate`.**
+Il valore corretto e' documentato in due posti nostri:
+- `DS4_LEVE_CATALOG.md`: "intero GiB positivo, **24**", con nota "il tetto WDDM misurato e' 31.9453 GiB"
+- `HANDOFF_CLAUDE_20260713_0050_PORTING.md`: `DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=24`
+
+Il "2" e' stato copiato di script in script e non e' mai stato rimesso in discussione.
+
+**Cosa governa quel budget** — due consumatori, entrambi sul percorso dei pesi:
+
+1. `cu:3359` — registrazione **per-intervallo** zero-copy. Il commento nel codice:
+   *"Windows section view at ~24.4 GiB/s (was previously hard-disabled here on _WIN32
+   without ever being tried). Budget-gated so cumulative registrations never exceed
+   the WDDM ~24 GiB host-pin cap; **over budget falls through to the cudaMalloc copy
+   path below**."*
+   Con budget 2 GiB, praticamente ogni intervallo ricade sulla copia.
+
+2. `cu:15066` — la **finestra contigua** zero-copy. Nei nostri log:
+   `registered 2.00 GiB contiguous host window (of 80.76 GiB model)`.
+   Cioe' il 2,5% del modello e' accessibile a ~24 GiB/s; il resto passa da copie.
+
+**Conseguenza sull'intero corpus di misure**: ogni numero di velocita' prodotto su
+questa macchina — incluse le conclusioni "PCIe non binding", "keep-N non scala",
+"overhead-bound" — e' stato misurato con un dodicesimo del budget previsto.
+Non invalida le misure *relative* fra loro (era costante), ma invalida ogni
+conclusione *assoluta* del tipo "questo e' il muro".
+
+**A/B in corso**: A=2 GiB (controllo) vs B=24 GiB, tutto il resto identico,
+con `DS4_METAL_GRAPH_TOKEN_PROFILE` per vedere se il guadagno cade su `encode`.
+
+## F) Piste chiuse per falsificazione (2026-07-25)
+
+| ipotesi | come e' caduta |
+|---|---|
+| `TOKEN_SPLIT_LAYERS` spezza il grafo in N | Il commento dice: spezza UNA volta dopo N layer. Sovrapposizione CPU/GPU, non flush. |
+| HAGS / scheduler WDDM e' il muro | `execute` e' l'1,3% del token. HAGS agirebbe li'. Riavvio risparmiato. |
+| Un kernel per esperto | Il MoE usa kernel raggruppati con tabella di puntatori di rotta. |
+| `MOE_ROUTE_NO_DEFAULT_SYNC` (40 sync/token) | `[gpu-resident-routes] final calls=1 default_sync=0`: in Q1 residente il resolver e' **scavalcato** (`q1-routes-bypass`). Percorso attraversato una volta in tutto il run. |
+| Kernel minuscoli dominati dalla latenza | nsys: i kernel durano **millisecondi** (1,6-3,6 ms di media), non microsecondi. |
+
+## G) L'inciampo che conferma la regola del manifest completo
+
+Il primo A/B sul budget e' stato **buttato**, e non per il budget.
+
+Avevo scritto lo script di test riscrivendo l'ambiente **a mano**: 14 variabili,
+quelle che "sembravano rilevanti". Il run buono ne aveva **52**. Fra le mancanti:
+
+```
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+```
+
+Senza di essa lo scratch di prefill resta allocato in VRAM. Conseguenza a catena:
+
+| grandezza | run buono | run con ambiente amputato |
+|---|---|---|
+| cache di streaming ottenuta | 8,6-8,8 GiB | **4,4 GiB** |
+| ms/token | 252 | **14.400** (57x) |
+| `execute` | 3,3 ms | 42 ms |
+| ricariche in decode | 0 | continue |
+
+Se non avessi guardato il *manifest ottenuto* avrei letto "budget=2 -> 14 s/token"
+e concluso l'opposto di quello che sto verificando.
+
+**Regola operativa, da qui in avanti**: un test non riscrive mai l'ambiente a mano.
+Lo **carica** dal manifest di un run valido (`good_env.txt`) e cambia **una sola**
+variabile. E prima di accettare la misura verifica il manifest *ottenuto*: se la
+cache di streaming e' sotto i 7 GiB il run va scartato, non interpretato.
+Questa guardia e' ora dentro `budget_ab2.sh`.
+
+Vale la pena notare che e' lo stesso errore, in forma diversa, del
+`DS4_G73_PAGEABLE_OVERFLOW_GB=14` silenziosamente inattivo: **l'ambiente
+richiesto non e' l'ambiente ottenuto**.
+
+## H) Conferma su IQ2 PURO: l'attribuzione regge, ed e' piu' netta
+
+Diagnosi rifatta sulla configurazione **senza sidecar e senza Q1** (indicazione
+utente: "dobbiamo isolare il problema, non aggiungere altre variabili").
+Preset `g73_open.env.ps1` -> `iq2_env.txt`, 46 variabili, manifest completo nel
+file dei risultati. `RELOADS_IN_DECODE=0`, run valido.
+
+Manifest **ottenuto** (non richiesto):
+```
+startup model cache prepared 7.21 GiB of tensor spans in 8.645s
+startup cache excluded 72.56 GiB of routed-expert tensors
+CUDA dynamic arena ready pinned=30.03 GiB pageable=13.99 GiB
+    total_slots=6674 pinned_slots=4551 pageable_slots=2123  6.75 MiB/slot
+finestra zero-copy contigua: NON CREATA
+```
+
+**La finestra zero-copy non esiste in questa configurazione**: `cu:15064` la salta
+quando `DS4_CUDA_DYNAMIC_ARENA_GB > 0`. Quindi in IQ2 il budget pinnato governa
+solo la registrazione per-intervallo, non la finestra. L'aspettativa sulla
+correzione 2->24 va ridimensionata di conseguenza.
+
+| fase | IQ2 puro (G73_OPEN=1) | Q1 sidecar (G73_OPEN=0) |
+|---|---|---|
+| `encode` | **427,6 ms — 99,5%** | 249,0 ms — 98,6% |
+| `execute` | 2,1 ms — 0,5% | 3,3 ms — 1,3% |
+| `read` | 0,2 ms | 0,1 ms |
+| totale | 429,9 ms = **2,33 t/s** | 252,4 ms = 3,96 t/s |
+
+**L'attribuzione e' identica su due percorsi completamente diversi.** Non e' un
+artefatto del sidecar ne' dell'arena residente: e' strutturale.
+
+Nota di correzione: Q1 e IQ2 **non** vanno alla stessa velocita' come si credeva
+(3,96 contro 2,33). Ma i due run differiscono anche per `G73_OPEN` e `tiering`,
+quindi il confronto va rifatto a parita' di quelli prima di trarne conclusioni.
+
+Varianza alta nel decode IQ2 (291-724 ms per token): il lavoro dipende dal dato,
+compatibile con caricamento di esperti diversi a ogni token.
+
+## I) LA RADICE — la cache VRAM e' piu' piccola dell'insieme di lavoro di UN token
+
+Misura PCIe durante il decode (IQ2 puro, 40 s, 94 token, `nvidia-smi dmon -s t`):
+
+| grandezza | valore |
+|---|---|
+| collegamento sotto carico | **Gen 4 x16** (la Gen 1 vista prima era riposo) |
+| RX host->GPU mediana | 3.892 MB/s |
+| RX host->GPU **massimo** | **16.306 MB/s** |
+| RX host->GPU media | 4.914 MB/s |
+| **byte per token** | **2.091 MB** |
+| GPU nello stesso istante | **19% utilizzo, 41 W su 170** |
+
+Contabilita': top-k=6 (16320 routed_slots / 68 righe / 40 layer), 240 esperti per
+token, 6,75 MiB ciascuno = 1,58 GB attesi. Misurati 2,09 GB: **+29%**, cioe' si
+ricarica anche dentro lo stesso token.
+
+**Il perche':**
+```
+expert cache ready: 173/320 experts, 6.75 MiB/expert, 1.14 GiB total
+capacity=173  free_at_size_mib=1297.2
+```
+**173 posti, 240 richieste per token.** La cache e' piu' piccola dell'insieme di
+lavoro di un singolo token: nessuna politica di rimpiazzo puo' salvarla, si
+ricarica tutto a ogni token per costruzione. Servono 1.620 MiB per i 240; ne
+abbiamo 1.168; **mancano 452 MiB**.
+
+Da qui discende tutto il resto: i 427 ms di `encode` sono i 2 GB in transito, la
+GPU al 19% aspetta, il PCIe a 4,9 GB/s medi contro 16,3 di punta e' un tubo
+riempito a un terzo perche' trasferimento e calcolo si alternano invece di
+sovrapporsi.
+
+**Correzione a due mie diagnosi precedenti**: non e' "launch-bound" (i lanci sono
+sintomo, non causa) e non e' WDDM (0,5% del token).
+
+### La precisazione dell'utente, e dove porta
+
+Osservazione utente: *"la seconda leva e' gia' attiva, e' il reap loop per massa"*.
+Corretto: `DS4_EXPERT_TIER_POLICY=mass-lfru`, `PREFILL_MASS_OBSERVE/WRAP` sono
+attivi e il log conferma `[prefill-mass] armed slots=6674 residency=prefill-ranked`.
+**Ma agisce su `slots=6674`, cioe' l'arena HOST**: decide quali 6.674 esperti su
+10.240 stanno in RAM invece che su SSD. Quel problema e' risolto (0 ricariche da
+disco). I 2 GB/token attraversano il confine **successivo**, RAM->VRAM, dove il
+ranking per massa non arriva: li' governa una cache di 173 slot.
+
+E il parametro che avremmo creduto di usare per quella cache e' inerte:
+```c
+static int cuda_moe_expert_cache_layer_top1(void) {
+    const char *env = getenv("DS4_CUDA_MOE_CACHE_POLICY");
+    return env && strcmp(env, "layer-top1") == 0;   /* unico valore riconosciuto */
+}
+```
+Il preset scrive `DS4_CUDA_MOE_CACHE_POLICY=lru`: stringa non confrontata con
+nulla, cade nel ramo predefinito. E `layer-top1` non e' la soluzione: compare
+nella lista dei rifiuti a `cu:37796`, **disattiva le rotte residenti su GPU**.
+
+### La leva quantitativa
+
+| quantizzazione | MiB/esperto | posti in 1.168 MiB | copre i 240? | byte/token |
+|---|---|---|---|---|
+| IQ2 | 6,75 | 173 | **no** | 1,58-2,09 GB |
+| **Q1** | **3,55** | **329** | **si'** | 0,83 GB |
+
+Q1 misurato a 252 ms contro i 430 di IQ2: **1,7x, e il rapporto dei byte e' 1,9x**.
+Il tempo scala coi byte, non con altro.
+
+**Ma la nostra configurazione Q1 scavalca la cache VRAM** (`iq2_vram_cache=q1-routes-bypass`):
+usa l'arena residente su RAM host. Paghiamo la quantizzazione e non incassiamo il
+motivo per cui esiste. Con Q1 i 240 esperti di un token occupano 852 MiB e
+**starebbero dentro i 1.168 MiB gia' disponibili**.
+
+### Tetti raggiungibili
+
+| regime | byte/token | GB/s | ms/token | t/s |
+|---|---|---|---|---|
+| oggi IQ2 | 2,09 GB | 4,9 | 430 | 2,33 |
+| oggi Q1 (arena host) | 0,83 GB | 3,3 | 252 | 3,96 |
+| Q1 a 16,3 GB/s (gia' misurati come possibili) | 0,83 GB | 16,3 | 51 | ~19 |
+| Q1 con working-set in VRAM | ~0 in stato stazionario | - | - | limite di calcolo |
+
+**L'obiettivo dei 10 t/s non richiede hardware nuovo.**
+
+## L) ERRORE DI SESSIONE: mezza giornata sul ramo LENTO — e la regola che ne segue
+
+Correzione dell'utente: *"Stai facendo tutti questi bei ragionamenti dimenticandoti
+che il G73 Open con Kv piu' piccolo andava a 4,7 mi pare"* e, subito dopo:
+*"D'ora in poi, ogni volta che fai un'ipotesi, voglio che vai a guardare il ledger prima"*.
+
+**Cosa e' successo.** Ho preso `g73_open.env.ps1` come base "IQ2 canonica". Quel
+preset ha `DS4_G73_OPEN=1`. L'**Addendum 42 di ieri** documenta che quel flag
+costa 5-8x sull'HTML e che con `G73_OPEN=0` si va a **4,85 t/s**. Ho quindi
+misurato 2,07 t/s e costruito sopra quella baseline un'intera analisi (byte/token,
+duty cycle PCIe, dimensionamento cache) **partendo dal ramo sbagliato**.
+
+E l'Addendum 42 si chiudeva cosi':
+> NB METODO: 8+ conclusioni affrettate mie prima di isolare la variabile. [...]
+> L'utente ha dovuto fermarmi ripetutamente.
+
+**Ho ripetuto l'errore documentato, con lo stesso preset, il giorno dopo.**
+
+**Cosa il ledger conteneva gia' e che non avevo letto:**
+
+| riga | contenuto | valore |
+|---|---|---|
+| 5115 (Add.42) | `DS4_G73_OPEN=0` su HTML | **4,85 t/s** steady, vram_hit 20-34% |
+| 3373 | `ctx8192/chunk256/max3000` | **decode 6,787 t/s** |
+| 3371 | `ctx8192/chunk256` | decode 5,053 t/s |
+| 5096 | BASE@768 (in realta' ctx8192) | 4,24 t/s, mediana 236 ms |
+| 5277 | il chunk muove INSIEME `batch_*` e `raw_kv_rows` | `raw_cap = align_up(min(DS4_N_SWA + prefill_cap, ctx), 256)` |
+
+**Perche' la riga 5277 e' il collegamento alla radice trovata oggi.** Il chunk
+governa `raw_kv_rows`: chunk 600 -> 768 righe; chunk 256 -> 512. Meno KV grezza e
+meno buffer `batch_*` = **piu' VRAM libera** = piu' slot nella cache esperti, che
+oggi si e' rivelata il collo (173 slot contro 240 necessari per token). La "KV piu'
+piccola" ricordata dall'utente non e' un dettaglio: attacca esattamente la radice.
+
+**Nota strutturale:** con `G73_OPEN=0` il pageable-overflow e' disattivato per
+costruzione, quindi l'arena e' **tutta pinnata** -- cioe' la condizione che oggi
+(braccio P1) ha dato **RX +60% e duty dal 33% al 51%**. Il ramo veloce del ledger
+e' gia', per costruzione, il ramo con i trasferimenti veloci.
+
+**Cosa resta valido di oggi**, misurato e indipendente dal ramo:
+1. `encode` 98,6-99,5% / `execute` 0,5-1,3% su DUE percorsi diversi -> WDDM escluso.
+2. Memoria pinnata vs pageable: **RX 4.225 -> 6.750 MB/s (+60%)**, duty 33% -> 51%.
+   Guadagno netto solo +16% perche' l'arena rimpicciolita costringe a +30% di byte:
+   i due effetti sono ora separati e quantificati.
+3. La cache esperti (173) e' piu' piccola dell'insieme di lavoro per token (240).
+4. PCIe Gen4 x16 confermato sotto carico; picco 16,3 GB/s contro 4,2-6,7 usati.
+
+**Regola operativa adottata**: `grep` mirato sul ledger PRIMA di scrivere lo script
+di test, cercando sia il tema sia i t/s gia' raggiunti, per non partire da una
+baseline peggiore di quella nota. Salvata anche in memoria come
+`ledger-before-hypothesis`.
+
+## M) Ramo veloce (`G73_OPEN=0`): due mie teorie di oggi FALSIFICATE
+
+Sweep sul chunk, ambiente = `iq2_env.txt` + `G73_OPEN=0`, tutto il resto identico,
+manifest completo nel file dei risultati. `RELOADS=0` in tutti e tre.
+
+| braccio | ms/token | t/s | slot cache | vram_hit | ram_hit | **da SSD** | upload_sync_wait | byte/token |
+|---|---|---|---|---|---|---|---|---|
+| chunk 600 | 455,9 | **2,19** | 189 | 32,95% | 38,37% | 28,7% | 26,5 ms | 2.398 MB |
+| chunk 256 | 464,5 | 2,15 | **236** | 32,95% | 38,37% | 28,7% | 26,3 ms | 3.206 MB |
+| chunk 128 | 501,5 | 1,99 | - | 15,89% | 53,10% | 31,0% | 64,7 ms | 2.743 MB |
+
+`context buffers`: 181,56 -> 154,68 -> 131,18 MiB; `raw_kv_rows`: 768 -> 512 -> 256.
+Il meccanismo della riga 5277 **funziona** (il chunk muove davvero KV e batch, e
+la VRAM liberata si traduce in slot: 189 -> 236). **Ma non produce velocita'.**
+
+**FALSIFICATA 1 — "la cache esperti e' piu' piccola dell'insieme di lavoro".**
+Portata da 189 a 236 slot, il tasso di successo non cambia **di un decimale**
+(32,945736 in entrambi i bracci, identico a sei cifre). Il tasso e' determinato
+dalla politica di residenza, non dalla capacita'. La soglia "173 < 240" che avevo
+calcolato era un'aritmetica suggestiva ma non predittiva.
+
+**FALSIFICATA 2 — "il tubo PCIe da riempire e' il collo".**
+`upload_sync_wait_ms = 26,5` su `decode_ms = 713`: **3,7%**. I 2,4 GB/token passano
+davvero, ma sovrapposti: non bloccano. Il duty cycle del 30-40% e' un sintomo, non
+una causa.
+
+**Nota: `chunk 128` peggiora** (501 ms, `thrash_guard_trips` da 5 a 12): sotto una
+certa soglia il chunk piccolo fa danno.
+
+**Il 4,85 t/s dell'Add.42 NON si riproduce** con il binario `wt-converge`
+(md5 `2ad689fa6823`): stesso `G73_OPEN=0`, si ottengono 2,19. Differenza da isolare
+(binario `wt-g73-open` md5 `921d78640c3b` vs converge, oppure altre variabili del
+run di ieri). **Da NON dare per scontato in futuro.**
+
+**Cosa regge invece di oggi** (indipendente dal ramo):
+- `encode` 98,6-99,5% vs `execute` 0,5-1,3% su due percorsi -> WDDM escluso.
+- pinnata vs pageable: RX +60% (4.225 -> 6.750 MB/s), duty 33% -> 51%.
+- PCIe Gen4 x16 confermato sotto carico, picco 16,3 GB/s.
+
+**Dove converge tutto**: il tempo e' nel `residual_ms`, esattamente dove il ledger
+lo aveva lasciato il 24/7 (righe 4961, 5073-5074, 5100). Gli span g130 non lo
+coprono perche' istrumentano solo il path Q1-mixed. **Strumento nuovo: nsys**, che
+misura i kernel dall'esterno e aggira il buco di strumentazione. Cattura in corso
+sul ramo veloce, con `TOKEN_IN_WINDOW` registrato per normalizzare.
+
+## N) CORREZIONE (domanda utente "ma i 14 pageable li avevi messi?") — confronto viziato
+
+L'utente ha chiesto se il pageable da 14 GiB fosse attivo nel ramo veloce.
+Verificato nel manifest **ottenuto**, non a memoria:
+
+| braccio | `G73_OPEN` | pinnata | pageable | **slot** | ms/token | byte/token | RX medio |
+|---|---|---|---|---|---|---|---|
+| P0 | 1 | 30,03 GiB | **13,99** | **6.674** | 482,0 | 2.223 MB | 4.225 MB/s |
+| P1 | 1 | 30,03 | 0,00 | 4.551 | **415,1** | 2.893 MB | **6.750 MB/s** |
+| F0 | **0** | 30,00 | **0,00** | **4.551** | 455,9 | 2.398 MB | 5.356 MB/s |
+
+`DS4_G73_PAGEABLE_OVERFLOW_GB=14` e' nel preset ma il gate `cu:2035`
+`if (cuda_g73_open_requested())` la spegne: **con `G73_OPEN=0` il pageable non
+esiste**. Il ramo veloce perde quindi 2.123 slot di residenza host (-32%), ed e'
+da li' che viene il ~29% di richieste servite da SSD.
+
+**Il mio confronto F0-vs-P0 aveva DUE variabili cambiate** (dispatch G73 *e*
+dimensione arena). A parita' di arena il confronto e' **P1 vs F0**:
+- `OPEN=1` -> 415,1 ms
+- `OPEN=0` -> 455,9 ms
+
+**Su `wt-converge` (md5 `2ad689fa6823`) `G73_OPEN=1` e' leggermente PIU' VELOCE.**
+L'Addendum 42 (che dava OPEN=1 come costo 5-8x, misurato su `wt-g73-open`
+md5 `921d78640c3b`) **non si riproduce su questo binario**. Da trattare come
+specifico del binario finche' non isolato.
+
+### Il risultato che conta: P0 vs P1
+
+**6.674 slot rendono PEGGIO di 4.551.** P1 muove il **30% di byte in piu'**
+(2.893 vs 2.223 MB) e resta il **14% piu' veloce** (415 vs 482 ms), perche' li
+muove a 6.750 MB/s invece di 4.225. I 2.123 slot pageable aggiunti **rallentano**:
+trascinano giu' il rate di tutto il tubo.
+
+**Regola che ne deriva: la residenza PINNATA vale piu' della residenza in
+quantita'.** Aggiungere capacita' host in memoria pageable e' controproducente.
+
+### Perche' questo e' l'argomento piu' forte per il Q1
+
+Il tetto pinnabile su WDDM e' ~31,9 GiB (misurato, `DS4_LEVE_CATALOG`). A parita' di
+tetto:
+
+| quantizzazione | MiB/slot | slot PINNATI in 30 GiB | byte/token (240 esperti) |
+|---|---|---|---|
+| IQ2 | 6,75 | 4.551 (44% del modello) | ~1,6-2,4 GB |
+| **Q1** | **3,55** | **8.650 (84% del modello)** | ~0,83 GB |
+
+Due effetti che si **moltiplicano**: quasi il doppio di residenza veloce E meta'
+dei byte. Nessuno dei due richiede hardware nuovo.
+
+**Caveat da verificare prima di crederci** (`cu:38392`): in modalita' Q1
+(`route_q1_0`) **sia `split_hit_miss` sia `split_fused` sono forzati a 0** ->
+la sovrapposizione trasferimento/calcolo e' disattivata. E la configurazione Q1
+usata finora (`RESIDENT_ARENA=1`) scavalca la cache VRAM
+(`iq2_vram_cache=q1-routes-bypass`). Il Q1 va quindi provato in una modalita' che
+NON scavalchi la cache, oppure va rimosso il forzamento a 0.
+
+## O) CONSOLIDAMENTO 2026-07-25 — tutti i run, verificati
+
+Tutti con `RELOADS_IN_DECODE=0`. Ordinati per slot di cache esperti, per mostrare
+che **quella grandezza non predice la velocita'**.
+
+| run | config chiave | slot cache | ms/token | t/s | n |
+|---|---|---|---|---|---|
+| pipe_P1 | IQ2, OPEN=1, arena tutta pinnata | 170 | 415 | 2,41 | 200 |
+| pipe_P0 | IQ2, OPEN=1, +14 GiB pageable | 174 | 482 | 2,07 | 200 |
+| iq2_A | IQ2, OPEN=1, chunk 600 | 177 | 430 | 2,33 | 200 |
+| fb_F0 | IQ2, **OPEN=0**, chunk 600 | 189 | 456 | 2,19 | 200 |
+| **S2** | **Q1 residente, OPEN=0, chunk 600** | **205** | **254** | **3,94** | 220 |
+| ctx_C8192 | IQ2, OPEN=1, chunk 256 | 224 | 767 | 1,30 | 200 |
+| lc_L0 | IQ2, ctx10240, chunk 256 | 227 | 1.061 | 0,94 | 200 |
+| fb_F1 | IQ2, OPEN=0, chunk 256 | 236 | 464 | 2,15 | 200 |
+| lc_L1 | IQ2, ctx10240, **ring KV** | 250 | **1.869** | 0,54 | 200 |
+| fb_F2 | IQ2, OPEN=0, chunk 128 | 264 | 501 | 1,99 | 132 (parziale) |
+
+### FALSIFICATA: "la cache esperti e' il collo"
+
+Nessuna correlazione fra slot e velocita'. Il run piu' veloce ne ha 205 (meta'
+classifica); quello con piu' slot (264) e' lento; quello col ring ne guadagna 23
+ed e' **il peggiore in assoluto**. Gia' incrinata dal fatto che 189 -> 236 slot
+non spostava il tasso di successo di un decimale (32,945736 identico a 6 cifre).
+
+### Il ring: libera VRAM, costa velocita'
+
+`DS4_CUDA_KV_STAGED_RING=1` a ctx10240: cache 227 -> **250 slot**
+(`free_at_size` 1661 -> 1820 MiB), ma **1.061 -> 1.869 ms/token (-76%)**.
+Conferma con numeri nostri quanto il ledger diceva (r.4571: "lo rende SICURO, non
+VELOCE"). Resta obbligatorio a 250k-1M, dove non e' una leva di velocita' ma
+l'unica architettura possibile.
+
+### Cosa predice davvero la velocita' oggi: il ramo di configurazione
+
+Q1 residente (254 ms) contro tutto l'IQ2 (415-1869 ms). Il rapporto dei byte per
+token (Q1 ~0,83 GB vs IQ2 ~1,6-2,4 GB) resta la spiegazione piu' semplice e
+coerente con la scala dei tempi.
+
+### Il chunk, su questo binario (contro il ledger)
+
+ctx8192, OPEN=0: chunk 600 = 456 ms | chunk 256 = 464 | chunk 128 = 501.
+Su OPEN=1: chunk 600 = 482 | chunk 256 = 767 (**+59%**).
+**La raccomandazione chunk256 del ledger non si riproduce su `wt-converge`.**
+Nota: il chunk piu' piccolo DA' piu' slot (189 -> 236 -> 264) e va comunque piu'
+piano: ulteriore prova che gli slot non sono il collo.
+
+### Sospetto aperto e non ancora quantificato
+
+Il tempo/token cresce col contesto **allocato** a profondita' reale costante
+(~270 posizioni): ctx8192 = 767 ms, ctx10240 = 1.061 ms a parita' di chunk 256
+(+38% per +25% di contesto mai usato). Se lineare, blocca l'obiettivo 150k molto
+prima di ogni altra cosa. **La scala 8192->150000 e' stata interrotta prima di
+completarsi: da rifare.**
+
+### Modifica di codice pronta, NON ancora compilata
+
+`ds4_cuda.cu`, `ds4_gpu_tensor_alloc`: i tensori del grafo passano da
+`cudaMallocManaged` a `cudaMalloc` sotto `DS4_CUDA_GRAPH_TENSOR_DEVICE=1`
+(default invariato, cosi' e' una variabile isolata). Sicurezza verificata: i
+tensori del grafo non sono MAI dereferenziati dall'host -- i 66 accessi in ds4.c
+passano tutti da `ds4_gpu_tensor_read/write`, che usano `cudaMemcpy`. La KV
+resta managed dove serve, perche' `cudaMemAdvise(SetPreferredLocation)` funziona
+solo su managed. Atteso ~180-276 MiB. Script pronto: `build_and_ab.sh`.
+
+### Difetti di configurazione trovati, da correggere
+
+`DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2` in **67 script** di `g73_gate`,
+contro il default Windows di 24 e il valore documentato nel catalogo. Effetto
+misurato: nullo in IQ2 (la finestra zero-copy non viene creata quando c'e'
+l'arena dinamica), ma va corretto per igiene.
+
+## P) RIPRESA DOPO IL RIAVVIO (2026-07-25, macchina in stato degradato)
+
+**Perche' il riavvio**: 62 GB dei 64 finiti nella lista standby di Windows, 2 GB
+liberi. L'arena vuole 44 GB di memoria pinnata, che richiede pagine fisicamente
+libere. Sintomi nel log: `partial_or_pread`, `thrash_guard_trips=101` (contro 5
+dei run sani), `vram_hit_pct=0,39%` (contro 32,9%), 1.755 ms/token a ctx8192
+contro i 430-482 misurati poche ore prima. Rimedio da ledger r.5080: reboot.
+
+**SEQUENZA PRONTA, da lanciare a macchina fredda (entrambi girano da soli):**
+
+1. `bash /d/ds4_work/g73_gate/ctx_scale.sh`
+   4 contesti (8192, 32768, 65536, 150000), chunk 600, prompt corto.
+   Guardia RAM >= 28 GB ora presente (era assente, causa del run invalido).
+   **Domanda**: il tempo/token cresce col contesto ALLOCATO a profondita' reale
+   costante (~270 posizioni)? Indizio da verificare: ctx8192=767 ms vs
+   ctx10240=1.061 ms a chunk 256 (+38% per +25% di contesto mai usato).
+   Se la curva sale, e' il difetto numero uno e blocca l'obiettivo 150k prima di
+   ogni altra leva. Se e' piatta, il lavoro torna sull'I/O esperti.
+   Soglia architetturale attesa fra 8192 e 32768: sopra 7.936 righe compresse il
+   codice passa da solo al kernel `attention_decode_mixed_heads8_online_kernel`
+   (softmax a blocchi) perche' `__shared__ float scores[8192]` non basta piu'.
+
+2. `bash /d/ds4_work/g73_gate/build_and_ab.sh`
+   Compila la modifica gia' scritta in `ds4_cuda.cu` (tensori del grafo da
+   `cudaMallocManaged` a `cudaMalloc`, attiva con `DS4_CUDA_GRAPH_TENSOR_DEVICE=1`,
+   default invariato) e la confronta con il controllo. Verifica che lo **sha del
+   testo generato sia identico** nei due bracci: seed fisso, quindi qualunque
+   differenza e' una regressione.
+
+**Migliore configurazione nota al 2026-07-25** (da usare come baseline):
+Q1 residente, `G73_OPEN=0`, chunk 600, ctx 8192, think:false ->
+**254 ms/token = 3,94 t/s**, RELOADS=0, HTML valido. Manifest completo in
+`profile_attrib_results.txt` (52 variabili) e in `good_env.txt`.
+
+## Q) CHAIN 4000, MURO A POSIZIONE 2051 E PATCH INDEXER (2026-07-25)
+
+### Provenienza e configurazione esatta
+
+Ricostruita integralmente la chat Claude Code `DS4_LUGLIO` dal transcript
+`fa33880d-0477-42f0-8cb7-78ff53bc1e9a.jsonl` (11.027 righe, 28,9 MB).
+La chain rimasta in sospeso e' `D:\ds4_work\g73_gate\chain4000.sh` /
+`chain4000b.sh`: dieci bracci direct/reverse, `max_tokens=4000`, reserve
+1024/768/256/512 MiB e chunk 250/320/128. Il server originale e':
+
+- exe: `D:\ds4_work\wt-converge\build\ds4_server.exe`
+- MD5: `2AD689FA682312619CFAE5649352E91A`
+- modello: `C:\ds4-models\ds4-2bit.gguf`
+- server: `ctx=150000`, `-n 8192`, `--mtp-draft 1`, porta 8000
+- request: `think=false`, `temperature=0.7`, `seed=12345`, prompt NeuraForge
+  identico, 4000 token
+- manifest: le 46 variabili di `iq2_env.txt`; in particolare
+  `DS4_G73_PAGEABLE_OVERFLOW_GB=14`, arena dinamica 30 GiB, expert cache N=140,
+  KV staged ring attivo e trace weight-cache attivo.
+
+Il runner diagnostico usato per la replica e':
+`C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\c4k_diag_sameenv.ps1`.
+Ogni run salva manifest, request, risposta, log server e telemetria RAM/commit/
+VRAM. Prima dell'avvio impone server assente, VRAM < 1.200 MiB e RAM disponibile
+>= 28 GiB.
+
+### Falsificazione: il muro ~2000 non e' esaurimento della KV o della RAM
+
+| run | overflow | reserve/chunk | esito | punto | RAM/commit al punto |
+|---|---:|---:|---|---:|---|
+| replica esatta | 14 GiB | 1024/250 | abort watchdog | token 1978, pos 2051 | RAM disponibile 1,10 GiB |
+| controllo P0 | **0 GiB** | 1024/250 | stesso muro | token 1977, pos 2051 | RAM disponibile **6,92 GiB**, commit con ~12,8 GiB di margine |
+| replica esatta | 14 GiB | 768/250 | pressione commit anticipata | token 529-532, pos ~602-605 | commit ~88,4/89,5 GiB, RAM 1,67 GiB |
+| replica esatta | 14 GiB | 256/250 | pressione commit anticipata | token 646, pos ~716-719 | commit ~88,9/90,1 GiB, RAM 1,33 GiB |
+| controllo P0 | 0 GiB | 256/250 | cache esperti affamata | token 12 | RAM 5,54 GiB |
+
+Nel controllo P0 reserve1024, prima e dopo il confine:
+
+| posizione | totale/token |
+|---:|---:|
+| 2045 | 464,863 ms |
+| 2046 | 509,984 ms |
+| 2047 | 464,952 ms |
+| 2048 | 661,010 ms |
+| 2049 | 424,474 ms |
+| 2050 | 619,612 ms |
+| **2051** | **22.791,833 ms** |
+| 2052 | 25.972,465 ms |
+| 2053 | 25.956,532 ms |
+
+La KV non cresce in quel punto: i buffer del contesto 150k (~2,083 GiB) sono
+allocati all'avvio e il KV staged ring e' gia' il percorso RAM<->GPU previsto.
+Mettere la KV eccedente su SSD aggiungerebbe letture per layer/token, quindi
+sarebbe peggio. Il pageable overflow non e' uno spill KV esplicito su SSD:
+e' memoria pageable/commit-backed e Windows puo' paginarla nel pagefile. I bracci
+da 14 GiB misurano quindi pressione RAM/commit e non isolano reserve/chunk.
+
+### Causa deterministica del cliff
+
+`DS4_N_INDEXER_TOP_K=512`. Con prompt a posizione 74 e rapporto di compressione
+4, le righe compresse superano 512 esattamente a posizione 2051. Il gate in
+`ds4.c` (`layer_n_comp > decode_top_k`) attiva allora le quattro proiezioni F16
+dell'indexer. Non e' il kernel indexer a costare 25 s: nel token lento `execute`
+resta ~42-54 ms, mentre e' `encode` a salire a 22-26 s.
+
+Il trace weight-cache prova il meccanismo:
+
+| posizione | load fd-cache | byte caricati | evictions |
+|---:|---:|---:|---:|
+| <=2050 | 0 | 0 | 0 |
+| 2051 | 1.066 | ~6,735 GiB | 1.098 |
+| 2052 | 1.136 | ~7,383 GiB | 1.178 |
+| 2053 | 1.136 | ~7,383 GiB | 1.136 |
+
+Le nuove matrici F16 dell'indexer spingono il working set denso oltre il reserve
+della cache VRAM: da quel momento l'LRU ricarica quasi tutto ad ogni token.
+
+### Patch sperimentale, default invariato
+
+Sviluppata in worktree scrivibile separata, senza toccare il worktree D:\
+gia' dirty:
+`C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\wt-hot-reserve`.
+
+La prima versione larga applicava un reserve ridotto a tutti i pesi non-MoE:
+**falsificata**, cache esperti affamata e abort a token 19. La versione corretta
+etichetta solo le quattro matmul dell'indexer (`indexer_f16`) e consente loro un
+reserve separato con `DS4_CUDA_STREAM_HOT_RESERVE_MB`; senza la nuova variabile
+il comportamento rimane identico. Tutti gli altri pesi continuano a usare
+`DS4_CUDA_STREAM_RESERVE_MB=1024`.
+
+- binario patchato: `...\wt-hot-reserve\build2\ds4_server.exe`
+- MD5: `320A0AB03B14CBCA00CAD1970E9F7DF1`
+- A/B corrente: pageable 0, reserve generale 1024 MiB, reserve indexer 256 MiB,
+  chunk 250; le altre variabili sono identiche alla chain.
+
+| run patchato | esito |
+|---|---|
+| smoke, max 200 | **200/200**, curl 0, finish `length`, nessun abort |
+| lungo #1 | arrivato a token 1262; invalidato da worker G73 `transient-io kill` e watchdog, evictions ferme a 942 |
+| lungo #2, watchdog armato solo da token 1900 | **interrotto come invalido pre-gate** a token 776 / pos 849: secondo `transient-io kill`, RAM disponibile scesa a 5,04 GiB e token temporaneamente a 12-15 s |
+
+Il lungo #1 non ha mostrato crescita di evictions (942 costanti) prima
+dell'evento I/O. Il lungo #2 e' stato fermato manualmente, con log e telemetria
+conservati, perche' non avrebbe raggiunto posizione 2051 in uno stato valido.
+Riavviare Windows e ripeterlo a freddo. Non attribuire i `transient-io kill` alla
+patch indexer: avvengono centinaia di token prima che il ramo indexer sia attivo.
+
+### Ripetizione a freddo dopo reboot: gate superato e 4000/4000 completati
+
+Run:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\codex_c4k_runs\20260725_183726_patch2_cold_p0_r1024_hot256_4000`.
+
+La macchina e' stata riavviata e il test e' partito con 56,46 GiB di RAM fisica
+disponibile e 593 MiB di VRAM occupata. Configurazione: stesso modello, prompt,
+seed e 46 variabili della replica, salvo `PAGEABLE_OVERFLOW_GB=0`, piu'
+`DS4_CUDA_STREAM_HOT_RESERVE_MB=256`; reserve generale 1024 MiB, chunk 250,
+watchdog armato solo da token 1900.
+
+Esito: **4000/4000**, `curl_status=0`, `finish_reason=length`, nessun abort.
+
+| posizione | totale/token |
+|---:|---:|
+| 2045 | 373 ms |
+| 2046 | 354 ms |
+| 2047 | 328 ms |
+| 2048 | 282 ms |
+| 2049 | 374 ms |
+| 2050 | 402 ms |
+| **2051** | **1.204,575 ms** |
+| 2052 | 489 ms |
+| 2053 | 463 ms |
+| 2054 | 435 ms |
+| 2055 | 464 ms |
+| 2056 | 369 ms |
+| 2057 | 422 ms |
+| 2058 | 427 ms |
+
+A posizione 2051 restano solo 38 load indexer per 313,5 MiB e **zero
+evictions**. Dopo il primo ingresso nell'indexer il decode torna stabile a circa
+0,40-0,46 s/token (circa 2,2-2,5 t/s), senza il ciclo da 7,38 GiB ricaricati a
+ogni token. Questo chiude positivamente l'A/B sul cliff sequenziale a posizione
+2051.
+
+### Qualita' dell'HTML del run 4000
+
+La risposta grezza e' in `response.json` nel run sopra; l'HTML estratto e'
+`C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\NeuraForge_initial_4000.html`.
+Validazione statica:
+
+- 14.869 caratteri HTML estratti;
+- `finish_reason=length`, 4.000 completion token;
+- `<!doctype>`, `head`, `style`, `body`, `header` e `nav` presenti;
+- output troncato dentro `nav`;
+- stack non chiuso: `html`, `body`, `header`, `nav`;
+- assenti hero, features, pricing, form, footer, script e `</html>`;
+- nessun JavaScript da compilare, perche' il blocco script non e' mai stato
+  generato.
+
+Conclusione: il file mostra soltanto l'inizio della pagina ed e' renderizzabile
+in modo permissivo dal browser, ma **non e' un documento HTML completo, sano o
+funzionante**.
+
+### Follow-up multi-messaggio `Fallo solo in modalita' dark.`
+
+Run:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\codex_c4k_runs\20260725_191237_patch2_followup_dark_keep`.
+
+La richiesta e' stata costruita semanticamente come una vera chat:
+
+1. prompt utente originale;
+2. risposta assistant completa da 4.000 token;
+3. nuovo messaggio utente esatto `Fallo solo in modalita' dark.`
+
+Il server del primo turno era pero' gia' stato chiuso, quindi non esisteva piu'
+una KV riusabile. Per il modello i messaggi sono comunque un unico stream di
+token con marker di ruolo; senza prefix/KV reuse sono stati riprocessati tutti i
+4.088 token.
+
+Prefill: **3.417,631 s (56,96 min), media 1,20 t/s**, in chunk da 250. La
+configurazione impone circa 17 pass completi dei layer e ripetute letture dei
+pesi streamed. Questo e' un difetto del modo in cui e' stato eseguito il
+follow-up, non un costo inevitabile di un vero secondo turno mantenuto sullo
+stesso server con prefix cache valida.
+
+Il batch ha superato il gate indexer, ma la transizione batch/prefill -> decode
+ha esposto un secondo difetto:
+
+| posizione | totale/token | load | byte caricati | evictions |
+|---:|---:|---:|---:|---:|
+| 4088 | 153.349,881 ms | 21.321 | 139.254,2 MiB | 20.286 |
+| 4089 | 29.826 ms | 1.136 | 7.383,3 MiB | 1.135 |
+| 4090 | 27.566 ms | 1.136 | 7.383,3 MiB | 1.135 |
+| 4091 | 13.982 ms | 1.178 | 7.383,3 MiB | 1.138 |
+| 4092 | 13.639 ms | 1.136 | 7.383,3 MiB | 1.176 |
+| 4093 | 14.738 ms | 1.136 | 7.383,3 MiB | 1.136 |
+
+Il primo token include il warmup/riassetto globale; poi ricompare il ciclo di
+reload/evict da ~7,38 GiB a token. A 50 token il server riportava 928,907 s di
+decode, media **0,05 t/s**. Il test e' stato fermato su richiesta dell'utente a
+posizione 4149, circa 62 token generati, prima del timeout: nessun
+`response.json` e nessun HTML dark completo sono stati prodotti.
+
+Durante il tratto lento la memoria era stabile (circa 19,4-19,7 GiB di RAM
+fisica disponibile e ~56,3 GiB di margine commit); quindi non e' una perdita di
+RAM. Dopo lo stop: processo `ds4_server` assente, porta 8000 libera, RAM fisica
+disponibile 54,31 GiB e VRAM 455 MiB.
+
+Nota di teardown: questo follow-up era stato lanciato con la versione precedente
+del runner, senza token per l'endpoint nativo autenticato di shutdown. Lo stop
+del job ha quindi terminato anche il process tree, ma non ha eseguito il drain
+nativo. Il runner aggiornato genera invece
+`DS4_G130_U1_SHUTDOWN_TOKEN`, invia `POST /__g130_u1_shutdown`, attende fino a
+120 s e usa il kill solo come fallback registrato.
+
+### Stato dopo i test del 25 luglio
+
+- Patch indexer: promossa come soluzione sperimentale verificata del cliff
+  sequenziale a posizione 2051.
+- Nuovo target: riassetto/warmup della weight cache nel passaggio da un lungo
+  prefill batch al primo token decode.
+- Test follow-up corretto ancora da eseguire: stesso processo server mantenuto
+  vivo tra i turni, verifica esplicita del prefix/KV reuse, risposta breve prima
+  di richiedere nuovamente un HTML completo.
+
+### Run 8000 con server/KV mantenuti (2026-07-25, in attesa del follow-up)
+
+Run:
+`C:\Users\imanu\AppData\Local\Packages\Claude_pzs8sxrjxfjjc\LocalCache\Local\ds4-win-work\codex_c4k_runs\20260725_204428_patch2_p0_r1024_hot256_8000_keepkv`.
+
+Configurazione identica al run freddo patchato riuscito: pageable 0, reserve
+generale 1024 MiB, reserve indexer 256 MiB, chunk 250, stesso modello/prompt/
+seed e 47 variabili di inferenza; `max_tokens=8000`, `KeepServer=true`.
+Cold barrier: RAM fisica disponibile 54,19 GiB, VRAM 489 MiB.
+
+Esito primo turno: **stop naturale a 6.529 token**, quindi il modello non ha
+consumato il limite di 8.000. `curl_status=0`, `finish_reason=stop`, nessun
+abort, last evict 840. Tempo decode 3.067,124 s; media effettiva circa
+**2,13 t/s**. Il log periodico indicava 2,18 t/s di media prima della chiusura.
+
+Il gate indexer e' stato superato nuovamente: posizione 2050 circa 2,38 t/s,
+posizione 2051 circa 0,81 t/s per il caricamento una tantum, senza il vecchio
+cliff. Subito dopo il gate si e' osservata una fase transitoria piu' lenta,
+causata da hit VRAM esperti bassi e route fuori maschera servite
+transitoriamente; si e' poi assestata tipicamente intorno a 2,2-2,6 t/s, senza
+pressione crescente su RAM/commit.
+
+HTML estratto:
+`C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\NeuraForge_initial_6529_keepkv.html`.
+
+Validazione:
+
+- 24.111 caratteri HTML;
+- doctype e chiusure `html`, `head`, `body` presenti;
+- header/nav, hero, tre feature card, tre tier pricing, form, footer e script
+  presenti;
+- stack parser vuoto, nessun mismatch;
+- JavaScript inline: 3.653 caratteri, compilazione sintattica Node riuscita;
+- `complete_and_structurally_valid=true`;
+- tema gia' esclusivamente dark (`--bg-dark: #0a0c10`), senza modalita' chiara
+  o toggle.
+
+Il processo server PID 17316 e' stato intenzionalmente lasciato vivo con la KV
+del primo turno. Il token di controllo per il futuro shutdown nativo e'
+conservato localmente nel run; nessun follow-up e' stato ancora inviato.
+
+### Correzione e completamento del ciclo multi-turn (2026-07-26)
+
+La frase precedente descriveva lo stato alle 21:35 del 25 luglio, ma non e' piu'
+lo stato finale. Sono stati inviati follow-up e tutti i server sono stati poi
+chiusi. Al termine: zero processi `ds4_server`, porta 8000 libera e VRAM tornata
+a 266-273 MiB.
+
+#### Manifest di inferenza comune, integrale (47/47)
+
+I quattro server dei test sotto hanno usato esattamente questo manifest. I
+follow-up ereditano il manifest del processo padre; dal runner UTF-8 in poi ne
+copiano anche il file nella propria directory.
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Parametri server comuni: exe patchato MD5
+`320A0AB03B14CBCA00CAD1970E9F7DF1`, modello sopra, CUDA, `ctx=150000`,
+`-n 8192`, `--mtp-draft 1`, loopback porta 8000. Parametri request comuni:
+`think=false`, `temperature=0.7`, `seed=12345`. Shutdown control-plane fuori
+dal manifest di inferenza: token casuale, endpoint loopback autenticato
+`POST /__g130_u1_shutdown`, drain e attesa fino a 120 s; kill soltanto come
+fallback registrato.
+
+| run | request specifica | esito |
+|---|---|---|
+| `20260726_034124_followup_compact_topbar_keepkv` | parent 6529; istruzione `fai la top bar piu' compatta, in modo che ci sia piu' spazio per il contenuto`; max 8000 | **KV miss**, `ctx=0..6724`; prefill pieno. Chunk 250: 1,10 t/s iniziali, poi 4,03-4,22 t/s; media 2,65 t/s a 1250/6724. Fermato su richiesta, nessuna risposta/HTML. Il miss non prova scadenza temporale della KV: il runner aveva il difetto UTF-8 descritto sotto. |
+| `20260726_061607_baseline_quickkv_turn1` | `Ciao, sai fare un bel sito?`; max 128 | prompt 13; 128 token; **2,27 t/s** decode; `finish=length`; PID mantenuto. |
+| `20260726_062146_baseline_quickkv_turn2` | parent 128; `Fammi una landing page minimal, single-file HTML, molto breve.`; max 512 | **KV miss**, `ctx=0..164`; zero token prima dello stop. |
+| `20260726_062658_utf8fix_quickkv_turn1` | stesso turno breve; max 128 | prompt 13; 128 token; **2,15 t/s** decode, ultimo chunk 2,74 t/s; `finish=length`; PID mantenuto. |
+| `20260726_062958_utf8fix_quickkv_turn2` | stesso follow-up; max 512 | **KV hit provato**: `ctx=141..160:19`, quindi 141 token riusati e solo 19 nuovi. Prefill estensione 19,346 s (~0,98 t/s). Generati 122 token a **0,43 t/s** prima del drain; nessuna risposta JSON completa. |
+
+#### Causa dei due falsi KV miss
+
+Il runner PowerShell leggeva JSON UTF-8 senza BOM con `Get-Content -Raw`, che in
+quell'ambiente lo interpretava come ANSI. La risposta corretta conteneva
+`piu'` con carattere accentato; il round-trip produceva mojibake e modificava i
+byte/token del messaggio assistant. Il live-text prefix non poteva quindi
+combaciare. Correzione applicata a `ds4_followup_same_server.ps1` e
+`c4k_diag_sameenv.ps1`: `[IO.File]::ReadAllText(path, UTF8) | ConvertFrom-Json`.
+Il successivo `ctx=141..160:19` dimostra che il prefix/KV reuse nativo funziona.
+
+#### Secondo difetto, ora isolato: pubblicazione snapshot dopo suffisso corto
+
+Il suffisso da 19 token e' sotto il default
+`DS4_METAL_RESUME_PREFILL_MIN=32`, quindi `ds4_session_sync` lo estende un token
+alla volta invece di eseguire un resumed prefill batch. L'observer vede soltanto
+1.636 candidati contro 4.423 residenti e rifiuta la nuova pubblicazione:
+
+```text
+[prefill-mass-wrap] result=failed reason=compose-retained-capacity
+candidate=1636 resident_before=4423 snapshot_before=1 snapshot_after=1
+[prefill-mass-compose] decode refused: closed snapshot publication failed
+```
+
+Da quel punto ogni layer usa il fallback esatto; non e' un costo della KV e non
+e' pressione RAM. Fix da implementare: su estensione breve con snapshot valida,
+preservare/aggiornare in-place la snapshot esistente (oppure forzare il resumed
+prefill per il suffisso) invece di trattare l'impossibilita' di rimpiazzare
+l'intero set come errore fail-closed.
+
+Teardown finale del test UTF-8: richiesta di shutdown nativa autenticata,
+risposta `draining`, il server ha concluso con
+`finish=error error="shutdown requested"` ed e' uscito senza kill forzato.
+
+## R) AUDIT VELOCITA' A CTX 150K E KV REALMENTE POPOLATA (2026-07-26)
+
+Correzione metodologica richiesta dall'utente: `ctx=150000` e' solo la capacita'
+allocata; un run con ~270 posizioni vive non e' prova di velocita' con una chat
+lunga. I risultati a ctx 8k restano diagnostici e non sono baseline di prodotto.
+
+### Il controllo 150k corto che sembrava 4,20 t/s
+
+`iq2_150k_prot`: vecchio exe `wt-converge` MD5
+`2AD689FA682312619CFAE5649352E91A`, 46 variabili integrali nel file
+`D:\ds4_work\g73_gate\iq2_150k_prot_results.txt`; ring KV, cache 140, arena
+30,03 GiB pinned + 13,99 GiB pageable, 6.674 slot totali, reserve 1024,
+chunk 250, snapshot 6.546. Era `ctx=150000` ma posizioni vive soltanto 69-257:
+
+| finestra posizioni | t/s media |
+|---:|---:|
+| 69-117 | 3,32 |
+| 118-167 | 4,06 |
+| 168-217 | 4,14 |
+| 218-257 | 4,16 |
+| 69-257, escluso il primo token di warmup | 3,88 |
+
+La vecchia riga `4,20 t/s` era il reciproco del solo token 190, non la media del
+run. Resta una prova utile che allocare 150k non impone da solo 2 t/s, ma non e'
+evidenza di 4-5 t/s a KV lunga.
+
+### Curva del run valido da 6.529 token
+
+Run `20260725_204428_patch2_p0_r1024_hot256_8000_keepkv`, exe patchato sopra,
+manifest 47/47, arena tutta pinned 30,03 GiB, snapshot 4.423, cache VRAM
+140/140. Medie ricavate dalle righe `metal graph token`, quindi t/s reali per
+finestra:
+
+| KV/posizioni vive | t/s | encode medio | execute medio |
+|---:|---:|---:|---:|
+| 75-263 | 2,47 | 399,4 ms | 4,94 ms |
+| 264-574 | 2,94 | 334,5 | 4,95 |
+| 575-1074 | **3,04** | 324,1 | 4,93 |
+| 1075-1574 | 2,93 | 335,9 | 4,93 |
+| 1575-1974 | 2,87 | 343,0 | 4,93 |
+| 1975-2050 | 2,67 | 369,0 | 4,93 |
+| 2051-2200 | 1,19 | 835,6 | 5,73 |
+| 2201-2574 | 1,07 | 925,6 | 5,79 |
+| 2575-3074 | 2,31 | 428,2 | 4,93 |
+| 3075-4074 | 2,34 | 422,3 | 4,92 |
+| 4075-5074 | 2,36 | 418,6 | 4,93 |
+| 5075-6074 | 2,29 | 431,8 | 4,92 |
+| 6075-6603 | 2,36 | 418,5 | 4,84 |
+
+Il pattern non e' un degrado monotono con la KV: dopo il transitorio indexer la
+velocita' e' piatta da ~2.600 a ~6.600 posizioni. Il salto permanente rispetto
+al pre-gate vale circa +85 ms/token ed e' compatibile con il costo stabile delle
+proiezioni/indexer attivate oltre il top-k 512; la patch ha eliminato il reload
+catastrofico da 7,38 GiB/token, non il lavoro dell'indexer.
+
+### VRAM e serving esperti
+
+Non c'e' un OOM o un clamp della cache esperti: al decode-start risultavano
+3.343.908.864 byte VRAM liberi; al sizing `requested=140 capacity=140`,
+`free_at_size=3071 MiB`. Quindi 140 e' un limite di configurazione, non il
+massimo fisico.
+
+Il collo di base resta pero' il serving MoE. Stato finale del run:
+
+- snapshot host pinned: 4.423/10.240 esperti;
+- snapshot hit 719.155, miss 594.636 (~45% miss);
+- cache VRAM: 140 esperti, 370.532 hit;
+- transient serve: 1.312.068;
+- byte logici da SSD: 4.208.795.320.320 (~4,21 TB);
+- byte RAM->GPU: 9.299.990.937.600 (~9,30 TB);
+- nessun `forbidden_cold_ssd_to_vram`, nessun failure.
+
+Quindi la KV/ring non sta sottraendo abbastanza VRAM da impedire la cache
+richiesta. I problemi da isolare sono: (1) snapshot host pinned troppo statica e
+stretta per una generazione che cambia dominio; (2) cache VRAM volontariamente
+ferma a 140 nonostante headroom; (3) costo permanente dell'indexer dopo 2051.
+
+### Confondente binario
+
+L'exe veloce MD5 `2AD689...` e' stato compilato alle 04:01 del 25 luglio. I
+sorgenti dirty di `wt-converge` sono stati modificati fino alle 10:16; l'exe
+patchato MD5 `320A0A...` e' stato compilato alle 17:16. I due binari non
+differiscono quindi soltanto per `STREAM_HOT_RESERVE`: il secondo incorpora
+anche lo stato dirty intermedio. Serve un A/B binario/configurazione identica
+prima di attribuire il gap alla patch indexer.
+
+### Prossima matrice minima, non ancora eseguita
+
+1. A/B corto ctx150k, stesso prompt e manifest, vecchio exe contro exe patchato:
+   isola il binario senza aspettare una KV lunga.
+2. A/B arena 30 GiB pinned contro pinned+14 GiB pageable sullo stesso exe:
+   separa copertura snapshot (4.423 vs 6.546) dalla lentezza pageable. Non usare
+   il vecchio confronto a ctx8k come verdetto per la chat lunga.
+3. Sul solo vincitore, cache VRAM 140 contro 320: entrambe entrano nel sizing;
+   misurare hit, transient, SSD byte/token e t/s, non soltanto il numero slot.
+4. Aggiungere profiling di stage campionato in poche posizioni prima/dopo 2051,
+   per quantificare `attention`, `compressor_indexer` e `routed_moe` senza
+   perturbare migliaia di token.
+5. Separatamente, correggere il lifecycle follow-up preservando la snapshot
+   valida sui suffissi corti; poi ripetere un vero secondo turno con KV hit.
+
+## S) AUDIT STATICO DECODE E STUDIO PREFILL/FORK (2026-07-26)
+
+Questa sezione non registra un nuovo benchmark. Consolida due indagini
+read-only separate, entrambe completate senza avviare DS4 e senza modificare i
+sorgenti:
+
+- task `DS4 Decode: saturazione hardware e pipeline`;
+- task `DS4 Prefill: DwarfStar, DS4-Flash e fork`.
+
+Sorgenti locali auditati:
+
+```text
+ds4.c       SHA256=C02690D9E06C7AF2EA4374F5DA6F48C81C3C9D13CA5AF8D98759148DD36F52A7
+ds4_cuda.cu SHA256=CF1FABDDABA4ECF77AB325FCBDEF17E9A9546B5ACDBC41FBB4A09A02DA1C5AA1
+```
+
+### Correzione della diagnosi `encode/execute`
+
+Il vecchio sillogismo "`encode=98,6%`, `execute=1,3%`, quindi WDDM,
+sincronizzazioni e trasporto sono esclusi" e' falsificato. `encode` contiene
+polling CPU, API CUDA bloccanti, I/O SSD seriale, H2D/D2H e dipendenze tra
+stream. `execute` misura principalmente il drain finale, perche'
+`ds4_gpu_end_commands()` e' un `cudaDeviceSynchronize()`.
+
+La sottoutilizzazione contemporanea di SSD, PCIe e GPU e' compatibile con una
+pipeline latency-bound a profondita' effettiva circa uno: l'hardware riceve
+molte submission piccole e serialmente dipendenti, non abbastanza lavoro
+indipendente da saturare una singola risorsa.
+
+### Conteggi per token ricavati dal run lungo
+
+Il percorso decode attraversa 43 layer e seleziona top-6:
+
+- 43 router-select e 43 resolver residenti per token;
+- 258 route per token;
+- almeno 43 chiusure/upload-drain per token;
+- circa 201,25 route non-VRAM e altrettanti piccoli kernel di pubblicazione;
+- circa 287,25 kernel di solo controllo
+  (router + resolver + publish) per token;
+- percorso H2D legacy, perche' il manifest 47/47 non abilita
+  `DS4_CUDA_MOE_ROUTE_PACKED_COPY`: circa 603,75 submission H2D e 1,424 GB
+  logici di payload esperti per token;
+- singolo worker SSD, circa 819,70 `pread` da 1 MiB per token e QD effettiva
+  circa uno;
+- dopo il gate indexer, circa 75,66 D2H KV/indexer per token nel dominio
+  osservato fino a posizione 6.602.
+
+Il vecchio numero "5.240 kernel/token" contava wrapper/call-site, non launch
+CUDA effettivi, ed e' ritirato.
+
+### Budget velocita' consolidato
+
+Per il run da 6.529 token:
+
+| dominio | velocita' |
+|---|---:|
+| base matura, pos 1024-1974 | **2,914 t/s** |
+| primo token del gate, pos 2051 | **0,812 t/s** |
+| transitorio, pos 2052-2299 | **1,042 t/s** |
+| coda stabile, pos 4096-6143 | **2,318 t/s** |
+| intero graph | **2,247 t/s** |
+| wall/server intera generazione | **2,19 t/s** |
+
+Il costo permanente dell'indexer vale rappresentativamente circa 85-90
+ms/token rispetto alla base pre-gate. La coda migliora invece di degradare:
+fino a posizione 6.602 non e' provato alcun muro monotono della KV.
+L'upload wait misurato vale circa l'8,6% del wall; il resto non e' ancora
+scomposto in modo non perturbante.
+
+### Correzione delle baseline prefill
+
+- Il dato locale **1,20 t/s** e' un cold prefill di **4.088 token realmente
+  calcolati** con `ctx=150000` e chunk 250. Non e' un prompt vivo da 150k.
+- Non esiste ancora una baseline locale cold-full riproducibile di 150.000
+  token.
+- Il vecchio dato locale **~30,9 t/s** su 2.566 token apparteneva a una
+  condizione arena warm/stale; ricostruendo gli esperti corretti scendeva a
+  circa **5,59 t/s**, con `kv_reuse=0` e qualita' peggiore. Non e' una
+  baseline promuovibile.
+- I valori esterni 300-2.000 t/s sono append con prefisso KV gia' presente,
+  modello residente in 80-640 GB di memoria unificata/HBM, throughput
+  aggregato multi-sessione/multi-GPU, oppure hardware Hopper/Blackwell.
+  Nessuno e' direttamente comparabile con RTX 3060 12 GB + RAM 64 GB + SSD.
+- Il confronto esterno meccanicamente piu' vicino e' circa **7,02 t/s** su
+  RTX 3090 24 GB/Linux/128 GB RAM, ma non dichiara prompt vivo, cache,
+  protocollo o repliche sufficienti per essere una baseline equivalente.
+
+Il repository ufficiale e' `antirez/ds4` (DwarfStar); non risulta un runtime
+ufficiale separato chiamato `DS4-Flash`. `DeepSeek-V4-Flash` e' il modello.
+`imanu86/ds4-win` e' il fork dell'utente e resta la fonte primaria dei risultati
+G locali, non un confronto esterno.
+
+### Causa strutturale del prefill locale
+
+Il prompt e' diviso in chunk; ogni chunk attraversa tutti i layer. Gli esperti
+sono deduplicati entro layer/chunk ma non tra chunk successivi. Quando l'unione
+si avvicina a tutto il layer, chunk piccoli moltiplicano le riletture.
+Usando i 77,5 GiB logici misurati da G37 come modello approssimativo di una
+passata satura a 150k:
+
+| chunk | passate | traffico logico approssimativo |
+|---:|---:|---:|
+| 256 | 586 | 44,4 TiB |
+| 2048 | 74 | 5,6 TiB |
+| 4096 | 37 | 2,8 TiB |
+| 8192 | 19 | 1,44 TiB |
+
+Sono byte logici, non una previsione dei byte fisici. Spiegano pero' perche'
+chunk 250 e micro-tuning CUDA non possono produrre da soli un salto d'ordine
+di grandezza. WRAP da 30 GiB aggiunge inoltre una seconda lettura/pubblicazione
+dei pesi gia' toccati dal prefill.
+
+### Priorita' di implementazione concordata
+
+0. **Lifecycle e mailbox fail-closed**:
+   preservare la snapshot pubblicata sui suffissi corti; separare generation
+   observer/pubblicata; rendere atomiche acquire/release le sequenze host-host;
+   introdurre `consumer_done_event` prima di aumentare l'asincronia.
+1. **Benchmark e tracing non perturbante**:
+   cold-full/append espliciti; `prompt`, `cached`, `computed`, restore, WRAP,
+   prefill e TTFT separati; CUDA events preallocati e letti soltanto dopo il
+   sync gia' esistente; NVTX su 1-2 token campionati.
+2. **Quick A/B sul codice corrente**:
+   cache VRAM 140 vs 320; chunk 250/512/768/1024 e, se la VRAM lo consente,
+   2048/4096; arena pinned contro overflow pageable; scratch managed contro
+   device-only. Una sola variabile per arm.
+3. **Packed H2D e publish batched**:
+   ridurre circa 604 H2D a <=86/token e circa 201 publish a <=43/token,
+   inizialmente senza cambiare i byte o la semantica.
+4. **Tap-on-read + super-chunk prefill**:
+   alimentare la snapshot con i byte gia' letti; eliminare WRAP dal critical
+   path; separare `union_span` 2048-4096 da `compute_tile` 128-512; wave
+   expert-major limitate dalla VRAM.
+5. **Pipeline a eventi e I/O overlapped**:
+   `route_required_stream` separato dalle promozioni; default stream in attesa
+   di event, non polling/drain globale; double/triple buffer con generazioni;
+   Windows overlapped I/O/IOCP e QD4-QD8 solo dopo il gate di correttezza.
+6. **Dopo la rimozione del muro di trasporto**:
+   aligned-SoA e kernel D2R SM86, fusioni MoE, CSA/HCA token-tile. I kernel
+   SM121 e FlashMLA Hopper/Blackwell non sono drop-in per Ampere.
+
+CUDA Graph e batching multi-sessione sono volutamente in fondo: possono
+migliorare overhead o throughput aggregato, non eliminano le riletture di un
+singolo cold prompt lungo.
+
+### Protocollo obbligatorio per il futuro gate 150k
+
+Separare:
+
+- **cold-full**: 150.000 token calcolati, `cached_tokens=0`;
+- **append**: checkpoint verificato, prefisso cached e solo suffisso calcolato.
+
+Mai dividere l'intero prompt per il tempo del suffisso. Salvare SHA-256 del
+testo UTF-8, token ID, modello, exe, sorgenti e manifest 47/47. Riportare sempre
+t/s wall e graph, TTFT, token prompt/cached/computed, frontier live, chunk,
+route VRAM/RAM/SSD, H2D/D2H e I/O fisico/logico, RAM/VRAM minima, fallback,
+timeout e invariant. Per promozione: almeno tre processi indipendenti,
+ordine ABBA/BAAB, output/hash/logit compatibili e nessun fallback vietato.
+
+Obiettivo iniziale realistico: superare stabilmente **5 t/s** su un prompt
+lungo vero; **10-20 t/s** e' uno stretch architetturale da dimostrare.
+Centinaia di t/s cold-full a 150k non sono un obiettivo comparabile su questa
+macchina. Il payoff di prodotto principale resta evitare di ricalcolare il
+prefisso: su una chat gia' a 149k, calcolare solo un suffisso da 1k e' la
+trasformazione decisiva.
+
+## T) P0 LIFECYCLE/MAILBOX E P1 TRACER — TEST PRE-RUNTIME (2026-07-26)
+
+Questa sezione registra tutti i test eseguiti dopo l'audit S e prima del primo
+nuovo avvio di DS4. Non sono benchmark: nessun modello e' stato caricato,
+nessuna richiesta e' stata inviata e quindi manifest 47/47, ctx, token e t/s
+sono **N/A**. Al termine risultavano zero processi `ds4_server`, porta 8000
+libera e GPU in P8/idle.
+
+### Artefatto testato
+
+```text
+source_root=C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\wt-hot-reserve
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=25B1DB041626DC91FEABAC287B574522E30DFE7B6C13D75D5D120730B9CF8230
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=7F7108394DEB0B62696D9A13CEDEFB54AB780CB4318E583629AC65FE9B7D0EB8
+ds4_server.exe_bytes=12381184
+ds4_server.exe_link_utc=2026-07-26T06:46:19Z
+inference_manifest=N/A (server_not_started)
+trace_env=N/A (server_not_started)
+```
+
+Il worktree era gia' sparse/dirty con circa 1.174 file tracciati fisicamente
+assenti. Non e' stato eseguito alcun reset, restore, clean o checkout.
+
+### T1 — contratto statico P0-A: snapshot su suffisso corto
+
+```text
+command=powershell -ExecutionPolicy Bypass -File tests\test_p0_short_suffix_snapshot_static.ps1
+result=PASS
+```
+
+Verifica: il suffisso sotto `DS4_METAL_RESUME_PREFILL_MIN` entra nel percorso
+esplicito `preserve_short_suffix`; observer-attempt e snapshot pubblicata hanno
+generazioni distinte; un mismatch resta fail-closed.
+
+### T2 — contratto statico P0-B: mailbox e ownership
+
+```text
+command=powershell -ExecutionPolicy Bypass -File tests\test_p0_route_mailbox_static.ps1
+result=PASS
+```
+
+Verifica: le sequenze host-host sono atomiche acquire/release; la richiesta
+porta una generazione host monotona; gli stati sono
+`FREE -> GPU_WRITING -> WORKER_OWNS -> UPLOAD_ENQUEUED -> CONSUMER_DONE`;
+il riuso dello slab richiede `consumer_done_event` e non introduce
+`cudaEventSynchronize` nel percorso caldo.
+
+### T3 — contratto statico P1: tracer CUDA campionato
+
+```text
+command=powershell -ExecutionPolicy Bypass -File tests\test_p1_decode_trace_static.ps1
+result=PASS
+```
+
+Verifica: opt-in tramite
+`DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY`,
+`DS4_CUDA_DECODE_TRACE_POSITIONS` e
+`DS4_CUDA_DECODE_TRACE_LAYERS`; pool di 174 eventi preallocato; lettura dei
+timing soltanto dopo il sync token-end gia' esistente; nessun
+`cudaEventSynchronize` aggiunto.
+
+### T4 — parsing AST dei nuovi test
+
+```text
+tests=test_p0_short_suffix_snapshot_static.ps1,test_p0_route_mailbox_static.ps1,test_p1_decode_trace_static.ps1
+result=PASS
+parse_errors=0
+```
+
+### T5 — build nativa CUDA
+
+```text
+generator=Ninja (build2 gia' configurato)
+command=cmake.exe --build build2 --parallel
+result=PASS
+exit_code=0
+server_started=no
+```
+
+`g7_build.ps1` non e' stato usato come verdetto perche' tenta di enumerare il
+file tracciato ma fisicamente assente
+`gguf-tools/deepseek4-quantize.c`. La build diretta del tree configurato ha
+compilato e linkato tutti i target. Le warning rimaste appartengono alle classi
+preesistenti conversion/float-overflow/unused-symbol.
+
+### T6 — unit test CTest
+
+```text
+command=ctest --test-dir build2 --output-on-failure
+result=PASS
+passed=1
+total=1
+test=ds4_bake_test
+server_started=no
+```
+
+### T7 — diff check
+
+```text
+command=git diff --check -- ds4.c ds4_cuda.cu ds4_gpu.h tests
+result=PASS
+note=solo warning preesistenti LF-to-CRLF
+```
+
+### T8 — suite legacy: esiti non attribuibili alle patch
+
+```text
+test_g133_m1_static.ps1=FAIL (slice del vecchio test non include il nuovo helper preesistente)
+test_g130_profile_instrumentation.py=8 PASS,1 ERROR (marker legacy routed_moe_launch)
+test_g130_attrib_contract.py=9 ERROR (fixture fisicamente assenti nel worktree sparse/dirty)
+```
+
+Questi esiti non sono stati nascosti ne' trasformati in PASS. I relativi file
+non sono stati ripristinati o modificati, perche' il difetto e' nella
+disponibilita'/assunzione della suite legacy e non nel percorso P0/P1.
+
+### Gate successivo
+
+Primo run consentito: stesso server, manifest inference identico 47/47 del
+test UTF-8 precedente, tracer esplicitamente OFF, primo turno
+`Ciao, sai fare un bel sito?`, secondo turno breve con prefisso KV riusato.
+Promozione soltanto se il log prova contemporaneamente:
+
+```text
+cached_prefix_tokens>0
+suffix_tokens<32
+result=preserved reason=short-suffix
+snapshot_after=snapshot_before
+resident_after=resident_before
+decode_refused_count=0
+mailbox_quarantine_count=0
+shutdown_mode=graceful_http_verified
+```
+
+### T9 — validazione del runner atomico, ancora senza avvio
+
+```text
+runner_SHA256=064B7139F8767A57133BB58AB6F0E09F812712BF4FF772294BC94F6BBE06FA9C
+monitor_SHA256=5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858
+manifest_47_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+PowerShell_AST_errors=0
+ValidateOnly=PASS
+manifest_count=47
+source_hashes=PASS
+binary_hash=PASS
+model_bytes=PASS
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+server_started=no
+```
+
+Preflight immediatamente successiva: zero processi DS4, porta 8000 libera,
+49,28 GiB RAM fisica disponibile, RTX 3060 P8/0%, 547 MiB VRAM desktop.
+
+## U) P0 RUNTIME SMOKE 1 — FAIL, RACE DI PUBBLICAZIONE MAILBOX (2026-07-26)
+
+Questo e' il primo run reale dopo P0/P1. Il tracer era OFF. Il run ha fallito
+prima di produrre il primo token e non e' una misura di velocita' decode
+promuovibile.
+
+### Provenance
+
+```text
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_085748_p0_lifecycle_trace-off
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=25B1DB041626DC91FEABAC287B574522E30DFE7B6C13D75D5D120730B9CF8230
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=7F7108394DEB0B62696D9A13CEDEFB54AB780CB4318E583629AC65FE9B7D0EB8
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_bytes=86720111488
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+### Manifest completo 47/47
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Instrumentation/control:
+
+```text
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+DS4_G130_U1_SHUTDOWN_TOKEN=<set, secret not persisted>
+shutdown_token_SHA256=5fb432bb73ac8b760ea503c9cf6903625ac7a22a42a0a18a81ab65702248a147
+```
+
+### Server e richiesta
+
+```text
+backend=CUDA
+ctx_capacity=150000
+live_ctx_start=0
+server_max_tokens=8192
+mtp_draft=1
+host=127.0.0.1
+port=8000
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_prompt_tokens=13
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_max_tokens=32
+turn2_started=no
+```
+
+### Risultato e t/s
+
+La pubblicazione iniziale ha funzionato:
+
+```text
+candidate=4423
+snapshot_before=0
+snapshot_after=1
+resident_after=4423
+wrap_seconds=36.515
+prompt_done_seconds=59.614
+```
+
+Metriche derivate:
+
+- prefill modello prima del WRAP: circa 23,099 s, **0,563 t/s** sui 13
+  token (valore derivato, non timer di stage dedicato);
+- prompt+WRAP: **0,218 t/s** effettivi;
+- decode: **N/A, zero token completati**;
+- turn 1 wall completion t/s: **N/A, risposta non completata**.
+
+Il primo token si e' bloccato tra layer 0 e layer 1:
+
+```text
+[gpu-route-debug] request seq=1 generation=1 layer=0 misses=6
+[gpu-route-debug] submit seq=1 layer=0
+[gpu-route-debug] request seq=1 generation=2 layer=1 misses=6
+```
+
+La seconda richiesta conserva erroneamente `seq=1` ma mostra gia'
+`generation=2`. Il resolver GPU scrive `host_generation` come payload e
+pubblica `sequence` per ultima dopo `__threadfence_system`. Il worker P0-B
+filtrava soltanto la generazione gia' consumata: poteva quindi osservare la
+nuova generazione mentre `sequence` nominava ancora la richiesta precedente,
+reclamare uno snapshot parzialmente scritto e pubblicare ready per la sequenza
+sbagliata. Il main attendeva la sequenza nuova senza deadline attiva nel ramo
+staged-KV: deadlock.
+
+Monitor, 41 campioni:
+
+```text
+min_available_RAM_mb=13763.4
+max_server_private_mb=42713.1
+max_GPU_used_mb=10649
+max_GPU_util_pct=46
+max_process_read_mb=24695.3
+```
+
+### Chiusura e stato macchina
+
+Il client HTTP e' stato terminato soltanto dopo aver provato il deadlock. Il
+runner ha quindi inviato lo shutdown nativo autenticato:
+
+```json
+{"status":"draining"}
+```
+
+Il thread bloccato non ha raggiunto il drain entro i 120 s previsti:
+
+```text
+shutdown_mode=forced_after_grace_timeout
+gate=FAIL
+```
+
+Subito dopo il fallback: zero processi `ds4_server`, porta 8000 libera, RTX
+3060 P8/0% a 467-482 MiB, 49,12 GiB RAM fisica disponibile. La macchina e'
+tornata allo stato pre-run, ma la chiusura resta correttamente classificata
+come non pulita.
+
+Il runner non ha scritto `result.txt` per un secondo difetto del solo harness:
+il file stderr rediretto era ancora aperto quando tentava `ReadAllText`.
+Richieste, manifest, provenance, monitor, log completo e ricevuta shutdown sono
+comunque presenti. Il runner e' stato corretto per aspettare l'uscita dopo il
+fallback e leggere il log con condivisione `ReadWrite`.
+
+### Patch conseguente, non ancora testata in runtime
+
+Il worker conserva ora anche `consumed_sequence` e ignora una mailbox finche'
+il word di pubblicazione `sequence` non cambia. Soltanto una nuova sequenza,
+scritta dal GPU dopo `__threadfence_system`, consente claim e ack della nuova
+generazione. Prossimo gate: contratto statico aggiornato, build, macchina
+pulita e ripetizione identica U2; nessun trace A/B prima del PASS.
+
+### U1-FIX — gate statico/build prima della ripetizione
+
+Nessun server avviato; manifest/ctx/t/s N/A.
+
+```text
+test_p0_short_suffix_snapshot_static.ps1=PASS
+test_p0_route_mailbox_static.ps1=PASS
+test_p1_decode_trace_static.ps1=PASS
+runner_PowerShell_AST_errors=0
+direct_Ninja_build=PASS
+build_exit=0
+ctest_bare_command=NOT_RUN (ctest non presente nel PATH PowerShell)
+ctest_absolute_path=PASS
+ctest_passed=1/1
+ctest_test=ds4_bake_test
+```
+
+Il primo tentativo `ctest` senza percorso assoluto non ha eseguito alcun test;
+il medesimo test e' stato quindi lanciato dall'eseguibile CTest della toolchain
+CMake usata dalla build ed e' passato.
+
+Nuova provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=2C223E20D280345090C404431B12A5D92B1537003C10311B18B6ECF7B06689B2
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=527A45F50B19821F2D0D4B14B1C1D4476A571D44C6D419F62CA3F301F772CC69
+ds4_server.exe_bytes=12381184
+ds4_server.exe_link_utc=2026-07-26T07:08:06.7843049Z
+run_two_turn_lifecycle.ps1_SHA256=B4E55C1A86CB7CF902485BC3B4AF42714E77143737D426BECA5D1C37E2B8469D
+runner_ValidateOnly=PASS
+runner_manifest_count=47
+server_started=no
+```
+
+Preflight U2: zero processi DS4, porta 8000 libera, 49,02 GiB RAM fisica
+disponibile, RTX 3060 P8 con 478 MiB.
+
+## V) U2 INTERROTTO SU RICHIESTA PRIMA DEL DECODE (2026-07-26)
+
+U2 era appena partito quando e' stato richiesto il riavvio. Non e' un verdetto
+sulla patch: il test e' stato cancellato durante il primo prefill, prima di
+raggiungere la mailbox decode e prima del secondo turno.
+
+```text
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_090946_p0_lifecycle_trace-off
+manifest_path=...\20260726_090946_p0_lifecycle_trace-off\manifest_47.env
+manifest_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+manifest_count=47
+manifest_contents=byte-identical al blocco completo 47/47 della sezione U
+trace_mode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+ctx_capacity=150000
+mtp_draft=1
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_prompt_tokens=13
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn2_started=no
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=2C223E20D280345090C404431B12A5D92B1537003C10311B18B6ECF7B06689B2
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=527A45F50B19821F2D0D4B14B1C1D4476A571D44C6D419F62CA3F301F772CC69
+shutdown_token_SHA256=82a2fdc74983b2b15baa48a1b255be01360d478777169d825bfe590b1ad88d53
+```
+
+Il client e' stato chiuso per far entrare il runner nel `finally`. Lo shutdown
+nativo e' stato accettato alle 09:10:28 e ha completato il drain:
+
+```text
+prompt_done_seconds=56.517
+wrap_seconds=34.958
+effective_prompt_plus_wrap_tps=0.230 t/s
+decode_tokens=0
+decode_tps=N/A
+decode_refused_count=0
+mailbox_quarantine_count=0
+shutdown_mode=graceful_http_verified
+gate=NOT_RUN/cancelled
+```
+
+Stato immediatamente prima del riavvio: zero processi DS4, porta 8000 libera,
+48,91 GiB RAM fisica disponibile, RTX 3060 P8/0% a 569 MiB. Nessun fallback
+forzato in U2.
+
+## W) U3 POST-REBOOT — P0 LIFECYCLE/MAILBOX RUNTIME PASS (2026-07-26)
+
+### W0 — launcher pre-start, nessuna inferenza
+
+Il primo comando esterno `Start-Process` non ha avviato il runner per la
+duplicazione Windows `Path`/`PATH`. Nessun `ds4_server`, modello o porta sono
+stati toccati. Dopo la normalizzazione del solo ambiente del launcher, U3 e'
+partito regolarmente. Questo non e' un arm di benchmark.
+
+### Provenance
+
+```text
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_091641_p0_lifecycle_trace-off
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=2C223E20D280345090C404431B12A5D92B1537003C10311B18B6ECF7B06689B2
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=527A45F50B19821F2D0D4B14B1C1D4476A571D44C6D419F62CA3F301F772CC69
+ds4_server.exe_bytes=12381184
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_bytes=86720111488
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+runner_SHA256=B4E55C1A86CB7CF902485BC3B4AF42714E77143737D426BECA5D1C37E2B8469D
+```
+
+### Manifest completo 47/47
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+File materializzato dal runner:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+manifest_count=47
+```
+
+La differenza dal SHA del template e' soltanto la serializzazione CRLF prodotta
+da PowerShell; nomi e valori sono identici.
+
+Instrumentation/control:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+shutdown_mode=authenticated_loopback_http
+```
+
+### Server e richieste
+
+```text
+backend=CUDA
+ctx_capacity=150000
+server_max_tokens=8192
+mtp_draft=1
+host=127.0.0.1
+port=8000
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_max_tokens=32
+```
+
+Artefatti:
+
+```text
+turn1.request.json_SHA256=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json_SHA256=B56DC5D18A2ABDBDE6DF2A34E120F28029D477063E05C469A62BCCEE7229D542
+turn2.request.json_SHA256=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json_SHA256=09FC12910E0FBED3B3FAEFD81D6EE8716B61499CE83CBD81CA83DFAD66276666
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+```
+
+Il contenuto del turno 1 e' byte-identico alla baseline UTF-8 pre-patch con
+stesso manifest/seed (`exact_match=true`). Il turno 2 e' volutamente troncato
+a 32 token per lo smoke lifecycle: inizia con un fence HTML e `<!DOCTYPE
+html>`, ma non e' una pagina completa e non viene promosso come artefatto HTML.
+
+### P0-B: race corretta in runtime
+
+Il punto che deadlockava U1 ora pubblica e consuma sequenze distinte:
+
+```text
+request seq=1 generation=1 layer=0 misses=6
+submit  seq=1 layer=0
+request seq=2 generation=2 layer=1 misses=6
+submit  seq=2 layer=1
+```
+
+Nessun fail-closed, quarantine, generation mismatch o worker error.
+
+### Turno 1
+
+```text
+prompt_tokens=13
+cached_tokens=0
+computed_prompt_tokens=13
+completion_tokens=128
+finish_reason=length
+snapshot_candidate=4423
+snapshot_generation=1
+wrap_seconds=32.517
+prompt_plus_wrap_seconds=55.307
+```
+
+T/s:
+
+- prefill modello prima del WRAP, derivato: 13 / (55,307 - 32,517) =
+  **0,570 t/s**;
+- prompt+WRAP effettivo: **0,235 t/s**;
+- decode wall/server: 128 / 57,397 = **2,230 t/s**;
+- decode graph: **2,286 t/s**;
+- richiesta intera vista dal client, incluso prompt/WRAP: **1,122 t/s**.
+
+Distribuzione graph decode, pos 13-140:
+
+```text
+n=128
+mean_ms=437.489
+p50_ms=393.791
+p95_ms=635.205
+p99_ms=888.162
+min_ms=246.749
+max_ms=3498.552
+```
+
+Serving:
+
+```text
+route_calls=5504
+worker_jobs=5504
+miss_experts=25730
+worker_ms_per_job=6.369
+wait_ms_per_call=6.147
+cache_hits=7294
+cache_misses=25730
+legacy_H2D_submissions=77190
+SSD_bytes=59510882304
+RAM_H2D_bytes=182114058240
+forbidden_cold_ssd_to_vram=0
+failures=0
+```
+
+### Turno 2: KV reuse e snapshot preservata
+
+```text
+prompt_tokens_total=160
+cached_prefix_tokens=141
+computed_suffix_tokens=19
+suffix_tokens=19
+resume_threshold=32
+snapshot_before=1
+snapshot_after=1
+resident_before=4423
+resident_after=4423
+observer_generation=2
+published_snapshot_generation=1
+result=preserved
+reason=short-suffix
+loads=0
+wrap_seconds=0.000
+completion_tokens=32
+finish_reason=length
+```
+
+T/s:
+
+- suffix prefill wall: 19 / 18,748 = **1,013 t/s**;
+- suffix graph pos 141-159: **1,033 t/s**;
+- decode wall/server: 32 / 12,584 = **2,543 t/s**;
+- decode graph pos 160-191: **2,618 t/s**;
+- richiesta intera vista dal client, suffix+decode: **0,998 t/s**.
+
+Distribuzioni graph:
+
+```text
+suffix_prefill n=19 p50_ms=882.137 p95_ms=2043.250 p99_ms=2043.250
+decode n=32 p50_ms=347.108 p95_ms=567.322 p99_ms=571.141
+```
+
+Serving decode del secondo turno:
+
+```text
+route_calls=1376
+worker_jobs=1376
+miss_experts=7418
+worker_ms_per_job=5.399
+wait_ms_per_call=5.173
+cache_hits=838
+cache_misses=7418
+legacy_H2D_submissions=22254
+SSD_bytes=14410579968
+RAM_H2D_bytes=52503773184
+forbidden_cold_ssd_to_vram=0
+failures=0
+```
+
+### Memoria, invarianti e shutdown
+
+Monitor, 30 campioni:
+
+```text
+min_available_RAM_mb=19569.0
+max_server_private_mb=45638.4
+max_GPU_used_mb=12018
+max_GPU_util_pct=79
+max_process_read_mb=101308.7
+```
+
+Gate finale:
+
+```text
+gate_pass=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+forbidden_cold_ssd_to_vram=0
+run_error=none
+shutdown_mode=graceful_http_verified
+```
+
+Post-run: zero DS4, porta 8000 libera, 55,63 GiB RAM disponibile, RTX 3060
+P8/0% a 493 MiB.
+
+Conclusione: P0-A e la correzione P0-B sono validate in runtime sullo stesso
+server e sul vero percorso KV-prefix reuse. Il gate successivo consentito e'
+trace OFF contro trace campionato, senza cambiare alcuna delle 47 variabili.
+
+## X) P1 TRACE SAMPLED A/B — EXACTNESS PASS, DECODE OVERHEAD PASS (2026-07-26)
+
+Confronto diretto con il controllo trace-OFF della sezione W. Il server e'
+stato avviato in un nuovo processo, con lo stesso binario, modello, seed,
+prompt, ctx e tutte le 47 variabili. L'unica differenza intenzionale e'
+l'abilitazione del tracer campionato alle posizioni 13 e 141, sui layer
+0, 4, 20 e 42.
+
+Due tentativi di launcher sono falliti prima della creazione del processo
+DS4: il primo per `PATH` non ereditato da `Start-Process`, il secondo per
+accesso negato al detached launch CIM. Non hanno caricato il modello, avviato
+inferenze o modificato lo stato del server. Il run valido sotto e' quello
+avviato dal runner sincrono e concluso con shutdown nativo verificato.
+
+### Provenienza e artefatti
+
+```text
+run_id=20260726_092402_p0_lifecycle_trace-sampled
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_092402_p0_lifecycle_trace-sampled
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=2C223E20D280345090C404431B12A5D92B1537003C10311B18B6ECF7B06689B2
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=527A45F50B19821F2D0D4B14B1C1D4476A571D44C6D419F62CA3F301F772CC69
+ds4_server.exe_bytes=12381184
+runner_SHA256=B4E55C1A86CB7CF902485BC3B4AF42714E77143737D426BECA5D1C37E2B8469D
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_bytes=86720111488
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=4A1433A14EA50B5F842503BDBDC6AF7425E3CBAF44AE04E8477EDFA410EA9B6C
+turn1.request.json_SHA256=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn2.request.json_SHA256=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn1.response.json_SHA256=491D1365924F606E5F7AF7BA516D7C0D1EBEACAE4F3AC9C04361F2EC88BEAC45
+turn2.response.json_SHA256=E1044AC682265CFB3F2F1706EF560711A92F57C24AF8901FE8AE991D7806CB4F
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+shutdown_token_SHA256=14faf06bb035052320f2b5e6390b8eea167a26f1de095da88bd8d4532f91be57
+```
+
+I due content hash sono esattamente uguali al controllo trace-OFF della
+sezione W. Il tracer non ha cambiato l'output deterministico.
+
+### Manifest completo 47/47
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Instrumentation, unica variabile dell'A/B:
+
+```text
+TraceMode=Sampled
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=13,141
+DS4_CUDA_DECODE_TRACE_LAYERS=0,4,20,42
+```
+
+### Server e richieste
+
+```text
+backend=CUDA
+ctx_capacity=150000
+server_max_tokens=8192
+mtp_draft=1
+host=127.0.0.1
+port=8000
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_max_tokens=32
+```
+
+### Gate lifecycle/correctness
+
+```text
+gate_pass=true
+cached_prefix_tokens=141
+computed_suffix_tokens=19
+short_suffix_preserve_count=1
+result=preserved
+reason=short-suffix
+snapshot_before=1
+snapshot_after=1
+resident_before=4423
+resident_after=4423
+observer_generation=2
+published_snapshot_generation=1
+decode_refused_count=0
+mailbox_quarantine_count=0
+forbidden_cold_ssd_to_vram=0
+run_error=none
+shutdown_mode=graceful_http_verified
+```
+
+### A/B t/s e costo del tracer
+
+Il confronto corretto usa i segmenti decode, non il tempo totale della
+richiesta, perche' il sampled ha incontrato un outlier di page-in durante il
+WRAP prima del primo evento di tracing.
+
+| Segmento | Trace OFF | Sampled | Delta |
+|---|---:|---:|---:|
+| turno 1 decode graph, 128 token | 2,286 t/s | 2,268 t/s | -0,798% |
+| turno 1 decode wall, 128 token | 2,230 t/s | 2,208 t/s | -0,998% |
+| suffix graph, 19 token | 1,033 t/s | 1,025 t/s | -0,826% |
+| turno 2 decode graph, 32 token | 2,618 t/s | 2,552 t/s | -2,514% |
+| turno 2 decode wall, 32 token | 2,543 t/s | 2,482 t/s | -2,384% |
+
+Il campione primario da 128 token passa il gate di overhead <=1-2%. Il
+secondario da 32 token e' troppo corto e rumoroso per una decisione autonoma;
+resta appena oltre il gate. Il tracer rimane quindi opt-in, sparso e non deve
+essere usato per produrre la metrica primaria di performance nello stesso arm.
+
+Tempi end-to-end:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_wrap_seconds=314.500
+turn1_request_wall_tps_including_prompt_and_wrap=0.324
+turn2_prompt_tokens_total=160
+turn2_cached_tokens=141
+turn2_suffix_tokens=19
+turn2_completion_tokens=32
+turn2_request_wall_tps_including_suffix=0.981
+```
+
+Controllo WRAP contro sampled:
+
+```text
+trace_OFF_wrap_seconds=32.517
+trace_sampled_wrap_seconds=314.500
+trace_sampled_copy_checksum_seconds=314.490
+trace_OFF_prefill_before_wrap_tps=0.570
+trace_sampled_prefill_before_wrap_tps_approx=0.570
+```
+
+Il WRAP avviene prima della prima riga `[decode-trace]`; il prefill modello
+prima del WRAP resta nello stesso ordine del controllo. L'outlier di 314,5 s
+e' coerente con i page-in mmap/Windows gia' osservati nel ledger e rende
+inconcludente il confronto della richiesta totale, ma non il confronto decode.
+
+### Campioni prodotti dal tracer
+
+Configurazione:
+
+```text
+enabled=1
+sample_every=0
+positions=13,141
+layers_mask=0x40000100011
+timing_events=174
+hot_path_event_sync=0
+```
+
+Primo token decode, posizione 13:
+
+```text
+host_ms=3458.746800
+wall_tps=0.289122
+gpu_default_ms=3448.461670
+gpu_tps=0.289984
+route_calls=43
+worker_jobs=43
+miss_experts=258
+pread_bytes=7077888
+packed_h2d_submissions=0
+legacy_h2d_submissions=774
+event_sync_calls=0
+layer0_host_ms=578.119200 layer0_gpu_ms=578.192383 upload_ms=2.510848
+layer4_host_ms=402.563800 layer4_gpu_ms=402.903046 upload_ms=7.106560
+layer20_host_ms=5.908800 layer20_gpu_ms=5.909504 upload_ms=2.533248
+layer42_host_ms=5.982500 layer42_gpu_ms=5.966848 upload_ms=2.562048
+```
+
+Primo token del suffix prefill, posizione 141:
+
+```text
+host_ms=2082.107200
+wall_tps=0.480283
+gpu_default_ms=2071.924072
+gpu_tps=0.482643
+route_calls=0
+worker_jobs=0
+miss_experts=0
+legacy_h2d_submissions=0
+event_sync_calls=0
+```
+
+La posizione 141 percorre il prefill batch e non il route worker decode;
+percio' i contatori route/upload sono correttamente zero.
+
+### Serving e memoria
+
+Turno 1:
+
+```text
+route_calls=5504
+worker_jobs=5504
+miss_experts=25730
+worker_ms_per_job=6.449
+wait_ms_per_call=6.220
+cache_hits=7294
+cache_misses=25730
+legacy_H2D_submissions=77190
+SSD_bytes=59510882304
+RAM_H2D_bytes=182114058240
+forbidden_cold_ssd_to_vram=0
+failures=0
+```
+
+Turno 2:
+
+```text
+route_calls=1376
+worker_jobs=1376
+miss_experts=7418
+worker_ms_per_job=5.589
+wait_ms_per_call=5.345
+cache_hits=838
+cache_misses=7418
+legacy_H2D_submissions=22254
+SSD_bytes=14410579968
+RAM_H2D_bytes=52503773184
+forbidden_cold_ssd_to_vram=0
+failures=0
+```
+
+Monitor, 85 campioni:
+
+```text
+min_available_RAM_mb=19810.1
+max_server_private_mb=45710.0
+max_GPU_used_mb=12024
+max_GPU_util_pct=75
+max_GPU_power_w=43.0
+max_process_read_mb=98116.9
+```
+
+Post-run: zero processi `ds4_server`, porta 8000 libera, 56,81 GiB RAM
+disponibile, RTX 3060 P8/0% a 448 MiB.
+
+Conclusione: P1 passa correctness/exactness e il gate primario di overhead.
+Il tracer ha anche dimostrato la riduzione attesa del prossimo A/B: il
+controllo usa 774 H2D legacy per il primo token campionato, esattamente tre
+submission per ciascuno dei 258 miss. Il prossimo test consentito e' l'audit
+statico e poi l'A/B isolato del percorso packed-copy esistente.
+
+## Y) P2-A ROUTE PACKED-COPY SCOUT — EXACT PASS, PERFORMANCE NEGATIVE (2026-07-26)
+
+Primo scout n=1 del percorso heterogeneous route packed-copy gia' presente
+nel runtime. Nessuna modifica a sorgente o binario: rispetto al controllo
+trace-OFF della sezione W cambia una sola variabile,
+`DS4_CUDA_MOE_ROUTE_PACKED_COPY=1`. Tracing disabilitato.
+
+Il percorso e' stato auditato prima del run:
+
+- host, cache residente e transient slab hanno layout packed gate/up/down;
+- gate+up usano una `cudaMemcpy2DAsync`, down una `cudaMemcpyAsync`;
+- il payload e' identico;
+- errore di layout/copia fallisce il worker, senza fallback legacy silenzioso;
+- il publish `<<<1,1>>>` resta uno per miss e non e' ottimizzato;
+- `tests/test_g127p_hetero_route_packed_copy_static.ps1`: PASS;
+- runner ValidateOnly packed OFF e ON: PASS, nessun server avviato.
+
+### Provenienza e artefatti
+
+```text
+run_id=20260726_094158_p0_lifecycle_trace-off_packed-on
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_094158_p0_lifecycle_trace-off_packed-on
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=2C223E20D280345090C404431B12A5D92B1537003C10311B18B6ECF7B06689B2
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=527A45F50B19821F2D0D4B14B1C1D4476A571D44C6D419F62CA3F301F772CC69
+ds4_server.exe_bytes=12381184
+runner_SHA256=56846EE11B9B38678BA3151C12773E3D322DBB867FD3DCFD21650D18EAD63550
+model_path=C:\ds4-models\ds4-2bit.gguf
+model_bytes=86720111488
+model_SHA256_receipt=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=3F5FB5AC43DE63A1CD6D3794A0240DB9935CC49AD64632B1B5FB50CB4737481E
+turn1.request.json_SHA256=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn2.request.json_SHA256=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn1.response.json_SHA256=210910D9EC0FB039F0A2AA080646B020130BA9874134EE3E1437BCA0D8016AFB
+turn2.response.json_SHA256=C020305072D4F4EFD5DF8EE28A75D14B6F88B14D6827E5E3F758A0A4A6839C4A
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+shutdown_token_SHA256=271e29fab273d385906b5421347f830a7f208b04f18baf9a4e1797af0e7bcb43
+```
+
+I due content hash sono esattamente uguali al controllo della sezione W e al
+sampled della sezione X.
+
+### Manifest completo 47/47 e singolo overlay
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay, unica differenza:
+
+```text
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=1
+declared_parameter_count=48
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+```
+
+### Server e richieste
+
+```text
+backend=CUDA
+ctx_capacity=150000
+server_max_tokens=8192
+mtp_draft=1
+host=127.0.0.1
+port=8000
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_max_tokens=32
+```
+
+### Correctness, lifecycle e shutdown
+
+```text
+gate_pass=true
+packed_gate_pass=true
+cached_prefix_tokens=141
+computed_suffix_tokens=19
+short_suffix_preserve_count=1
+result=preserved
+reason=short-suffix
+snapshot_before=1
+snapshot_after=1
+resident_before=4423
+resident_after=4423
+observer_generation=2
+published_snapshot_generation=1
+decode_refused_count=0
+mailbox_quarantine_count=0
+forbidden_cold_ssd_to_vram=0
+route_worker_errors=0
+shutdown_mode=graceful_http_verified
+run_error=none
+```
+
+### Riduzione H2D osservata
+
+Turno 1:
+
+```text
+route_calls=5504
+worker_jobs=5504
+miss_experts=25730
+packed_copy_requested=1
+packed_copy_experts=25730
+packed_copy_submissions=51460
+packed_copy_bytes=182114058240
+legacy_copy_submissions=0
+control_legacy_copy_submissions=77190
+submission_delta=-33.333%
+```
+
+Turno 2:
+
+```text
+route_calls=1376
+worker_jobs=1376
+miss_experts=7418
+packed_copy_requested=1
+packed_copy_experts=7418
+packed_copy_submissions=14836
+packed_copy_bytes=52503773184
+legacy_copy_submissions=0
+control_legacy_copy_submissions=22254
+submission_delta=-33.333%
+```
+
+Gli invarianti `experts == miss_experts` e
+`submissions == 2 * experts` passano in entrambi i turni. I byte H2D sono
+identici al controllo; nessun path legacy e nessun rifiuto di layout.
+
+### T/s e confronto con trace-OFF
+
+| Segmento | Controllo W | Packed ON | Delta |
+|---|---:|---:|---:|
+| turno 1 decode graph, 128 token | 2,286 t/s | 2,262 t/s | -1,026% |
+| turno 1 decode wall, 128 token | 2,230 t/s | 2,208 t/s | -1,011% |
+| suffix graph, 19 token | 1,033 t/s | 1,019 t/s | -1,312% |
+| turno 2 decode graph, 32 token | 2,618 t/s | 2,512 t/s | -4,021% |
+| turno 2 decode wall, 32 token | 2,543 t/s | 2,446 t/s | -3,802% |
+
+Distribuzioni graph:
+
+```text
+turn1_decode:
+  n=128 sum_ms=56579.373 mean_ms=442.026
+  tps=2.262309
+  p50_ms=397.442 p95_ms=644.737 p99_ms=756.614
+  min_ms=257.388 max_ms=3515.615
+
+suffix_prefill:
+  n=19 sum_ms=18636.601 mean_ms=980.874
+  tps=1.019499
+  p50_ms=893.552 p95_ms=2067.514 p99_ms=2067.514
+  min_ms=849.103 max_ms=2067.514
+
+turn2_decode:
+  n=32 sum_ms=12736.604 mean_ms=398.019
+  tps=2.512444
+  p50_ms=356.135 p95_ms=595.910 p99_ms=668.573
+  min_ms=290.130 max_ms=668.573
+```
+
+Il worker e il rendezvous non migliorano:
+
+```text
+turn1_worker_ms_per_job: 6.369 -> 6.460 (+1.429%)
+turn1_wait_ms_per_call:  6.147 -> 6.219 (+1.171%)
+turn2_worker_ms_per_job: 5.399 -> 5.693
+turn2_wait_ms_per_call:  5.173 -> 5.431
+```
+
+End-to-end e WRAP, riportati ma non usati per promuovere il packed path:
+
+```text
+turn1_prompt_tokens=13
+turn1_prompt_done_seconds=303.969
+turn1_wrap_seconds=130.605
+turn1_prompt_plus_wrap_tps=0.043
+turn1_request_tps_including_prompt_wrap_decode=0.352
+turn2_suffix_wall_tps_approx=0.964
+turn2_request_tps_including_suffix_decode=0.975
+```
+
+Il prompt iniziale era cold/page-fault dominated e non confrontabile col
+controllo. Il WRAP da solo ha riletto/coperto la snapshot per 130,605 s. Non
+attribuire questi tempi al packed path, che si attiva a decode-start.
+
+### Route/tiering e failure pre-esistente
+
+Turno 1:
+
+```text
+cache_hits=7294
+cache_misses=25730
+worker_ms_per_job=6.460
+wait_ms_per_call=6.219
+SSD_bytes=59036663808
+RAM_H2D_bytes=182114058240
+failures=0
+```
+
+Turno 2:
+
+```text
+cache_hits=838
+cache_misses=7418
+worker_ms_per_job=5.693
+wait_ms_per_call=5.431
+SSD_bytes=14410579968
+RAM_H2D_bytes=52503773184
+failures=0
+```
+
+Il sottosistema opzionale `q1-0-ssd-wrap` ha ancora il noto
+`partial_or_pread` fail/continue. Era presente anche nel controllo W e non ha
+alterato output, route correctness o forbidden fallback:
+
+```text
+control_q1_wrap_attempts=5 successes=4 failures=2 dropped=1
+packed_q1_wrap_attempts=11 successes=9 failures=3 dropped=2
+```
+
+Questo resta un debt separato; non viene contato come beneficio o regressione
+del packed-copy.
+
+### Memoria e post-run
+
+Monitor, 79 campioni:
+
+```text
+min_available_RAM_mb=21061.0
+max_server_private_mb=45621.8
+max_process_read_mb=100642.5
+max_GPU_used_mb=12028
+max_GPU_util_pct=82
+max_GPU_power_w=45.5
+```
+
+Post-run: zero `ds4_server`, porta 8000 libera, 56,90 GiB RAM disponibile,
+RTX 3060 P8/0% a 424 MiB.
+
+### Verdetto
+
+**NON PROMUOVERE il packed 3->2 corrente.** Riduce esattamente le submission
+del 33,333% ma non i byte, i publish kernel, il rendezvous per layer o l'I/O
+seriale. Il segmento primario regredisce circa dell'1%; il secondario corto
+regredisce circa del 4%. Non serve spendere altri run per promuovere questa
+micro-variante.
+
+La prossima implementazione deve fare batching vero per layer: staging
+contiguo di tutti i miss, 1-2 H2D per layer e un solo publish batched, con
+generazione/consumer event invariati. Il vecchio packed path puo' essere
+riusato come layout helper, ma non come candidato performance autonomo.
+
+## Z) P2-B BATCHED ROUTE PUBLISH — EXACT PASS, PERFORMANCE INCONCLUSIVE (2026-07-26)
+
+Test isolato del batching della sola pubblicazione route. La patch sostituisce
+un kernel CUDA `<<<1,1>>>` per miss con un descrittore per un massimo di sei
+route e un kernel per batch/flush sullo stream upload esistente. Non modifica
+H2D, byte, sorgenti, cache, ordine route, mailbox o consumer lifetime.
+
+Decision rule dell'utente, applicata al verdetto:
+
+```text
+abs(performance_delta) < 10% => varianza / risultato inconcludente
+```
+
+Quindi i delta positivi di 1,9-3,4% riportati sotto non sono considerati un
+miglioramento provato. Non viene eseguita una terza replica per promuovere una
+micro-variante incapace, per costruzione, di colmare il gap verso 5 t/s.
+
+### Artefatti e provenance
+
+```text
+source_root=C:\Users\imanu\Documents\Codex\2026-07-25\legg\work\wt-hot-reserve
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+branch=research/ds4-fast-q1-converge
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=B81C3DF702F913E5F287AB620ABB73C956D87AE073B5EDAEF4BD59F46A4BB9ED
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=680E9AB0E30F7937B660A812C3E1F2BA57DDA8D3DA0F6E0996209B2DB985D1EF
+ds4_server.exe_size=12404736
+ds4_server.exe_link_utc=2026-07-26T08:04:47Z
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+model_bytes=86720111488
+manifest_47.env_SHA256=CF1150EC0E46197E78B7F8482F8D94A8DA0666D887B291743478AA9DD1F73609
+runtime_monitor.ps1_SHA256=5F59401C093A7A53B03215F5F28B9765405954B2C74A8DB0807F087B6D4E5858
+test_p2_batched_publish_static.ps1_SHA256=F1BD447E48F01FC17495EA1CBE5D81D57DE3B6A64A3C19C950D5B51B2A981A12
+runner_candidate_SHA256=53390FF45F276CABE67B429684E9DBBE80DA1616A4D20962BAA6480A3E40AD7A
+runner_corrected_SHA256=542303AA06F67D7725C75322CCEE6D7C67016820547D6670A5E7961FEA39EF9C
+static_contract=PASS
+build=PASS
+ctest_ds4_bake_test=PASS
+default_behavior=disabled
+new_device_allocations=0
+new_cuda_synchronizations=0
+```
+
+Run ON candidato:
+
+```text
+run_id=20260726_101058_p0_lifecycle_trace-off_packed-off_publish-on
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_101058_p0_lifecycle_trace-off_packed-off_publish-on
+order=1
+raw_runner_gate=false
+raw_gate_failure=parser searched route_calls= but runtime emits calls=
+posthoc_gate=true
+posthoc_receipt=posthoc_gate.txt
+```
+
+Run OFF di controllo, stesso binario:
+
+```text
+run_id=20260726_101727_p0_lifecycle_trace-off_packed-off_publish-off
+run_dir=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_101727_p0_lifecycle_trace-off_packed-off_publish-off
+order=2
+runner_gate=true
+```
+
+Il risultato raw del candidato e' preservato. Il parser corretto legge
+`calls=` e il gate di batching richiede
+`0 < batched_publish_kernels < batched_publish_routes`, perche' il design
+prevede esplicitamente flush aggiuntivi prima dei drain intermedi.
+
+### Manifest completo comune 47/47
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay A/B e strumentazione:
+
+```text
+common:
+  TraceMode=Off
+  DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+  DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+  DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+  DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+
+candidate_ON:
+  DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+
+control_OFF:
+  DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+
+base_manifest_count=47
+declared_parameter_count=49
+```
+
+### Server, prompt e generazione
+
+```text
+backend=CUDA
+ctx_capacity=150000
+live_position_end=191
+server_max_tokens=8192
+mtp_draft=1
+host=127.0.0.1
+port=8000
+think=false
+temperature=0.7
+seed=12345
+turn1_prompt=Ciao, sai fare un bel sito?
+turn1_prompt_tokens=13
+turn1_max_tokens=128
+turn2_prompt=Fammi una landing page minimal, single-file HTML, molto breve.
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+computed_suffix_tokens=19
+turn2_max_tokens=32
+```
+
+### Correctness e lifecycle
+
+Entrambi i run:
+
+```text
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+output_exact=true
+short_suffix_preserve_count=1
+snapshot_before=1
+snapshot_after=1
+resident_before=4423
+resident_after=4423
+observer_generation=2
+published_snapshot_generation=1
+decode_refused_count=0
+mailbox_quarantine_count=0
+forbidden_cold_ssd_to_vram=0
+route_worker_errors=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_shutdown_ds4_processes=0
+post_shutdown_port_8000_listeners=0
+```
+
+### Batching realmente osservato
+
+Turno 1, 128 token:
+
+```text
+route_calls=5504
+miss_experts=25730
+H2D_legacy_submissions_OFF=77190
+H2D_legacy_submissions_ON=77190
+H2D_bytes_OFF=182114058240
+H2D_bytes_ON=182114058240
+legacy_publish_kernels_OFF=25730
+batched_publish_kernels_ON=5591
+batched_publish_routes_ON=25730
+legacy_publish_kernels_ON=0
+publish_kernel_reduction=78.271%
+batched_publish_kernels_per_token=43.680
+```
+
+Turno 2, 32 token:
+
+```text
+route_calls=1376
+miss_experts=7418
+H2D_legacy_submissions_OFF=22254
+H2D_legacy_submissions_ON=22254
+H2D_bytes_OFF=52503773184
+H2D_bytes_ON=52503773184
+legacy_publish_kernels_OFF=7418
+batched_publish_kernels_ON=1429
+batched_publish_routes_ON=7418
+legacy_publish_kernels_ON=0
+publish_kernel_reduction=80.736%
+batched_publish_kernels_per_token=44.656
+```
+
+Il numero e i byte H2D restano volutamente invariati: questo test isola solo
+la pubblicazione.
+
+### T/s A/B sullo stesso binario
+
+| Segmento | OFF controllo | ON batched | Delta |
+|---|---:|---:|---:|
+| turno 1 graph, 128 token | 2,223901 t/s | 2,266475 t/s | +1,914% |
+| turno 1 wall decode, 128 token | 2,171365 t/s | 2,212809 t/s | +1,909% |
+| suffix graph, 19 token | 1,020010 t/s | 1,002962 t/s | -1,671% |
+| turno 2 graph, 32 token | 2,516831 t/s | 2,602375 t/s | +3,399% |
+| turno 2 wall decode, 32 token | 2,450968 t/s | 2,532505 t/s | +3,327% |
+
+Distribuzione delle t/s istantanee graph:
+
+```text
+turn1_OFF: p50=2.469298 p05=1.527227 p01=1.318241
+turn1_ON:  p50=2.473084 p05=1.561537 p01=1.335888
+
+suffix_OFF: p50=1.113045 p05=0.850375 p01=0.555606
+suffix_ON:  p50=1.095990 p05=0.842025 p01=0.556792
+
+turn2_OFF: p50=2.754970 p05=1.692393 p01=1.596729
+turn2_ON:  p50=2.839329 p05=1.765843 p01=1.725080
+```
+
+Tutti i delta sono inferiori al gate del 10% e quindi sono classificati come
+varianza, non come speedup.
+
+### Worker, wait e upload
+
+```text
+turn1_worker_ms_per_job: 6.616 OFF -> 6.417 ON (-3.008%)
+turn1_wait_ms_per_call:  6.379 OFF -> 6.216 ON (-2.555%)
+turn1_upload_wait_avg:   46.826 ms OFF -> 41.319 ms ON (-11.760%)
+
+turn2_worker_ms_per_job: 5.710 OFF -> 5.433 ON (-4.851%)
+turn2_wait_ms_per_call:  5.473 OFF -> 5.233 ON (-4.385%)
+turn2_upload_wait_avg:   52.670 ms OFF -> 42.116 ms ON (-20.038%)
+```
+
+I wait interni si muovono nella direzione prevista, ma non abbastanza da
+produrre un delta end-to-end oltre la varianza.
+
+### WRAP/prefill separati dal decode
+
+```text
+OFF:
+  turn1_wrap=182.419 s
+  turn1_prompt_done=204.429 s
+  turn1_request_including_wrap_decode=0.483640 t/s
+  suffix_prompt_done=18.985 s
+  turn2_request_including_suffix_decode=0.977083 t/s
+
+ON:
+  turn1_wrap=33.812 s
+  turn1_prompt_done=55.747 s
+  turn1_request_including_wrap_decode=1.114409 t/s
+  suffix_prompt_done=19.309 s
+  turn2_request_including_suffix_decode=0.980340 t/s
+```
+
+L'outlier WRAP OFF da 182,419 s e' host/page-in, avviene prima del decode e
+non e' causato dal flag publish. Per questo le t/s request-wide non sono usate
+nel verdetto P2-B. Conferma pero' che il WRAP rimane un problema prodotto
+separato e molto piu' grande della micro-ottimizzazione.
+
+### Memoria/GPU
+
+```text
+OFF:
+  monitor_samples=60
+  min_available_RAM_mb=20646.9
+  max_server_private_mb=45667.8
+  max_process_read_mb=101308.7
+  max_GPU_used_mb=12023
+  max_GPU_util_pct=65
+  max_GPU_power_w=44.31
+
+ON:
+  monitor_samples=30
+  min_available_RAM_mb=20889.3
+  max_server_private_mb=45673.5
+  max_process_read_mb=100298.2
+  max_GPU_used_mb=12031
+  max_GPU_util_pct=81
+  max_GPU_power_w=43.56
+```
+
+Questi sono picchi di `nvidia-smi`, non una misura diretta del
+memory-controller. Non provano saturazione di banda. Il basso power draw e le
+lunghe attese host/upload restano coerenti con una pipeline latency-bound.
+
+### Verdetto
+
+**CORRECTNESS PASS; PERFORMANCE INCONCLUSIVE / NON PROMOSSA.**
+
+La patch dimostra che circa l'80% dei kernel di publish puo' essere eliminato
+senza cambiare output, ma il decode resta circa 2,2-2,6 t/s. Il delta sotto il
+10% e' varianza per la regola del progetto e non avvicina materialmente
+l'obiettivo 5 t/s.
+
+Non spendere altre repliche su publish-only. Conservare il path opt-in come
+componente per una patch piu' ampia; la prossima misura deve ridurre le circa
+604 submission H2D/token e i drain per layer, oppure rimuovere il trasporto dal
+critical path tramite residency/eventi. Un nuovo candidato deve superare il
+gate del 10% sul segmento primario prima di essere chiamato progresso.
+
+### Commit e bundle portabili
+
+Il sandbox puo' leggere i repository originali ma non scrivere i loro
+`index.lock` (`.git` read-only; il worktree DS4 punta inoltre a metadata su
+`D:\ds4_work`). Per non lasciare la fase non committata sono stati prodotti
+commit Git con gli HEAD originali come parent, in metadata scrivibili nel
+workspace. I bundle sono importabili nel repository originale.
+
+```text
+portable_root=C:\Users\imanu\Documents\Codex\2026-07-25\legg\portable_commits\20260726_103326
+
+DS4_parent=f64cc89baf5ba890c11317b8a0283e25ace85eae
+DS4_commit=b733367c1690fa9bf0d76a57943efcb7d7c69b35
+DS4_subject=perf: checkpoint DS4 lifecycle tracing and route batching
+DS4_scope=ds4.c,ds4_cuda.cu,ds4_gpu.h,4 nuovi test P0/P1/P2
+DS4_bundle=ds4-p0-p2.bundle
+DS4_bundle_SHA256=C91865B45E89F2B6E5E751A1DD2BAA2D8C5D966BD59EC4CF14B036A1E815635D
+
+ledger_parent=b13cf262b11e246907845c3fa9b838dc1b97b206
+ledger_commit_initial=7e0c02920786a3715a615a30cd62ab361cbe8547
+ledger_subject=docs: record DS4 lifecycle trace and batching experiments
+ledger_scope=docs/EXPERIMENTS_LEDGER.md
+
+ops_commit_initial=b5114c00bb1336f90d2558d0c3e8172055652910
+ops_subject=docs: checkpoint DS4 operational plan and runtime harness
+ops_scope=operational plan, runner, manifest 47, monitor, posthoc gate receipt
+```
+
+Il commit finale del ledger e il bundle aggiornato vengono emessi dopo
+l'inserimento di questa receipt; i rispettivi hash sono registrati nel piano
+operativo e nel commit successivo.
+
+## AA) P2-C NSIGHT SINGLE-TOKEN ARMING — BUILD/STATIC PASS (2026-07-26)
+
+Questa fase non e' una patch prestazionale. Serve a impedire altre
+micro-ottimizzazioni senza una timeline diretta della GPU.
+
+### Ipotesi e misura
+
+Le indagini decode e prefill convergono su una pipeline host-orchestrated,
+latency-bound: polling, I/O QD1, circa 604 H2D/token, piccoli kernel e drain
+per layer. La telemetria `nvidia-smi` non misura la saturazione del
+memory-controller. Nsight Systems e' presente, ma i GPU performance counters
+sono negati:
+
+```text
+Nsight_Systems=2024.5.1
+Nsight_Compute=2024.3.2
+GPU=RTX_3060_SM86
+driver=596.21
+nsys_gpu_metrics=UNAVAILABLE
+reason=ERR_NVGPUCTRPERM insufficient privilege
+```
+
+Il trace CUDA API/kernel/memcpy puo' comunque misurare busy/idle gaps,
+submission, durata ed effective H2D bandwidth senza inferire dai picchi
+generici di GPU utilization.
+
+### Arming implementato
+
+```text
+DS4_CUDA_NSYS_CAPTURE=1
+DS4_CUDA_DECODE_TRACE_POSITIONS=100
+DS4_CUDA_DECODE_TRACE_LAYERS=0
+cudaProfilerStart=selected_token_begin_only
+cudaProfilerStop=selected_token_complete_or_fail_exit
+capture_range=cudaProfilerApi
+capture_range_end=stop
+trace=cuda
+sample=none
+cpuctxsw=none
+cuda_memory_usage=false
+gpu_metrics=disabled_ERR_NVGPUCTRPERM
+default_when_env_unset=unchanged
+new_device_sync=0
+new_stream_sync=0
+```
+
+La posizione 100 e' un decode token caldo. Non viene catturato il primo token
+di warmup e non viene catturato il suffix prefill.
+
+### Build, test e hash
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=6A0BE6762339CBA47015DA20E890455EC3D1BCA4993AE58B548DB1D4A5A24334
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=9CBCCCF6EB42168F5C58C6BE08C5E4A04567BBD7324710EBAC7220D2832B43FD
+ds4_server.exe_size=12405760
+ds4_server.exe_link_utc=2026-07-26T08:42:17Z
+test_p2c_nsys_capture_static.ps1_SHA256=211CC93F821A6FF220553396F2E5EAACDD13D5D5D2E7BC216A40D125263BD33A
+P0_short_suffix_static=PASS
+P0_mailbox_static=PASS
+P1_decode_trace_static=PASS
+G127P_packed_copy_static=PASS
+P2_batched_publish_static=PASS
+P2C_nsys_capture_static=PASS
+ctest_ds4_bake_test=PASS
+scoped_diff_check=PASS
+build=PASS
+server_started=no
+```
+
+### Commit
+
+```text
+portable_parent=b733367c1690fa9bf0d76a57943efcb7d7c69b35
+portable_commit=a71fe584477ad1bbb4d6bd85b916674b0c54b3a4
+portable_scope=ds4_cuda.cu,tests/test_p2c_nsys_capture_static.ps1
+portable_bundle=ds4-through-p2c-nsys.bundle
+portable_bundle_SHA256=DE8722FA44EBD1DF6D5C9E49EB8D1EF81C1DE7C722820651FD613F3EF6D6ABFE
+bundle_verify=PASS
+```
+
+---
+
+# 2026-07-26 — Audit diretto Atlante Claude e riconciliazione M0-M4
+
+Fonti lette integralmente:
+
+```text
+atlas=docs/DS4_LEVER_ATLAS_20260724.md
+atlas_SHA256=1B8BEDBE973E321958CE2AA0D9568EF2ADD9C4483A5F6CFE974A5A1C07B42E8D
+post_atlas=docs/DS4_LEVER_ANALYSIS_POST_20260724.md
+post_atlas_SHA256=568ABE823C0512BDBE9C80037935E28A7059E17386CDAAC2856C6EBED64855BB
+reconciliation=docs/DS4_ATLAS_RECONCILIATION_20260726.md
+```
+
+Correzione di metodo: fino a questo audit le conclusioni dell'Atlante erano
+state assorbite indirettamente dalla chat Claude, dai report delegati e da
+questo ledger; l'artefatto Atlante non era stato verificato direttamente.
+
+## Combinazioni realmente provate
+
+```text
+M0=P3-B_off+P2-B_off+P3-A_off+P2-A_off
+M1=P3-B_on+P2-B_off+P3-A_off+P2-A_off
+M2=P3-B_on+P2-B_on+P3-A_off+P2-A_off
+M3=P3-B_on+P2-B_on+P3-A_on+P2-A_off
+M4=P3-B_on+P2-B_on+P3-A_on+P2-A_on
+```
+
+M2 è il migliore valido: `turn1_graph_tps=2.463047`, `+7.3103%` contro M0.
+È sotto la soglia utente del 10% e quindi resta varianza. M4 ha riprodotto
+esattamente un fallback P3-A nel secondo turno in due tentativi: output esatto
+ma gate runtime fallito; non promuovibile. Tutte le patch restano commutabili.
+
+## Cosa cambia dopo la lettura dell'Atlante
+
+La matrice ha composto micro-leve del percorso decode ma ha lasciato fissa la
+configurazione macro:
+
+```text
+ctx_capacity=150000
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_PREFILL_CHUNK=250
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+mtp_draft=1
+temperature=0.7
+think=false
+```
+
+Il recente `~2.46 t/s` è coerente con il regime post-Atlante IQ2/open/pinned
+da `~2.41 t/s`. Il vecchio `4.85 t/s` con `G73_OPEN=0` non si riprodusse su
+`wt-converge`: `OPEN=0/chunk600=2.19 t/s`, contro
+`OPEN=1/all-pinned=2.41 t/s`. Non è quindi lecito descrivere il presente come
+regressione certa da 4.85; il branch va ri-A/B sullo stesso binario.
+
+Correzioni già acquisite:
+
+- pageable14 peggiorò circa `2.41 -> 2.07 t/s`; lo zero attuale è corretto;
+- chunk piccolo non è universalmente più veloce;
+- `TOKEN_SPLIT_LAYERS` fu falsificato;
+- `KV_MANAGED` ha bassa priorità su WDDM e collide col ring staged;
+- il vecchio `MOE_IO_QD` è diverso dal P3-B exact-route QD4 attuale.
+
+Gap non coperti da M0-M4 ma presenti nel sorgente con
+`ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496`:
+
+```text
+DS4_CUDA_GRAPH_TENSOR_DEVICE=present_but_unset
+expected_memory_effect=avoid_about_180_to_276_MiB_managed_padding
+DS4_MTP_BATCH_VERIFY=present_but_unset
+current_mtp_draft=1_no_multitoken_speculation
+```
+
+## Piano operativo persistente
+
+```text
+M5=P3-B+P2-B+P2-A with P3-A off
+A1=GRAPH_TENSOR_DEVICE off/on, one change
+A2=G73_OPEN 1/0 on P0 with pageable0 and all G73 micro-patches off
+A3=chunk 250/600 on A2 winner; 768 only if justified
+A4=temp0 think_false draft1 control vs draft2+MTP_BATCH_VERIFY
+C1=compose only winners; never add isolated percentages
+```
+
+Gate obbligatori: 47/47 base vars più overlay; stesso hash
+sorgente/binario/modello/prompt; output exact; engagement; zero fallback;
+t/s wall e graph; GPU power/util; H2D/D2H; route class; shutdown nativo;
+postflight pulito. Delta medi sotto il 10% restano varianza. I test rapidi
+hanno capacità 150k ma KV viva corta; ogni vincitore deve poi passare una
+validazione a posizione realmente lunga.
+
+Verdetto: **sì, alcune leve sono state combinate, ma soltanto nel micro-stack
+P2/P3; l'Atlante mostra che ora va costruita una seconda matrice macro
+controllata. Nessuna misura corrente dimostra saturazione della banda GPU.**
+
+Piano operativo locale aggiornato:
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\DS4_OPERATIONAL_PLAN.md
+SHA256=27C39EA9507359CBDEA70B83B93F6C0AA04BB1575E7EC3DBAE9B767A70F24A11
+```
+
+### 2026-07-26 — AA-10 / cumulative M3: P3-B + P2-B + P3-A
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_125859_p0_lifecycle_trace-off_packed-off_publish-on_hostsel-on_routeio-qd4
+classification=VALID_RUNTIME_CUMULATIVE_M3
+stack=P3-B+P2-B+P3-A
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=On
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+G73HostSelected=On
+DS4_CUDA_G73_REUSE_HOST_SELECTED=1
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+g73_host_selected_fallbacks=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s, delta marginale M3 vs M2 e totale M3 vs M0:
+
+```text
+metric,M0_tps,M2_tps,M3_tps,incremental_M3_vs_M2_pct,total_M3_vs_M0_pct
+turn1_request_wall_including_TTFT,1.135623,0.291725,1.156848,+296.5543,+1.8690
+turn1_decode_graph_pos13_140,2.295256,2.463047,2.411624,-2.0878,+5.0699
+turn1_mature_graph_pos50_140,2.636989,2.776708,2.708804,-2.4455,+2.7234
+turn1_p50_latency_equivalent,2.544011,2.714441,2.664911,-1.8247,+4.7523
+turn1_p95_latency_equivalent,1.537480,1.836062,1.857938,+1.1915,+20.8431
+turn1_p99_latency_equivalent,1.326934,1.670740,1.648427,-1.3356,+24.2282
+turn2_request_wall_including_suffix_prefill,1.040973,1.067551,0.983675,-7.8569,-5.5043
+turn2_suffix_prefill_graph_pos141_159,1.117331,1.135537,1.013010,-10.7903,-9.3366
+turn2_decode_graph_pos160_191,2.570708,2.683746,2.587810,-3.5747,+0.6653
+turn2_decode_p50_latency_equivalent,2.827119,2.866866,2.827447,-1.3750,+0.0116
+turn2_decode_p95_latency_equivalent,1.733835,1.942177,1.844355,-5.0367,+6.3743
+turn2_decode_p99_latency_equivalent,1.720125,1.819277,1.314516,-27.7451,-23.5802
+turn1_prompt_done_s=54.888
+turn1_WRAP_s=32.331
+turn2_prompt_done_s=19.118
+turn2_WRAP_s=0.000_preserved
+M2_turn1_wall_note=not_comparable_due_to_327.297s_WRAP_pagein_outlier
+```
+
+Route I/O, publish e host-selected receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_worker_ms_per_job=5.794
+turn1_ready_wait_ms_per_call=5.744
+turn1_route_io_qd_requested=4
+turn1_route_io_qd_calls=4175
+turn1_route_io_qd_routes=8322
+turn1_route_io_qd_spans=24966
+turn1_route_io_qd_submits=24966
+turn1_route_io_qd_completions=24966
+turn1_route_io_qd_bytes=58902183936
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn1_route_io_qd_ms_per_call=5.182
+turn1_batched_publish_kernels=5591
+turn1_batched_publish_routes=25730
+turn1_legacy_publish_kernels=0
+turn1_g73_host_selected_reuse=5504
+turn1_g73_host_selected_fallbacks=0
+turn1_g73_classification_d2h=0
+turn1_g73_host_selected_wait_ms_per_reuse=2.573
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_worker_ms_per_job=5.345
+turn2_ready_wait_ms_per_call=5.288
+turn2_route_io_qd_requested=4
+turn2_route_io_qd_calls=1039
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=6108
+turn2_route_io_qd_submits=6108
+turn2_route_io_qd_completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+turn2_route_io_qd_ms_per_call=4.344
+turn2_batched_publish_kernels=1429
+turn2_batched_publish_routes=7418
+turn2_legacy_publish_kernels=0
+turn2_g73_host_selected_reuse=1376
+turn2_g73_host_selected_fallbacks=0
+turn2_g73_classification_d2h=0
+turn2_g73_host_selected_wait_ms_per_reuse=2.766
+legacy_copy_submissions_turn1=77190
+legacy_copy_submissions_turn2=22254
+```
+
+Monitor:
+
+```text
+samples=29
+min_available_RAM_mb=20079.6
+max_server_private_mb=45655.2
+max_process_read_mb=98959.7
+max_GPU_used_mb=11970
+avg_GPU_util_pct=34.45
+max_GPU_util_pct=98
+avg_GPU_power_w=29.50
+max_GPU_power_w=42.72
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=A8E4B78C9A8468C6AD8642BD8F0FA6ECAC485FCC01FE4F79987D3534DC3C641E
+provenance.txt_SHA256=19FF9DB376C2BD4FA36DF659E3005B433FD7303BBFB30201E34CD805BE75BA62
+result.txt_SHA256=AA31996C25D8352CE7CD17E2E8BA42AA5973E0BB4B2C3ED43F743320C9F30C78
+server.stderr.log_SHA256=814F9B2A2FC33D97DC35880E1EACBCADD7F41A25C6D167EDBDBC35E6B34CE7EB
+monitor.csv_SHA256=333D7B6FC6FA6D4D7BFB927B12F216ED9E6506591A81C093FB9FF978026DD253
+turn1.response.json_SHA256=C44DF420426208059167FFE1E001A92C67FCAC7421D5F491C1D5820C258909EB
+turn2.response.json_SHA256=AF06CE44A18B09D74FE17A0B192B810A9B612DB6AC862441649F52099C7A37DD
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **CORRECTNESS PASS; P3-A TRATTENUTA, NON PROMOSSA**.
+L'ottimizzazione azzera davvero le 5504/1376 classification D2H e non ha
+fallback, ma introduce 2,573/2,766 ms di attesa per reuse. Sullo stack M2 il
+graph medio peggiora del 2,09% al primo turno e del 3,57% nel follow-up:
+entrambi sono sotto la soglia del 10% e sono trattati come varianza. Il suffix
+di soli 19 token segna -10,79% ma è troppo corto per giustificare la rimozione.
+P3-A resta disponibile e ON in M4, dove si aggiunge soltanto P2-A packed copy.
+
+### 2026-07-26 — AA-11 / M4 attempt 1 INVALID: one host-selected fallback
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_130514_p0_lifecycle_trace-off_packed-on_publish-on_hostsel-on_routeio-qd4
+classification=INVALID_RUNTIME_SAFETY_NOT_FOR_PERFORMANCE
+stack=P3-B+P2-B+P3-A+P2-A
+gate_pass=false
+failure_gate=g73_host_selected_zero_fallback
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=On
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=1
+BatchedPublish=On
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+G73HostSelected=On
+DS4_CUDA_G73_REUSE_HOST_SELECTED=1
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance e correctness:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+cached_prefix_tokens=141
+suffix_tokens=19
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+Gate receipts:
+
+```text
+packed_copy_gate_pass=true
+turn1_packed_copy_experts=25730
+turn1_packed_copy_submissions=51460
+turn1_packed_copy_bytes=182114058240
+turn1_legacy_copy_submissions=0
+turn2_packed_copy_experts=7418
+turn2_packed_copy_submissions=14836
+turn2_packed_copy_bytes=52503773184
+turn2_legacy_copy_submissions=0
+batched_publish_gate_pass=true
+turn1_batched_publish_kernels=5591
+turn1_batched_publish_routes=25730
+turn1_legacy_publish_kernels=0
+turn2_batched_publish_kernels=1429
+turn2_batched_publish_routes=7418
+turn2_legacy_publish_kernels=0
+route_io_qd_gate_pass=true
+turn1_route_io_qd_routes=8342
+turn1_route_io_qd_spans=submits=completions=25026
+turn1_route_io_qd_bytes=59043741696
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=submits=completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+g73_host_selected_gate_pass=false
+turn1_g73_host_selected_reuse=5504
+turn1_g73_host_selected_fallbacks=0
+turn1_g73_classification_d2h=0
+turn2_g73_host_selected_reuse=1375
+turn2_g73_host_selected_fallbacks=1
+turn2_g73_classification_d2h=1
+```
+
+Numeri diagnostici, esclusi dal confronto prestazionale:
+
+```text
+metric,M0_tps,M3_tps,M4_attempt1_tps,incremental_pct,total_pct
+turn1_decode_graph_pos13_140,2.295256,2.411624,2.419221,+0.3150,+5.4009
+turn1_mature_graph_pos50_140,2.636989,2.708804,2.725314,+0.6095,+3.3495
+turn2_suffix_prefill_graph_pos141_159,1.117331,1.013010,1.011578,-0.1414,-9.4648
+turn2_decode_graph_pos160_191,2.570708,2.587810,2.602244,+0.5577,+1.2267
+turn1_wall_tps=1.156726
+turn2_wall_tps=0.986084
+turn1_prompt_done_s=55.144
+turn1_WRAP_s=32.227
+turn2_prompt_done_s=19.141
+performance_use=forbidden_due_to_gate_fail
+```
+
+Monitor e artefatti:
+
+```text
+samples=29
+min_available_RAM_mb=20472.5
+max_server_private_mb=45699.6
+max_process_read_mb=99125.8
+max_GPU_used_mb=12017
+avg_GPU_util_pct=31.10
+max_GPU_util_pct=68
+avg_GPU_power_w=29.30
+max_GPU_power_w=42.77
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=C07CD5C79409B1E64D100BB0FD373707DE33CEC0F60B9DCB6DA743766B46DD64
+provenance.txt_SHA256=6BFDF2D2AC4783675AAC9EF4F31214EC7697A72977D3A5F49BAD8EA2B601724D
+result.txt_SHA256=C29AD994CB992B3870E3D58DE0E202BD58519A6A31D61EEBA21EFBC93C1FB577
+server.stderr.log_SHA256=DEDB6157444AF545CD135D2F1793083C6F19EDD5B846F9636FF7DC8F368D412E
+monitor.csv_SHA256=F38FD191B66448C49B5392D48E98BA0ABCE6934AE4702DE9E49720C5DA3A4C93
+turn1.response.json_SHA256=7023E823FCF0ED5C293B87275525A3EC19901181FB858110680DBB296D16DA7B
+turn2.response.json_SHA256=E34CA9AEEF608F9C6B770077AACA812A4E766C1E548B24E9137CCAA9DD214AAE
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **INVALID STRICT GATE, NESSUNA PATCH SCARTATA**. Packed copy,
+batched publish e QD4 sono tutti corretti e pienamente ingaggiati. Un solo
+fallback host-selected su 1376 call del follow-up ha attivato il percorso
+esatto di classification D2H, senza cambiare l'output, ma viola il gate
+zero-fallback. Il tentativo è archiviato integralmente e non viene usato per
+promuovere lo stack. Prossima azione: una replica M4 identica, senza cambiare
+binario, 47 variabili o overlay.
+
+### 2026-07-26 — AA-12 / M4 attempt 2 INVALID: interaction reproduced
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_131034_p0_lifecycle_trace-off_packed-on_publish-on_hostsel-on_routeio-qd4
+classification=INVALID_RUNTIME_SAFETY_NOT_FOR_PERFORMANCE
+stack=P3-B+P2-B+P3-A+P2-A
+gate_pass=false
+failure_gate=g73_host_selected_zero_fallback
+replication_of=AA-11
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=On
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=1
+BatchedPublish=On
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+G73HostSelected=On
+DS4_CUDA_G73_REUSE_HOST_SELECTED=1
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance e correctness:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+cached_prefix_tokens=141
+suffix_tokens=19
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+Gate receipts:
+
+```text
+packed_copy_gate_pass=true
+turn1_packed_copy_experts=25730
+turn1_packed_copy_submissions=51460
+turn1_packed_copy_bytes=182114058240
+turn1_legacy_copy_submissions=0
+turn2_packed_copy_experts=7418
+turn2_packed_copy_submissions=14836
+turn2_packed_copy_bytes=52503773184
+turn2_legacy_copy_submissions=0
+batched_publish_gate_pass=true
+turn1_batched_publish_kernels=5591
+turn1_batched_publish_routes=25730
+turn1_legacy_publish_kernels=0
+turn2_batched_publish_kernels=1429
+turn2_batched_publish_routes=7418
+turn2_legacy_publish_kernels=0
+route_io_qd_gate_pass=true
+turn1_route_io_qd_routes=8313
+turn1_route_io_qd_spans=submits=completions=24939
+turn1_route_io_qd_bytes=58838482944
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=submits=completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+g73_host_selected_gate_pass=false
+turn1_g73_host_selected_reuse=5504
+turn1_g73_host_selected_fallbacks=0
+turn1_g73_classification_d2h=0
+turn2_g73_host_selected_reuse=1375
+turn2_g73_host_selected_fallbacks=1
+turn2_g73_classification_d2h=1
+interaction_reproduced=true
+```
+
+Numeri diagnostici, esclusi dal confronto prestazionale:
+
+```text
+metric,M0_tps,M3_tps,M4_attempt2_tps,incremental_pct,total_pct
+turn1_decode_graph_pos13_140,2.295256,2.411624,2.422616,+0.4558,+5.5488
+turn1_mature_graph_pos50_140,2.636989,2.708804,2.713550,+0.1752,+2.9034
+turn1_p50_latency_equivalent,2.544011,2.664911,2.663102,-0.0679,+4.6812
+turn1_p95_latency_equivalent,1.537480,1.857938,1.865832,+0.4248,+21.3565
+turn1_p99_latency_equivalent,1.326934,1.648427,1.652335,+0.2371,+24.5228
+turn2_suffix_prefill_graph_pos141_159,1.117331,1.013010,1.013064,+0.0053,-9.3318
+turn2_decode_graph_pos160_191,2.570708,2.587810,2.621788,+1.3130,+1.9870
+turn2_decode_p50_latency_equivalent,2.827119,2.827447,2.809565,-0.6324,-0.6209
+turn2_decode_p95_latency_equivalent,1.733835,1.844355,1.894255,+2.7056,+9.2523
+turn2_decode_p99_latency_equivalent,1.720125,1.314516,1.460630,+11.1154,-15.0858
+turn1_wall_tps=0.305421
+turn2_wall_tps=0.989648
+turn1_prompt_done_s=363.593
+turn1_WRAP_s=341.007_known_pagein_outlier
+turn2_prompt_done_s=19.112
+performance_use=forbidden_due_to_gate_fail
+```
+
+Monitor e artefatti:
+
+```text
+samples=90
+min_available_RAM_mb=20279.0
+max_server_private_mb=45653.1
+max_process_read_mb=99373.5
+max_GPU_used_mb=12005
+avg_GPU_util_pct=10.96
+max_GPU_util_pct=79
+avg_GPU_power_w=18.10
+max_GPU_power_w=43.16
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=C07CD5C79409B1E64D100BB0FD373707DE33CEC0F60B9DCB6DA743766B46DD64
+provenance.txt_SHA256=A8B8211DFF77D8C01D7D3A15DCA0549B6D27CDC0ABF72D16DECCFCF7365578C1
+result.txt_SHA256=3E790C333A108D3EDAF0698C1F830A1CA26E30A4F91E39827672CF89EA7FEDDF
+server.stderr.log_SHA256=F84380F117D169A76F3D5A326E4C44C83B368FC619024FB6F03BADEBCC39F013
+monitor.csv_SHA256=61DBE9AFDF7C4ABD4D833E2880D49E35D931ECEE90D2840AB5174ED8BF975785
+turn1.response.json_SHA256=D647C39534172DC95FFE921C08B36D234C1C8BCE9BD311A16F48F1E98BA06C24
+turn2.response.json_SHA256=61852E5943085DD81FEA111EF3FA165D616ADA9DC268408490F0CF11A637E715
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **INTERAZIONE P3-A + P2-A RIPRODOTTA, STACK M4 NON
+PROMOVIBILE**. Due repliche identiche producono la stessa singola fallback
+host-selected nel follow-up, mentre tutti gli altri gate passano e gli output
+restano esatti. Il delta diagnostico di packed copy è solo +0,46% sul primo
+turno e +1,31% nel follow-up, sotto la soglia del 10%. Tutte le patch restano
+documentate e committate; la prossima combinazione valida da provare è
+P3-B+P2-B+P2-A con P3-A OFF, mantenendo P3-A disponibile per una correzione
+separata del mailbox handoff al primo token del follow-up.
+
+Checkpoint portabili e postflight:
+
+```text
+M3_ops_commit=a25848490920776fa00b367c8b9ab9c2088b6128
+M3_ops_bundle_SHA256=82420EDD48F6A3F44C1EFEE569AECE587E17EA0ACAE7075289B015D6242B7E82
+M3_ledger_commit=7cefa6101d4658cd7a815dfb91d3941cc8ea9fda
+M3_ledger_bundle_SHA256=2EFF911E6959A374E0EA5BCC78C16CCB75C0C3EFFE8A27A219C84D9F6873F942
+M4_attempt1_ops_commit=899c42b215a2adb430f80ff8476b0f686a5cf89d
+M4_attempt1_ops_bundle_SHA256=CA9568B1B95A7756DD819608A47CBD86E73413AA6D1B387684E7447528337D7D
+M4_attempt1_ledger_commit=a19c272c1d4969ce299d3f5b6b65fba2f9ed9a50
+M4_attempt1_ledger_bundle_SHA256=6446A06D9FE83F1D02665991D101BB75E54C7647526F8D9EDFFBDDE8BD06BE74
+M4_attempt2_ops_commit=fd97269ff8d7b170da337fb3d619ac473b252cd2
+M4_attempt2_ops_bundle_SHA256=2DB818C7C3D14B3F2A1120C69036B67E679D849D228F980E79441DD777E1BC87
+M4_attempt2_ledger_commit=7f7d418619078b420c959fb999523b0a741f4461
+M4_attempt2_ledger_bundle_SHA256=59F4418CA736A083885E6430302F386815348EB942CA6C946A2CB68419EE7BF4
+bundle_verify=PASS
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+post_GPU_used_mb=301
+```
+
+### Runner pre-run
+
+```text
+runner_SHA256=1B9A4F244CE427249FD201CEE364BD240DE4712DFEDDFEDE3641C1A53CAF1677
+runner_parse=PASS
+runner_validate_nsys=PASS
+base_manifest=47/47
+TraceMode=Nsys
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+declared_parameter_count=49
+ctx_capacity=150000
+turn1_max_tokens=128
+turn2_max_tokens=32
+shutdown=authenticated_native_HTTP_with_actual_ds4_pid_tracking
+server_started=no
+```
+
+Il runtime AA deve ancora essere eseguito. Il ledger verra' completato con
+47/47 variabili, output hash, trace artifacts, t/s (solo come contesto,
+profiling perturbante), shutdown e analisi SQLite prima di scegliere una patch
+prestazionale.
+
+### AA-0 runtime — HARNESS FAIL prima dell'inferenza
+
+Directory immutabile del tentativo:
+
+```text
+C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_104845_p0_lifecycle_trace-nsys_packed-off_publish-off
+```
+
+Questo tentativo **non e' un benchmark** e non entra in alcun confronto
+prestazionale. Il preflight ha passato i gate con 56,16 GiB RAM disponibili e
+408 MiB GPU; DS4 ha raggiunto l'health endpoint. Subito dopo, la lettura del
+PID tramite `Get-NetTCPConnection` e' fallita con `Accesso negato`, prima
+della prima richiesta.
+
+```text
+classification=HARNESS_FAIL_BEFORE_INFERENCE
+inference_requests=0
+turn1_completion_tokens=0
+turn2_completion_tokens=0
+turn1_wall_tps=NOT_MEASURED
+turn2_wall_tps=NOT_MEASURED
+nsys_started_count=0
+nsys_stopped_count=0
+nsys_report_bytes=0
+nsys_sqlite_bytes=0
+performance_data=NONE
+gate_pass=false
+```
+
+Configurazione base esatta 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e parametri richiesta dichiarati:
+
+```text
+TraceMode=Nsys
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=100
+DS4_CUDA_DECODE_TRACE_LAYERS=0
+DS4_CUDA_NSYS_CAPTURE=1
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+nsys_capture_range=cudaProfilerApi
+nsys_capture_range_end=stop
+nsys_trace=cuda
+nsys_sample=none
+nsys_cpuctxsw=none
+nsys_cuda_memory_usage=false
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+```
+
+Provenance:
+
+```text
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=6A0BE6762339CBA47015DA20E890455EC3D1BCA4993AE58B548DB1D4A5A24334
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=9CBCCCF6EB42168F5C58C6BE08C5E4A04567BBD7324710EBAC7220D2832B43FD
+ds4_server.exe_bytes=12405760
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Il `result.txt` originale riporta `shutdown_mode=already_exited`, ma e'
+invalido: l'errore avveniva prima di memorizzare il PID del figlio DS4.
+Il recupero esterno ha trovato PID 6864, ha riusato il token gia' presente
+nell'ambiente del processo senza esporlo, ha inviato il POST nativo
+autenticato e ha ricevuto `{"status":"draining"}`. DS4 e' uscito in 5,93 s.
+
+```text
+recovery_mode=authenticated_native_http
+recovery_drain_seconds=5.93
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+post_gpu=P8,0%,418MiB
+recovery_receipt_SHA256=E8B7DEC274BF17A41D352318C21CC1C90A4940F25BBD68F2B5B5A859C7E47347
+```
+
+### Correzione harness dopo AA-0
+
+Il PID della listener viene ora ricavato da `netstat.exe -ano -p tcp`; non
+rimane alcun uso di `Get-NetTCPConnection`. Nsight Windows intercetta gli
+stream del target ma non li inoltra in modo affidabile agli handle reindirizzati
+del launcher. Il runner usa quindi `--show-output=true --wait=all` e, dopo
+l'uscita di Nsight, ricostruisce `server.stdout.log` e `server.stderr.log`
+dalla tabella SQLite `ProcessStreams`.
+
+```text
+runner_SHA256=569D8BD43056BC1C9F9EB8A77BB8C231361D2E1078D73B206578570722E2D6E6
+extract_nsys_process_streams.py_SHA256=9507A44FFD06FEC2FDC3DC57DE37AA0560A73512A58568E548DB6C24FD0176D3
+test_nsys_harness_static.ps1_SHA256=AAABA54F0F962465A86D366047E431AC40E589D430D33DB8441F3BF30ABC02E0
+runner_parse=PASS
+harness_static_contract=PASS
+ProcessStreams_extract_smoke=PASS
+runner_validate_nsys=PASS
+server_started_by_tests=no
+```
+
+Verdetto AA-0: **HARNESS FAIL DOCUMENTATO; NESSUN DATO PRESTAZIONALE;
+RECUPERO NATIVO PASS; CORREZIONE STATIC/SMOKE PASS; RETRY SOLO DOPO COMMIT.**
+
+Commit/bundle pre-retry:
+
+```text
+ops_parent=dcc8e32e3c1d993c3626b6e4c80445bafa35d0c2
+ops_commit=bffebfcd32d6d3b7bf8b08d95367bf3b77f765ed
+ops_bundle=ds4-ops-through-aa0-harness.bundle
+ops_bundle_SHA256=E3552330F5A43C40AD68D4C966464F802455BB856CD8E407F4C2D3BA82EA848A
+ledger_parent=fdadacd59fee14f53aa9dc28e0471f8e2749e240
+ledger_commit=a981c937f7ba86271f6c65106e326205599ba1d1
+ledger_bundle=reap-loop-through-aa0-harness.bundle
+ledger_bundle_SHA256=8C6732561DCAC0D1C01361EC84F09C1BF19C2F8E742E181A770AE4383BF165FC
+bundle_verify=PASS
+```
+
+### AA-1 launch transport abort — zero inferenze
+
+```text
+run=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_110928_p0_lifecycle_trace-nsys_packed-off_publish-off
+classification=LAUNCH_TRANSPORT_ABORT_BEFORE_READINESS
+cause=outer_terminal_timeout_killed_process_tree
+runner_completed=no
+server_ready=no
+inference_requests=0
+turn1_completion_tokens=0
+turn2_completion_tokens=0
+nsys_capture_started=no
+performance_data=NONE
+native_shutdown_applicable=no_server_listener
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+post_available_ram_gib=56.12
+post_gpu=P8,0%,415MiB,12.70W
+```
+
+Configurazione base esatta 47/47 del tentativo:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay:
+
+```text
+TraceMode=Nsys
+DS4_CUDA_DECODE_TRACE_POSITIONS=100
+DS4_CUDA_DECODE_TRACE_LAYERS=0
+DS4_CUDA_NSYS_CAPTURE=1
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+```
+
+Verdetto AA-1: **ABORT PRIMA DELLA READINESS; ZERO INFERENZE; NESSUN DATO
+PRESTAZIONALE; MACCHINA VERIFICATA PULITA.** Il retry AA-2 usa un processo
+runner persistente nascosto, non un comando soggetto al timeout del terminale.
+
+### AA-2 — Nsight single-token CUDA capture PASS (2026-07-26)
+
+```text
+run=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_111134_p0_lifecycle_trace-nsys_packed-off_publish-off
+purpose=single_warmed_decode_token_critical_path
+performance_gate=NOT_APPLICABLE_PROFILER_RUN
+```
+
+#### Configurazione base esatta 47/47
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Nsys
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=100
+DS4_CUDA_DECODE_TRACE_LAYERS=0
+DS4_CUDA_NSYS_CAPTURE=1
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+nsys_capture_range=cudaProfilerApi
+nsys_capture_range_end=stop
+nsys_trace=cuda
+nsys_sample=none
+nsys_cpuctxsw=none
+nsys_cuda_memory_usage=false
+nsys_wait=all
+nsys_show_output=true
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn2_prompt_tokens=160
+turn2_completion_tokens=32
+```
+
+Provenance:
+
+```text
+git_head=f64cc89baf5ba890c11317b8a0283e25ace85eae
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=6A0BE6762339CBA47015DA20E890455EC3D1BCA4993AE58B548DB1D4A5A24334
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=9CBCCCF6EB42168F5C58C6BE08C5E4A04567BBD7324710EBAC7220D2832B43FD
+ds4_server.exe_bytes=12405760
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+manifest_47_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest_SHA256=599B06FBC2348803C9B178EF6F7B293E420682F61F438E987B4312E575DE1850
+```
+
+#### Exactness, shutdown e parser
+
+```text
+run_error=none
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_expected_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_expected_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+nsys_capture_started_count=1
+nsys_capture_range_ended_count=1
+nsys_report_bytes=231261
+nsys_sqlite_bytes=1232896
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+posthoc_p2c_capture_gate=true
+```
+
+Il raw runner dice `gate_pass=false` per un difetto di parsing, non per
+inferenza o capture: `ProcessStreams` include gli stream solo fino a
+`cudaProfilerStop`; la riga di stop, il follow-up e il summary route vengono
+stampati dopo e non possono essere presenti. `nsys.stdout.log` contiene
+esplicitamente `Capture range started` e `Capture range ended`. Il parser e'
+stato corretto per usare questa receipt e per applicare al modo Nsys un gate
+separato exact-output + valid-report + native-shutdown.
+
+#### t/s, solo come contesto perturbato
+
+```text
+turn1_request_wall_tps=0.736599
+turn2_request_wall_tps=0.328344
+pre_capture_graph_pos13_99_tps=1.294267
+mature_pre_capture_graph_pos50_99_tps=1.082276
+captured_position100_host_tps_excluding_profiler_start=0.803652
+captured_position100_gpu_tps_excluding_profiler_start=0.804028
+captured_position100_raw_metal_tps_including_profiler_start=0.493113
+cudaProfilerStart_overhead_ms=781.333415
+```
+
+Questi valori non vanno confrontati come performance A/B: il run include
+Nsight e ha intercettato un token con source-route fredda. Servono soltanto a
+esprimere la finestra in t/s, come richiesto.
+
+#### Timeline CUDA diretta
+
+```text
+gpu_span_ms=1243.639344
+gpu_any_busy_union_ms=474.374678
+gpu_any_busy_pct=38.144071
+gpu_idle_ms=769.264666
+gpu_idle_pct=61.855929
+kernel_count=1965
+kernel_union_ms=322.028468
+kernel_union_pct=25.894040
+memcpy_count=729
+memcpy_union_ms=161.833594
+memcpy_union_pct=13.012904
+kernel_memcpy_overlap_ms=9.487384
+gpu_gap_count=2518
+gpu_long_gap_ge100ms_count=6
+gpu_long_gap_ge100ms_sum_ms=688.257236
+gpu_long_gap_ge100ms_span_pct=55.342189
+gpu_long_gap_ge100ms_idle_pct=89.469498
+```
+
+I sei buchi maggiori:
+
+```text
+118.116867 ms after_router_layer=16 before=publish after=H2D
+113.767000 ms after_router_layer=22 before=publish after=H2D
+117.903684 ms after_router_layer=25 before=publish after=H2D
+111.413827 ms after_router_layer=32 before=publish after=H2D
+114.406645 ms after_router_layer=38 before=publish after=H2D
+112.649213 ms after_router_layer=39 before=publish after=H2D
+overlapping_CUDA_API_in_each_gap<=0.052 ms
+```
+
+Quindi la GPU non e' in coda: il worker smette di alimentarla tra la
+pubblicazione di una route e il successivo H2D. Il sorgente conferma che
+`cuda_moe_tiering_enforce_request` attraversa i miss serialmente e, per le
+route SSD, esegue gate/up/down `pread` sincroni prima dell'H2D.
+
+Trasporti:
+
+```text
+H2D_count=599
+H2D_bytes=1269841920
+H2D_active_ms=161.283955
+H2D_active_GBps=7.873331
+H2D_wall_GBps=1.021069
+route_H2D_count=534
+route_H2D_bytes=1259864064
+route_H2D_active_ms=159.950105
+route_H2D_active_GBps=7.876607
+route_H2D_wall_GBps=1.013046
+miss_experts=178
+legacy_H2D_submissions_per_miss=3
+D2H_count=87
+D2H_bytes=606216
+D2D_count=43
+D2D_bytes=88064
+```
+
+La banda PCIe non e' saturata sull'intero token: H2D e' attiva soltanto per
+il 13,01% della finestra. Non sono disponibili i counter privilegiati per
+dire quanta banda VRAM istantanea usino i kernel; e' pero' impossibile
+chiamare "GPU saturata" una timeline che non presenta lavoro per il 61,86%.
+
+Drain D2H nascosto:
+
+```text
+blocking_route_classification_D2H_count=43
+bytes_each=24
+blocking_D2H_API_sum_ms=276.765110
+blocking_D2H_API_avg_ms=6.436398
+blocking_D2H_GPU_copy_sum_ms=0.136516
+```
+
+Sono i sei ID selezionati copiati una seconda volta in
+`whole-map-classification-d2h`. Correzione dopo il source audit: nel path
+split-fused attivo `g_moe_last_selected` viene riempito solo dal successivo
+`finish()` e quindi non e' ancora disponibile qui. Gli stessi ID sono pero'
+gia' pubblicati dal resolver in `route_request_host`, prima della parola
+`sequence` e di `__threadfence_system`; sono verificabili anche tramite
+`host_generation`, layer, gate offset e route count.
+
+Monitor:
+
+```text
+samples=54
+min_available_RAM_mb=20039.9
+max_server_private_mb=46055.6
+max_server_working_set_mb=35689.0
+max_process_read_mb=88837.1
+max_GPU_used_mb=12028
+max_GPU_util_pct=98
+avg_GPU_util_pct=22.28
+max_GPU_power_w=43.61
+avg_GPU_power_w=27.92
+power_limit_w=170
+```
+
+Il picco generico 98% non contraddice la timeline: e' un campione breve.
+L'average 22,28% e il basso power draw sono coerenti con le bolle.
+
+Artefatti:
+
+```text
+decode_position_100.nsys-rep_SHA256=E1DBD633A332696D82C6B1A09D65B296F19472A4407B45D3BE8DE8FA6F66C3AA
+decode_position_100.sqlite_SHA256=BB13FEE0B405C337847B45F4F38623C5C7AAF4C62E74CD9597B8872D0AC36D3C
+server.stderr.log_SHA256=28E0484185CE3B101FE35CAEF5C729E9D0E49671B9C3298FAB93C8C7C95F969D
+monitor.csv_SHA256=E5C734FE8149363C47CB387960ECC52DC3073FAF813A61491D90871A167E3A8E
+nsys_analysis.txt_SHA256=C3577C035A4705268515168546DC543196745CC83F44C5F981FA6388D63B4AC1
+nsys_builtin_stats.txt_SHA256=E9DFFD206C0860CEC5FAEC3DE8DE08D8F0C53CD50993C953E143A8B27DBEE596
+turn1.response.json_SHA256=62BD81159B9F3778B27E675483E786966A1C9C2D7885380D35E1D6AEDFA81FF0
+turn2.response.json_SHA256=1AD2D4F67C347EC0F1494437E2EA94C2AFA14FA5621709A408CFE23BE339CEE1
+posthoc_gate.txt_SHA256=0883307E70EEA78BD2787229003A8A3415C344ECF723476CAD56845631561FB3
+```
+
+Nota di telemetria: `pread_bytes=18446744073702473728` nel trace e' un
+underflow di un esperto (`2^64 - 7.077.888`) e non e' una misura valida.
+Va corretto prima di usare quel contatore come gate.
+
+#### Verdetto e prossima azione
+
+**P2-C CAPTURE PASS; OUTPUT EXACT; SHUTDOWN PASS; GPU NON SATURATA SULLA
+FINESTRA.**
+
+P3-A, prima patch guidata dalla timeline:
+
+1. opt-in `DS4_CUDA_G73_REUSE_HOST_SELECTED=1`;
+2. attendere in modo bounded la `sequence` del route mailbox e accettare gli
+   ID solo con generation/layer/gate/count esatti;
+3. fallback esatto al D2H attuale su timeout o mismatch;
+4. contatori obbligatori `host_selected_reuse` e `classification_d2h`;
+5. gate runtime: output hash identico, D2H classificazione `43 -> 0` e
+   miglioramento >=10%; sotto 10% resta varianza/non promossa.
+
+Se P3-A non supera il gate, P3-B affronta il costo maggiore: pre-scan delle
+route SSD dello stesso layer e I/O overlapped QD4, preservando deadline,
+cancellazione, ordine route, staging per-miss e consumer-done.
+
+### 2026-07-26 — AA-3 / P3-A host-selected: implementazione, build e dry validation (nessuna inferenza)
+
+Obiettivo: eliminare le 43 copie bloccanti D2H da 24 byte/token viste in
+AA-2 riusando gli stessi ID esatti già pubblicati dal resolver CUDA nella
+mailbox mapped-host. La patch è opt-in e conserva il D2H originale come
+fallback esatto.
+
+Questa voce registra due dry validation del runner. Non sono benchmark:
+`server_started=no`, completion token 0 e performance data assente.
+
+Run directory:
+
+```text
+control=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_114540_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off
+candidate=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_114540_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-on
+```
+
+Manifest base identico, 47/47 in entrambi i dry run:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e parametri dichiarati:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+control.G73HostSelected=Off
+control.DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+candidate.G73HostSelected=On
+candidate.DS4_CUDA_G73_REUSE_HOST_SELECTED=1
+manifest_count=47
+declared_parameter_count=50
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+```
+
+Contratto di correttezza:
+
+```text
+publication_source=route_request_host
+gpu_publication_order=payload,__threadfence_system,sequence
+host_validation=sequence,generation,layer,gate_offset,route_count,expert_range
+wait=bounded
+fallback=original_cudaMemcpyDeviceToHost
+fast_path_cuda_memcpy=0
+fast_path_cuda_sync=0
+default=OFF
+```
+
+Build e provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=5B72A3EA174A432A1543C81C52FD1A3062E7DF352C1F3B88A7D501FD894796E6
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=2D8469E9E7E85ACD6266816DF325979AD1D1BACD73F24C34C560F72FDF050F92
+ds4_server.exe_bytes=12407296
+ds4_server.exe_link_utc=2026-07-26T09:44:38.6459976Z
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+build_stdout_SHA256=53EC3F479499A48AC84E262D9BE06E5CAC1B67D64DDDBF9FB1093E4A794F2884
+build_stderr_SHA256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+```
+
+Test:
+
+```text
+test_p3a_g73_host_selected_static.ps1=PASS
+test_p0_route_mailbox_static.ps1=PASS
+test_p0_short_suffix_snapshot_static.ps1=PASS
+test_p1_decode_trace_static.ps1=PASS
+test_p2_batched_publish_static.ps1=PASS
+test_p2c_nsys_capture_static.ps1=PASS
+ctest_ds4_bake_test=PASS
+test_p3a_runner_static.ps1=PASS
+test_nsys_harness_static.ps1=PASS
+control_runner_validate=PASS
+candidate_runner_validate=PASS
+test_p3a_g73_host_selected_static.ps1_SHA256=B7FED663B72DDC11142F2AE8D458F003A4DA8798AEFC99C72627308189BA4C74
+run_two_turn_lifecycle.ps1_SHA256=63837E6A0E08C9CAD1E2D46866BB4312ADC28507CCEC08523EF67002E1A72494
+test_p3a_runner_static.ps1_SHA256=19844F018E1207461C58BB9FB157E526424D5A81724D912B5C7C34422828CA79
+```
+
+Stato macchina dopo i dry run:
+
+```text
+ds4_processes=0
+nsys_processes=0
+port_8000_listeners=0
+gpu=P8,0%,434MiB,12.30W
+```
+
+Verdetto: **IMPLEMENTAZIONE E PREFLIGHT PASS; NESSUN DATO PRESTAZIONALE.**
+Il prossimo test è un A/B con lo stesso binario e una sola variabile:
+`DS4_CUDA_G73_REUSE_HOST_SELECTED`. Promozione solo con output esatto,
+`43 -> 0` D2H classificazione, zero fallback, shutdown nativo e delta
+decode >=10%; sotto la soglia il risultato è varianza/non promosso.
+
+Checkpoint portabile creato prima del runtime:
+
+```text
+source_parent=a71fe584477ad1bbb4d6bd85b916674b0c54b3a4
+source_commit=511cf179f16605f4d6fa270a1aa87b29013bea4c
+source_scope=ds4_cuda.cu,tests/test_p3a_g73_host_selected_static.ps1
+source_bundle=ds4-through-p3a-pretest.bundle
+source_bundle_SHA256=B9F79F1E541C36FA85B9451F7F3C5F233CAC42BABD44B3652AE39B1C30FAF9C0
+ops_parent=fefa78401180652efd59f979b54dd61d16bc27ee
+ops_commit=f932caae6d31959ff2310cc4aed543b8be48e8f7
+ops_bundle=ds4-ops-through-p3a-pretest.bundle
+ops_bundle_SHA256=FC634272083C3C81FD9C5FF7F4CA9E8CD69CEE1ACE1D73F672DA47B6BE9F4FF4
+ledger_parent=3725531327c55530c33e6a8fe61f4a7d9f98a68c
+ledger_commit=ff51dc9ca5887a464263c6d97829b76dc14bffd5
+ledger_bundle=reap-loop-through-p3a-pretest.bundle
+ledger_bundle_SHA256=6DB6636E2BF93BD7A726637F01E4BF1E7DF974B31027ACBF21B9F3B9C72BBC0E
+all_bundle_verify=PASS
+```
+
+### 2026-07-26 — AA-6a / M0 launch abort per timeout del trasporto
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_122901_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off_routeio-off
+classification=INVALID_INFRASTRUCTURE_ABORT
+preflight=PASS
+available_RAM_GiB=55.55
+GPU_used_MiB=471
+launcher_pid=6892
+phase_at_abort=model_load_before_server_ready
+request1_sent=no
+request2_sent=no
+completion_tokens=0
+tps=NOT_MEASURED
+cause=terminal wrapper timeout killed the process tree
+native_shutdown=no
+post_ds4_processes=0
+post_port8000_listeners=0
+performance_evidence=none
+retry_required=yes
+```
+
+Il manifest era M0 corretto (47/47 + overlay OFF) ma il run non ha raggiunto
+la readiness e non è entrato nella matrice. Non confrontare questo tentativo
+con M1. Il retry usa lo stesso binario e manifest tramite una cella persistente
+senza timeout distruttivo.
+
+### 2026-07-26 — AA-4 / P3-A runtime CONTROL host-selected OFF
+
+Run:
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_115030_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off
+classification=VALID_RUNTIME_CONTROL
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+manifest_count=47
+declared_parameter_count=50
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=5B72A3EA174A432A1543C81C52FD1A3062E7DF352C1F3B88A7D501FD894796E6
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=2D8469E9E7E85ACD6266816DF325979AD1D1BACD73F24C34C560F72FDF050F92
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s (mai secondi/token):
+
+```text
+turn1_request_wall_tps_including_TTFT=1.117100
+turn1_decode_graph_tps_pos13_140=2.236845
+turn1_mature_graph_tps_pos50_140=2.551767
+turn1_p50_latency_equivalent_tps=2.485182
+turn1_p95_latency_equivalent_tps=1.536526
+turn1_p99_latency_equivalent_tps=1.327484
+turn2_request_wall_tps_including_suffix_prefill=0.967749
+turn2_suffix_prefill_graph_tps_pos141_159=1.006332
+turn2_decode_graph_tps_pos160_191=2.504249
+turn2_decode_p50_latency_equivalent_tps=2.723156
+turn2_decode_p95_latency_equivalent_tps=1.687687
+turn2_decode_p99_latency_equivalent_tps=1.643623
+turn1_prompt_done_s=54.681
+turn1_WRAP_s=32.310
+turn2_prompt_done_s=19.239
+turn2_WRAP_s=0.000_preserved
+```
+
+Route receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_legacy_copy_submissions=77190
+turn1_legacy_publish_kernels=25730
+turn1_g73_host_selected_requested=0
+turn1_g73_host_selected_reuse=0
+turn1_g73_host_selected_fallbacks=0
+turn1_g73_classification_d2h=5504
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_legacy_copy_submissions=22254
+turn2_legacy_publish_kernels=7418
+turn2_g73_host_selected_requested=0
+turn2_g73_host_selected_reuse=0
+turn2_g73_host_selected_fallbacks=0
+turn2_g73_classification_d2h=1376
+packed_copy_requested=0
+batched_publish_requested=0
+```
+
+Monitor:
+
+```text
+samples=30
+min_available_RAM_mb=20275.1
+max_server_private_mb=45731.4
+max_GPU_used_mb=12026
+avg_GPU_util_pct=29.80
+max_GPU_util_pct=72
+avg_GPU_power_w=29.74
+max_GPU_power_w=44.67
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=B3D5FCC59D1D92265C2367C6DC6CBF8C527567309849D7DE74D546E38B862940
+provenance.txt_SHA256=31CB35CF1AD2C901873E2751D75CC3E3A58D4411398321BE97E072BD433CF27C
+result.txt_SHA256=66702B3D68C1ED28CEF5F91974A47037C26D73F925442D845266C52C72D18F5A
+server.stderr.log_SHA256=ADD2A88E4DC9E2D7032D781FC932F3A6E5E8E110A0BB912EF7CE48CF83E3DBCB
+monitor.csv_SHA256=BB029712D19F1BAF839E9C2C0CEAB44F815D9FD055DABCDA42BA9E63807CD280
+turn1.response.json_SHA256=985B127BBAF31D87DFBEFB562B9B5E44E1E95CC27081F8337498A747AE9B7B36
+turn2.response.json_SHA256=FCCD9FE7587406AC1DF9EB3DB9037CE0327852B02B184F3D9C3D1200F3BBBF5B
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto control: **PASS**. La copia D2H ridondante è attiva esattamente
+43 volte per decode token (`5504/128`, `1376/32`). Nessun risultato di
+miglioramento viene attribuito al controllo; il candidato deve cambiare una
+sola variabile e superare il gate >=10%.
+
+### 2026-07-26 — AA-5 / P3-A runtime CANDIDATE host-selected ON
+
+Run:
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_115629_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-on
+classification=VALID_RUNTIME_CANDIDATE
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=On
+DS4_CUDA_G73_REUSE_HOST_SELECTED=1
+manifest_count=47
+declared_parameter_count=50
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance identica al controllo:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=5B72A3EA174A432A1543C81C52FD1A3062E7DF352C1F3B88A7D501FD894796E6
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=2D8469E9E7E85ACD6266816DF325979AD1D1BACD73F24C34C560F72FDF050F92
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+host_selected_fallbacks=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s e confronto col controllo:
+
+```text
+metric,control_tps,candidate_tps,delta_pct
+turn1_request_wall_including_TTFT,1.117100,1.114974,-0.1903
+turn1_decode_graph_pos13_140,2.236845,2.277548,+1.8197
+turn1_mature_graph_pos50_140,2.551767,2.628664,+3.0135
+turn2_request_wall_including_suffix_prefill,0.967749,1.029819,+6.4139
+turn2_suffix_prefill_graph_pos141_159,1.006332,1.102955,+9.6015
+turn2_decode_graph_pos160_191,2.504249,2.561505,+2.2864
+candidate_turn1_p50_latency_equivalent_tps=2.483220
+candidate_turn1_p95_latency_equivalent_tps=1.538388
+candidate_turn1_p99_latency_equivalent_tps=1.334853
+candidate_turn2_decode_p50_latency_equivalent_tps=2.775742
+candidate_turn2_decode_p95_latency_equivalent_tps=1.730496
+candidate_turn2_decode_p99_latency_equivalent_tps=1.710586
+candidate_turn1_prompt_done_s=56.129
+candidate_turn1_WRAP_s=33.718
+candidate_turn2_prompt_done_s=17.548
+candidate_turn2_WRAP_s=0.000_preserved
+```
+
+Route receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_g73_host_selected_requested=1
+turn1_g73_host_selected_reuse=5504
+turn1_g73_host_selected_fallbacks=0
+turn1_g73_classification_d2h=0
+turn1_g73_host_selected_wait_ms_per_reuse=2.733
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_g73_host_selected_requested=1
+turn2_g73_host_selected_reuse=1376
+turn2_g73_host_selected_fallbacks=0
+turn2_g73_classification_d2h=0
+turn2_g73_host_selected_wait_ms_per_reuse=2.849
+legacy_copy_submissions_turn1=77190
+legacy_copy_submissions_turn2=22254
+legacy_publish_kernels_turn1=25730
+legacy_publish_kernels_turn2=7418
+packed_copy_requested=0
+batched_publish_requested=0
+```
+
+Monitor:
+
+```text
+samples=30
+min_available_RAM_mb=19756.9
+max_server_private_mb=45673.8
+max_GPU_used_mb=12014
+avg_GPU_util_pct=32.27
+max_GPU_util_pct=71
+avg_GPU_power_w=30.26
+max_GPU_power_w=44.85
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=569491F7551B0C80A993F6A6FBFFADC5AD142FCEAF76F9A0D1416B956A550633
+provenance.txt_SHA256=9E88BB07FF9FC8F63482BBBC97607C4C7FDE0845FA7DC868AFF8DCD927DE17DE
+result.txt_SHA256=8A80DB9197889E9A13FC12288B72840BD1DD19AA82882D34DCAC7BF0747B95E5
+server.stderr.log_SHA256=56B91F62EB5EDBD532DDF49F9A371823FABCD86996E7BBECE4EF26908954C0C8
+monitor.csv_SHA256=A6F138970489A8E35F1569C4A81814DAC86A56F642D9CB9A3797AFB6DF98B245
+turn1.response.json_SHA256=26517318BF5A1E731202400B157CB393355F1C80A5C37C0842CD3E9A3D27DE59
+turn2.response.json_SHA256=3278EE7FA74F468FAB4E3799CCCEC66FE7BC00DBF8F584BE66C8ECBF1B682936
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **CORRECTNESS PASS, PERFORMANCE NON PROMOSSA**. La patch elimina
+realmente tutti i D2H di classificazione e non introduce fallback, ma ogni
+delta rilevante è sotto il gate del 10%. La misura Nsight di 276,8 ms/token
+nelle API D2H includeva soprattutto attesa del lavoro precedente sul default
+stream: il riuso mailbox sposta quell'attesa nel polling (2,7–2,8 ms/layer)
+senza riempire le bolle di source acquisition.
+
+Prossima direzione: P3-B, I/O exact overlapped QD4 per i miss SSD dello stesso
+layer. È la prima modifica che attacca direttamente le sei bolle da 111–118
+ms e il worker seriale/QD1 osservati in AA-2. P3-A resta OFF nel baseline.
+
+### Registro patch cumulative — non scartare le micro-patch esatte
+
+Decisione dell'utente: conservare e tracciare tutte le patch perché un
+composito può produrre un risultato utile anche quando i singoli delta sono
+inferiori al 10%. La soglia del 10% continua a valere per dichiarare un
+miglioramento; cambia soltanto il significato di “non promossa”: OFF nel
+baseline, ma disponibile per una matrice cumulativa.
+
+| ID | Flag/componente | Riduzione strutturale verificata | Delta isolato | Stato |
+|---|---|---|---:|---|
+| P0-A | lifecycle short-suffix | snapshot completa preservata, follow-up non rifiutato | correctness | fondazione ON |
+| P0-B | mailbox atomica + consumer-done | ownership generazionale fail-closed | correctness | fondazione ON |
+| P1 | sparse decode trace | misura campionata post-drain | overhead <1% | diagnostica |
+| P2-A | `DS4_CUDA_MOE_ROUTE_PACKED_COPY=1` | H2D/expert `3 -> 2`, byte identici | da -1,0% a -4,0% | trattenuta, ultima nel composito |
+| P2-B | `DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1` | circa 80% kernel publish eliminati | +1,9% / +3,4% | trattenuta |
+| P2-C | Nsight token singolo | GPU idle 61,86%, 6 gap sorgente | diagnostica | completata |
+| P3-A | `DS4_CUDA_G73_REUSE_HOST_SELECTED=1` | classification D2H `43/token -> 0` | +1,8–3,0% decode | trattenuta |
+| P3-B | I/O sorgente exact QD4 | obiettivo: sovrapporre miss SSD same-layer | N/D | prossima implementazione |
+
+Matrice cumulativa obbligatoria dopo il safety gate P3-B:
+
+```text
+M0 = baseline (P2-A OFF, P2-B OFF, P3-A OFF, P3-B OFF)
+M1 = P3-B only
+M2 = P3-B + P2-B batched publish
+M3 = P3-B + P2-B + P3-A host-selected
+M4 = P3-B + P2-B + P3-A + P2-A packed H2D
+```
+
+Per ogni passaggio: stesso binario quando possibile, stesso 47/47, una sola
+aggiunta, output hash esatti, zero fallback/mismatch, shutdown nativo, t/s
+graph e wall, delta incrementale e totale contro M0. Non sommare i delta
+isolati: le patch possono sovrapporsi o diventare più utili dopo che P3-B
+sposta il collo di bottiglia. Il bundle finale è promuovibile soltanto se il
+totale contro M0 è >=10%, anche se alcuni componenti individuali restano
+sotto soglia.
+
+### 2026-07-26 — AA-6 / P3-B implementation e dry validation pre-test
+
+Classificazione:
+
+```text
+patch=P3-B exact G73 route source I/O QD4
+runtime_benchmark=NOT_STARTED
+source_implementation=COMPLETE
+build=PASS
+static_contract=PASS
+runner_control_validation=PASS
+runner_candidate_validation=PASS
+server_started_by_validation=no
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+Meccanismo e invarianti:
+
+```text
+opt_in=DS4_CUDA_G73_ROUTE_IO_QD=4
+default=OFF
+platform=Windows
+path=G73 enforce, non-nested, open-router SSD misses only
+scope=at-most-6 same-layer misses
+spans_per_route=3 exact gate/up/down ranges
+destination=existing final per-route pinned host buffers
+queue_depth=4
+events=persistent, allocated at cache prepare
+hot_path_event_allocation=0
+wait_poll_max_ms=5
+deadline=preserved
+cancellation=preserved
+pending_cancel=CancelIoEx
+pending_drain=GetOverlappedResult(wait=true)
+ordinary_io_failure=serial-cancellable fallback
+timeout_or_cancel=fail-closed
+H2D_semantics=unchanged
+publish_semantics=unchanged
+consumer_done_ownership=unchanged
+```
+
+Manifest base completo 47/47, identico per i due dry arm e già fissato per
+M0/M1 runtime:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay comune e differenza singola prevista:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+M0_RouteIoQd=Off
+M0_DS4_CUDA_G73_ROUTE_IO_QD=<UNSET>
+M1_RouteIoQd=Qd4
+M1_DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Dry validation artefatti:
+
+```text
+control_path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_122241_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off_routeio-off
+control_validation=PASS
+candidate_path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_122242_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off_routeio-qd4
+candidate_validation=PASS
+server_started=no
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+runner_SHA256=C4E0D8170342AADD1044D22DD461916DE39713D055A348417B6F8F31A25C44F2
+test_p3b_static_SHA256=0131B0DC688D1A5CB207463BDDD9E11664358DFD41EF1031F28C3199E8E469EF
+build_stdout_SHA256=EFB5D182CACDAB43F6388D70601024EDAA0AD9E4F18FC8859D05B3B6D2A9A897
+build_stderr_SHA256=E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855
+```
+
+Verifiche:
+
+```text
+P0_short_suffix_static=PASS
+P0_mailbox_static=PASS
+P1_decode_trace_static=PASS
+P2_batched_publish_static=PASS
+P2C_nsys_capture_static=PASS
+P3A_host_selected_static=PASS
+P3B_route_io_qd_static=PASS
+ctest_ds4_bake_test=PASS
+```
+
+Commit sorgente pre-test:
+
+```text
+parent=511cf179f16605f4d6fa270a1aa87b29013bea4c
+commit=08622991e2e14c2f34b4dd8341a41a4461d480f1
+scope=ds4_cuda.cu,tests/test_p3b_route_io_qd_static.ps1
+bundle=ds4-through-p3b-pretest.bundle
+bundle_SHA256=9C5975B6625AB1687F93B75BB2D48062D00A2E59A253460AD3BC3A477D1E59EA
+bundle_verify=PASS
+```
+
+Gate runtime già codificato nel runner:
+
+```text
+M0=requested0 and all QD counters0
+M1=requested4
+M1_calls>0
+M1_routes>0
+M1_spans=3*routes
+M1_submits=spans
+M1_completions=submits
+M1_bytes>0
+M1_failures=0
+M1_fallbacks=0
+M1_max_inflight=4
+both_output_hashes=exact
+both_shutdown=graceful_http_verified
+promotion_threshold=>=10%
+```
+
+P3-B si aggiunge al registro, non sostituisce le patch precedenti. Dopo il
+gate M1 la matrice rimane obbligatoriamente:
+`M0 -> M1(P3-B) -> M2(+P2-B) -> M3(+P3-A) -> M4(+P2-A)`, con delta
+incrementale e totale contro M0.
+
+Checkpoint documentazione pre-test:
+
+```text
+ops_parent=eebd5181f2ee0a50a6e84582e4a4dcf11fa58695
+ops_commit=d7ffb84fd5dee8d91c0915b8e666ccb5ef6a0e66
+ops_bundle=ds4-ops-through-p3b-pretest.bundle
+ops_bundle_SHA256=70B8AEE9FC827B32682ABAC3B51DA35C8A5DFDE8D9874441D4ED63E78A2D3084
+ledger_parent=30142feffcef957707cdef467b7c827f9d1824aa
+ledger_commit=ff3e9f003d2487b9e8296bce6212594a418497a4
+ledger_bundle=reap-loop-through-p3b-pretest.bundle
+ledger_bundle_SHA256=F2B9ED42EDB884CB42A82BA1B57A752CD45711AE24AD98110B62D480A5B680F3
+all_bundle_verify=PASS
+```
+
+### 2026-07-26 — AA-7 / P3-B M0 runtime CONTROL route I/O OFF
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_123028_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off_routeio-off
+classification=VALID_RUNTIME_CONTROL
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+RouteIoQd=Off
+DS4_CUDA_G73_ROUTE_IO_QD=<UNSET>
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s:
+
+```text
+turn1_request_wall_including_TTFT_tps=1.135623
+turn1_decode_graph_pos13_140_tps=2.295256
+turn1_mature_graph_pos50_140_tps=2.636989
+turn1_p50_latency_equivalent_tps=2.544011
+turn1_p95_latency_equivalent_tps=1.537480
+turn1_p99_latency_equivalent_tps=1.326934
+turn2_request_wall_including_suffix_prefill_tps=1.040973
+turn2_suffix_prefill_graph_pos141_159_tps=1.117331
+turn2_decode_graph_pos160_191_tps=2.570708
+turn2_decode_p50_latency_equivalent_tps=2.827119
+turn2_decode_p95_latency_equivalent_tps=1.733835
+turn2_decode_p99_latency_equivalent_tps=1.720125
+turn1_prompt_done_s=54.567
+turn1_WRAP_s=31.982
+turn2_prompt_done_s=17.312
+turn2_WRAP_s=0.000_preserved
+```
+
+Route receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_worker_ms_per_job=6.349
+turn1_ready_wait_ms_per_call=6.188
+turn1_route_io_qd_requested=0
+turn1_route_io_qd_calls=0
+turn1_route_io_qd_routes=0
+turn1_route_io_qd_spans=0
+turn1_route_io_qd_submits=0
+turn1_route_io_qd_completions=0
+turn1_route_io_qd_bytes=0
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=0
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_worker_ms_per_job=5.522
+turn2_ready_wait_ms_per_call=5.366
+turn2_route_io_qd_requested=0
+turn2_route_io_qd_calls=0
+turn2_route_io_qd_routes=0
+turn2_route_io_qd_spans=0
+turn2_route_io_qd_submits=0
+turn2_route_io_qd_completions=0
+turn2_route_io_qd_bytes=0
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=0
+legacy_copy_submissions_turn1=77190
+legacy_copy_submissions_turn2=22254
+legacy_publish_kernels_turn1=25730
+legacy_publish_kernels_turn2=7418
+g73_classification_d2h_turn1=5504
+g73_classification_d2h_turn2=1376
+```
+
+Monitor:
+
+```text
+samples=29
+min_available_RAM_mb=19841.2
+max_server_private_mb=45652.3
+max_GPU_used_mb=12010
+avg_GPU_util_pct=33.93
+max_GPU_util_pct=79
+avg_GPU_power_w=30.07
+max_GPU_power_w=43.84
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=F542850D21C5803E2D5B93E1B4CDCCB4AAD73DC5B4341B4DFC4BB58894789187
+provenance.txt_SHA256=D18EBC7052A2BEBF0BD9A750D00979B27702237D49D18CC9A5B26BB4AE347340
+result.txt_SHA256=0AB4879565BCF3E3CA37779F8FD0DFE40CA186BE71EB9EDEBE37B783DF3FCEFA
+server.stderr.log_SHA256=FA2123DBE1922FDAE7331B948C57C25ACC7991840743DA60CEFC79145BB64A95
+monitor.csv_SHA256=3DD7CB0DE5753324291D6C53A98F3CBA45D1DA0C1E04DBE017AD5466A2A3E123
+turn1.response.json_SHA256=4C53E0D52A309E732302F318876EB76C958F28CE05209C6D5D3A2F868F5B313D
+turn2.response.json_SHA256=699407E241AE5FAD680E9A0AEA44DC716A6E0A95FFA09B5F0E732F46B2815C38
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **CONTROL PASS**. M0 è la baseline fissa. Nessuna inferenza di
+miglioramento finché M1 non completa con l’unica differenza
+`DS4_CUDA_G73_ROUTE_IO_QD=4`.
+
+### 2026-07-26 — AA-8 / P3-B M1 runtime CANDIDATE route I/O QD4
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_123622_p0_lifecycle_trace-off_packed-off_publish-off_hostsel-off_routeio-qd4
+classification=VALID_RUNTIME_CANDIDATE
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay e richiesta:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=Off
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=<UNSET>
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s e delta:
+
+```text
+metric,M0_tps,M1_tps,delta_pct
+turn1_request_wall_including_TTFT,1.135623,1.167914,+2.8435
+turn1_decode_graph_pos13_140,2.295256,2.438525,+6.2420
+turn1_mature_graph_pos50_140,2.636989,2.748219,+4.2181
+turn1_p50_latency_equivalent,2.544011,2.678653,+5.2925
+turn1_p95_latency_equivalent,1.537480,1.813674,+17.9641
+turn1_p99_latency_equivalent,1.326934,1.648264,+24.2160
+turn2_request_wall_including_suffix_prefill,1.040973,1.054022,+1.2535
+turn2_suffix_prefill_graph_pos141_159,1.117331,1.130772,+1.2030
+turn2_decode_graph_pos160_191,2.570708,2.611057,+1.5696
+turn2_decode_p50_latency_equivalent,2.827119,2.808831,-0.6469
+turn2_decode_p95_latency_equivalent,1.733835,1.903699,+9.7970
+turn2_decode_p99_latency_equivalent,1.720125,1.653319,-3.8838
+turn1_worker_latency_delta=-10.0331%
+turn1_ready_wait_latency_delta=-9.5831%
+turn2_worker_latency_delta=-2.5534%
+turn2_ready_wait_latency_delta=-2.4972%
+turn1_prompt_done_s=54.635
+turn1_WRAP_s=32.029
+turn2_prompt_done_s=17.112
+turn2_WRAP_s=0.000_preserved
+```
+
+Route I/O receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25632
+turn1_worker_ms_per_job=5.712
+turn1_ready_wait_ms_per_call=5.595
+turn1_route_io_qd_requested=4
+turn1_route_io_qd_calls=4125
+turn1_route_io_qd_routes=7971
+turn1_route_io_qd_spans=23913
+turn1_route_io_qd_submits=23913
+turn1_route_io_qd_completions=23913
+turn1_route_io_qd_bytes=56417845248
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn1_route_io_qd_ms_per_call=4.898
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_worker_ms_per_job=5.381
+turn2_ready_wait_ms_per_call=5.232
+turn2_route_io_qd_requested=4
+turn2_route_io_qd_calls=1039
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=6108
+turn2_route_io_qd_submits=6108
+turn2_route_io_qd_completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+turn2_route_io_qd_ms_per_call=4.071
+legacy_copy_submissions_turn1=76896
+legacy_copy_submissions_turn2=22254
+legacy_publish_kernels_turn1=25632
+legacy_publish_kernels_turn2=7418
+g73_classification_d2h_turn1=5504
+g73_classification_d2h_turn2=1376
+```
+
+Monitor:
+
+```text
+samples=28
+min_available_RAM_mb=19862.0
+max_server_private_mb=45712.4
+max_GPU_used_mb=12002
+avg_GPU_util_pct=30.61
+max_GPU_util_pct=68
+avg_GPU_power_w=29.92
+max_GPU_power_w=44.19
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=6D4AA3C39E3603F7CDB7220ACBCC6D9FD6DD500FAD5A75BA7C33FACA81598B85
+provenance.txt_SHA256=7C24D50152A03CD4E0A56083927CA692512F13E54E376FDF286DA5F96B2EB882
+result.txt_SHA256=AC54A4130202D34E25941FC454558B4500CF2ADB9FEC1709D98D6FE67613C95C
+server.stderr.log_SHA256=AA55B1F12E5AA6B054189E3572D18D156DF01D530975C7546569E6C6144D516C
+monitor.csv_SHA256=11B0E8AF825ED1B6744D06DA050C51F8411D11B81DD4FC38D16F80E6460D5F7D
+turn1.response.json_SHA256=3E0FA12C73280552C9E1A6EC43430FA2C1A5A6649296108101280ED1F8C67C86
+turn2.response.json_SHA256=BAC9AA07A2A0ACB3EE4A8581859EF8355CCD2F574AF54EECB0CAC8F3D1958816
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **CORRECTNESS PASS, PERFORMANCE MEDIA NON PROMOSSA**. QD4 è
+effettivamente raggiunta, tutte le letture completano esattamente e il worker
+turn1 cala del 10,0%, ma graph medio (+6,24%) e wall (+2,84%) restano sotto
+la soglia utente del 10%. La patch è trattenuta per M2-M4; non viene scartata.
+
+### 2026-07-26 — AA-9 / cumulative M2: P3-B QD4 + P2-B batched publish
+
+```text
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_124217_p0_lifecycle_trace-off_packed-off_publish-on_hostsel-off_routeio-qd4
+classification=VALID_RUNTIME_CUMULATIVE_M2
+stack=P3-B+P2-B
+gate_pass=true
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay, richiesta e matrice:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=Off
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=<UNSET>
+BatchedPublish=On
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+manifest_count=47
+declared_parameter_count=51
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+matrix_M0=P3-B_off+P2-B_off+P3-A_off+P2-A_off
+matrix_M1=P3-B_on+P2-B_off+P3-A_off+P2-A_off
+matrix_M2=P3-B_on+P2-B_on+P3-A_off+P2-A_off
+matrix_M3=P3-B_on+P2-B_on+P3-A_on+P2-A_off
+matrix_M4=P3-B_on+P2-B_on+P3-A_on+P2-A_on
+retention_rule=keep_every_exact_patch_even_when_isolated_delta_below_10pct
+```
+
+Provenance:
+
+```text
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness e lifecycle:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+run_error=none
+shutdown_mode=graceful_http_verified
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+t/s, delta marginale M2 vs M1 e totale M2 vs M0:
+
+```text
+metric,M0_tps,M1_tps,M2_tps,incremental_M2_vs_M1_pct,total_M2_vs_M0_pct
+turn1_request_wall_including_TTFT,1.135623,1.167914,0.291725,-75.0217,-74.3115
+turn1_decode_graph_pos13_140,2.295256,2.438525,2.463047,+1.0056,+7.3103
+turn1_mature_graph_pos50_140,2.636989,2.748219,2.776708,+1.0366,+5.2984
+turn1_p50_latency_equivalent,2.544011,2.678653,2.714441,+1.3360,+6.6993
+turn1_p95_latency_equivalent,1.537480,1.813674,1.836062,+1.2343,+19.4198
+turn1_p99_latency_equivalent,1.326934,1.648264,1.670740,+1.3636,+25.9095
+turn2_request_wall_including_suffix_prefill,1.040973,1.054022,1.067551,+1.2836,+2.5532
+turn2_suffix_prefill_graph_pos141_159,1.117331,1.130772,1.135537,+0.4214,+1.6294
+turn2_decode_graph_pos160_191,2.570708,2.611057,2.683746,+2.7839,+4.3972
+turn2_decode_p50_latency_equivalent,2.827119,2.808831,2.866866,+2.0669,+1.4066
+turn2_decode_p95_latency_equivalent,1.733835,1.903699,1.942177,+2.0212,+12.0184
+turn2_decode_p99_latency_equivalent,1.720125,1.653319,1.819277,+10.0379,+5.7642
+turn1_prompt_done_s=384.259
+turn1_WRAP_s=327.297_known_pagein_outlier
+turn2_prompt_done_s=17.039
+turn2_WRAP_s=0.000_preserved
+wall_interpretation=invalid_for_patch_delta_due_to_known_WRAP_pagein_outlier
+graph_interpretation=valid_and_below_10pct_average_threshold
+```
+
+Route I/O e publish receipts:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_worker_ms_per_job=5.647
+turn1_ready_wait_ms_per_call=5.499
+turn1_route_io_qd_requested=4
+turn1_route_io_qd_calls=4186
+turn1_route_io_qd_routes=8404
+turn1_route_io_qd_spans=25212
+turn1_route_io_qd_submits=25212
+turn1_route_io_qd_completions=25212
+turn1_route_io_qd_bytes=59482570752
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn1_route_io_qd_ms_per_call=5.013
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_worker_ms_per_job=5.121
+turn2_ready_wait_ms_per_call=4.969
+turn2_route_io_qd_requested=4
+turn2_route_io_qd_calls=1039
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=6108
+turn2_route_io_qd_submits=6108
+turn2_route_io_qd_completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+turn2_route_io_qd_ms_per_call=4.155
+batched_publish_requested=1
+turn1_batched_publish_kernels=5591
+turn1_batched_publish_routes=25730
+turn1_legacy_publish_kernels=0
+turn2_batched_publish_kernels=1429
+turn2_batched_publish_routes=7418
+turn2_legacy_publish_kernels=0
+legacy_copy_submissions_turn1=77190
+legacy_copy_submissions_turn2=22254
+g73_classification_d2h_turn1=5504
+g73_classification_d2h_turn2=1376
+```
+
+Monitor:
+
+```text
+samples=93
+min_available_RAM_mb=20047.3
+max_server_private_mb=45691.2
+max_process_read_mb=98431.1
+max_GPU_used_mb=12009
+avg_GPU_util_pct=10.09
+max_GPU_util_pct=71
+avg_GPU_power_w=18.11
+GPU_average_interpretation=diluted_by_327s_WRAP_pagein_outlier
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=CEE34A597284E719A52735CB19DF7829D72870FD734B0BF6561A7CE0DC50E989
+provenance.txt_SHA256=B6501477327D1826ECE0859769ECEAA7DB97E123D2AD071AF1CE9E3B0F0E306B
+result.txt_SHA256=843E0B8E07B486B8916EE0C319E4E82BEFDD633A46EBA9B589DD8133EADC0B46
+server.stderr.log_SHA256=50350202A5C040E18829D5A619F15A36B5BD7E6BBB9F2C5A52AE4D9DDDAB0956
+monitor.csv_SHA256=C477588EEA476F0EF9C3A42D2F35F2D3CCA40F550831F6DD298BF847E52CD0BD
+turn1.response.json_SHA256=8E209F9632D4B2CBEB5F14F3B657DAD47BA504016F92F0479BC3987B2FEB4B8C
+turn2.response.json_SHA256=82EDD3F6AD355A92152A9D269C3FA62200AFF12584D0C8365ECB3E23855C4385
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **CORRECTNESS PASS; P2-B E P3-B ENTRAMBE TRATTENUTE**. Il
+guadagno graph medio cumulativo di M2 è +7,31% contro M0, quindi resta sotto
+la soglia del 10% e non viene promosso come nuova baseline. Il wall del primo
+turno non misura l'interazione delle patch a causa dell'outlier WRAP/page-in
+da 327,297 s. Nessuna patch viene scartata: M3 aggiunge P3-A e M4 aggiunge
+P2-A; la decisione finale usa la misura combinata, non la somma delle
+percentuali isolate.
+
+### Registro congelato delle patch esatte da conservare
+
+```text
+P0-A=short-suffix snapshot lifecycle; foundation ON
+P0-B=atomic mailbox generation + consumer-done; foundation ON
+P1=sparse sampled decode trace; diagnostic retained
+P2-A=DS4_CUDA_MOE_ROUTE_PACKED_COPY=1; retained for M4
+P2-B=DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1; retained and ON from M2
+P2-C=single-token Nsight arming; diagnostic retained
+P3-A=DS4_CUDA_G73_REUSE_HOST_SELECTED=1; retained for M3
+P3-B=DS4_CUDA_G73_ROUTE_IO_QD=4; retained and ON from M1
+rule=do_not_delete_exact_patch_because_isolated_delta_is_below_10pct
+final_composite=M4=P3-B+P2-B+P3-A+P2-A
+```
+
+Checkpoint portabile M2:
+
+```text
+ops_parent=8bbdd485ba7ac5d5b5f2a6a4644fe4a5353c386c
+ops_commit=6917cd1d620afc30fe956e76afcd1d2535780714
+ops_bundle=ds4-ops-through-p3b-m2.bundle
+ops_bundle_SHA256=84BF0F13F78129A42E10B0540A37FB00BAC1F038E17D5954BC43994C20F38468
+ledger_parent=3648a7258ce749b6982220ddd09006bd5080cac4
+ledger_commit=a23d327e38c9cd1cfb1a8c1e7a9012bda448b2ae
+ledger_bundle=reap-loop-through-p3b-m2.bundle
+ledger_bundle_SHA256=77F9BCDC0B7F40B05DC3CBB0ABF3B7D934F12D7892CBB21DE17B04CAA349A4CE
+bundle_verify=PASS
+```
