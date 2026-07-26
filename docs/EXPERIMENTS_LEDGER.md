@@ -11253,3 +11253,301 @@ ledger_bundle=reap-loop-through-p3b-m2.bundle
 ledger_bundle_SHA256=77F9BCDC0B7F40B05DC3CBB0ABF3B7D934F12D7892CBB21DE17B04CAA349A4CE
 bundle_verify=PASS
 ```
+
+### 2026-07-26 — AA-13 / targeted M5: P3-B + P2-B + P2-A, P3-A OFF
+
+```text
+run_id=20260726_143740_p0_lifecycle_trace-off_packed-on_publish-on_hostsel-off_routeio-qd4
+path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\outputs\p0p1_runtime\20260726_143740_p0_lifecycle_trace-off_packed-on_publish-on_hostsel-off_routeio-qd4
+classification=VALID_RUNTIME_CUMULATIVE_M5
+stack=P3-B+P2-B+P2-A
+P3-A=OFF
+runner_gate_pass=true
+performance_verdict=NOT_PROMOTED_SIGNIFICANT_FOLLOWUP_REGRESSION
+second_run=not_performed_by_instruction
+```
+
+Preflight fisico e dry validation:
+
+```text
+preflight_timestamp=2026-07-26T14:37:04.5684987+02:00
+pre_ds4_processes=0
+pre_nsys_processes=0
+pre_port8000_listeners=0
+pre_competing_harnesses=0
+pre_available_RAM_GiB=55.56
+pre_GPU=NVIDIA_GeForce_RTX_3060,P8,3pct,12.90W,477MiB
+validation_run=20260726_143710_p0_lifecycle_trace-off_packed-on_publish-on_hostsel-off_routeio-qd4
+validation=PASS
+base_manifest=47/47
+declared_parameter_count=51
+hashes=PASS
+server_started_by_validation=no
+run_two_turn_lifecycle.ps1_SHA256=C4E0D8170342AADD1044D22DD461916DE39713D055A348417B6F8F31A25C44F2
+```
+
+Manifest completo 47/47:
+
+```text
+DS4_CUDA_ARENA_WRAP_SCHEDULE=source-parts
+DS4_CUDA_ARENA_WRAP_TRUST_WORKER_CHECKSUM=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_SOURCE_RANGES=1
+DS4_CUDA_ARENA_WRAP_UNLOCK_WAVE_GIB=4
+DS4_CUDA_DYNAMIC_ARENA_GB=30
+DS4_CUDA_EMBED_ROW_STAGING=1
+DS4_CUDA_KV_STAGED_RING=1
+DS4_CUDA_MOE_CACHE_POLICY=lru
+DS4_CUDA_MOE_GPU_RESIDENT_ROUTES=1
+DS4_CUDA_MOE_ROUTE_NO_DEFAULT_SYNC=1
+DS4_CUDA_MOE_SPLIT_FUSED=1
+DS4_CUDA_MOE_SPLIT_HIT_MISS=0
+DS4_CUDA_NO_Q8_F16_CACHE=1
+DS4_CUDA_PREFILL_MASS_OBSERVE=1
+DS4_CUDA_PREFILL_MASS_WRAP=1
+DS4_CUDA_PREFILL_TIER_COMPOSE=1
+DS4_CUDA_PREFILL_TIER_RESERVE_SLOTS=128
+DS4_CUDA_PREFILL_TIER_ROUTER=open
+DS4_CUDA_RELEASE_PREFILL_SCRATCH=1
+DS4_CUDA_STREAM_FROM_RAM_MASKED_BUDGET_GB=2
+DS4_CUDA_STREAM_HOT_RESERVE_MB=256
+DS4_CUDA_STREAM_RESERVE_MB=1024
+DS4_CUDA_STREAMING_EXPERT_CACHE_N=140
+DS4_CUDA_STREAMING_EXPERT_CACHE_RESERVE_GB=0.125
+DS4_CUDA_WEIGHT_CACHE_VERBOSE=1
+DS4_EXPERT_TIER_CLOCK_CALLS=430
+DS4_EXPERT_TIER_HYSTERESIS=1.25
+DS4_EXPERT_TIER_MIN_FREQUENCY=3
+DS4_EXPERT_TIER_POLICY=mass-lfru
+DS4_EXPERT_TIER_REPLACEMENT_BUDGET=32
+DS4_EXPERT_TIERING=enforce
+DS4_G130_U1_ATTRIBUTION=1
+DS4_G133_DECAY=0.98
+DS4_G133_KNOCK_X=3
+DS4_G133_KNOCK_Y=5
+DS4_G133_PROMOTE_BUDGET=8
+DS4_G133_ROTATOR_IO_TIMEOUT_S=0.05
+DS4_G133_SEED_DYNAMIC=1
+DS4_G133_TIER=1
+DS4_G133_TRANSIENT_IO_TIMEOUT_S=0.25
+DS4_G73_OPEN=1
+DS4_G73_PAGEABLE_OVERFLOW_GB=0
+DS4_METAL_GRAPH_TOKEN_PROFILE=1
+DS4_METAL_PREFILL_CHUNK=250
+DS4_MODEL_BYTES=86720111488
+DS4_MODEL_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+DS4_REAP_PREFETCH_THREADS=8
+```
+
+Overlay, richiesta e provenance:
+
+```text
+TraceMode=Off
+DS4_CUDA_DECODE_TRACE_SAMPLE_EVERY=<UNSET>
+DS4_CUDA_DECODE_TRACE_POSITIONS=<UNSET>
+DS4_CUDA_DECODE_TRACE_LAYERS=<UNSET>
+PackedCopy=On
+DS4_CUDA_MOE_ROUTE_PACKED_COPY=1
+BatchedPublish=On
+DS4_CUDA_MOE_ROUTE_BATCHED_PUBLISH=1
+G73HostSelected=Off
+DS4_CUDA_G73_REUSE_HOST_SELECTED=<UNSET>
+RouteIoQd=Qd4
+DS4_CUDA_G73_ROUTE_IO_QD=4
+ctx_capacity=150000
+mtp_draft=1
+temperature=0.7
+seed=12345
+think=false
+turn1_max_tokens=128
+turn2_max_tokens=32
+turn1_prompt_utf8=Ciao, sai fare un bel sito?
+turn2_prompt_utf8=Fammi una landing page minimal, single-file HTML, molto breve.
+ds4.c_SHA256=2C2840FCA3F1FF7B0C745BF376E04BCB28AED248FDC6DE504093D949288415A4
+ds4_cuda.cu_SHA256=FEB2954ED2FA583C0631C4FE763B75FFA1F4D0D51598D2ED2AC6F5A87E303496
+ds4_gpu.h_SHA256=EB51FE6F3250CE023803AFF77B407CE73BBE004F212F33E2E68638969E9A8E06
+ds4_server.exe_SHA256=F2F6A25600EF0B6728BE0DAE77ACFC5CE89ABCEB1446555A7DB946DA26F11DFF
+ds4_server.exe_bytes=12412416
+model_bytes=86720111488
+model_SHA256=efc7ed607ff27076e3e501fc3fefefa33c0ed8cf1eff483a2b7fdc0c2e616668
+```
+
+Correctness, lifecycle e gate invariati:
+
+```text
+turn1_prompt_tokens=13
+turn1_completion_tokens=128
+turn1_content_SHA256=7f82253a4825191926f56073e40f10a0cff5541a721731bc81d2909dc1a4a65b
+turn1_exact=true
+turn2_prompt_tokens=160
+cached_prefix_tokens=141
+suffix_tokens=19
+turn2_completion_tokens=32
+turn2_content_SHA256=0179556c8e2dbcdc818fad315ca4df78f7537b63816dac276615b314195b13eb
+turn2_exact=true
+short_suffix_preserve_count=1
+snapshot_unchanged=true
+resident_unchanged=true
+decode_refused_count=0
+mailbox_quarantine_count=0
+route_worker_errors_turn1=0
+route_worker_errors_turn2=0
+route_io_qd_failures=0
+route_io_qd_fallbacks=0
+g73_host_selected_fallbacks=0
+expert_tiering_failures=0
+forbidden_cold_ssd_to_vram=0
+served_selected_fallback=0
+request_refused=0
+run_error=none
+shutdown_mode=graceful_http_verified
+shutdown_receipt_status=draining
+post_ds4_processes=0
+post_nsys_processes=0
+post_port8000_listeners=0
+```
+
+Il contatore diagnostico opportunistico `q1-0-ssd-wrap` chiude con
+`successes=3`, `failures=4`, `dropped=2`: sono partial-read del warmup
+asincrono gia presenti anche nei controlli validi M0/M2/M3 e non sono un
+fallback del serving exact ne un errore delle tre patch M5. Il gate M0-M4 non
+e stato modificato o rilassato; output exact, route serving, expert tiering,
+mailbox e tutte le tre patch hanno zero errori/fallback/quarantine.
+
+t/s e delta misurati contro M0, M2 e M3:
+
+```text
+metric,M5_tps,delta_vs_M0_pct,delta_vs_M2_pct,delta_vs_M3_pct
+turn1_request_wall_including_TTFT,1.158051,+1.9750,+296.9667,+0.1040
+turn1_decode_graph_pos13_140,2.476776,+7.9085,+0.5574,+2.7016
+turn1_mature_graph_pos50_140,2.780617,+5.4467,+0.1408,+2.6511
+turn2_request_wall_including_suffix_prefill,0.585966,-43.7098,-45.1112,-40.4309
+turn2_suffix_prefill_graph_pos141_159,1.099061,-1.6352,-3.2122,+8.4946
+turn2_decode_graph_pos160_191,0.890385,-65.3642,-66.8230,-65.5931
+weighted_decode_graph_160_tokens,1.826076,-22.1463,-27.0805,-25.3113
+```
+
+Il `+296.9667%` wall contro M2 non e interpretabile come beneficio: M2 ebbe
+il noto outlier WRAP da 327.297 s. M5 ha `turn1_prompt_done_s=55.951` e
+`turn1_WRAP_s=33.389`. Il primo turno graph e mature resta entro il 10% contro
+tutti i riferimenti, quindi varianza. Il follow-up non e varianza: gli ultimi
+nove token rallentano nettamente, portando il decode a `0.890385 t/s` e il
+decode pesato sui 160 token a `1.826076 t/s`.
+
+Distribuzione decode:
+
+```text
+turn1_graph_p50_equivalent_tps=2.768526
+turn1_graph_p95_equivalent_tps=1.924691
+turn1_graph_p99_equivalent_tps=1.638691
+turn2_graph_p50_equivalent_tps=2.577087
+turn2_graph_p95_equivalent_tps=0.235940
+turn2_graph_p99_equivalent_tps=0.216549
+turn2_prompt_done_s=17.603
+```
+
+Engagement P2-A, P2-B e P3-B:
+
+```text
+turn1_route_calls=5504
+turn1_miss_experts=25730
+turn1_worker_ms_per_job=5.520
+turn1_ready_wait_ms_per_call=5.339
+turn1_packed_copy_requested=1
+turn1_packed_copy_experts=25730
+turn1_packed_copy_submissions=51460
+turn1_packed_copy_bytes=182114058240
+turn1_legacy_copy_submissions=0
+turn1_batched_publish_requested=1
+turn1_batched_publish_kernels=5591
+turn1_batched_publish_routes=25730
+turn1_legacy_publish_kernels=0
+turn1_route_io_qd_requested=4
+turn1_route_io_qd_calls=4186
+turn1_route_io_qd_routes=8405
+turn1_route_io_qd_spans=25215
+turn1_route_io_qd_submissions=25215
+turn1_route_io_qd_completions=25215
+turn1_route_io_qd_bytes=59489648640
+turn1_route_io_qd_failures=0
+turn1_route_io_qd_fallbacks=0
+turn1_route_io_qd_max_inflight=4
+turn1_route_io_qd_ms_per_call=4.860
+turn1_g73_classification_d2h=5504
+turn2_route_calls=1376
+turn2_miss_experts=7418
+turn2_worker_ms_per_job=21.020
+turn2_ready_wait_ms_per_call=20.840
+turn2_packed_copy_requested=1
+turn2_packed_copy_experts=7418
+turn2_packed_copy_submissions=14836
+turn2_packed_copy_bytes=52503773184
+turn2_legacy_copy_submissions=0
+turn2_batched_publish_requested=1
+turn2_batched_publish_kernels=1429
+turn2_batched_publish_routes=7418
+turn2_legacy_publish_kernels=0
+turn2_route_io_qd_requested=4
+turn2_route_io_qd_calls=1039
+turn2_route_io_qd_routes=2036
+turn2_route_io_qd_spans=6108
+turn2_route_io_qd_submissions=6108
+turn2_route_io_qd_completions=6108
+turn2_route_io_qd_bytes=14410579968
+turn2_route_io_qd_failures=0
+turn2_route_io_qd_fallbacks=0
+turn2_route_io_qd_max_inflight=4
+turn2_route_io_qd_ms_per_call=24.067
+turn2_g73_classification_d2h=1376
+```
+
+P2-A riduce davvero ogni miss da tre a due H2D: `51460=2*25730` e
+`14836=2*7418`. P2-B pubblica tutte le route con meno kernel e zero legacy.
+P3-B ha `spans=submissions=completions=3*routes`, QD massima 4 e zero
+failure/fallback. P3-A e correttamente spento; le classification D2H sono
+quindi le attese `5504+1376` copie da 24 byte, cioe 165120 byte totali.
+
+Monitor RAM/VRAM/GPU:
+
+```text
+samples=33
+min_available_RAM_mb=19769.9
+max_server_working_set_mb=35533.0
+max_server_private_mb=45651.4
+max_process_read_mb=100734.9
+max_GPU_used_mb=12007
+avg_GPU_util_pct=27.30
+max_GPU_util_pct=76
+avg_GPU_power_w=27.96
+max_GPU_power_w=43.78
+turn2_avg_GPU_util_pct=25.55
+turn2_avg_GPU_power_w=28.69
+postflight_timestamp=2026-07-26T14:43:59.9079869+02:00
+post_available_RAM_GiB=55.60
+post_GPU=NVIDIA_GeForce_RTX_3060,P8,0pct,12.79W,448MiB
+postflight_clean=true
+```
+
+Artefatti:
+
+```text
+manifest_47.env_SHA256=F7F07B210680475EA9970F30D8C6B4E2FBAAE11CC56565C748A06098B90FE3DC
+instrumentation_manifest.txt_SHA256=FF7F06EC4FA046F7B4FA9CCB1816396C9B49296A6AC7BAA385F3520295FE8851
+experiment_manifest.txt_SHA256=6283E772A942F7D016B03E1C85F1101F055BD65641FDB54D877BBC2E35D17F3F
+control_manifest.txt_SHA256=1B2107AFAE2733ED0E00FF4ABC8906E8D898CC8E076D7B9FF80E1EEFCA7175B0
+provenance.txt_SHA256=D24B419A2AC08BAD1E6E2D51EAFDEAC0C1BC5E35DE62BE4882CBAF7E733D464D
+result.txt_SHA256=1C722E87A24C9171AE8333F618BF6F0FA3701D031EBA1809AD711BC526EC797E
+runner.status.log_SHA256=773BBEF6EEF2784E5A67090B81679ABD176AC35DA41576D625B1143E400A2642
+server.stderr.log_SHA256=A74028608C6902D4A0B50EC4A8E02550363F3DC24AD44DE616A49D4086E2E9C6
+monitor.csv_SHA256=284F5E1501BE45F80F4B7DFA8C12DFB19D03A1F4579FF1407300A29F6FBC77D0
+turn1.request.json_SHA256=6C29402227270E0B937CAFD5D4DE7431E493073362A0ABE1BDFF480DEE1DD127
+turn1.response.json_SHA256=9074FE942D47B7F45262A015EA3403FDBE8DD69EF224E4C14AECA645077FB2B7
+turn2.request.json_SHA256=39105F08440A88B153965C4B311AAF68D8956F859EEE6BD8D7B82B03F4438A18
+turn2.response.json_SHA256=661E125D6003C64035DCA28C3F6BC11AAD6A00AFC4B4AFA68918F6362C200DB4
+shutdown.receipt.json_SHA256=EECC4763C84CE14F1D588BAF6D60EF8E396E3FF1D4AFC7E8CF27897FEB01F9BD
+```
+
+Verdetto: **M5 CORRECTNESS/ENGAGEMENT GATE PASS, PERFORMANCE FAIL / NOT
+PROMOTED**. Il primo turno e equivalente entro varianza, ma il follow-up ha
+una regressione graph del 65-67% e il decode pesato regredisce del 22-27%.
+Non viene fatto un secondo run. Le patch restano conservate e commutabili;
+questa singola misura non autorizza una nuova baseline.
