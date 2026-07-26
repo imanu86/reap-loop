@@ -96,5 +96,47 @@ Piano operativo locale sincronizzato:
 
 ```text
 path=C:\Users\imanu\Documents\Codex\2026-07-25\legg\DS4_OPERATIONAL_PLAN.md
-SHA256=27C39EA9507359CBDEA70B83B93F6C0AA04BB1575E7EC3DBAE9B767A70F24A11
+SHA256=D8A8E45B26E0695935BB4C86E7EA34F2AA9EAC4AF069F6A5DE822C293CA5F7B6
 ```
+
+## Orchestrazione attiva 2026-07-26
+
+Sono state create e pinnate sei task separate:
+
+```text
+M5=019f9e6b-a7f8-7ac2-bb64-d3114ee0c03a
+A1_GRAPH_TENSOR_DEVICE=019f9e6c-1ce2-7c40-89f7-fc0b78a32c35
+A2_G73_OPEN=019f9e6c-7b3f-7432-baed-38b492f5eb8a
+A3_PREFILL_CHUNK=019f9e6c-e35a-7963-84c2-23a0e9acc763
+A4_MTP_BATCH_VERIFY=019f9e6d-375d-7651-996e-8e4a4a7f2f59
+P4_DEMAND_PROMOTION_PIPELINE=019f9e6d-9fa8-7792-afeb-1bbe6eab7c34
+heartbeat=ds4-lever-orchestrator-5m
+```
+
+Politica: un solo run DS4 fisico alla volta; le altre task restano read-only o
+preparano harness isolati. Shutdown nativo e postflight pulito sono gate.
+
+M5 è chiuso:
+
+```text
+correctness_and_engagement=PASS
+performance=FAIL_NOT_PROMOTED
+turn1_graph_tps=2.476776
+turn1_mature_tps=2.780617
+turn2_decode_graph_tps=0.890385
+weighted_decode_tps=1.826076
+ledger_commit=f5057ccb9f1e948848190fbbcf5e09904c216b8d
+```
+
+Nuovi fatti emersi prima di spendere altri run:
+
+- A1 non è sicuro sul binario corrente: 124 tensor state sono inizializzati
+  dereferenziando dalla CPU un pointer che il flag rende device-only. È in corso
+  correzione minima, static contract e build isolato.
+- A2 non è validabile col runner corrente: il manifest fissa OPEN=1, il gate D2H
+  è incompatibile con OPEN=0 e un fallimento finale del rotatore può false-pass.
+- A3 250→600 muove circa 462,7 MiB di allocazioni note e deve aspettare A2.
+- A4 richiede realmente `--mtp <file>` oltre a draft2/batch verify/temp0/no-think;
+  il GGUF MTP locale è stato verificato.
+- P4a è ora quantificato: circa 603 H2D/token devono diventare al massimo 86,
+  con un publish demand per layer; P4b separerà le promozioni solo dopo P4a.
