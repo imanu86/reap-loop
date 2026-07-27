@@ -66,3 +66,24 @@ Ultimo aggiornamento: 2026-07-25.
 
 *Se leggi questo registro e stai per proporre un esperimento: prima chiediti se è già nella §1
 (costruisci da lì), nella §2 (continua), o nella §3 (non ri-proporre senza evidenza nuova).*
+
+## 2026-07-27 — "Il problema non è il trasporto da SSD: con le maschere a dominio andavamo a 4-5 t/s"
+
+**Intuizione utente** (durante la campagna leve 26-27/7, dopo 7 falsificazioni di
+trasporto): il collo del decode non e' il costo del singolo trasporto ma il VOLUME
+del working set che il routing libero su 256 esperti genera; le maschere a dominio
+ristretto lo comprimono alla radice e storicamente rendevano 4-5 t/s.
+
+**Riscontro nel ledger** (gia' scritto, ri-derivato al contrario dalla regia):
+Addendum 23 = working set reale minuscolo (16 tok = 34 esperti distinti, p90 111,
+NON 240); riga 4753 = "ridurre il working set sotto 185 e' l'ENDGAME del registro";
+run storici a maschera "sul floor teorico, 4-5 t/s". La campagna 26-27/7 ha
+falsificato TUTTE le leve di trasporto (P4a, cache capacita'+politica, pageable,
+QD4, Q1-residente) — coerente con la tesi.
+
+**Lezione ripetuta**: terza occorrenza del pattern "l'intuizione utente era nel
+registro e la regia ha ottimizzato l'asse sbagliato". Prima di ogni NUOVA famiglia
+di test: grep su questo registro E sul ledger per la famiglia gia' vincente.
+
+**Azione**: batch 11 = maschera dominio sul protocollo moderno (ricognizione
+meccanismo+artefatti, poi A/B con gate di qualita' in-dominio).
