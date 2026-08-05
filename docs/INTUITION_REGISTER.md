@@ -87,3 +87,48 @@ di test: grep su questo registro E sul ledger per la famiglia gia' vincente.
 
 **Azione**: batch 11 = maschera dominio sul protocollo moderno (ricognizione
 meccanismo+artefatti, poi A/B con gate di qualita' in-dominio).
+
+## 2026-08-05 — "Il punto è sempre parallelismo, non sequenzialità. Una testa che parallelizzi è il pezzo finale"
+
+**Intuizione utente** (sera del 5/8, dopo una giornata passata a ottimizzare il
+trasporto): il collo non è dove stanno i pesi ma il fatto che la generazione è
+seriale. E il modo praticabile per romperla non è riscrivere l'architettura, ma
+**addestrare una testa piccola su un modello congelato**.
+
+**Riscontro misurato la stessa sera** (ledger `moe-aggressive-commit`,
+righe LLAMA_CLOCK_SENSIBILITA / LLAMA_TESTA_ROUTE_SONDA / LLAMA_WORKING_SET_CURVA):
+
+- **La GPU è usata al 6%.** A batch 1 il kernel MoE rende 842 GFLOPS su una
+  scheda che ne fa migliaia: non manca banda, **manca lavoro da fare insieme**.
+  Un token sono 12,98 GFLOP spalmati su 43 passi ordinati.
+- **Il tetto della strada della memoria è ~17 t/s**, e adesso è un numero, non
+  un'impressione: con cache da 34 GiB, sovrapposizione piena e banda che avanza
+  dodici volte (servono 2,1 GiB/s su 24,35), restano 41,4 ms di orchestrazione
+  e 16,3 di calcolo. Da 8 a 17 è più del doppio, ma **è limitato**. Quel che
+  resta dopo non ha tetto noto.
+- **Le teste su modello congelato imparano davvero**: una regressione LINEARE su
+  1.173 campioni predice la route del token successivo dallo stato finale di
+  quello corrente al **59,4%** su token mai visti (caso 2,3%, recency pura
+  17,3%). Il divario col dato di addestramento (81,1%) dice che è memorizzazione
+  da pochi campioni — quindi 59,4 è un **pavimento**.
+- **Il costo è 90 MB** su un modello da 284 miliardi che resta congelato: 43
+  strati × [4096 × 256] = 45 M parametri, 0,7% del calcolo per token, e i dati
+  di addestramento si generano facendo girare il modello.
+
+**Perché è il pezzo finale, e non un'altra leva**: le tre famiglie che rompono
+la serialità — diffusione, Jacobi/consistency, teste multiple alla Medusa — sono
+tutte "aggiungi un pezzo piccolo a un modello che non tocchi". Il
+pre-addestramento **non va rifatto**. E una di quelle teste DSV4 ce l'ha già
+nativa (MTP), scartata il 31/7 per il motivo sbagliato: girava sulla CPU fuori
+dal grafo, non perché l'idea fosse debole.
+
+**Lezione ripetuta** (quarta occorrenza del pattern): la regia ha passato la
+giornata sull'asse del trasporto **perché è l'asse dove c'è codice da scrivere**
+— si compila, si misura un A/B, esce un numero. L'asse giusto chiede di
+cambiare come il modello genera, e lì non c'è una patch: c'è una testa da
+addestrare. È la trappola del lampione, e va nominata prima di ogni campagna.
+
+**Azione**: validare il metodo su un MoE piccolo in locale (`configs/models/`
+ha granite_1b_a400m e olmoe_1b_7b, e `llama-finetune` è nel build) prima di
+toccare i 284 miliardi. Prima misura: il tetto di prevedibilità, che costa zero
+perché le tracce ci sono già.
