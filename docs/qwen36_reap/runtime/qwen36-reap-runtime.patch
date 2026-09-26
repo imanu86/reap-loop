@@ -1,0 +1,640 @@
+--- a/src/CMakeLists.txt
++++ b/src/CMakeLists.txt
+@@ -38,6 +38,7 @@
+             llama-model-saver.cpp
+             llama-model.cpp
+             llama-moecache.cpp
++            llama-reap.cpp
+             llama-quant.cpp
+             llama-sampler.cpp
+             llama-vocab.cpp
+--- a/src/llama-context.cpp
++++ b/src/llama-context.cpp
+@@ -165,6 +165,12 @@
+     //     may need to be backend-dependent
+     LLAMA_LOG_INFO("%s: constructing llama_context\n", __func__);
+ 
++    llama_reap_validate_model(model);
++    if (llama_reap_settings().enabled() &&
++            (params.ctx_type != LLAMA_CONTEXT_TYPE_DEFAULT || params.n_seq_max > 1)) {
++        throw std::runtime_error("REAP requires a default single-sequence context");
++    }
++
+     // Q36 (25/9): anche la testa MTP separata di qwen35moe e' un contesto MTP col target in
+     // ctx_other; una seconda init con DEMAND acceso lancerebbe "one inference context per process".
+     if (params.ctx_type == LLAMA_CONTEXT_TYPE_MTP && params.ctx_other &&
+@@ -232,6 +238,11 @@
+ 
+     cparams.cb_eval           = params.cb_eval;
+     cparams.cb_eval_user_data = params.cb_eval_user_data;
++    if (!llama_reap_settings().trace_path.empty() && !model.hparams.no_alloc) {
++        reap_trace = std::make_unique<llama_reap_trace>(model, params.cb_eval, params.cb_eval_user_data);
++        cparams.cb_eval = llama_reap_trace::callback;
++        cparams.cb_eval_user_data = reap_trace.get();
++    }
+ 
+     cparams.ctx_other = nullptr;
+ 
+@@ -1819,7 +1830,27 @@
+         }
+         traced_prefill = true;
+     }
+-    const auto status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
++    ggml_status status;
++    if (reap_trace) {
++        try {
++            if (gtype == LLM_GRAPH_TYPE_DECODER_MTP || cparams.embeddings_nextn_masked || cparams.pipeline_parallel) {
++                throw std::runtime_error("REAP capture rejects MTP/pruned/pipeline graphs");
++            }
++            reap_trace->begin(ubatch, cparams.warmup);
++            status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
++            if (!reap_trace->finish(status == GGML_STATUS_SUCCESS)) {
++                ret = GGML_STATUS_FAILED;
++                return nullptr;
++            }
++        } catch (const std::exception & e) {
++            try { reap_trace->finish(false); } catch (...) { /* Keep recovery non-throwing. */ }
++            LLAMA_LOG_ERROR("REAP capture failed: %s\n", e.what());
++            ret = GGML_STATUS_FAILED;
++            return nullptr;
++        }
++    } else {
++        status = graph_compute(res->get_gf(), ubatch.n_tokens > 1);
++    }
+     if (status != GGML_STATUS_SUCCESS) {
+         LLAMA_LOG_ERROR("%s: failed to compute graph, compute status: %d\n", __func__, status);
+         ret = status;
+@@ -2097,6 +2128,7 @@
+ }
+ 
+ int llama_context::decode(const llama_batch & batch_inp) {
++    if (reap_trace) reap_trace->next_decode();
+     if (batch_inp.n_tokens > 3 && llama_ram_store_missing()) {
+         // nothing may still be staging from the store while its pages come back
+         synchronize();
+--- a/src/llama-context.h
++++ b/src/llama-context.h
+@@ -7,6 +7,7 @@
+ #include "llama-adapter.h"
+ #include "llama-impl.h"
+ #include "llama-memory.h"
++#include "llama-reap.h"
+ 
+ #include "ggml-cpp.h"
+ #include "ggml-opt.h"
+@@ -53,10 +54,10 @@
+     //   - changing samplers
+     //   - changing attention type
+     //   - etc.
+-    void sched_reserve(uint32_t n_tokens_req = 0, uint32_t n_kv_req = 0);
+-
+-    void synchronize();
+-    void moe_cache_maintenance();
++    void sched_reserve(uint32_t n_tokens_req = 0, uint32_t n_kv_req = 0);
++
++    void synchronize();
++    void moe_cache_maintenance();
+ 
+     const llama_model   & get_model()   const;
+     const llama_cparams & get_cparams() const;
+@@ -281,6 +282,7 @@
+     const llama_model & model;
+ 
+     llama_cparams cparams;
++    std::unique_ptr<llama_reap_trace> reap_trace;
+ 
+     llama_adapter_cvec_ptr  cvec;
+     llama_adapter_loras_ptr loras;
+@@ -344,16 +346,16 @@
+ 
+     ggml_backend_sched_ptr sched;
+ 
+-    bool sched_need_reserve = true;
+-    bool demand_dynamic_workspace = false;
+-    bool elastic_rebuilding = false;
+-    uint32_t elastic_prefill_cap = 0;
+-    uint32_t elastic_prefill_cap_kv = 0;
+-    void sched_reserve_impl(uint32_t n_tokens_req, uint32_t n_kv_req);
+-    void elastic_adjust(uint32_t tokens, uint32_t kv, bool force_growth);
+-    void elastic_reset_graphs();
+-    uint32_t workspace_tokens = 0;
+-    uint32_t workspace_kv = 0;
++    bool sched_need_reserve = true;
++    bool demand_dynamic_workspace = false;
++    bool elastic_rebuilding = false;
++    uint32_t elastic_prefill_cap = 0;
++    uint32_t elastic_prefill_cap_kv = 0;
++    void sched_reserve_impl(uint32_t n_tokens_req, uint32_t n_kv_req);
++    void elastic_adjust(uint32_t tokens, uint32_t kv, bool force_growth);
++    void elastic_reset_graphs();
++    uint32_t workspace_tokens = 0;
++    uint32_t workspace_kv = 0;
+ 
+     ggml_backend_t backend_cpu = nullptr;
+     std::vector<ggml_backend_ptr> backends;
+--- a/src/llama-graph.cpp
++++ b/src/llama-graph.cpp
+@@ -3,6 +3,7 @@
+ #include <cstdlib>
+ 
+ #include "llama-moecache.h"
++#include "llama-reap.h"
+ 
+ #include "llama-impl.h"
+ #include "llama-model.h"
+@@ -27,6 +28,19 @@
+ #include <sstream>
+ #include <string>
+ #include <unordered_set>
++
++class llm_graph_input_reap_mask : public llm_graph_input_i {
++public:
++    ggml_tensor * bias = nullptr;
++    int layer = 0;
++
++    void set_input(const llama_ubatch *) override {
++        const auto & values = llama_reap_settings().bias.at(layer);
++        ggml_backend_tensor_set(bias, values.data(), 0, values.size()*sizeof(float));
++    }
++
++    bool can_reuse(const llm_graph_params &) override { return true; }
++};
+ 
+ // dedup helpers
+ 
+@@ -1991,6 +2005,23 @@
+         cb(logits, "ffn_moe_logits_biased", il);
+     }
+ 
++    const auto & reap = llama_reap_settings();
++    if (reap.enabled()) {
++        GGML_ASSERT(arch == LLM_ARCH_QWEN35MOE && n_expert == 256 && n_expert_used == 8);
++        GGML_ASSERT(il >= 0 && il < 40 && norm_w && !selected_experts_in && !exp_probs_b);
++        GGML_ASSERT(gating_op == LLAMA_EXPERT_GATING_FUNC_TYPE_SOFTMAX && hparams.n_expert_groups <= 1);
++        if (reap.mask_enabled && reap.masked[il]) {
++            auto input = std::make_unique<llm_graph_input_reap_mask>();
++            input->layer = il;
++            input->bias = ggml_new_tensor_1d(ctx0, GGML_TYPE_F32, n_expert);
++            ggml_set_input(input->bias);
++            cb(input->bias, "reap_selection_bias", il);
++            logits = ggml_add(ctx0, logits, input->bias);
++            cb(logits, "reap_masked_logits", il);
++            res->add_input(std::move(input));
++        }
++    }
++
+     ggml_tensor * probs = nullptr;
+     switch (gating_op) {
+         case LLAMA_EXPERT_GATING_FUNC_TYPE_SOFTMAX:
+@@ -2017,6 +2048,10 @@
+     // add experts selection bias - introduced in DeepSeek V3
+     // leave probs unbiased as it's later used to get expert weights
+     ggml_tensor * selection_probs = probs;
++    if (reap.mask_enabled && reap.masked[il]) {
++        // Rank finite retained logits above excluded -inf even if probabilities underflow.
++        selection_probs = logits;
++    }
+     if (exp_probs_b != nullptr) {
+         selection_probs = ggml_add(ctx0, probs, exp_probs_b);
+         cb(selection_probs, "ffn_moe_probs_biased", il);
+@@ -2104,6 +2139,11 @@
+     if (w_scale != 0.0f && w_scale != 1.0f) {
+         weights = ggml_scale(ctx0, weights, w_scale);
+         cb(weights, "ffn_moe_weights_scaled", il);
++    }
++
++    if (!reap.trace_path.empty()) {
++        weights = ggml_cont(ctx0, weights);
++        cb(weights, "ffn_moe_weights_effective", il);
+     }
+ 
+     //call early so that topk-moe can be used
+@@ -2130,10 +2170,10 @@
+         type_op == LLM_FFN_SILU && !weight_before_ffn && loras->empty()) {
+         mcache = llama_moe_cache_lookup(up_exps);
+     }
+-    if (mcache && mcache->demand_gpu && (n_tokens > 3 || n_tokens*n_expert_used > mcache->n_slots)) {
+-        mcache = nullptr;
+-    }
+-    const bool demand_gpu = mcache && mcache->demand_gpu;
++    if (mcache && mcache->demand_gpu && (n_tokens > 3 || n_tokens*n_expert_used > mcache->n_slots)) {
++        mcache = nullptr;
++    }
++    const bool demand_gpu = mcache && mcache->demand_gpu;
+     if (demand_gpu) {
+         up_exps = mcache->up_c;
+         gate_exps = mcache->gate_c;
+@@ -2206,10 +2246,10 @@
+         }
+ 
+         if (gate_exps) {
+-            cur = build_lora_mm_id(gate_exps, cur, selected_experts, gate_exps_s); // [n_ff, n_expert_used, n_tokens]
+-            cb(cur, "ffn_moe_gate", il);
+-            // Gate runs first, or is fused with up, and loads all three banks.
+-            if (demand_gpu) ggml_build_forward_expand(gf, cur);
++            cur = build_lora_mm_id(gate_exps, cur, selected_experts, gate_exps_s); // [n_ff, n_expert_used, n_tokens]
++            cb(cur, "ffn_moe_gate", il);
++            // Gate runs first, or is fused with up, and loads all three banks.
++            if (demand_gpu) ggml_build_forward_expand(gf, cur);
+ 
+             if (mcache) {
+                 cur->src[3] = mcache->host_table;
+--- /dev/null
++++ b/src/llama-reap.cpp
+@@ -0,0 +1,355 @@
++#include "llama-reap.h"
++#include "llama-batch.h"
++#include "llama-model.h"
++#include "llama-impl.h"
++#include "../vendor/nlohmann/json.hpp"
++
++#include <algorithm>
++#include <atomic>
++#include <cmath>
++#include <cstdlib>
++#include <cstring>
++#include <cstdio>
++#include <fstream>
++#ifdef _WIN32
++#include <fcntl.h>
++#include <io.h>
++#include <share.h>
++#include <sys/stat.h>
++#else
++#include <fcntl.h>
++#include <unistd.h>
++#endif
++#include <limits>
++#include <map>
++#include <set>
++#include <stdexcept>
++#include <vector>
++
++using reap_json = nlohmann::ordered_json;
++
++static std::string reap_env(const char * name) {
++    const char * value = std::getenv(name);
++    return value ? value : "";
++}
++
++static bool reap_hash_valid(const std::string & hash) {
++    return hash.size() == 64 && hash.find_first_not_of("0123456789abcdef") == std::string::npos;
++}
++
++const llama_reap_config & llama_reap_settings() {
++    static const llama_reap_config config = [] {
++        llama_reap_config result;
++        result.trace_path = reap_env("QWEN36_REAP_TRACE");
++        const auto mask_path = reap_env("QWEN36_REAP_MASK");
++        result.mask_enabled = !mask_path.empty();
++        if (!result.enabled()) {
++            return result;
++        }
++        result.model_sha256 = reap_env("QWEN36_REAP_MODEL_SHA256");
++        if (!reap_hash_valid(result.model_sha256)) {
++            throw std::runtime_error("REAP requires launcher-verified lowercase QWEN36_REAP_MODEL_SHA256");
++        }
++        if (!result.mask_enabled) {
++            return result;
++        }
++        std::ifstream input(mask_path);
++        if (!input) {
++            throw std::runtime_error("REAP cannot open mask manifest");
++        }
++        // Reject duplicate keys instead of accepting the last value.
++        std::vector<std::set<std::string>> keys;
++        auto reject_duplicates = [&](int, reap_json::parse_event_t event, reap_json & parsed) {
++            if (event == reap_json::parse_event_t::object_start) keys.emplace_back();
++            if (event == reap_json::parse_event_t::key && !keys.back().insert(parsed.get<std::string>()).second) {
++                throw std::runtime_error("REAP duplicate manifest key");
++            }
++            if (event == reap_json::parse_event_t::object_end) keys.pop_back();
++            return true;
++        };
++        const auto doc = reap_json::parse(input, reject_duplicates);
++        auto integer_equals = [&](const char * key, int value) {
++            return doc.contains(key) && doc.at(key).is_number_integer() && doc.at(key).get<int64_t>() == value;
++        };
++        if (!integer_equals("schema_version", 1) || !integer_equals("expert_count", 256) ||
++            !integer_equals("top_k", 8) || doc.at("model_sha256") != result.model_sha256) {
++            throw std::runtime_error("REAP mask schema/E/K/model identity mismatch");
++        }
++        const auto & layers = doc.at("layers");
++        if (!layers.is_object() || layers.size() != 40) {
++            throw std::runtime_error("REAP mask must contain exactly 40 layers");
++        }
++        for (int layer = 0; layer < 40; ++layer) {
++            const auto & ids = layers.at(std::to_string(layer));
++            if (!ids.is_array() || ids.size() < 8 || ids.size() > 256) {
++                throw std::runtime_error("REAP keep must be in [8,256]");
++            }
++            auto & bias = result.bias[layer];
++            bias.fill(-std::numeric_limits<float>::infinity());
++            std::set<int> unique;
++            for (const auto & value : ids) {
++                if (!value.is_number_integer() || value.get<int64_t>() < 0 || value.get<int64_t>() >= 256) {
++                    throw std::runtime_error("REAP expert ID must be an integer in [0,255]");
++                }
++                const int id = value.get<int>();
++                if (!unique.insert(id).second) {
++                    throw std::runtime_error("REAP duplicate expert ID");
++                }
++                bias[id] = 0.0f;
++            }
++            result.masked[layer] = ids.size() != 256;
++        }
++        return result;
++    }();
++    return config;
++}
++
++void llama_reap_validate_model(const llama_model & model) {
++    if (!llama_reap_settings().enabled()) return;
++    const auto & hp = model.hparams;
++    if (model.arch != LLM_ARCH_QWEN35MOE || hp.n_layer_all != 40 || hp.n_layer_nextn != 0 || hp.n_expert != 256) {
++        throw std::runtime_error("REAP supports only qwen35moe E256/L40 without MTP");
++    }
++    for (uint32_t layer = 0; layer < 40; ++layer) {
++        if (hp.n_expert_used(layer) != 8) throw std::runtime_error("REAP requires top-k 8");
++    }
++    if (!std::isfinite(hp.expert_weights_scale) || hp.expert_weights_scale < 0.0f) {
++        throw std::runtime_error("REAP invalid routed weight scale");
++    }
++}
++
++static std::atomic<uint64_t> reap_batch_counter{0};
++static std::atomic<uint64_t> reap_decode_counter{0};
++static std::atomic<bool> reap_trace_created{false};
++
++static FILE * reap_create_exclusive(const std::string & path) {
++    int fd = -1;
++#ifdef _WIN32
++    if (_sopen_s(&fd, path.c_str(), _O_CREAT | _O_EXCL | _O_WRONLY | _O_BINARY,
++            _SH_DENYWR, _S_IREAD | _S_IWRITE) != 0) return nullptr;
++    FILE * file = _fdopen(fd, "wb");
++    if (!file) _close(fd);
++#else
++    fd = open(path.c_str(), O_CREAT | O_EXCL | O_WRONLY, 0600);
++    if (fd < 0) return nullptr;
++    FILE * file = fdopen(fd, "wb");
++    if (!file) close(fd);
++#endif
++    return file;
++}
++
++struct llama_reap_trace::impl {
++    std::unique_ptr<FILE, decltype(&std::fclose)> output{nullptr, &std::fclose};
++    bool owns_guard = false;
++    bool write_ok = true;
++
++    ~impl() { if (owns_guard) reap_trace_created = false; }
++
++    void emit(const reap_json & record) {
++        const std::string line = record.dump() + '\n';
++        write_ok = write_ok && std::fwrite(line.data(), 1, line.size(), output.get()) == line.size();
++    }
++
++    bool flush() {
++        write_ok = std::fflush(output.get()) == 0 && write_ok;
++        return write_ok;
++    }
++    ggml_backend_sched_eval_callback previous;
++    void * previous_data;
++    std::map<ggml_tensor *, bool> previous_wants;
++    std::array<std::vector<int32_t>, 40> ids;
++    std::array<std::vector<float>, 40> weights;
++    std::vector<int32_t> positions;
++    std::vector<int32_t> tokens;
++    std::vector<std::vector<int32_t>> sequences;
++    uint64_t decode_call_id = 0;
++    uint64_t batch_id = 0;
++    float expected_sum = 1.0f;
++    bool active = false;
++    bool warmup = false;
++    std::string error;
++
++    void consume(ggml_tensor * tensor, int layer, bool is_ids) {
++        const size_t count = positions.size();
++        if (layer < 0 || layer >= 40 || tensor->ne[3] != 1) {
++            throw std::runtime_error("REAP invalid tensor layer/rank");
++        }
++        std::vector<uint8_t> bytes(ggml_nbytes(tensor));
++        ggml_backend_tensor_get(tensor, bytes.data(), 0, bytes.size());
++        if (is_ids) {
++            if (tensor->type != GGML_TYPE_I32 || tensor->ne[0] != 8 || tensor->ne[1] != int64_t(count) || tensor->ne[2] != 1 || !ids[layer].empty()) {
++                throw std::runtime_error("REAP invalid/duplicate top-k tensor");
++            }
++            ids[layer].resize(count * 8);
++            for (size_t token = 0; token < count; ++token) {
++                for (size_t k = 0; k < 8; ++k) {
++                    std::memcpy(&ids[layer][token*8 + k], bytes.data() + k*tensor->nb[0] + token*tensor->nb[1], sizeof(int32_t));
++                }
++            }
++        } else {
++            if (tensor->type != GGML_TYPE_F32 || tensor->ne[0] != 1 || tensor->ne[1] != 8 || tensor->ne[2] != int64_t(count) || !weights[layer].empty()) {
++                throw std::runtime_error("REAP invalid/duplicate effective weights tensor");
++            }
++            weights[layer].resize(count * 8);
++            for (size_t token = 0; token < count; ++token) {
++                for (size_t k = 0; k < 8; ++k) {
++                    std::memcpy(&weights[layer][token*8 + k], bytes.data() + k*tensor->nb[1] + token*tensor->nb[2], sizeof(float));
++                }
++            }
++        }
++    }
++};
++
++llama_reap_trace::llama_reap_trace(const llama_model & model, ggml_backend_sched_eval_callback previous, void * previous_data)
++    : state(new impl) {
++    llama_reap_validate_model(model);
++    if (reap_trace_created.exchange(true)) {
++        throw std::runtime_error("REAP trace supports one context per process");
++    }
++    state->owns_guard = true;
++    state->previous = previous;
++    state->previous_data = previous_data;
++    const auto & config = llama_reap_settings();
++    state->output.reset(reap_create_exclusive(config.trace_path));
++    if (!state->output) throw std::runtime_error("REAP trace creation failed: path must be new and writable");
++    const float scale = model.hparams.expert_weights_scale;
++    state->expected_sum = scale == 0.0f ? 1.0f : scale;
++    state->emit(reap_json({{"schema_version", 1}, {"record_type", "header"},
++        {"architecture", "qwen35moe"}, {"modeltag", "Qwen3.6-35B-A3B"}, {"expert_count", 256},
++        {"top_k", 8}, {"layer_count", 40}, {"model_sha256", config.model_sha256},
++        {"model_hash_source", "launcher_asserted"}, {"mask_enabled", config.mask_enabled},
++        {"routed_scale", scale}, {"expected_weight_sum", state->expected_sum},
++        {"phase_source", "unknown; annotate externally from request metadata"},
++        {"weights_source", "cb_eval:ffn_moe_weights_effective"}}));
++    if (!state->flush()) throw std::runtime_error("REAP trace header write failed");
++}
++
++llama_reap_trace::~llama_reap_trace() = default;
++
++void llama_reap_trace::next_decode() {
++    state->decode_call_id = ++reap_decode_counter;
++}
++
++void llama_reap_trace::begin(const llama_ubatch & ubatch, bool warmup) {
++    auto & s = *state;
++    if (s.active) throw std::runtime_error("REAP overlapping ubatches");
++    s.warmup = warmup;
++    s.batch_id = ++reap_batch_counter;
++    s.error.clear();
++    s.previous_wants.clear();
++    for (auto & row : s.ids) row.clear();
++    for (auto & row : s.weights) row.clear();
++    s.positions.clear();
++    s.tokens.clear();
++    s.sequences.clear();
++    if (warmup) { s.active = true; return; }
++    if (!ubatch.pos || !ubatch.token || !ubatch.n_seq_id || !ubatch.seq_id) {
++        throw std::runtime_error("REAP capture requires text token/position/sequence metadata");
++    }
++    s.positions.assign(ubatch.pos, ubatch.pos + ubatch.n_tokens);
++    s.tokens.assign(ubatch.token, ubatch.token + ubatch.n_tokens);
++    for (uint32_t i = 0; i < ubatch.n_tokens; ++i) {
++        if (ubatch.n_seq_id[i] < 1 || !ubatch.seq_id[i]) throw std::runtime_error("REAP missing sequence IDs");
++        s.sequences.emplace_back(ubatch.seq_id[i], ubatch.seq_id[i] + ubatch.n_seq_id[i]);
++    }
++    s.active = true;
++}
++
++bool llama_reap_trace::callback(ggml_tensor * tensor, bool ask, void * data) {
++    auto & s = *static_cast<llama_reap_trace *>(data)->state;
++    int layer = -1;
++    bool is_ids = false;
++    const char * suffix = nullptr;
++    if (std::strncmp(tensor->name, "ffn_moe_topk-", 13) == 0) {
++        suffix = tensor->name + 13;
++        is_ids = true;
++    } else if (std::strncmp(tensor->name, "ffn_moe_weights_effective-", 26) == 0) {
++        suffix = tensor->name + 26;
++    }
++    bool wanted = false;
++    if (suffix && *suffix) {
++        char * end = nullptr;
++        const long value = std::strtol(suffix, &end, 10);
++        if (end && *end == '\0' && value >= 0 && value < 40) {
++            layer = int(value);
++            wanted = s.active && !s.warmup;
++        }
++    }
++    if (ask) {
++        const bool upstream = s.previous && s.previous(tensor, true, s.previous_data);
++        if (upstream) s.previous_wants[tensor] = true;
++        return upstream || wanted;
++    }
++    if (wanted && s.error.empty()) {
++        try { s.consume(tensor, layer, is_ids); }
++        catch (const std::exception & e) { s.error = e.what(); }
++    }
++    const auto it = s.previous_wants.find(tensor);
++    if (it != s.previous_wants.end()) {
++        s.previous_wants.erase(it);
++        if (!s.previous(tensor, false, s.previous_data)) {
++            s.error = "REAP upstream callback aborted";
++            return false;
++        }
++    }
++    return true;
++}
++
++bool llama_reap_trace::finish(bool compute_ok) {
++    auto & s = *state;
++    if (!s.active) return false;
++    s.active = false;
++    if (s.warmup) return compute_ok;
++    if (!compute_ok) s.error = "REAP graph compute failed";
++    if (s.error.empty()) {
++        try {
++            for (int layer = 0; layer < 40; ++layer) {
++                if (s.ids[layer].size() != s.positions.size()*8 || s.weights[layer].size() != s.positions.size()*8) {
++                    throw std::runtime_error("REAP incomplete batch/layer capture");
++                }
++                for (size_t token = 0; token < s.positions.size(); ++token) {
++                    std::set<int32_t> unique;
++                    double sum = 0.0;
++                    for (size_t k = 0; k < 8; ++k) {
++                        const auto id = s.ids[layer][token*8 + k];
++                        const auto weight = s.weights[layer][token*8 + k];
++                        if (id < 0 || id >= 256 || !unique.insert(id).second || !std::isfinite(weight) || weight < 0) {
++                            throw std::runtime_error("REAP invalid ID/finite weight invariant");
++                        }
++                        if (llama_reap_settings().mask_enabled && llama_reap_settings().bias[layer][id] != 0.0f) {
++                            throw std::runtime_error("REAP selected an excluded expert");
++                        }
++                        sum += weight;
++                    }
++                    if (sum <= 0.0 || std::abs(sum - s.expected_sum) > 1e-4 * std::max(1.0f, s.expected_sum)) {
++                        throw std::runtime_error("REAP effective weight sum mismatch");
++                    }
++                }
++            }
++        } catch (const std::exception & e) { s.error = e.what(); }
++    }
++    if (!s.error.empty()) {
++        s.emit(reap_json({{"schema_version", 1}, {"record_type", "error"},
++            {"batch_id", s.batch_id}, {"decode_call_id", s.decode_call_id}, {"message", s.error}}));
++        s.flush();
++        LLAMA_LOG_ERROR("REAP capture rejected: %s\n", s.error.c_str());
++        return false;
++    }
++    for (int layer = 0; layer < 40; ++layer) {
++        for (size_t token = 0; token < s.positions.size(); ++token) {
++            const auto first = token * 8;
++            const std::vector<int32_t> ids(s.ids[layer].begin() + first, s.ids[layer].begin() + first + 8);
++            const std::vector<float> weights(s.weights[layer].begin() + first, s.weights[layer].begin() + first + 8);
++            s.emit(reap_json({{"schema_version", 1}, {"record_type", "route"},
++                {"batch_id", s.batch_id}, {"decode_call_id", s.decode_call_id}, {"layer", layer},
++                {"phase", "unknown"}, {"token_position", s.positions[token]}, {"token_index", token},
++                {"token_id", s.tokens[token]}, {"seq_ids", s.sequences[token]},
++                {"ids", ids}, {"weights", weights}}));
++        }
++    }
++    if (!s.flush()) {
++        LLAMA_LOG_ERROR("REAP trace batch write failed\n");
++        return false;
++    }
++    return true;
++}
+--- /dev/null
++++ b/src/llama-reap.h
+@@ -0,0 +1,38 @@
++#pragma once
++
++#include "ggml-backend.h"
++
++#include <array>
++#include <cstdint>
++#include <memory>
++#include <string>
++
++struct llama_model;
++struct llama_ubatch;
++
++struct llama_reap_config {
++    std::string trace_path;
++    std::string model_sha256;
++    bool mask_enabled = false;
++    std::array<std::array<float, 256>, 40> bias{};
++    std::array<bool, 40> masked{};
++
++    bool enabled() const { return mask_enabled || !trace_path.empty(); }
++};
++
++const llama_reap_config & llama_reap_settings();
++void llama_reap_validate_model(const llama_model & model);
++
++class llama_reap_trace {
++public:
++    llama_reap_trace(const llama_model & model, ggml_backend_sched_eval_callback previous, void * previous_data);
++    ~llama_reap_trace();
++    void next_decode();
++    void begin(const llama_ubatch & ubatch, bool warmup);
++    bool finish(bool compute_ok);
++    static bool callback(ggml_tensor * tensor, bool ask, void * data);
++
++private:
++    struct impl;
++    std::unique_ptr<impl> state;
++};

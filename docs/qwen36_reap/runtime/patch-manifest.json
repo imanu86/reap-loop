@@ -1,0 +1,44 @@
+{
+  "schema_version": 1,
+  "status": "packaged_runtime_identity_pending",
+  "base": "donor_plus_verified_M3_overlay",
+  "patch_sha256": "d95b2beb6ed268bc913f767cd9ad63c50b670d410fcb96528982391f38eca310",
+  "files": [
+    {
+      "path": "src/CMakeLists.txt",
+      "base_sha256": "3cb90e4a2075314cdce8958e4ff9cef280e19dc18db0d9c84af853c8ac52e649",
+      "patched_sha256": "10c47f32724bc4777dc3714067aa43964eac0016a30d7e42d16c7134578ed260"
+    },
+    {
+      "path": "src/llama-context.cpp",
+      "base_sha256": "c43bbd5d6ebb99525a0fda1ed7ffb0a212f9c78cbb82ca2b8debfac4cc326ff8",
+      "patched_sha256": "9d47165e7c37ec149d14757da1d31c7bdf25fb74688a3eb0c228763976945481"
+    },
+    {
+      "path": "src/llama-context.h",
+      "base_sha256": "e0889ffbc65a9c93dad78c9ce9dbf8e29f73c99fded967cc316ade1826fe6c9f",
+      "patched_sha256": "77a7b869ed940af9b5e5e758f66ab81173faa61fdefb030af445a6663f316db2"
+    },
+    {
+      "path": "src/llama-graph.cpp",
+      "base_sha256": "f813df3588c307629e7ead82298188cbd6f06efd26b59462d4a683198888e422",
+      "patched_sha256": "fb141586e4a6ab7cc973c8b94c1882a064c27ebd5c8d187e9ef0ff032b10c5b1"
+    },
+    {
+      "path": "src/llama-reap.cpp",
+      "base_sha256": null,
+      "patched_sha256": "3726fb1d6497717413bb6ca8ed1328bd37832e85f98d3409679ecd428f45f2cd"
+    },
+    {
+      "path": "src/llama-reap.h",
+      "base_sha256": null,
+      "patched_sha256": "8d0a69d6e36d44e4d9307a2ed3e048355444040e354b35da0bbf5f4199f78a73"
+    }
+  ],
+  "constraints": [
+    "Parent-authorized isolated CPU build; no GPU runs",
+    "No live/donor/base CUDA edits",
+    "No weight edits",
+    "No commits or pushes"
+  ]
+}

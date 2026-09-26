@@ -1,0 +1,32 @@
+{
+  "schema_version": 1,
+  "model_path": "D:\\models\\qwen36moe\\Qwen3.6-35B-A3B-Q4_K_M.gguf",
+  "file_bytes": 20419565568,
+  "metadata": {
+    "general.architecture": "qwen35moe",
+    "qwen35moe.block_count": 40,
+    "qwen35moe.expert_count": 256,
+    "qwen35moe.expert_used_count": 8
+  },
+  "tensor_data_start": 10989056,
+  "quant_type_tensor_counts": {
+    "14": 1,
+    "0": 301,
+    "12": 121,
+    "8": 310
+  },
+  "totals": {
+    "routed": {
+      "aligned_bytes": 18119393280,
+      "parameters": 32212254720,
+      "tensors": 120
+    },
+    "nonrouted": {
+      "aligned_bytes": 2289183232,
+      "parameters": 2448355968,
+      "tensors": 613
+    }
+  },
+  "cache32_aligned_payload_estimate": 2264924160.0,
+  "note": "Header-only read. Byte spans include alignment, not measured VRAM. Excludes KV/state/workspace/staging/OS. No new model hash computed."
+}

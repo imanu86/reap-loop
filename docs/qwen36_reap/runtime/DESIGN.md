@@ -1,0 +1,26 @@
+# Qwen36 REAP isolated runtime proposal
+
+Initial proposal was source-only. Parent later granted isolated CPU build after source review; see HANDOFF.md. GPU/inference/server actions remain parent-only. Human-directed private fork; AI-assisted implementation (gpt-6-astra). No upstream submission, commit or push.
+
+## Provenance and scope
+
+Assemble donor `C:\Users\imanu\Documents\Codex\2026-09-13\rip\work\qwen_ram_decode_opt_20260920\source` plus the three `D:\ds4_work\elastico_q36_m3\source-overlay\src` files into `D:\ds4_work\qwen36_reap_lab\source`. Check every overlay SHA256 against `evidence/q36m3-build-manifest.json` before copying; record every donor/copied file hash. Live `D:\ds4_work\bin_q36m3\llama.dll` matches manifest SHA256 `34857a71a89787637a2f844eee702bcda7b9af8f7c8f157b9e90f0bd89b44791`. This establishes source assembly provenance, not a reproducible rebuild claim (manifest reused objects with unknown commit). The successful CUDA12.6/SM86 base `D:\ds4_work\qwen4b_kernel_lab` is read-only, not an overlay to import blindly.
+
+## Proposed minimal implementation
+
+- Lab-only env controls, absent = OFF. No public ABI/CLI change. Narrow architecture qwen35moe, E=256, K=8, 40 layers, no MTP. Immutable configuration per process.
+- `QWEN36_REAP_MASK` names a JSON manifest: schema_version=1, model_sha256, expert_count=256, top_k=8, layers object with exactly keys 0..39 and unique kept IDs 0..255. Reject missing layers, duplicate IDs, keep<8 and identity mismatch. Model hash must be supplied by a launcher that hashes the actual GGUF; runtime cannot claim to have independently verified an externally supplied hash.
+- GGML graph input bias [256]: retained=0, excluded=-infinity. Apply via a NEW ggml_add tensor to logits before softmax/top-k, never to model/router weights or the original logits tensor. Only masked layers change; all-256-kept layers bypass the new operations exactly. Existing top-k=8, probability gather, normalization and scale remain. Masking before softmax avoids retained-weight underflow from an excluded dominant expert. Shared experts unchanged. No speed claim from mask alone: original tensors remain full-sized.
+- `QWEN36_REAP_TRACE` selects JSONL. cb_eval reads actual `ffn_moe_topk` and final normalized/scaled weights, paired by layer and token. Weights must be an evaluated tensor, not reconstructed logits. Trace metadata comes from actual ubatch position/token/sequence IDs. `phase` remains `unknown` unless an explicit phase is provided by an isolated calibration caller; never infer semantic phase from batch size.
+- JSONL header: schema_version=1, record_type=header, architecture, expert_count, top_k, layer_count, model_sha256 and hash verification provenance. Token records: record_type=route, schema_version, batch_id, layer, phase, token_position, token_index, token_id, seq_ids, ids[8], weights[8]. Capture validates dimensions, IDs unique/in range, weights finite/nonnegative, positive sum, expected normalization/scale. Errors fail closed with structured error and incomplete batch (not successful calibration).
+- Preserve caller cb_eval by chaining; no trace = original callback unchanged. Trace deliberately synchronizes and can disable backend optimizations, so timing runs must be untraced.
+
+## Gates before any mask experiment
+
+Two fixed web/DOM/MCP text fixtures: original vs copied no-mask/no-trace logits+greedy tokens, then copied no-mask trace vs no-trace, then all-kept mask identity. Require identical IDs/tokens and recorded logit error tolerance agreed before run; CPU fixture or CUDA outcomes remain NOT RUN until build window. Route alignment must cover all 40 layers and token positions, including a one-token prefill case (not mislabeled decode), graph reuse, and mixed/multiple-sequence rejection or explicit handling. Check E/K/ID/finite weight invariants and reject keep 0..7, duplicate/out-of-range IDs, wrong hash/architecture/41-layer MTP. Reduced masks proceed only after these gates and held-out web/DOM/MCP quality checks. 100 then 200 decode tok/s are targets, not established results.
+
+## CLI/memory audit (read-only)
+
+`common/arg.cpp:2559`: `--moe-expert-cache N` = GPU slots PER host-resident expert layer, NOT bytes/MB. `--moe-expert-cache-inserts N` = maximum uploads per layer per decode step. Cache requires host expert matrices plus device router. `llama-moecache.cpp:416` allocates N+1 slots in CPU-fallback mode, N slots in demand-GPU mode. Elastic demand mode requires cache batch=3, forces minimum 3*K=24 slots, and overrides the initial requested N. It supports one device and one inference context, parallel=1.
+
+Original Q4 baseline is about 20.4 GB and cannot be fully resident on 12 GB. Candidate only: offload non-routed tensors/router, keep routed experts in RAM, start static demand cache=32 slots/layer with explicit single-token cache batch=1, elastic disabled, single sequence, small context/batch. Routed-cache payload is roughly (32/256)*routed GGUF bytes, plus non-routed weights, KV/recurrent state, compute workspace, staging and OS headroom. Need actual tensor byte totals and startup allocation logs; parameter counts alone do not establish fit. No live environment/settings changed. IQ3_XXS with 41-layer MTP is not an equivalent baseline.
