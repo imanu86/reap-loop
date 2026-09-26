@@ -6,6 +6,7 @@ import argparse
 from copy import deepcopy
 from dataclasses import dataclass
 import ipaddress
+import hashlib
 import json
 from pathlib import Path
 import time
@@ -239,9 +240,17 @@ def run_episode(episode, http, cfg, server_ctx):
     return record
 
 
+def select_episodes(split, limit=None):
+    ensure(limit is None or (split == 'calibration' and type(limit) is int and 1 <= limit <= 50),
+           'A limit is allowed only for calibration smoke tests (1..50); heldout must remain complete')
+    episodes = load(split)
+    return episodes if limit is None else episodes[:limit]
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--split", required=True, choices=("calibration", "heldout"))
+    parser.add_argument("--limit", type=int, help="Calibration-only integration smoke test; never a heldout subset")
     parser.add_argument("--url", default="http://localhost:8116")
     parser.add_argument("--allow-inference", action="store_true")
     parser.add_argument("--output-dir", type=Path, help="NEW private directory outside repository; default D:/ds4_work/qwen36_reap_lab/pilot_runs/<unique-id>")
@@ -259,13 +268,16 @@ def main(argv=None):
     output = (args.output_dir or Path("D:/ds4_work/qwen36_reap_lab/pilot_runs") / uuid.uuid4().hex).resolve()
     repo = ROOT.parents[2]
     ensure(output != repo and repo not in output.parents and not output.exists(), "Output must be a NEW directory outside repository")
+    episodes = select_episodes(args.split, args.limit)
     http = HTTP(args.url, args.allow_inference)
     n_ctx, props = server_context(http)
-    episodes = load(args.split)
     # Initial preflight before creating any run outputs; repeat for all later turns.
     preflight(http, request_payload(initial_messages(model_input(episodes[0]), cfg), model_input(episodes[0]), cfg), n_ctx, cfg.budget)
     output.mkdir(parents=True, exist_ok=False)
-    manifest = {"split": args.split, "protocol": cfg.protocol, "url": http.base, "config": cfg.__dict__, "server_props": props, "private": True, "native_and_text_json_not_equivalent": True}
+    manifest = {"split": args.split, "protocol": cfg.protocol, "url": http.base, "config": cfg.__dict__, "server_props": props, "private": True, "native_and_text_json_not_equivalent": True,
+                "limit": args.limit, "episode_ids": [e['id'] for e in episodes],
+                "dataset_sha256": hashlib.sha256((ROOT / (args.split + '.jsonl')).read_bytes()).hexdigest(),
+                "runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()}
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     successes = 0
     with (output / "transcripts.jsonl").open("x", encoding="utf-8") as transcripts, (output / "predictions.jsonl").open("x", encoding="utf-8") as predictions:

@@ -84,7 +84,7 @@ Comando di riferimento per il parent **solo dopo autorizzazione e integrazione s
 python -B run_pilot.py --split calibration --allow-inference --protocol native --thinking off --template-supports-thinking
 ```
 
-Non eseguire heldout per tuning o calibrazione. I mock dei test usano oracle come *modello finto* esclusivamente per verificare il roundtrip del software: non sono risultati baseline modello.
+Per la prima integrazione usare `--split calibration --limit 2`: il limite e consentito solo sulla calibrazione, mai sul heldout. Il manifest privato conserva ID selezionati e hash SHA256 del corpus e del runner. Non eseguire heldout per tuning o calibrazione. I mock dei test usano oracle come *modello finto* esclusivamente per verificare il roundtrip del software: non sono risultati baseline modello.
 
 ## Misure e isolamento heldout
 

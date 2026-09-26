@@ -5,7 +5,17 @@ import unittest
 from unittest.mock import patch
 
 from validator import load, model_input
-from run_pilot import Config, HTTP, NoRedirect, RunnerError, decode_turn, initial_messages, loopback_url, preflight, request_payload, run_episode, server_context
+from run_pilot import Config, HTTP, NoRedirect, RunnerError, decode_turn, initial_messages, loopback_url, preflight, request_payload, run_episode, server_context, select_episodes
+
+
+class SmokeSelectionTests(unittest.TestCase):
+    def test_calibration_limit_only(self):
+        self.assertEqual(select_episodes('calibration', 2), load('calibration')[:2])
+        self.assertEqual(len(select_episodes('calibration')), 50)
+        self.assertEqual(len(select_episodes('heldout')), 20)
+        for split, limit in [('heldout', 1), ('calibration', 0), ('calibration', 51), ('calibration', True)]:
+            with self.assertRaises(RunnerError):
+                select_episodes(split, limit)
 
 
 class FakeHTTP:
