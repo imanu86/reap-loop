@@ -18,11 +18,20 @@ def main():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument('--allow-inference', action='store_true')
     p.add_argument('--out', type=Path, required=True)
-    p.add_argument('--limit', type=int, default=2)
+    selection = p.add_mutually_exclusive_group()
+    selection.add_argument('--limit', type=int)
+    selection.add_argument('--episode-ids', help='Explicit comma-separated calibration IDs only')
+    p.add_argument('--policy-version', choices=('v1', 'v2'), default='v1')
     p.add_argument('--max-output', type=int, default=512)
     a = p.parse_args()
-    if not a.allow_inference or not 1 <= a.limit <= 50:
+    if a.limit is None and a.episode_ids is None:
+        a.limit = 2
+    if not a.allow_inference or (a.limit is not None and not 1 <= a.limit <= 50):
         raise ValueError('Explicit inference opt-in and calibration limit1..50 required')
+    if a.episode_ids is not None:
+        sys.path.insert(0, str(HERE / 'pilot'))
+        from run_pilot import select_episodes
+        select_episodes('calibration', None, a.episode_ids)
     a.out = a.out.resolve()
     existing = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq llama-server.exe', '/NH'], capture_output=True, text=True, check=True)
     if 'llama-server.exe' in existing.stdout.lower():
@@ -45,7 +54,8 @@ def main():
                '-fa', 'on', '-ctk', 'q8_0', '-ctv', 'q8_0', '-fit', 'off', '--jinja',
                '--reasoning', 'on', '--no-reasoning-preserve', '--no-context-shift', '--cache-ram', '0']
     save(a.out / 'manifest.json', {'scope': 'instrumented_calibration_integration_not_performance',
-        'limit': a.limit, 'model_sha256': MODEL_SHA, 'command': command,
+        'limit': a.limit, 'episode_ids': a.episode_ids, 'policy_version': a.policy_version,
+        'max_output': a.max_output, 'model_sha256': MODEL_SHA, 'command': command,
         'environment': {**selected_env, 'QWEN36_REAP_TRACE': env['QWEN36_REAP_TRACE']},
         'runtime_sha256': {f.name: sha(f) for f in binary.iterdir() if f.suffix.lower() in ('.dll', '.exe')},
         'coordinator_sha256': sha(__file__)})
@@ -68,9 +78,11 @@ def main():
                 if time.monotonic() > deadline:
                     raise TimeoutError('Private server startup exceeded180s')
                 time.sleep(0.5)
+            selection_args = ['--episode-ids', a.episode_ids] if a.episode_ids is not None else ['--limit', str(a.limit)]
             cmd = [sys.executable, '-B', str(HERE / 'pilot/run_pilot.py'), '--split', 'calibration',
-                   '--limit', str(a.limit), '--allow-inference', '--url', 'http://127.0.0.1:8116',
-                   '--output-dir', str(a.out / 'pilot'), '--protocol', 'native', '--max-output', str(a.max_output)]
+                   *selection_args, '--allow-inference', '--url', 'http://127.0.0.1:8116',
+                   '--output-dir', str(a.out / 'pilot'), '--protocol', 'native',
+                   '--policy-version', a.policy_version, '--max-output', str(a.max_output)]
             save(a.out / 'pilot.command.json', cmd)
             subprocess.run(cmd, check=True, timeout=3600)
     finally:

@@ -7,11 +7,18 @@ import json
 from pathlib import Path
 
 
-def analyze(path):
+def complete_records(path, snapshot=False):
+    with Path(path).open('rb') as stream:
+        for line in stream:
+            if snapshot and not line.endswith(b'\n'):
+                return  # writer has not committed this record, possibly mid-UTF8
+            yield json.loads(line.decode('utf-8'))
+
+
+def analyze(path, snapshot=False):
     cases = []
     errors = Counter()
-    for line in Path(path).read_text(encoding='utf-8').splitlines():
-        row = json.loads(line)
+    for row in complete_records(path, snapshot):
         errors[row.get('error_class') or 'success'] += 1
         turns = []
         for t in row['turns']:
@@ -25,9 +32,17 @@ def analyze(path):
                       'success': row['full_completion'], 'error_class': row.get('error_class'),
                       'private_error': row.get('private_error'), 'wall_seconds': row['wall_seconds'],
                       'turns': turns})
-    return {'cases': cases, 'count': len(cases), 'successes': sum(c['success'] for c in cases),
-            'error_counts': dict(errors), 'total_wall_seconds': sum(c['wall_seconds'] for c in cases),
-            'not_a_throughput_benchmark': True, 'real_actions_executed': 0}
+    families = {}
+    for c in cases:
+        f = families.setdefault(c['family'], {'cases': 0, 'successes': 0})
+        f['cases'] += 1
+        f['successes'] += bool(c['success'])
+    return {'count': len(cases), 'successes': sum(c['success'] for c in cases),
+            'snapshot_not_final': snapshot, 'error_counts': dict(errors),
+            'error_details': dict(Counter(c['private_error'] for c in cases if c['private_error'])),
+            'finish_counts': dict(Counter(t['finish_reason'] for c in cases for t in c['turns'])),
+            'families': families, 'total_wall_seconds': sum(c['wall_seconds'] for c in cases),
+            'not_a_throughput_benchmark': True, 'real_actions_executed': 0, 'cases': cases}
 
 
 def main():
@@ -35,8 +50,11 @@ def main():
     p.add_argument('transcripts', type=Path)
     p.add_argument('--out', type=Path, required=True)
     p.add_argument('--trace', type=Path, help='Optional actual routing trace to validate, not a mask export')
+    p.add_argument('--snapshot', action='store_true', help='Only completed JSONL records; never validate an active routing file')
     a = p.parse_args()
-    report = analyze(a.transcripts)
+    if a.snapshot and a.trace:
+        raise ValueError('Routing validation requires a completed run')
+    report = analyze(a.transcripts, a.snapshot)
     if a.trace:
         from mask_builder import aggregate
         from run_native_gates import MODEL_SHA
