@@ -1,0 +1,13 @@
+NUMERICAL RAW-PROMPT FIXTURE — not a live browser or an action request.
+Tutti i dati e gli indirizzi sono fittizi. Nessun segreto. Non usare strumenti reali.
+User: Nel catalogo di prova trova il prodotto «Caffè crème» e proponi il prossimo passo, senza acquistare.
+Page URL: https://shop.example.invalid/catalogo
+DOM snapshot:
+[1] textbox "Cerca prodotti" value=""
+[2] button "Cerca"
+[3] link "Caffè crème — 12,50 €" href="/demo/caffe"
+[4] button "Acquista" disabled="true"
+[5] status "Ambiente dimostrativo: nessun ordine reale"
+Recent fake observation: nessuna ricerca eseguita; tre risultati dimostrativi visibili.
+Respond with one concise JSON object containing observation, proposed_fake_action and verification_needed.
+Assistant:
