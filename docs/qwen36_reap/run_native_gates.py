@@ -205,6 +205,20 @@ def main():
     bad_path = a.out / 'invalid-keep7.json'
     save(bad_path, bad)
     run('reject_keep7', a.candidate, one_token=True, mask=bad_path, should_fail=True)
+    # Exercise the NONIDENTITY mask graph only after all numerical identity gates.
+    # Arbitrary even-ID pool: validates exclusion/plumbing, NOT calibrated quality.
+    subset = dict(all_kept)
+    subset['layers'] = {str(layer): list(range(0, 256, 2)) for layer in range(40)}
+    subset_path = a.out / 'uncalibrated-even128.json'
+    save(subset_path, subset)
+    run('mask_even128_smoke', a.candidate, HERE / 'gate/fixtures/web_dom_utf8.txt', trace=True, mask=subset_path)
+    with (a.out / 'mask_even128_smoke.routing.jsonl').open(encoding='utf-8') as f:
+        next(f)
+        for line in f:
+            if any(expert % 2 for expert in json.loads(line)['ids']):
+                raise RuntimeError('Excluded expert present in reduced-mask trace')
+    results.append({'case': 'mask_even128_smoke', 'exclusion_pass': True,
+                    'calibrated': False, 'quality_tested': False})
     results.append({'case': 'single_token', 'numerical_pass': report['pass'], 'bit_identical': report['bit_identical']})
     save(a.out / 'results.json', results)
     print('NUMERICAL GATES PASSED (not a performance or web-quality result)', flush=True)

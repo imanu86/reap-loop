@@ -1,6 +1,25 @@
-# Primo gate GPU: OFF identico, cattura da correggere
+# Gate GPU superato dopo la correzione dell'observer
 
-**Non procedere al pruning con la cattura attuale. Nessun risultato100/200token/s.**
+## Stato attuale: numeric_gate_04, job113
+
+**PASS bit-identico su entrambe le fixture**, con la DLL `018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef`:
+- originale vs patch OFF;
+- originale vs sola cattura;
+- originale vs maschera all-kept.
+
+Tutti e6i confronti coprono8passi x248320logits completi, maxabs0. Passa anche il prefill singolo token seguito da1decode (2passi di logits bit-identici). La maschera keep7 viene rifiutata con l'errore specifico previsto.
+
+Tracce:8080record per web/DOM (195prefill+7decode per layer),10000per recovery (243+7),80per single-token (1+1); tutti40layer allineati a token, posizioni e sequenze effettivi. I flag phase restano unknown; annotazione esterna dalle chiamate effettive.
+
+La correzione combinata rimuove CONT e differisce la lettura alla fine della normalizzazione esistente: identita ripristinata nei casi testati, senza cambiare tolleranze. Non sono stati isolati separatamente i contributi delle due modifiche. Evidenza locale: `D:\ds4_work\qwen36_reap_lab\coordinator\numeric_gate_04`.
+
+Ripetizione job115 (`numeric_gate_05`): stessi gate identici nuovamente PASS. Inoltre una maschera NON calibrata che conserva128IDpari per layer esegue correttamente: tutti i record catturati rispettano l'esclusione degli IDdispari. Questo esercita il percorso di mascheratura effettiva, non soltanto l'all-kept; non prova qualita o riduzione fisica del file.
+
+**Sbloccata l'integrazione del pilot, non una promozione di maschere ridotte. Qualita agente, vision, contesto100k e100/200token/s restano da misurare.** Vedere PILOT_STATUS.md per il primo smoke native-tool e la raccolta50in corso.
+
+## Storico: primo gate fallito (conservato, non cancellato)
+
+Le sezioni seguenti descrivono la precedente DLL5f4 e il fallimento iniziale, non lo stato corrente.
 
 ## Evidenza reale (numeric_gate_03, job109)
 

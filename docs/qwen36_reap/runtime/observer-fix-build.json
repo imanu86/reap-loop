@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "build_job": "pwsh-111",
+  "status": "build_static_abi_pass_numerical_gate_pending",
+  "candidate_llama_sha256": "018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef",
+  "previous_candidate_sha256": "5f4bb83abbde1938dabdd8764215315fd1895597b95a0d5a1576192a802e3566",
+  "helper_sha256_unchanged": "97c826a2efd65628459ba8fbd65c8523e9ad2d1477ce38d4d728f0917a28d4b4",
+  "common_sha256_unchanged": "55a4924a199d245d9c6f99ec17899a8ddfacd740b26f637af41ae0e7d4fddaf3",
+  "baseline_and_non_target_arm_files_unchanged": true,
+  "only_updated_binaries": [
+    "D:\\ds4_work\\qwen36_reap_lab\\bin-candidate\\llama.dll",
+    "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\llama.dll"
+  ],
+  "source_sha256": {
+    "llama-graph.cpp": "f9a40f3c6f3f56947646e30b4e250e08bb8983dc3c36c927231dc7180afb53f7",
+    "llama-reap.cpp": "50a1860594c32af73ac6e9fe7980ac07efe1a1f8ebe976ee518cce3e88d7582c"
+  },
+  "prior_gate109": "OFF bitidentical firstfixture; trace FAIL maxabs0.8196802139; no secondfixture/allkept",
+  "limitations": "No runtime execution/GPU by worker, no claim trace drift resolved."
+}

@@ -1,0 +1,163 @@
+{
+  "schema_version": 1,
+  "status": "compiled_and_staged_not_executed",
+  "helper_sha256": "97c826a2efd65628459ba8fbd65c8523e9ad2d1477ce38d4d728f0917a28d4b4",
+  "helper_source_sha256": "70c54033444565866874fcdc9316b5c8b1bad53cddbcbb27e0bf130bad486009",
+  "build_command": "C:\\Users\\imanu\\source\\repos\\reap-loop\\docs\\qwen36_reap\\runtime\\build-helper.cmd",
+  "build_command_sha256": "86bdb623aca41df081c7d99611291c7540c10ddf5eb65d1f94c4bf5300723458",
+  "fresh_common_sha256_both_arms": "55a4924a199d245d9c6f99ec17899a8ddfacd740b26f637af41ae0e7d4fddaf3",
+  "missing_named_imports": [],
+  "original_ggml_unchanged": true,
+  "baseline_directory_unchanged": true,
+  "limitations": "Static PE import verification only. No helper invocation, model load, GPU, inference or runtime identity verification.",
+  "arms": {
+    "baseline": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\reap-native-gate.exe",
+    "candidate": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\reap-native-gate.exe"
+  },
+  "files": [
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\ggml-base.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-base.dll",
+      "sha256": "9d0cb021fef05cb1d53c5d22a6f30322c6b3ab966dca9489ea7e6b4cfa13ddc4"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\ggml-cpu.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-cpu.dll",
+      "sha256": "1af0511165f60adaa4366186e58abbcf24c25bf9ad71e41db42ac85eda33a5a7"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\ggml-cuda.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-cuda.dll",
+      "sha256": "a8e6d2a95c1fcaa14d28914cee1657e7e492a9b788afaaf5430d8019e667886e"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\ggml.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml.dll",
+      "sha256": "86e77878c5ee1bcee2b11877b2a7c4f8806e2debf3a24c7883ee45cb77a436db"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\llama-common.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\build\\bin\\llama-common.dll",
+      "sha256": "55a4924a199d245d9c6f99ec17899a8ddfacd740b26f637af41ae0e7d4fddaf3"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\llama-server-impl.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\llama-server-impl.dll",
+      "sha256": "c06117ce6851312cc2d09dd7cfc89468d1664bfbaa055e2638ad8b452f18c3ae"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\llama-server.exe",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\llama-server.exe",
+      "sha256": "75bf4eec3d3782ed865ca04e706f259584026f86fb3223b106dd68517e7c3bae"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\llama.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\llama.dll",
+      "sha256": "34857a71a89787637a2f844eee702bcda7b9af8f7c8f157b9e90f0bd89b44791"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\mtmd.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\mtmd.dll",
+      "sha256": "603a1c44bc6db6a36e4d03548d0e1ac6f3018d627362c6c25f354ddf66280d7a"
+    },
+    {
+      "arm": "baseline",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-baseline\\reap-native-gate.exe",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\build\\bin\\reap-native-gate.exe",
+      "sha256": "97c826a2efd65628459ba8fbd65c8523e9ad2d1477ce38d4d728f0917a28d4b4"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\ggml-base.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-base.dll",
+      "sha256": "9d0cb021fef05cb1d53c5d22a6f30322c6b3ab966dca9489ea7e6b4cfa13ddc4"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\ggml-cpu.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-cpu.dll",
+      "sha256": "1af0511165f60adaa4366186e58abbcf24c25bf9ad71e41db42ac85eda33a5a7"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\ggml-cuda.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml-cuda.dll",
+      "sha256": "a8e6d2a95c1fcaa14d28914cee1657e7e492a9b788afaaf5430d8019e667886e"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\ggml.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\ggml.dll",
+      "sha256": "86e77878c5ee1bcee2b11877b2a7c4f8806e2debf3a24c7883ee45cb77a436db"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\llama-common.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\build\\bin\\llama-common.dll",
+      "sha256": "55a4924a199d245d9c6f99ec17899a8ddfacd740b26f637af41ae0e7d4fddaf3"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\llama-server-impl.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\llama-server-impl.dll",
+      "sha256": "c06117ce6851312cc2d09dd7cfc89468d1664bfbaa055e2638ad8b452f18c3ae"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\llama-server.exe",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\llama-server.exe",
+      "sha256": "75bf4eec3d3782ed865ca04e706f259584026f86fb3223b106dd68517e7c3bae"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\llama.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\build\\bin\\llama.dll",
+      "sha256": "018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\mtmd.dll",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\bin-baseline\\mtmd.dll",
+      "sha256": "603a1c44bc6db6a36e4d03548d0e1ac6f3018d627362c6c25f354ddf66280d7a"
+    },
+    {
+      "arm": "candidate",
+      "path": "D:\\ds4_work\\qwen36_reap_lab\\build\\gate-candidate\\reap-native-gate.exe",
+      "source": "D:\\ds4_work\\qwen36_reap_lab\\build\\bin\\reap-native-gate.exe",
+      "sha256": "97c826a2efd65628459ba8fbd65c8523e9ad2d1477ce38d4d728f0917a28d4b4"
+    }
+  ],
+  "previous_helper_sha256": "f65c269ec310233ee05040d50b6683990b1c34ed6ab177bccdb9cfded6a564b3",
+  "previous_helper_archive": "D:\\ds4_work\\qwen36_reap_lab\\evidence\\helper-before-f65c269ec310233e",
+  "helper_revision": "Unary --no-mmap allowed for pinned host demand-GPU weights",
+  "parent_reported_previous_gate": {
+    "job": "106",
+    "outcome": "baseline_demand_gpu_guard_before_numerical_results",
+    "reason": "Original M3 requires --no-mmap for pinned host weights",
+    "numerical_data": false
+  },
+  "build_job": "pwsh-107",
+  "build_log": "D:\\ds4_work\\qwen36_reap_lab\\evidence\\build-helper-retry3-no-mmap.log",
+  "parent_reported_gate_history": [
+    {
+      "job": "102",
+      "outcome": "failed_before_model_load",
+      "reason": "--no-warmup unavailable in LLAMA_EXAMPLE_COMMON",
+      "numerical_data": false
+    }
+  ],
+  "candidate_runtime_sha256": "018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef",
+  "candidate_runtime_previous_sha256": "5f4bb83abbde1938dabdd8764215315fd1895597b95a0d5a1576192a802e3566",
+  "candidate_runtime_revision": "deferred_ids_at_existing_final_weights_no_CONT",
+  "candidate_runtime_build_job": "pwsh-111",
+  "candidate_runtime_numerical_status": "UNTESTED_PARENT_GPU_GATE_REQUIRED"
+}

@@ -78,5 +78,17 @@ class Contract(unittest.TestCase):
         self.assertNotIn('-1e9', graph)
         self.assertIn('s.previous(tensor, false, s.previous_data)', trace)
 
+    def test_observer_does_not_split_routing_fusion(self):
+        graph = (LAB / 'src/llama-graph.cpp').read_text(encoding='utf-8')
+        trace = (LAB / 'src/llama-reap.cpp').read_text(encoding='utf-8')
+        block = graph.split('if (!reap.trace_path.empty()) {', 1)[1].split('}', 1)[0]
+        self.assertNotIn('ggml_cont', block)
+        self.assertNotIn('weights =', block)
+        self.assertIn('cb(weights, "ffn_moe_weights_effective", il)', block)
+        self.assertIn('return upstream || (wanted && !is_ids);', trace)
+        self.assertIn('s.pending_ids.fill(nullptr);', trace)
+        self.assertIn('s.consume(s.pending_ids[layer], layer, true);', trace)
+        self.assertIn('s.consume(tensor, layer, false);', trace)
+
 if __name__ == '__main__':
     unittest.main(verbosity=2)

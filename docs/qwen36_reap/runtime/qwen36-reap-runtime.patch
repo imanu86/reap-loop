@@ -204,7 +204,7 @@
 +    }
 +
 +    if (!reap.trace_path.empty()) {
-+        weights = ggml_cont(ctx0, weights);
++        // Observe the existing final reshape/scale, after the complete routing fusion.
 +        cb(weights, "ffn_moe_weights_effective", il);
      }
  
@@ -241,7 +241,7 @@
                  cur->src[3] = mcache->host_table;
 --- /dev/null
 +++ b/src/llama-reap.cpp
-@@ -0,0 +1,355 @@
+@@ -0,0 +1,366 @@
 +#include "llama-reap.h"
 +#include "llama-batch.h"
 +#include "llama-model.h"
@@ -401,6 +401,7 @@
 +    ggml_backend_sched_eval_callback previous;
 +    void * previous_data;
 +    std::map<ggml_tensor *, bool> previous_wants;
++    std::array<ggml_tensor *, 40> pending_ids{};
 +    std::array<std::vector<int32_t>, 40> ids;
 +    std::array<std::vector<float>, 40> weights;
 +    std::vector<int32_t> positions;
@@ -481,6 +482,7 @@
 +    s.batch_id = ++reap_batch_counter;
 +    s.error.clear();
 +    s.previous_wants.clear();
++    s.pending_ids.fill(nullptr);
 +    for (auto & row : s.ids) row.clear();
 +    for (auto & row : s.weights) row.clear();
 +    s.positions.clear();
@@ -520,13 +522,22 @@
 +        }
 +    }
 +    if (ask) {
++        if (wanted && is_ids) {
++            // The later expert matmuls keep IDs live through the final weight node.
++            s.pending_ids[layer] = tensor;
++        }
 +        const bool upstream = s.previous && s.previous(tensor, true, s.previous_data);
 +        if (upstream) s.previous_wants[tensor] = true;
-+        return upstream || wanted;
++        // Do not split the routing fusion at its intermediate top-k VIEW.
++        return upstream || (wanted && !is_ids);
 +    }
-+    if (wanted && s.error.empty()) {
-+        try { s.consume(tensor, layer, is_ids); }
-+        catch (const std::exception & e) { s.error = e.what(); }
++    if (wanted && !is_ids && s.error.empty()) {
++        try {
++            if (!s.pending_ids[layer]) throw std::runtime_error("REAP missing paired top-k tensor");
++            s.consume(s.pending_ids[layer], layer, true);
++            s.consume(tensor, layer, false);
++            s.pending_ids[layer] = nullptr;
++        } catch (const std::exception & e) { s.error = e.what(); }
 +    }
 +    const auto it = s.previous_wants.find(tensor);
 +    if (it != s.previous_wants.end()) {

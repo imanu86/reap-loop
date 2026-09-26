@@ -1,6 +1,6 @@
 # Qwen36 REAP isolated runtime proposal
 
-Initial proposal was source-only. Parent later granted isolated CPU build after source review; see HANDOFF.md. GPU/inference/server actions remain parent-only. Human-directed private fork; AI-assisted implementation (gpt-6-astra). No upstream submission, commit or push.
+Historical proposal: implementation and parent-authorized isolated CPU build are complete; CPU build and static ABI PASS. See HANDOFF.md for current artifacts and limitations. GPU/runtime identity and quality gates remain pending and parent-owned. Human-directed private fork; AI-assisted implementation (gpt-6-astra). No upstream submission, commit or push by this worker.
 
 ## Provenance and scope
 

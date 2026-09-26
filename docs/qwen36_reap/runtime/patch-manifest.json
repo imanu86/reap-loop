@@ -2,7 +2,7 @@
   "schema_version": 1,
   "status": "packaged_runtime_identity_pending",
   "base": "donor_plus_verified_M3_overlay",
-  "patch_sha256": "d95b2beb6ed268bc913f767cd9ad63c50b670d410fcb96528982391f38eca310",
+  "patch_sha256": "8d7e3e8c51de3a6e274ccfcc4d0b89f8eae789eac934024a0612d89b1c8c5755",
   "files": [
     {
       "path": "src/CMakeLists.txt",
@@ -22,12 +22,12 @@
     {
       "path": "src/llama-graph.cpp",
       "base_sha256": "f813df3588c307629e7ead82298188cbd6f06efd26b59462d4a683198888e422",
-      "patched_sha256": "fb141586e4a6ab7cc973c8b94c1882a064c27ebd5c8d187e9ef0ff032b10c5b1"
+      "patched_sha256": "f9a40f3c6f3f56947646e30b4e250e08bb8983dc3c36c927231dc7180afb53f7"
     },
     {
       "path": "src/llama-reap.cpp",
       "base_sha256": null,
-      "patched_sha256": "3726fb1d6497717413bb6ca8ed1328bd37832e85f98d3409679ecd428f45f2cd"
+      "patched_sha256": "50a1860594c32af73ac6e9fe7980ac07efe1a1f8ebe976ee518cce3e88d7582c"
     },
     {
       "path": "src/llama-reap.h",
