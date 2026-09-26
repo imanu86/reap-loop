@@ -76,6 +76,7 @@ class Config:
     thinking: str = "template-default"
     template_supports_thinking: bool = False
     policy_version: str = "v1"
+    diagnostic_raw: bool = False
 
     def validate(self):
         ensure(self.policy_version in ("v1", "v2"), "Unknown policy version")
@@ -153,6 +154,9 @@ def request_payload(messages, public, cfg):
         payload["tools"] = [{"type": "function", "function": {"name": alias, "description": "Simulated tool " + original + ": " + public["tool_schemas"][original]["description"], "parameters": deepcopy(public["tool_schemas"][original]["inputSchema"])}} for alias, original in tool_aliases(public).items()]
         payload["tool_choice"] = "auto"
         payload["parallel_tool_calls"] = False
+    if cfg.diagnostic_raw:
+        payload["verbose"] = True
+        payload["return_tokens"] = True
     return payload
 
 
@@ -311,8 +315,9 @@ def main(argv=None):
     parser.add_argument("--budget", type=int, default=4096)
     parser.add_argument("--thinking", choices=("template-default", "on", "off"), default="template-default")
     parser.add_argument("--template-supports-thinking", action="store_true")
+    parser.add_argument("--diagnostic-raw", action="store_true", help="Opt-in private raw tokens/grammar metadata; does not change prompts or sampling settings")
     args = parser.parse_args(argv)
-    cfg = Config(args.protocol, args.model, args.max_turns, args.max_output, args.budget, args.thinking, args.template_supports_thinking, args.policy_version)
+    cfg = Config(args.protocol, args.model, args.max_turns, args.max_output, args.budget, args.thinking, args.template_supports_thinking, args.policy_version, args.diagnostic_raw)
     cfg.validate()
     import uuid
     output = (args.output_dir or Path("D:/ds4_work/qwen36_reap_lab/pilot_runs") / uuid.uuid4().hex).resolve()

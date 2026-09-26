@@ -28,8 +28,24 @@ Review indipendente: nei primi37casi tutte63richieste con history riportano corr
 
 V2 e opt-in, V1 rimane default riproducibile. Corregge solo istruzioni pubbliche/schema e chiarisce genericamente quando finalizzare. Dataset e simulatore invariati, nessuna risposta attesa fornita. Piano preregistrato in PILOT_AB_PROTOCOL.md: job121 confronta V1/1024 eV2/1024 (job120 fermato prima del modello per un mismatch stringa/lista nel coordinatore, corretto e coperto da2test) sugli stessi6casi di calibrazione scelti dai fallimenti. Non e un test imparziale o heldout. Una futura calibrazione valida dovra essere raccolta separatamente, senza mescolare questa traccia fallita.
 
+### Esito A/B job121
+
+**V1/1024:0/6; V2/1024:0/6.** Nessuna troncatura in entrambi. V1 fallisce con3azioni ridondanti,2finali con argomenti extra e1transizione non ammessa; V2 con6azioni ridondanti, tutte al posto della finalizzazione richiesta. Tempi diagnostici degli episodi:152.23s e169.70s. Non promuovere V2 sulla base di questi risultati e non allentare il simulatore. Dati locali in `coordinator/pilot_ab_v1_1024` e `coordinator/pilot_ab_v2_1024`.
+
+Il cap1024 elimina i troncamenti su questi6casi ma non basta a ottenere completamenti. La correzione di coerenza pubblica non risolve la finalizzazione; diagnostica su template/grammar/history in corso, causa ancora non provata. Daily ripristinato e healthOK dopo entrambi gli arm. Nessun processo GPU di test rimasto.
+
+### Controllo raw del runtime originale: job124
+
+Due casi (currency0 prima, senza history, poi semantic_selector0), V2/1024, senza mask/TRACE, verbose+return_tokens: **originale0/2 e candidato0/2**. Tutti i4turni corrispondenti hanno prompt, contenuto generato grezzo e array dei token IDENTICI. I tool aggiuntivi sono gia presenti nei token generati: non e il parser che converte JSON finale valido in chiamate.
+
+Configurazione effettiva: grammar_lazy=true, unico trigger token248058 `<tool_call>`, chat_format peg-native, reasoning_format deepseek. Il trigger non e `{`. Rapporto privato senza prompt/ragionamenti: `coordinator/raw_control_comparison_01.json`. Daily originale ripristinato, healthOK, unico server attivo; ledger invariato.
+
+La riproduzione nel runtime originale esclude una regressione specifica della patch sui casi provati, NON dimostra la correttezza numerica universale di M3/cache o l'incapacita intrinseca del modello. Anche l'audit binario dei wrapper sampler non ha mostrato differenze ABI pertinenti.
+
+La [scheda ufficiale Qwen3.6](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/README.md) raccomanda per coding/WebDev thinking temperature0.6, top_p0.95, top_k20, min_p0, presence_penalty0, repetition_penalty1, diversi dal greedy usato qui. E una ragione per un confronto controllato, non una causa gia dimostrata. Prossimi assi SEPARATI: un replay senza grammar/chat parsing (verificare prompt identico; non e uno score pilot) e sampling raccomandato con seed prefissati/tutte le repliche, senza cambiare insieme reasoning preservation. Non adottare best-of o abbassare soglie.
+
 Occorre ancora:
-1. Raccogliere e analizzare il confronto A/B, verificando il ripristino del daily.
+1. Isolare il problema di finalizzazione prima di altre raccolte complete o del pruning.
 2. Ottenere una baseline utile su tutti50episodi del protocollo congelato.
 3. Solo allora scegliere su calibrazione un candidato conservativo e un controllo casuale a pari pool.
 4. Valutare sul lockbox; se induce tuning serve un nuovo lockbox.

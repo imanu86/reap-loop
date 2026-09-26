@@ -1,6 +1,6 @@
 """Isolated, instrumented calibration integration. Coordinator owns daily restore.
 Never executes model-generated tools outside the offline Simulator.
-Not a throughput benchmark; routing capture is ON.
+Not a throughput benchmark; routing capture is ON unless explicitly disabled for controls.
 """
 import argparse
 import json
@@ -22,6 +22,9 @@ def main():
     selection.add_argument('--limit', type=int)
     selection.add_argument('--episode-ids', help='Explicit comma-separated calibration IDs only')
     p.add_argument('--policy-version', choices=('v1', 'v2'), default='v1')
+    p.add_argument('--runtime', choices=('baseline', 'candidate'), default='candidate')
+    p.add_argument('--no-trace', action='store_true', help='Diagnostic uninstrumented control, not a performance promotion')
+    p.add_argument('--diagnostic-raw', action='store_true')
     p.add_argument('--max-output', type=int, default=512)
     a = p.parse_args()
     if a.limit is None and a.episode_ids is None:
@@ -32,6 +35,8 @@ def main():
         sys.path.insert(0, str(HERE / 'pilot'))
         from run_pilot import select_episodes
         select_episodes('calibration', None, a.episode_ids)
+    if a.runtime == 'baseline' and not a.no_trace:
+        raise ValueError('Original runtime does not implement REAP capture; require --no-trace')
     a.out = a.out.resolve()
     existing = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq llama-server.exe', '/NH'], capture_output=True, text=True, check=True)
     if 'llama-server.exe' in existing.stdout.lower():
@@ -43,9 +48,10 @@ def main():
     a.out.mkdir(parents=True, exist_ok=False)
     if sha(MODEL) != MODEL_SHA:
         raise RuntimeError('Original model hash changed')
-    binary = LAB / 'bin-candidate'
+    binary = LAB / ('bin-' + a.runtime)
     env, selected_env = environment()
-    env['QWEN36_REAP_TRACE'] = str(a.out / 'routing.jsonl')
+    trace_setting = {} if a.no_trace else {'QWEN36_REAP_TRACE': str(a.out / 'routing.jsonl')}
+    env.update(trace_setting)
     env['PATH'] = str(binary) + ';' + env.get('PATH', '')
     command = [str(binary / 'llama-server.exe'), '-m', str(MODEL), '--alias', 'local-pilot',
                '--host', '127.0.0.1', '--port', '8116', '--offline', '--no-warmup', '--no-mmap',
@@ -53,10 +59,11 @@ def main():
                '-c', '4096', '-np', '1', '-b', '128', '-ub', '128', '-t', '16', '-tb', '16',
                '-fa', 'on', '-ctk', 'q8_0', '-ctv', 'q8_0', '-fit', 'off', '--jinja',
                '--reasoning', 'on', '--no-reasoning-preserve', '--no-context-shift', '--cache-ram', '0']
-    save(a.out / 'manifest.json', {'scope': 'instrumented_calibration_integration_not_performance',
+    save(a.out / 'manifest.json', {'scope': 'calibration_integration_not_performance',
+        'runtime_arm': a.runtime, 'trace_enabled': not a.no_trace, 'diagnostic_raw': a.diagnostic_raw,
         'limit': a.limit, 'episode_ids': a.episode_ids, 'policy_version': a.policy_version,
         'max_output': a.max_output, 'model_sha256': MODEL_SHA, 'command': command,
-        'environment': {**selected_env, 'QWEN36_REAP_TRACE': env['QWEN36_REAP_TRACE']},
+        'environment': {**selected_env, **trace_setting},
         'runtime_sha256': {f.name: sha(f) for f in binary.iterdir() if f.suffix.lower() in ('.dll', '.exe')},
         'coordinator_sha256': sha(__file__)})
     server = None
@@ -83,6 +90,8 @@ def main():
                    *selection_args, '--allow-inference', '--url', 'http://127.0.0.1:8116',
                    '--output-dir', str(a.out / 'pilot'), '--protocol', 'native',
                    '--policy-version', a.policy_version, '--max-output', str(a.max_output)]
+            if a.diagnostic_raw:
+                cmd.append('--diagnostic-raw')
             save(a.out / 'pilot.command.json', cmd)
             subprocess.run(cmd, check=True, timeout=3600)
     finally:

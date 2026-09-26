@@ -17,6 +17,13 @@ class ServerCoordinatorTests(unittest.TestCase):
                 runner.main()
             process.assert_called_once()
 
+    def test_original_runtime_requires_capture_disabled(self):
+        argv = ['script', '--allow-inference', '--out', 'not-created', '--runtime', 'baseline']
+        with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:
+            with self.assertRaisesRegex(ValueError, 'does not implement'):
+                runner.main()
+            process.assert_not_called()
+
     def test_heldout_ids_rejected_before_process_check(self):
         argv = ['script', '--allow-inference', '--out', 'not-created', '--episode-ids', 'heldout-semantic_selector-0']
         with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:
