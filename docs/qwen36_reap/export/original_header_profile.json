@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "model_sha256": "671e47e0ec53c665d048b98c3ecbfd5236b5ca9c3e02ed19fc8f81f7b85140c7",
+  "header_sha256": "ab44ef00f0e3055bc3ceee07e8d72671dafd86726efb24c2893660e8c4d40fac",
+  "file_bytes": 20419565568,
+  "tensor_data_start": 10989056,
+  "tensor_count": 733,
+  "storage_types": {"F32": 0, "Q8_0": 8, "Q4_K": 12, "Q6_K": 14},
+  "geometry": {"layers": 40, "experts": 256, "top_k": 8, "embedding": 2048, "expert_feed_forward": 512},
+  "observation": "Bounded header-only inspection; checkpoint full SHA supplied by task, NOT recomputed in this session. Full hash required by future explicitly authorized export. Header digest includes bytes [0,10989056), including alignment padding."
+}
