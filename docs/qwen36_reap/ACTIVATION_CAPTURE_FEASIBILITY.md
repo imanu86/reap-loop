@@ -1,4 +1,4 @@
-# Capture input FFN e salienza: fattibilita readonly, NON implementazione
+# Capture input FFN e salienza: audit e reference CPU approssimato
 
 Audit separati di runtime e replay offline dopo139. Nessuna compilazione, cattura hidden, lettura dei pesi o inizializzazione CUDA eseguita per questo audit. Il prossimo esperimento operativo rimane l'ablazione economica CONDITIONAL_GATE_PLAN.md.
 
@@ -34,4 +34,12 @@ Elaborare soltanto gli8esperti osservati, per layer/esperto/tile, riducendo subi
 
 Test preliminari: blocchi Q4_K sintetici con tutti i bit scale/min, nibble estremi, segni, subnormal f16, LE/troncature/layout/tail; confronto con oracle C dequant verificato; MLP+SiLU+L2 su piccoli tensori inventati, tile invariance, nessun rerouting/doppia norm. Poi piccolo probe held-IN per quantificare errore di output/norma/ranking rispetto a un riferimento dello stesso backend. Un replay nativo CPU non dimostra identita con il CUDA realmente usato.
 
-Nessun risultato di questa fattibilita approva maschere, export, contesto100k o100/200t/s.
+## Aggiornamento round9: solo primitive CPU implementate
+
+expert_norm_reference.py e test_expert_norm_reference.py aggiunti separatamente, senza cambiare i sorgenti dello screen145.16test sintetici superati anche dal parent. API su buffer forniti dal chiamante: slice/dequant Q4_K, MLP F32 da input gia postnorm e somme/conteggi additive per la media condizionale. Finite, shape, endianness, bytecount, feature non supportate e limiti di memoria sono verificati; nessun reader di modello/capture, GPU, Torch, ranking o mask generator.
+
+Output marcato APPROXIMATE_Q4_F32_REPLAY, native_identity=false, quality_approval=false e native_C_dequant_oracle_verified=false. Il test dei blocchi usa un oracle sintetico indipendente di packing, NON una DLL nativa. Somme/norme ridotte in F64; prodotto matriciale e SiLU F32. Tolleranze dei test di tiling/scalare atol1e-7/rtol1e-5, non identita bit-a-bit. Workspace dichiarato come stima delle allocazioni possedute, esclusi buffer caller e workspace opaco BLAS.
+
+Non sono stati letti pesi reali o hidden capture: collegamento a modello671/D2048/H512/E256/top8/L40 e provenienza closed-only rimangono da verificare in un futuro runner. Il capture runtime e il confronto con output CUDA nativi NON sono implementati da questi16test.
+
+Nessun risultato di questa fattibilita/reference approva maschere, export, contesto100k o100/200t/s.
