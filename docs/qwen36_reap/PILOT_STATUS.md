@@ -52,9 +52,19 @@ Job127, sampling coding ufficiale con parser normale e seed0/1/2: ciascun seed0/
 
 Prossimo controllo, definito in FINALIZATION_PROBES.md prima dell'esecuzione: trasporto terminale esplicito opt-in `final_mode=tool`, con schema finale PUBLIC e Simulator.finish invariato. Non aggiunge risposte attese, non auto-finalizza e non rivaluta i fallimenti storici. Cambia il protocollo, non i pesi. Uno smoke positivo non sarebbe gate heldout o prova di generalizzazione.
 
+### Nuovo trasporto terminale: smoke2/2, raccolta completa avviata
+
+Job129 sul runtime originale: **2/2completati**,4turni nativi, nessuna troncatura/azione superflua, circa49.40s di episodi (NON benchmark throughput). Currency restituisce remaining_minor8720 senza azioni; semantic_selector esegue select+observe e poi report verificato. Dati in `coordinator/final_tool_smoke_original_01`. Il protocollo/code commit7e4259f era pubblicato prima dell'inferenza.
+
+Questo e un nuovo trasporto, non una correzione retroattiva dei punteggi: content rimane0/2 sui medesimi casi. Final e dichiarato con schema PUBBLICO, il modello deve sceglierlo; Simulator.finish e le risposte attese non cambiano.2casi scelti dai fallimenti non dimostrano generalizzazione o qualita sufficiente al pruning.
+
+Avviato **job130**: nuova raccolta50calibrazioni `coordinator/calibration_50_final_tool_01`, candidato018c con TRACEON, V2/final-tool/greedyseed0/4096/1024, raw diagnosticoON. Codice congelato. Tracce precedenti non vengono mescolate. Daily temporaneamente sospeso; finally ne prevede il ripristino. Heldout20 ancora non eseguito.
+
+Exporter aggiornato:29test sintetici, oltre ai verdetti per caso ora pretende identico hash del protocollo congelato nei due arm. Parser bypass, seed casuale e confronti content-vs-tool non possono autorizzare export. Nessun GGUF reale esportato.
+
 Occorre ancora:
-1. Isolare il problema di finalizzazione prima di altre raccolte complete o del pruning.
-2. Ottenere una baseline utile su tutti50episodi del protocollo congelato.
+1. Raccogliere job130, verificare daily e validare integralmente la nuova traccia.
+2. Verificare la baseline su tutti50episodi, senza assumere che lo smoke2/2 si estenda.
 3. Solo allora scegliere su calibrazione un candidato conservativo e un controllo casuale a pari pool.
 4. Valutare sul lockbox; se induce tuning serve un nuovo lockbox.
 5. Export reale solo dopo gate qualita. L'exporter preparato e testato su dati sintetici, non sui pesi reali.

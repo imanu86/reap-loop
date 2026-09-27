@@ -76,6 +76,28 @@ Quality JSON schema 1:
 
 Corpus manifest: `split:"heldout"`, `calibration_disjoint:true`, exactly **20** `samples` with unique nonempty string `id` fields (also include actual content digests, source and split lineage for review). Baseline/masked reports require `model_sha256`, `corpus_manifest_sha256`, `complete:true`, and exactly 20 `cases` with the **same ID set** as the corpus. Each case is `{id, full_completion: boolean, critical_violations: [category,...]}`. Repeated category entries preserve occurrence multiplicity; missing, unknown or malformed categories fail closed. Baseline `mask_sha256` is null; masked report matches the approved canonical mask digest.
 
+### Frozen evaluation protocol binding
+
+Policy additionally requires a complete `evaluation_protocol` object. Both baseline and masked reports MUST contain `evaluation_protocol_sha256` equal to SHA256 of the **whole canonical JSON protocol object**, computed with the same `canonical()` used for mask binding. Required configuration keys:
+
+| Key | Validation |
+|---|---|
+| `transport` | exactly `"native"` |
+| `policy_version` | nonempty string identifying frozen public policy |
+| `final_mode` | `"content"` or `"tool"` |
+| `sampling_profile` | nonempty frozen profile name, e.g. `"greedy"` or `"qwen-coding"` |
+| `seeds` | nonempty ordered list of unique actual integers in `[0,4294967294]`; bool/float/string, duplicate, negative, UINT32_MAX/random sentinel rejected |
+| `context`, `max_output`, `max_turns` | positive actual integers, not booleans |
+| `thinking` | `"template-default"`, `"on"`, or `"off"` |
+| `reasoning_preserve` | actual boolean |
+| `skip_chat_parsing` | exactly `false`, not0/null; diagnostic parser bypass never quality eligible |
+
+Extra meaningful keys (runtime binary/source SHA, template SHA, explicit sampling parameter recipe, evaluator/schema SHA, fixture version) are allowed and **included in the digest**. No absolute paths or private fields are hardcoded/required. Review must ensure named sampling/template versions resolve unambiguously; hashing a name alone is not an independent verification of its implementation. Two reports with different final modes, sampling profiles, seeds or any other protocol key fail even with identical aggregate metrics. Missing protocol object, missing fields or either missing/mismatching report digest fails. This prevents mixing historical content/greedy results with opt-in final-tool/recommended sampling results. Historical failures remain historical results; do not rescore or relabel them into the new protocol.
+
+Hash linkage proves consistent claimed configuration, not that the runner honestly used it. Existing evidence-review/trust limits below remain. The protocol check executes before case/metric comparisons. No real heldout fixtures are read to test these checks.
+
+### Mandatory project screening
+
 Mandatory project policy, bound to `../DECODE_GATES.md:15-24`, is `frozen_before_evaluation:true` plus:
 
 ```json

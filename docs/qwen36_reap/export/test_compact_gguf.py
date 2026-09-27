@@ -248,6 +248,12 @@ class CompactTests(unittest.TestCase):
             'min_baseline_full_completion':16, 'max_new_noncritical_failures':1,
             'max_new_critical_violations':0, 'critical_categories':sorted(c.CRITICAL_CATEGORIES)},
             'checks':[{'metric':'accuracy','direction':'higher','max_regression':0.02}]}
+        policy['evaluation_protocol'] = {'transport':'native','policy_version':'v2',
+            'final_mode':'content','sampling_profile':'greedy','seeds':[0,42],
+            'context':8192,'max_output':512,'max_turns':12,'thinking':'off',
+            'reasoning_preserve':False,'skip_chat_parsing':False}
+        digest = c.sha(c.canonical(policy['evaluation_protocol']))
+        baseline['evaluation_protocol_sha256'] = masked['evaluation_protocol_sha256'] = digest
         return corpus,baseline,masked,policy
 
     def make_quality(self):
@@ -395,6 +401,82 @@ class CompactTests(unittest.TestCase):
         path.write_bytes(raw)
         with self.assertRaisesRegex(ValueError,'baseline full completion'):
             c.quality_gate(path,c.sha(raw),self.mask,self.g.model_sha256)
+
+    def test_evaluation_protocol_accepts_legitimate_variants(self):
+        for final_mode in ('content','tool'):
+            for sampling in ('greedy','qwen-coding'):
+                _,full,masked,policy = self.screening_fixture()
+                protocol = policy['evaluation_protocol']
+                protocol.update(final_mode=final_mode,sampling_profile=sampling,seeds=[0,4294967294],
+                                runtime_sha256='c'*64,template_sha256='d'*64)
+                digest = c.sha(c.canonical(protocol))
+                full['evaluation_protocol_sha256'] = masked['evaluation_protocol_sha256'] = digest
+                self.assertEqual(c.evaluation_protocol_gate(policy,full,masked),digest)
+
+    def test_evaluation_protocol_requires_complete_configuration_and_hashes(self):
+        _,full,masked,policy = self.screening_fixture()
+        for key in list(policy['evaluation_protocol']):
+            with self.subTest(key=key):
+                changed = copy.deepcopy(policy)
+                del changed['evaluation_protocol'][key]
+                with self.assertRaisesRegex(ValueError,'complete evaluation_protocol'):
+                    c.evaluation_protocol_gate(changed,full,masked)
+        with self.assertRaises(ValueError): c.evaluation_protocol_gate({},full,masked)
+        for role in ('baseline','masked'):
+            for value in (None,'0'*64):
+                _,full,masked,policy = self.screening_fixture()
+                report = full if role=='baseline' else masked
+                if value is None: report.pop('evaluation_protocol_sha256')
+                else: report['evaluation_protocol_sha256'] = value
+                with self.assertRaisesRegex(ValueError,'protocol hash'):
+                    c.evaluation_protocol_gate(policy,full,masked)
+
+    def test_evaluation_protocol_rejects_parser_bypass_invalid_modes_random_seeds(self):
+        variants = [('skip_chat_parsing',True),('skip_chat_parsing',0),('transport','text-json'),
+                    ('final_mode','raw'),('policy_version',''),('sampling_profile',None),
+                    ('thinking',False),('reasoning_preserve','false'),('context',0),
+                    ('max_output',True),('max_turns',-1)]
+        variants += [('seeds',seeds) for seeds in ([],[1,1],[-1],[4294967295],[4294967296],[True],[1.0],['random'])]
+        for key,value in variants:
+            with self.subTest(key=key,value=value):
+                _,full,masked,policy = self.screening_fixture()
+                policy['evaluation_protocol'][key] = value
+                # Even honestly rehashed malformed protocols must not pass.
+                digest = c.sha(c.canonical(policy['evaluation_protocol']))
+                full['evaluation_protocol_sha256'] = masked['evaluation_protocol_sha256'] = digest
+                with self.assertRaises(ValueError): c.evaluation_protocol_gate(policy,full,masked)
+
+    def test_evaluation_protocol_cannot_compare_different_final_sampling_or_extra_keys(self):
+        for key,value in [('final_mode','tool'),('sampling_profile','qwen-coding'),
+                          ('context',16384),('runtime_sha256','e'*64),('template_sha256','f'*64)]:
+            with self.subTest(key=key):
+                _,full,masked,policy = self.screening_fixture()
+                other = dict(policy['evaluation_protocol'],**{key:value})
+                masked['evaluation_protocol_sha256'] = c.sha(c.canonical(other))
+                with self.assertRaisesRegex(ValueError,'masked: evaluation protocol hash'):
+                    c.evaluation_protocol_gate(policy,full,masked)
+
+    def test_quality_bundle_protocol_binding_is_mandatory(self):
+        for variant in ('missing','mismatched','policy_changed','bypass'):
+            with self.subTest(variant=variant):
+                path,digest,proof = self.make_quality()
+                if variant in ('missing','mismatched'):
+                    role = 'masked'
+                    report = c.load_json(self.root/'masked.json')
+                    if variant=='missing': report.pop('evaluation_protocol_sha256')
+                    else: report['evaluation_protocol_sha256'] = '0'*64
+                else:
+                    role = 'policy'
+                    report = c.load_json(self.root/'policy.json')
+                    if variant=='policy_changed': report['evaluation_protocol']['final_mode'] = 'tool'
+                    else: report['evaluation_protocol']['skip_chat_parsing'] = True
+                raw = c.canonical(report)
+                (self.root/f'{role}.json').write_bytes(raw)
+                proof['artifacts'][role]['sha256'] = c.sha(raw)
+                raw = c.canonical(proof)
+                path.write_bytes(raw)
+                with self.assertRaises(ValueError):
+                    c.quality_gate(path,c.sha(raw),self.mask,self.g.model_sha256)
 
     def test_duplicate_json_rejected(self):
         p = self.root/'bad.json'

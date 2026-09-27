@@ -7,7 +7,7 @@ Ready for review, **quality prerequisites for real-model export not met**. Exist
 1. `DESIGN.md` — format/safety/quality contracts, source-only compatibility audit and limitations.
 2. `compact_gguf.py` — stdlib bounded-header GGUF parser, strict mask validation, raw-slab planner, guarded transactional exporter.
 3. `original_header_profile.json` — observed original header fingerprint/size/geometry (not full weight verification).
-4. `test_compact_gguf.py` — 24 synthetic CPU regression tests.
+4. `test_compact_gguf.py` — 29 synthetic CPU regression tests.
 5. `HANDOFF.md` — this report.
 
 No other file edited by this agent. No commits or pushes performed. Branch checked before writes and at completion: `plan/0051-transport-gate-20260713`. Initial checkout had parent runtime/pilot/status changes and dirty `runs/ds4/20260710_experiment_ledger/all_evidence_ledger.csv`; all left untouched. Final status showed only the existing dirty CSV and our untracked export directory (parent work changed concurrently; no cleanup/staging was done here).
@@ -20,7 +20,7 @@ Command:
 python -B -m unittest discover -s docs/qwen36_reap/export -p test_compact_gguf.py -v
 ```
 
-Final result after project-policy hardening: **24 tests PASS, 0.679 seconds** (initial suite:16 PASS). Fixtures are roughly 1 MB with two layers/four experts/top2, actual packed Q4_K slab storage and F32 router rows, plus unchanged Q8_0 shared and Q6_K embedding payloads. Temp fixture/output files created only under this directory and removed. `-B` avoids bytecode caches.
+Final result after project-policy hardening: **29 tests PASS, 0.960 seconds** (initial suite:16 PASS). Fixtures are roughly 1 MB with two layers/four experts/top2, actual packed Q4_K slab storage and F32 router rows, plus unchanged Q8_0 shared and Q6_K embedding payloads. Temp fixture/output files created only under this directory and removed. `-B` avoids bytecode caches.
 
 Coverage: exact raw selected slab/router bytes with nonidentity per-layer mappings, sorted compact IDs, all-kept raw copying, raw metadata/tokenizer/rope preservation, expert count/top-k/dimensions/offset alignment and parser roundtrip, homogeneous-K/IDs/wrong mask hash rejection, malformed shape/type/block alignment, unsupported routing/MTP/architecture, truncated input, bounded reads, wrong actual source SHA, immutable/exclusive source/output, racing destination no-clobber publication, failed readback cleanup, source mutation before publication, no production test-geometry override, export authorization before full hashing, duplicate JSON rejection, quality digest/model/mask/artifact/threshold checks. Synthetic storage tests are not numerical dequantization or inference tests.
 
@@ -40,6 +40,14 @@ Read `../DECODE_GATES.md` and replaced the generic-only pre-export gate with man
 Gate recomputes baseline completion, per-case newly incomplete IDs (never net cancellation by improvements), and positive Counter differences keyed by (caseID,category), including occurrence multiplicity. All newly incomplete cases count toward max1. Strict FSM consistency rejects `full_completion:true` with nonempty critical violations in either report before counting, preventing fake baseline-floor completion. Final regression tests all five critical categories in both baseline/masked (10 subcases); export work is now frozen pending parent review. Moving an old violation to another case/category, replacing two old events with one new event, or adding a repeated occurrence fails. Generic additional checks remain optional, supplementary only; falsely high aggregate metrics cannot bypass mandatory records. `reviewer` must identify the real reviewer truthfully, not necessarily a human.
 
 Seven new test methods cover weaker/missing policy, baseline1/20 or15/20 despite claimed perfect metrics, exact20 unique/matching IDs, boolean completion, category/case swaps and multiplicity, net-canceled new failures, stricter policies, and end-to-end hashed-bundle generic-metric bypass attempts. All synthetic; no real heldout data inspected, no GPU/full model reads/export. Branch rechecked before follow-up writes; parent's dirty `analyze_pilot.py` and ledger remain untouched.
+
+## Final follow-up: frozen evaluation protocol hash
+
+Mandatory `policy.evaluation_protocol` now binds both baseline and masked `evaluation_protocol_sha256` to `sha(canonical(entire_object))`. Required keys: transport, policy_version, final_mode, sampling_profile, seeds, context, max_output, max_turns, thinking, reasoning_preserve, skip_chat_parsing. Native transport only; skip_chat_parsing exactlyFalse; final_mode content/tool; thinking template-default/on/off; reasoning_preserve boolean; context/max_output/max_turns positive actual integers; policy_version/sampling_profile nonempty version/profile names. Seeds nonempty, unique actual integers0..4294967294: no random sentinel UINT32_MAX, negative, duplicate, bool, float or string. Extra runtime/template/recipe hashes or versions are included in canonical hash. No paths/private keys hardcoded.
+
+Both report hashes must match the frozen policy, not merely each other. Missing config/key/hash, differing final mode or sampling profile, context/runtime/template changes, parser bypass and nondeterministic seed formats fail before metrics. Legitimate content/tool and greedy/qwen-coding variants pass when consistently frozen and bound. Five added test methods cover these cases, including end-to-end rehashed proof bundles; total29 PASS. Actual runner honesty and what profile names mean remain evidence-review responsibilities, not conclusions from hashes. Historical content-mode failures are never relabeled/rescored as final-tool passes.
+
+This follow-up touched only export code/tests/docs; no real heldout data, GPU, inference, build, export or model reads. Parent source read-only searches confirmed current runner option names; no runner edits. Existing user authorization remains lab derivatives subject to quality gates. Export scope re-frozen after tests pending parent review.
 
 ## Essential parent actions / caveats
 

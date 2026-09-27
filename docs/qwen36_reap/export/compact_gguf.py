@@ -358,6 +358,34 @@ def decode_screening_gate(corpus, baseline, masked, policy):
             'new_failed_case_ids':new_failed, 'new_critical_occurrences':sum(new_critical.values())}
 
 
+def evaluation_protocol_gate(policy, baseline, masked):
+    """Bind both evaluations to the same complete, frozen native protocol.
+    Hashing the entire object also covers optional runtime/template identities.
+    """
+    protocol = policy.get('evaluation_protocol')
+    required = {'transport', 'policy_version', 'final_mode', 'sampling_profile',
+                'seeds', 'context', 'max_output', 'max_turns', 'thinking',
+                'reasoning_preserve', 'skip_chat_parsing'}
+    require(isinstance(protocol, dict) and required <= set(protocol), 'complete evaluation_protocol required')
+    require(protocol['transport'] == 'native', 'quality evaluation requires native transport')
+    require(protocol['skip_chat_parsing'] is False, 'parser bypass forbidden in quality protocol')
+    require(protocol['final_mode'] in ('content', 'tool'), 'invalid evaluation final_mode')
+    for key in ('policy_version', 'sampling_profile'):
+        require(isinstance(protocol[key], str) and bool(protocol[key].strip()), 'invalid evaluation ' + key)
+    require(protocol['thinking'] in ('template-default', 'on', 'off'), 'invalid evaluation thinking mode')
+    require(type(protocol['reasoning_preserve']) is bool, 'evaluation reasoning_preserve must be boolean')
+    for key in ('context', 'max_output', 'max_turns'):
+        require(type(protocol[key]) is int and protocol[key] > 0, 'invalid evaluation ' + key)
+    seeds = protocol['seeds']
+    require(isinstance(seeds, list) and bool(seeds) and
+            all(type(seed) is int and 0 <= seed <= 4294967294 for seed in seeds) and
+            len(set(seeds)) == len(seeds), 'evaluation seeds must be unique deterministic uint32, excluding random sentinel')
+    digest = sha(canonical(protocol))
+    for label, report in (('baseline', baseline), ('masked', masked)):
+        require(report.get('evaluation_protocol_sha256') == digest, label + ': evaluation protocol hash mismatch/missing')
+    return digest
+
+
 def quality_gate(path, approved_sha, mask, model_sha):
     """Hash pin is an external reviewed approval, not proof of scientific validity.
     All references are relative to the bundle, with explicit model/mask/corpus binding.
@@ -388,6 +416,7 @@ def quality_gate(path, approved_sha, mask, model_sha):
         require(e.get('mask_sha256') == (mask_sha if role == 'masked' else None), 'evaluation mask binding')
     policy = evidence['policy']
     require(policy.get('frozen_before_evaluation') is True, 'predeclared quality policy required')
+    evaluation_protocol_gate(policy, evidence['baseline'], evidence['masked'])
     decode_screening_gate(corpus, evidence['baseline'], evidence['masked'], policy)
     checks = policy.get('checks', [])
     require(isinstance(checks, list), 'additional quality checks must be a list')
