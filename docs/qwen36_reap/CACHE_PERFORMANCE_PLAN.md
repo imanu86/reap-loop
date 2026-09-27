@@ -1,6 +1,6 @@
 # Cache esperti: gate numerico e piano prestazioni separato
 
-Registrato durante145. Nessuna esecuzione di questi probe/benchmark ancora. La ricetta qualita rimane cache32; cambiare capacita NON significa pruning. Il piano throughput non e ancora eseguibile: fixture/token IDs/hash e runner vanno congelati prima delle misure.
+Registrato durante145. Aggiornamento: probe numerico147 concluso dopo pubblicazione538a3f3; benchmark prestazioni ancora NON eseguito. La ricetta qualita rimane cache32; cambiare capacita NON significa pruning. Il piano throughput non e ancora eseguibile: fixture/token IDs/hash e runner vanno congelati prima delle misure.
 
 ## Contratto dal sorgente
 
@@ -27,6 +27,12 @@ I metadata originali NON vanno riscritti: il confronto puo ammettere soltanto la
 Opt-in, output esclusivo, rifiuto di server/helper/compilatori attivi PRIMA dell'hash modello, gestione soltanto dei processi propri. Daily fermato/ripristinato esclusivamente dal parent. Hash modello/runtime/helper/fixture/sorgenti prima e dopo. No inferenza durante145.
 
 Richiesta CLI non equivale ad attivazione. Source moecache.cpp520/551 espone attivazione40layer,slot effettivi e MiB arrotondati. Per questi probe si dichiara uniformemente LLAMA_ARG_LOG_VERBOSITY=4, dato che i vecchi log silenziosi non contengono tali marker e il helper non accetta -lv. Richiedere marker noti e coerenti; assenza=>activation_unverified/fallimento. Byte esatti in tabella sono DERIVATI, non telemetria byte-esatta del log arrotondato. Verbosita del probe non e una misura di prestazioni.
+
+## Risultato numerico147, scope limitato
+
+coordinator/cache_identity_32_64_96_01/manifest.json complete/pass=true:9helper freschi,40layer GPU attivi verificati in ogni run, capacita32/64/96 e MiB attesi. Tutti6confronti64/96 vs32 hanno full-F32 bit_identical=true,maxabs=maxrel=0 e token identici. Modello, runtime e sorgenti verificati prima/dopo; nessuna scrittura ai pesi. Logger4 esplicito; metadata originali preservati e sola proiezione moe_cache_slots dichiarata.
+
+Questo dimostra le fixture/contesto2048/passaggi testati, NON eviction esaustiva, occupazione100k, velocita o qualita generale. Test CPU del coordinatore15PASS. Il daily e stato rilanciato dal finally del parent; healthOK, executable/model originali e unico server verificati dal parent dopo147.
 
 ## Benchmark successivo da congelare
 
