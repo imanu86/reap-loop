@@ -24,6 +24,13 @@ class ServerCoordinatorTests(unittest.TestCase):
                 runner.main()
             process.assert_not_called()
 
+    def test_bypass_requires_diagnostic_flags(self):
+        argv = ['script', '--allow-inference', '--out', 'not-created', '--skip-chat-parsing']
+        with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:
+            with self.assertRaisesRegex(ValueError, 'bypass requires'):
+                runner.main()
+            process.assert_not_called()
+
     def test_heldout_ids_rejected_before_process_check(self):
         argv = ['script', '--allow-inference', '--out', 'not-created', '--episode-ids', 'heldout-semantic_selector-0']
         with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:

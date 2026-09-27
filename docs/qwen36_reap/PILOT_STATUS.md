@@ -44,6 +44,14 @@ La riproduzione nel runtime originale esclude una regressione specifica della pa
 
 La [scheda ufficiale Qwen3.6](https://huggingface.co/Qwen/Qwen3.6-35B-A3B/blob/main/README.md) raccomanda per coding/WebDev thinking temperature0.6, top_p0.95, top_k20, min_p0, presence_penalty0, repetition_penalty1, diversi dal greedy usato qui. E una ragione per un confronto controllato, non una causa gia dimostrata. Prossimi assi SEPARATI: un replay senza grammar/chat parsing (verificare prompt identico; non e uno score pilot) e sampling raccomandato con seed prefissati/tutte le repliche, senza cambiare insieme reasoning preservation. Non adottare best-of o abbassare soglie.
 
+### Round5: bypass e sampling non risolvono la finalizzazione
+
+Job126, bypass grammatica/parser sul solo currency0: ancora toolcall, questa volta verso funzione `final` non dichiarata. Rimane errore, non viene reinterpretato come successo. Prompt effettivo identico, conteggi1253; inputIDarray non registrati. Prima divergenza raw150, precedente al trigger storico753: nessuna prova di semplice conversione al confine finale.
+
+Job127, sampling coding ufficiale con parser normale e seed0/1/2: ciascun seed0/2, totale0/6, tutti errori per azione ridondante, nessuna troncatura. Tutte le repliche conservate. Daily ripristinato e healthOK.
+
+Prossimo controllo, definito in FINALIZATION_PROBES.md prima dell'esecuzione: trasporto terminale esplicito opt-in `final_mode=tool`, con schema finale PUBLIC e Simulator.finish invariato. Non aggiunge risposte attese, non auto-finalizza e non rivaluta i fallimenti storici. Cambia il protocollo, non i pesi. Uno smoke positivo non sarebbe gate heldout o prova di generalizzazione.
+
 Occorre ancora:
 1. Isolare il problema di finalizzazione prima di altre raccolte complete o del pruning.
 2. Ottenere una baseline utile su tutti50episodi del protocollo congelato.

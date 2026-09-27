@@ -25,8 +25,14 @@ def main():
     p.add_argument('--runtime', choices=('baseline', 'candidate'), default='candidate')
     p.add_argument('--no-trace', action='store_true', help='Diagnostic uninstrumented control, not a performance promotion')
     p.add_argument('--diagnostic-raw', action='store_true')
+    p.add_argument('--skip-chat-parsing', action='store_true', help='DIAGNOSTIC ONLY: bypass parser AND generated grammar; not a pilot quality score')
     p.add_argument('--max-output', type=int, default=512)
+    p.add_argument('--final-mode', choices=('content', 'tool'), default='content')
+    p.add_argument('--sampling-profile', choices=('greedy', 'qwen-coding'), default='greedy')
+    p.add_argument('--seed', type=int, default=0)
     a = p.parse_args()
+    if not 0 <= a.seed < 4294967295:
+        raise ValueError('Require deterministic seed0..4294967294, never random sentinel')
     if a.limit is None and a.episode_ids is None:
         a.limit = 2
     if not a.allow_inference or (a.limit is not None and not 1 <= a.limit <= 50):
@@ -37,6 +43,8 @@ def main():
         select_episodes('calibration', None, a.episode_ids)
     if a.runtime == 'baseline' and not a.no_trace:
         raise ValueError('Original runtime does not implement REAP capture; require --no-trace')
+    if a.skip_chat_parsing and not (a.no_trace and a.diagnostic_raw):
+        raise ValueError('Parser/grammar bypass requires --no-trace --diagnostic-raw and is not a quality evaluation')
     a.out = a.out.resolve()
     existing = subprocess.run(['tasklist', '/FI', 'IMAGENAME eq llama-server.exe', '/NH'], capture_output=True, text=True, check=True)
     if 'llama-server.exe' in existing.stdout.lower():
@@ -59,10 +67,14 @@ def main():
                '-c', '4096', '-np', '1', '-b', '128', '-ub', '128', '-t', '16', '-tb', '16',
                '-fa', 'on', '-ctk', 'q8_0', '-ctv', 'q8_0', '-fit', 'off', '--jinja',
                '--reasoning', 'on', '--no-reasoning-preserve', '--no-context-shift', '--cache-ram', '0']
-    save(a.out / 'manifest.json', {'scope': 'calibration_integration_not_performance',
+    if a.skip_chat_parsing:
+        command.append('--skip-chat-parsing')
+    save(a.out / 'manifest.json', {'scope': 'parser_grammar_bypass_DIAGNOSTIC_ONLY' if a.skip_chat_parsing else 'calibration_integration_not_performance',
+        'skip_chat_parsing': a.skip_chat_parsing, 'eligible_quality_evaluation': not a.skip_chat_parsing,
         'runtime_arm': a.runtime, 'trace_enabled': not a.no_trace, 'diagnostic_raw': a.diagnostic_raw,
-        'limit': a.limit, 'episode_ids': a.episode_ids, 'policy_version': a.policy_version,
-        'max_output': a.max_output, 'model_sha256': MODEL_SHA, 'command': command,
+        'limit': a.limit, 'episode_ids': a.episode_ids, 'policy_version': a.policy_version, 'final_mode': a.final_mode,
+        'max_output': a.max_output, 'sampling_profile': a.sampling_profile, 'seed': a.seed,
+        'model_sha256': MODEL_SHA, 'command': command,
         'environment': {**selected_env, **trace_setting},
         'runtime_sha256': {f.name: sha(f) for f in binary.iterdir() if f.suffix.lower() in ('.dll', '.exe')},
         'coordinator_sha256': sha(__file__)})
@@ -89,7 +101,8 @@ def main():
             cmd = [sys.executable, '-B', str(HERE / 'pilot/run_pilot.py'), '--split', 'calibration',
                    *selection_args, '--allow-inference', '--url', 'http://127.0.0.1:8116',
                    '--output-dir', str(a.out / 'pilot'), '--protocol', 'native',
-                   '--policy-version', a.policy_version, '--max-output', str(a.max_output)]
+                   '--policy-version', a.policy_version, '--max-output', str(a.max_output),
+                   '--sampling-profile', a.sampling_profile, '--seed', str(a.seed), '--final-mode', a.final_mode]
             if a.diagnostic_raw:
                 cmd.append('--diagnostic-raw')
             save(a.out / 'pilot.command.json', cmd)
