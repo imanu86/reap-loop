@@ -8,6 +8,9 @@ Token/position/sequence IDs are nonnegative int32, but the header has no vocabul
 There is no total-count/end-of-stream marker: whole missing batches or a suffix missing
 from ALL layers cannot be proved absent. Counter gaps are allowed (e.g. skipped warmup).
 No semantic phase or cross-ubatch position ordering is inferred from batch size.
+Explicit mean_selected_gate is a conditional selected-occurrence g-only ablation;
+mass_gate sums gates and remains the legacy default. Neither includes output norms
+or claims full REAP. Zero-weight selected occurrences still count in the denominator.
 """
 import argparse
 import copy
@@ -21,6 +24,25 @@ import re
 
 INT32_MAX = (1 << 31) - 1
 UINT64_MAX = (1 << 64) - 1
+RANKING_METHODS = ('mass_gate', 'mean_selected_gate')
+
+
+def selection_recipe(ranking_method):
+    """Explicit g-only recipes; neither measures expert-output norm/full REAP."""
+    if ranking_method not in RANKING_METHODS:
+        raise ValueError('Unknown ranking_method; choose mass_gate or mean_selected_gate')
+    return {'schema_version': 1, 'ranking_method': ranking_method,
+            'scope': 'g_only_ablation_not_full_REAP', 'includes_expert_output_norm': False,
+            'score_formula': 'sum_selected_gate' if ranking_method == 'mass_gate' else 'sum_selected_gate / selected_count',
+            'selected_count_definition': 'top8 occurrences including zero gate weights',
+            'unobserved_score': 0, 'tie_break': 'score_descending_then_expert_id_ascending',
+            'pool_rule': 'fixed_keep_else_actual_gate_mass_coverage_in_rank_order',
+            'retained_mass_definition': 'actual_sum_selected_gate_not_sum_of_ranking_scores'}
+
+
+def recipe_digest(recipe):
+    return hashlib.sha256(json.dumps(recipe, sort_keys=True, separators=(',', ':'),
+                                    ensure_ascii=False, allow_nan=False).encode('utf-8')).hexdigest()
 
 
 def integer(value, label, minimum=0, maximum=None):
@@ -49,11 +71,15 @@ def trace_object(raw):
     return value
 
 
-def aggregate(paths, model_sha256):
+def aggregate(paths, model_sha256, *, include_selected_counts=False):
+    """Legacy triple by default; opt-in fourth item is actual per-expert selection counts."""
+    if type(include_selected_counts) is not bool:
+        raise ValueError('include_selected_counts must be bool')
     validate_sha(model_sha256)
     geometry = None
     totals = None
     counts = None
+    selected_counts = None
     provenance = []
     for path in paths:
         digest = hashlib.sha256()
@@ -76,6 +102,8 @@ def aggregate(paths, model_sha256):
             if totals is None:
                 totals = [[0.0] * experts for _ in range(layers)]
                 counts = [0] * layers
+                if include_selected_counts:
+                    selected_counts = [[0] * experts for _ in range(layers)]
             batch = None
             decode_call = None
             coverage = {}
@@ -138,6 +166,8 @@ def aggregate(paths, model_sha256):
                     raise ValueError('Expected normalized Qwen weights summing to1')
                 for expert, weight in zip(ids, weights):
                     totals[layer][expert] += weight
+                    if selected_counts is not None:
+                        selected_counts[layer][expert] += 1
                 counts[layer] += 1
                 rows += 1
             if not rows:
@@ -146,6 +176,8 @@ def aggregate(paths, model_sha256):
         provenance.append({'file': str(path), 'sha256': digest.hexdigest(), 'rows': rows})
     if totals is None:
         raise ValueError('No traces provided')
+    if include_selected_counts:
+        return totals, counts, provenance, selected_counts
     return totals, counts, provenance
 
 
@@ -158,28 +190,39 @@ def validate_selection(split, keep, coverage):
         raise ValueError('Invalid coverage target')
 
 
-def build(paths, model_sha256, *, split, keep=None, coverage=0.95, random_seed=None):
-    """Legacy API; validation and output ordering unchanged for valid inputs."""
+def build(paths, model_sha256, *, split, keep=None, coverage=0.95, random_seed=None,
+          ranking_method='mass_gate'):
+    """Default mass_gate serialization remains legacy-identical; mean is explicit opt-in."""
+    selection_recipe(ranking_method)
     validate_selection(split, keep, coverage)  # reject held-out before any trace I/O
-    return build_from_aggregate(aggregate(paths, model_sha256), model_sha256,
-        split=split, keep=keep, coverage=coverage, random_seed=random_seed)
+    data = aggregate(paths, model_sha256, include_selected_counts=ranking_method == 'mean_selected_gate')
+    return build_from_aggregate(data, model_sha256, split=split, keep=keep,
+        coverage=coverage, random_seed=random_seed, ranking_method=ranking_method)
 
 
 def build_from_aggregate(validated_aggregate, model_sha256, *, split, keep=None,
-                         coverage=0.95, random_seed=None):
+                         coverage=0.95, random_seed=None, ranking_method='mass_gate'):
     """Pure selection from ONE aggregate(paths, model_sha256) result; never opens files.
 
-    Caller must supply the unmodified validated triple with the SAME checkpoint SHA.
-    Structural checks below catch corruption, not provenance fabrication: the legacy
-    triple has no cryptographic binding to its separately supplied model_sha256.
+    mean_selected_gate is a g-only ablation, NOT full REAP. It requires the explicit
+    fourth selected-count matrix from aggregate(..., include_selected_counts=True);
+    no old aggregate/mask is silently upgraded or its denominator reconstructed.
+
+    Caller must supply the unmodified validated triple/quadruple with the SAME SHA.
+    Structural checks below catch corruption, not provenance fabrication: neither
+    aggregate form cryptographically binds its separately supplied model_sha256.
     It can be reused for K128/K64/dynamic and seeded matched controls without rereading
     traces. Inputs are not mutated; each returned manifest owns its provenance copy.
     """
     validate_sha(model_sha256)
+    recipe = selection_recipe(ranking_method)
     validate_selection(split, keep, coverage)
-    if not isinstance(validated_aggregate, (tuple, list)) or len(validated_aggregate) != 3:
-        raise ValueError('Expected validated aggregate triple')
-    scores, counts, provenance = validated_aggregate
+    if not isinstance(validated_aggregate, (tuple, list)) or len(validated_aggregate) not in (3, 4):
+        raise ValueError('Expected validated aggregate triple or count-bearing quadruple')
+    scores, counts, provenance = validated_aggregate[:3]
+    selected_counts = validated_aggregate[3] if len(validated_aggregate) == 4 else None
+    if ranking_method == 'mean_selected_gate' and selected_counts is None:
+        raise ValueError('mean_selected_gate requires actual selected counts; no legacy aggregate upgrade')
     if not isinstance(scores, (tuple, list)) or len(scores) != 40 or not isinstance(counts, (tuple, list)) or len(counts) != 40:
         raise ValueError('Invalid aggregate geometry')
     for layer, mass in enumerate(scores):
@@ -191,6 +234,18 @@ def build_from_aggregate(validated_aggregate, model_sha256, *, split, keep=None,
         total = math.fsum(mass)
         if not math.isfinite(total) or total <= 0:
             raise ValueError('Empty/nonfinite aggregate mass')
+    if selected_counts is not None:
+        if not isinstance(selected_counts, (tuple, list)) or len(selected_counts) != 40:
+            raise ValueError('Invalid selected-count layer dimension')
+        for layer, row in enumerate(selected_counts):
+            if not isinstance(row, (tuple, list)) or len(row) != 256:
+                raise ValueError('Invalid selected-count expert dimension')
+            for expert, n in enumerate(row):
+                integer(n, 'selected count', 0, counts[layer])
+                if n == 0 and scores[layer][expert] != 0:
+                    raise ValueError('Unobserved expert has nonzero gate mass')
+            if sum(row) != counts[layer] * 8:
+                raise ValueError('Selected-count total must equal token count times top8')
     if len(set(counts)) != 1:
         raise ValueError('Aggregate token counts differ between layers')
     if not isinstance(provenance, (tuple, list)) or not provenance:
@@ -205,12 +260,17 @@ def build_from_aggregate(validated_aggregate, model_sha256, *, split, keep=None,
     rng = random.Random(random_seed)
     result = {'schema_version': 1, 'model_sha256': model_sha256.lower(), 'architecture': 'qwen35moe',
               'expert_count': 256, 'top_k': 8, 'layer_count': 40, 'layers': {},
-              'method': 'mass_gate' if random_seed is None else 'random_matched_pool',
+              'method': ranking_method if random_seed is None else 'random_matched_pool',
               'calibration_split': split, 'source_traces': copy.deepcopy(provenance), 'diagnostics': {},
               'random_seed': random_seed, 'requested_keep': keep, 'requested_coverage': coverage}
+    if ranking_method != 'mass_gate':
+        result.update(ranking_method=ranking_method, selection_recipe=recipe,
+                      selection_recipe_sha256=recipe_digest(recipe), quality_approval=False)
     for layer, mass in enumerate(scores):
         total = math.fsum(mass)
-        ranked = sorted(range(256), key=lambda e: (-mass[e], e))
+        ranking_scores = mass if ranking_method == 'mass_gate' else [
+            mass[e] / selected_counts[layer][e] if selected_counts[layer][e] else 0.0 for e in range(256)]
+        ranked = sorted(range(256), key=lambda e: (-ranking_scores[e], e))
         n = keep
         if n is None:
             running, n = 0.0, 0
@@ -223,6 +283,12 @@ def build_from_aggregate(validated_aggregate, model_sha256, *, split, keep=None,
             'observed_experts': sum(m > 0 for m in mass),
             'retained_mass_fraction': math.fsum(mass[e] for e in selected) / total,
             'zero_observed_mass_kept': sum(mass[e] == 0 for e in selected)}
+        if ranking_method == 'mean_selected_gate':
+            result['diagnostics'][str(layer)].update(
+                retained_gate_mass=math.fsum(mass[e] for e in selected), total_gate_mass=total,
+                selected_count_total=sum(selected_counts[layer]),
+                experts_with_selected_observations=sum(n > 0 for n in selected_counts[layer]),
+                unobserved_experts_kept=sum(selected_counts[layer][e] == 0 for e in selected))
     return result
 
 
@@ -234,10 +300,12 @@ def main():
     p.add_argument('--keep', type=int)
     p.add_argument('--coverage', type=float, default=0.95)
     p.add_argument('--random-seed', type=int)
+    p.add_argument('--ranking-method', choices=RANKING_METHODS, default='mass_gate',
+                   help='Explicit g-only recipe, NOT full REAP (default preserves mass_gate)')
     p.add_argument('--out', type=Path, required=True)
     a = p.parse_args()
     result = build(a.trace, a.model_sha256, split=a.split, keep=a.keep,
-                   coverage=a.coverage, random_seed=a.random_seed)
+                   coverage=a.coverage, random_seed=a.random_seed, ranking_method=a.ranking_method)
     with a.out.open('x', encoding='utf-8') as f:
         json.dump(result, f, indent=2, allow_nan=False)
         f.write('\n')

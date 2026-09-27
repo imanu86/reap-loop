@@ -77,6 +77,60 @@ class MaskPlanTests(unittest.TestCase):
         self.put('pilot/summary.json', dict(cases=50, split='calibration', real_actions_executed=0,
                                           full_completion_rate=sum(r['full_completion'] for r in self.rows) / 50))
 
+    def test_explicit_g_only_recipe_bound_without_changing_source_protocol(self):
+        self.set_version('v3')
+        mass = planner.plan(self.run, self.corpus, self.root / 'mass-out', policy_version='v3')
+        with patch.object(planner, 'aggregate', wraps=planner.aggregate) as once:
+            mean = planner.plan(self.run, self.corpus, self.root / 'mean-out', policy_version='v3',
+                                ranking_method='mean_selected_gate')
+            once.assert_called_once_with([self.run.resolve() / 'routing.jsonl'], planner.MODEL_SHA,
+                                         include_selected_counts=True)
+        self.assertEqual(mass['ranking_method'], 'mass_gate')
+        self.assertEqual(mean['ranking_method'], 'mean_selected_gate')
+        self.assertEqual(mass['protocol_sha256'], mean['protocol_sha256'])
+        self.assertEqual(mass['provenance'], mean['provenance'])
+        self.assertEqual(mass['trace_provenance'], mean['trace_provenance'])
+        self.assertNotEqual(mass['selection_recipe_sha256'], mean['selection_recipe_sha256'])
+        self.assertEqual(mean['selection_recipe_sha256'], planner.object_digest(mean['selection_recipe']))
+        self.assertFalse(mean['selection_recipe']['includes_expert_output_norm'])
+        self.assertEqual(mean['selection_recipe']['scope'], 'g_only_ablation_not_full_REAP')
+        self.assertEqual(mean['selection_recipe']['pools'], [128, 96, 64, 32])
+        self.assertEqual(mean['selection_recipe']['random_seed'], 20260713)
+        self.assertFalse(mean['quality_approval'])
+        self.assertTrue(mean['gpu_screen_ready'])
+        for candidate in mean['candidates']:
+            name = candidate['file']
+            mask = planner.load(self.root / 'mean-out' / name)
+            self.assertEqual(candidate['ranking_method'], 'mean_selected_gate')
+            self.assertEqual(mask['ranking_method'], 'mean_selected_gate')
+            self.assertEqual(candidate['selection_recipe_sha256'], mean['selection_recipe_sha256'])
+            self.assertEqual(mask['selection_recipe_sha256'], mean['selection_recipe_sha256'])
+            self.assertEqual(mask['selection_recipe'], mean['selection_recipe'])
+            self.assertEqual(mask['protocol_sha256'], mean['protocol_sha256'])
+            self.assertEqual(planner.digest(self.root / 'mean-out' / name), mean['mask_sha256'][name])
+            self.assertFalse(mask['quality_approval'])
+            if name.startswith('random-'):
+                old_mask = planner.load(self.root / 'mass-out' / name)
+                self.assertEqual(mask['layers'], old_mask['layers'])
+                self.assertEqual(mask['method'], 'random_matched_pool')
+            else:
+                self.assertEqual(mask['method'], 'mean_selected_gate')
+            expected_mass = sum(e < 8 for e in mask['layers']['0']) * 0.125
+            self.assertEqual(mask['diagnostics']['0']['retained_gate_mass'], expected_mass)
+        self.assertNotEqual(mean['mask_sha256'], mass['mask_sha256'])  # recipe-bound bytes differ even tied IDs
+
+    def test_unknown_recipe_fails_before_reads_and_zero_family_stays_diagnostic(self):
+        with patch.object(planner, 'validate_run', side_effect=AssertionError('no read')):
+            with self.assertRaisesRegex(ValueError, 'Unknown ranking_method'):
+                planner.plan(self.run, self.corpus, self.root / 'invalid', ranking_method='full_REAP')
+        self.set_failures(range(5))
+        result = planner.plan(self.run, self.corpus, self.root / 'mean-diagnostic', ranking_method='mean_selected_gate')
+        self.assertFalse(result['gpu_screen_ready'])
+        self.assertEqual(result['provenance']['cases'], 50)
+        self.assertEqual(result['provenance']['successes'], 45)
+        self.assertFalse(result['quality_approval'])
+        self.assertTrue(all(not c['quality_approval'] and not c['gpu_screen_ready'] for c in result['candidates']))
+
     def test_default_v2_legacy_and_explicit_v3_valid(self):
         v2 = planner.validate_run(self.run, self.corpus)
         self.assertEqual(v2['expected_config'], planner.FROZEN)

@@ -7,6 +7,9 @@ GPU screen readiness is recomputed from >=40 full completions and coverage of al
 The internal protocol_sha256 hashes {expected_config, recorded_source_sha256}; it is
 NOT the quality policy's evaluation_protocol digest (different canonical objects).
 Recorded source hashes are provenance assertions, not fresh source re-verification.
+Selection is separately bound by ranking_method/selection_recipe/selection_recipe_sha256;
+mean_selected_gate is an explicit NEW g-only ablation curve, not full REAP or an upgrade
+of earlier mass_gate masks. Neither recipe may acquire quality approval here.
 Trace validity cannot itself prove that every expected runtime call was recorded.
 """
 import argparse
@@ -16,7 +19,7 @@ import math
 from pathlib import Path
 import re
 
-from mask_builder import aggregate, build_from_aggregate
+from mask_builder import aggregate, build_from_aggregate, RANKING_METHODS, selection_recipe, recipe_digest
 
 MODEL_SHA = '671e47e0ec53c665d048b98c3ecbfd5236b5ca9c3e02ed19fc8f81f7b85140c7'
 CORE_SHA = '018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef'
@@ -179,13 +182,16 @@ def validate_run(run, corpus, *, policy_version='v2'):
             'corpus_sha256': digest(corpus), 'inputs_sha256': {f: digest(run / f) for f in files}}
 
 
-def plan(run, corpus, out, *, policy_version='v2'):
+def plan(run, corpus, out, *, policy_version='v2', ranking_method='mass_gate'):
+    # Selection recipe is separate from captured source protocol; no old masks are upgraded.
+    recipe = dict(selection_recipe(ranking_method), pools=list(POOLS), random_seed=RANDOM_SEED)
+    recipe_sha256 = recipe_digest(recipe)
     run, out = Path(run).resolve(), Path(out).resolve()
     require(not out.exists(), 'Output directory must be NEW')
     proof = validate_run(run, corpus, policy_version=policy_version)
     trace = run / 'routing.jsonl'
     before = trace.stat()
-    data = aggregate([trace], MODEL_SHA)
+    data = aggregate([trace], MODEL_SHA, include_selected_counts=True)
     require(all(n >= proof['minimum_decode_tokens_per_layer'] for n in data[1]),
             'Trace smaller than no-speculation generation lower bound')
     after = trace.stat()
@@ -194,13 +200,17 @@ def plan(run, corpus, out, *, policy_version='v2'):
     for keep in POOLS:
         for seed in (None, RANDOM_SEED):
             kind = 'ranked' if seed is None else 'random'
-            mask = build_from_aggregate(data, MODEL_SHA, split='calibration', keep=keep, random_seed=seed)
+            mask = build_from_aggregate(data, MODEL_SHA, split='calibration', keep=keep,
+                                        random_seed=seed, ranking_method=ranking_method)
             mask.update(quality_approval=False, gpu_screen_ready=proof['gpu_screen_ready'],
-                        policy_version=policy_version, protocol_sha256=proof['protocol_sha256'])
+                        policy_version=policy_version, protocol_sha256=proof['protocol_sha256'],
+                        ranking_method=ranking_method, selection_recipe=dict(recipe),
+                        selection_recipe_sha256=recipe_sha256)
             name = f'{kind}-k{keep}.json'
             masks[name] = mask
             mass = [d['retained_mass_fraction'] for d in mask['diagnostics'].values()]
             reports.append({'file': name, 'keep': keep, 'method': mask['method'],
+                            'ranking_method': ranking_method, 'selection_recipe_sha256': recipe_sha256,
                             'quality_approval': False, 'gpu_screen_ready': proof['gpu_screen_ready'],
                             'policy_version': policy_version, 'protocol_sha256': proof['protocol_sha256'],
                             'retained_mass_min': min(mass), 'retained_mass_mean': math.fsum(mass) / len(mass),
@@ -214,6 +224,8 @@ def plan(run, corpus, out, *, policy_version='v2'):
               'quality_approval': False, 'model_weights_written': False, 'provenance': proof,
               'policy_version': policy_version, 'gpu_screen_ready': proof['gpu_screen_ready'],
               'protocol_sha256': proof['protocol_sha256'],
+              'ranking_method': ranking_method, 'selection_recipe': recipe,
+              'selection_recipe_sha256': recipe_sha256,
               'trace_provenance': data[2], 'planner_sha256': digest(__file__), 'candidates': reports,
               'mask_sha256': {name: digest(out / name) for name in masks}}
     with (out / 'plan.json').open('x', encoding='utf-8') as stream:
@@ -229,8 +241,12 @@ if __name__ == '__main__':
     parser.add_argument('--out', type=Path, required=True)
     parser.add_argument('--policy-version', choices=('v2', 'v3'), default='v2',
                         help='Expected frozen protocol; never inferred from run artifacts (default: v2)')
+    parser.add_argument('--ranking-method', choices=RANKING_METHODS, default='mass_gate',
+                        help='Explicit g-only ablation recipe; neither choice is full REAP')
     args = parser.parse_args()
-    report = plan(args.run, args.corpus, args.out, policy_version=args.policy_version)
+    report = plan(args.run, args.corpus, args.out, policy_version=args.policy_version,
+                  ranking_method=args.ranking_method)
     print(json.dumps({'scope': report['scope'], 'policy_version': report['policy_version'],
+                      'ranking_method': report['ranking_method'], 'selection_recipe_sha256': report['selection_recipe_sha256'],
                       'gpu_screen_ready': report['gpu_screen_ready'], 'quality_approval': False,
                       'candidates': report['candidates']}))

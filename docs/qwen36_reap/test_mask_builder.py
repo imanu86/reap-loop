@@ -8,7 +8,7 @@ import tempfile
 import unittest
 from unittest.mock import patch
 
-from mask_builder import aggregate, build, build_from_aggregate
+from mask_builder import aggregate, build, build_from_aggregate, selection_recipe, recipe_digest
 
 SHA = 'a' * 64
 
@@ -301,6 +301,99 @@ class MaskTests(unittest.TestCase):
                 build_from_aggregate(validated, SHA, split='heldout')
             with self.assertRaises(ValueError):
                 build([self.path], SHA, split='heldout')
+
+    def rare_high_mean_fixture(self):
+        header = fixture()[0]
+        self.data = [header]
+        for layer in range(40):
+            for token in range(10):
+                ids = list(range(8)) if token < 9 else list(range(7)) + [8]
+                weights = [0.125] * 8 if token < 9 else [0.1 / 7] * 7 + [0.9]
+                self.data.append(dict(schema_version=1, record_type='route', batch_id=1,
+                    decode_call_id=1, layer=layer, phase='unknown', token_position=token,
+                    token_index=token, token_id=50 + token, seq_ids=[0], ids=ids, weights=weights))
+        self.save()
+
+    def test_rare_high_mean_changes_topk_without_relabeling_mass(self):
+        self.rare_high_mean_fixture()
+        data = aggregate([self.path], SHA, include_selected_counts=True)
+        self.assertEqual(data[3][0][7:9], [9, 1])
+        mass = build_from_aggregate(data, SHA, split='calibration', keep=8)
+        mean = build_from_aggregate(data, SHA, split='calibration', keep=8, ranking_method='mean_selected_gate')
+        self.assertEqual(mass['layers']['0'], list(range(8)))
+        self.assertEqual(mean['layers']['0'], [0, 1, 2, 3, 4, 5, 7, 8])
+        self.assertEqual(mean['method'], 'mean_selected_gate')
+        self.assertFalse(mean['quality_approval'])
+        self.assertFalse(mean['selection_recipe']['includes_expert_output_norm'])
+        kept = mean['layers']['0']
+        actual_mass = math.fsum(data[0][0][e] for e in kept)
+        sum_of_means = math.fsum(data[0][0][e] / data[3][0][e] for e in kept)
+        diag = mean['diagnostics']['0']
+        self.assertAlmostEqual(diag['retained_gate_mass'], actual_mass)
+        self.assertNotAlmostEqual(diag['retained_gate_mass'], sum_of_means)
+        self.assertAlmostEqual(diag['retained_mass_fraction'], actual_mass / math.fsum(data[0][0]))
+        self.assertEqual(diag['selected_count_total'], 80)
+        self.assertEqual(mean, self.make(keep=8, ranking_method='mean_selected_gate'))
+
+    def test_selected_count_includes_zero_weights_unobserved_score_and_ties(self):
+        for row in self.data[1:]:
+            row['weights'] = [1.0] + [0.0] * 7
+        self.save()
+        data = aggregate([self.path], SHA, include_selected_counts=True)
+        self.assertEqual(data[3][0][:16], [1] * 16)
+        self.assertEqual(data[3][0][16:], [0] * 240)
+        result = build_from_aggregate(data, SHA, split='calibration', keep=8, ranking_method='mean_selected_gate')
+        self.assertEqual(result['layers']['0'], [0, 1, 2, 3, 4, 5, 6, 8])
+        large = build_from_aggregate(data, SHA, split='calibration', keep=32, ranking_method='mean_selected_gate')
+        self.assertEqual(large['diagnostics']['0']['experts_with_selected_observations'], 16)
+        self.assertEqual(large['diagnostics']['0']['observed_experts'], 2)  # legacy positive-mass diagnostic
+        self.assertEqual(large['diagnostics']['0']['unobserved_experts_kept'], 16)
+
+    def test_mean_requires_actual_counts_and_rejects_corrupted_counts(self):
+        old = aggregate([self.path], SHA)
+        self.assertEqual(len(old), 3)
+        with self.assertRaisesRegex(ValueError, 'requires actual selected counts'):
+            build_from_aggregate(old, SHA, split='calibration', ranking_method='mean_selected_gate')
+        data = aggregate([self.path], SHA, include_selected_counts=True)
+        for value in (True, -1, 1.0, 3, 0):
+            corrupt = copy.deepcopy(data)
+            corrupt[3][0][0] = value
+            with self.assertRaises(ValueError):
+                build_from_aggregate(corrupt, SHA, split='calibration', ranking_method='mean_selected_gate')
+        bad_sum = copy.deepcopy(data)
+        bad_sum[3][0][16] = 1
+        with self.assertRaisesRegex(ValueError, 'times top8'):
+            build_from_aggregate(bad_sum, SHA, split='calibration', ranking_method='mean_selected_gate')
+        with patch.object(Path, 'open', side_effect=AssertionError('must validate recipe before I/O')):
+            with self.assertRaisesRegex(ValueError, 'Unknown ranking_method'):
+                self.make(ranking_method='full_REAP')
+
+    def test_new_count_aggregate_preserves_default_serialization_and_random_ids(self):
+        self.rare_high_mean_fixture()
+        data = aggregate([self.path], SHA, include_selected_counts=True)
+        original = copy.deepcopy(data)
+        for keep in (128, 96, 64, 32):
+            with self.subTest(keep=keep):
+                old_mass = self.make(keep=keep)
+                new_mass = build_from_aggregate(data, SHA, split='calibration', keep=keep)
+                explicit_mass = build_from_aggregate(data, SHA, split='calibration', keep=keep, ranking_method='mass_gate')
+                self.assertEqual(json.dumps(old_mass), json.dumps(new_mass))
+                self.assertEqual(json.dumps(new_mass), json.dumps(explicit_mass))
+                random_mass = build_from_aggregate(data, SHA, split='calibration', keep=keep, random_seed=20260713)
+                random_mean = build_from_aggregate(data, SHA, split='calibration', keep=keep, random_seed=20260713,
+                                                   ranking_method='mean_selected_gate')
+                self.assertEqual(random_mean['layers'], random_mass['layers'])
+                self.assertEqual(random_mean['method'], 'random_matched_pool')
+                self.assertEqual(random_mean['ranking_method'], 'mean_selected_gate')
+                self.assertEqual(random_mean['selection_recipe_sha256'], recipe_digest(selection_recipe('mean_selected_gate')))
+                self.assertEqual(random_mean['source_traces'], random_mass['source_traces'])
+        self.assertEqual(data, original)
+
+    def test_mean_dynamic_coverage_still_uses_actual_gate_mass(self):
+        self.rare_high_mean_fixture()
+        result = self.make(coverage=0.95, ranking_method='mean_selected_gate')
+        self.assertEqual(result['diagnostics']['0']['kept'], 9)
+        self.assertGreaterEqual(result['diagnostics']['0']['retained_mass_fraction'], 0.95)
 
     def test_unseen_experts_explicit_when_fixed_pool_large(self):
         result = self.make(keep=32)
