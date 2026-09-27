@@ -1,5 +1,11 @@
 # Gate GPU superato dopo la correzione dell'observer
 
+## Precisazione readonly round7: selezione degli output
+
+Il gate confronta l'intero vocabolario dell'ULTIMO token richiesto, non logits di tutti i token del prompt: native_gate.cpp83-90/195-208 imposta batch.logits solo sull'ultimo token dell'ultimo chunk; i chunk precedenti non richiedono output. Nel normale qwen35moe.cpp tutti40FFN vengono comunque calcolati prima del gather degli output a235-236 e dell'LMhead a243. Il crop prima dell'ultimo FFN a197-200 dipende invece da embeddings_nextn_masked, defaultfalse in context217-218, non da REAP.
+
+TRACE rifiuta esplicitamente quella modalita NextN pruned (context1834-1837), non la disabilita in silenzio. Nessuna nuova patch necessaria. I test coprono quindi gia il prefill multi-token con logits-last-only nelle fixture/configurazioni documentate, non una modalita artificiale all-logits. Non sono prova universale su ogni prompt o sul percorso NextN. Il nuovo controllo fresco non strumentato resta utile per rendere matched ordine/casi/cache degli screen.
+
 ## Stato attuale: numeric_gate_04, job113
 
 **PASS bit-identico su entrambe le fixture**, con la DLL `018c6b713df678f8e4ef5c0f0b4b0de9374b80be338df8f4f31233614fad82ef`:
