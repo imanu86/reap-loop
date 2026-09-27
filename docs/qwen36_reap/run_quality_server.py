@@ -83,6 +83,8 @@ def mask_identity(path):
 def validate_options(a):
     require(a.allow_inference, '--allow-inference required before any process/network/model access')
     require(a.split in ('calibration', 'heldout'), 'Explicit supported split required')
+    require(a.ranking_method in ('mass_gate', 'mean_selected_gate'), 'Unsupported explicit ranking method')
+    require(a.split != 'heldout' or a.ranking_method == 'mass_gate', 'Conditional-g ranking is calibration-only; heldout scope unchanged')
     require(type(a.trial) is int and a.trial == 0, 'This frozen comparison supports trial0 only')
     require(a.split != 'heldout' or (a.allow_heldout and a.episode_ids is None),
             'Heldout requires --allow-heldout and forbids any subset')
@@ -100,7 +102,52 @@ def validate_options(a):
                 'Heldout requires explicit policy/protocol/corpus hashes and selected-mask/plan binding')
 
 
-def ready_plan(path, selected):
+def expected_selection_recipe(method):
+    """Independent exact recipe guard; conditional g is NOT expert-output-norm saliency."""
+    require(method in ('mass_gate', 'mean_selected_gate'), 'Unsupported selection recipe')
+    return {'schema_version': 1, 'ranking_method': method, 'scope': 'g_only_ablation_not_full_REAP',
+        'includes_expert_output_norm': False,
+        'score_formula': 'sum_selected_gate' if method == 'mass_gate' else 'sum_selected_gate / selected_count',
+        'selected_count_definition': 'top8 occurrences including zero gate weights', 'unobserved_score': 0,
+        'tie_break': 'score_descending_then_expert_id_ascending',
+        'pool_rule': 'fixed_keep_else_actual_gate_mass_coverage_in_rank_order',
+        'retained_mass_definition': 'actual_sum_selected_gate_not_sum_of_ranking_scores',
+        'pools': [128, 96, 64, 32], 'random_seed': 20260713}
+
+
+def verify_ranking_binding(plan, mask, selected, method):
+    require(method in ('mass_gate', 'mean_selected_gate'), 'Unsupported explicit ranking method')
+    require(mask.get('method') in (method, 'random_matched_pool'), 'Mask method differs from explicit reference ranking')
+    fields = {'ranking_method', 'selection_recipe', 'selection_recipe_sha256'}
+    candidates = plan.get('candidates', [])
+    require(type(candidates) is list and all(type(c) is dict for c in candidates), 'Invalid candidate entries')
+    objects = [plan, mask] + candidates
+    if not any(fields.intersection(obj) for obj in objects):
+        require(method == 'mass_gate' and mask.get('method') in ('mass_gate', 'random_matched_pool'),
+                'Legacy recipe-less plans are explicit default mass_gate only')
+        return  # Do not invent recipe hashes for historical075 artifacts.
+    expected = expected_selection_recipe(method)
+    digest = object_digest(expected)  # sorted compact ensure_ascii=False, allow_nan=False UTF8
+    for obj in (plan, mask):
+        require(fields <= set(obj) and obj.get('ranking_method') == method,
+                'Partial/mismatched plan or mask recipe metadata')
+        # Canonical bytes preserve exact bool/int/list types; coherent rehashed
+        # tampering cannot relabel a different formula as this frozen recipe.
+        require(gate.canonical(obj['selection_recipe']) == gate.canonical(expected) and
+                object_digest(obj['selection_recipe']) == obj['selection_recipe_sha256'] == digest,
+                'Selection recipe content/canonical SHA mismatch')
+    matches = [c for c in candidates if c.get('file') == Path(selected['path']).name]
+    require(len(matches) == 1, 'Exactly one matching recipe-bound candidate entry required')
+    entry = matches[0]
+    require(entry.get('ranking_method') == method and entry.get('selection_recipe_sha256') == digest,
+            'Candidate entry ranking/recipe SHA mismatch')
+    require(entry.get('method') == mask['method'] and type(entry.get('keep')) is int and entry['keep'] == selected['keep'],
+            'Candidate method/pool differs from actual mask')
+    if 'selection_recipe' in entry:
+        require(gate.canonical(entry['selection_recipe']) == gate.canonical(expected), 'Conflicting optional candidate recipe')
+
+
+def ready_plan(path, selected, ranking_method='mass_gate'):
     plan, raw_sha = read_json(path)
     require(plan.get('gpu_screen_ready') is True and plan.get('quality_approval') is False and
             plan.get('policy_version') == 'v3', 'Require GPU-screen-ready unapproved V3 plan, never old V2')
@@ -125,6 +172,7 @@ def ready_plan(path, selected):
     require(plan.get('mask_sha256', {}).get(Path(selected['path']).name) == selected['file_sha256'],
             'Selection plan does not bind exact mask file bytes')
     mask, _ = read_json(selected['path'])
+    verify_ranking_binding(plan, mask, selected, ranking_method)
     require(mask.get('policy_version') == 'v3' and mask.get('protocol_sha256') == internal and
             mask.get('gpu_screen_ready') is True and mask.get('quality_approval') is False, 'Mask planning bindings mismatch')
     require(isinstance(proof.get('run'), str), 'Source calibration run missing')
@@ -181,7 +229,7 @@ def prepare(a):
     actual = mask_identity(a.mask) if a.mask else None
     selected = mask_identity(a.selected_mask) if a.selected_mask else actual
     require(actual is None or selected == actual, 'Actual masked arm must use exactly the frozen selected mask')
-    plan = ready_plan(a.selection_plan, selected) if a.selection_plan and selected else None
+    plan = ready_plan(a.selection_plan, selected, a.ranking_method) if a.selection_plan and selected else None
     if a.selection_plan:
         require(plan is not None, 'Selection plan requires an explicit selected mask')
     policy = None
@@ -322,6 +370,7 @@ def execute(spec):
     manifest = {'schema_version': 1, 'scope': 'untraced_quality_comparison', 'completed': False,
         'eligible_quality_evaluation': False, 'split': a.split, 'episode_ids': spec['ids'],
         'runtime_arm': 'candidate', 'trace_enabled': False, 'skip_chat_parsing': False, 'reasoning_preserve': False,
+        'ranking_method': a.ranking_method,
         'model_sha256': MODEL_SHA, 'mask_sha256': spec['mask']['canonical_sha256'] if spec['mask'] else None,
         'mask_file_sha256': spec['mask']['file_sha256'] if spec['mask'] else None,
         'selected_mask': spec['selected_mask'], 'selection_plan_sha256': spec['plan']['file_sha256'] if spec['plan'] else None,
@@ -388,7 +437,7 @@ def execute(spec):
     descriptor = {k: manifest[k] for k in ('completed', 'eligible_quality_evaluation', 'skip_chat_parsing',
         'reasoning_preserve', 'model_sha256', 'mask_sha256', 'evaluation_protocol_sha256', 'corpus_manifest_sha256')}
     role = 'baseline' if spec['mask'] is None else ('random' if spec['mask'].get('method') == 'random_matched_pool' else 'masked')
-    descriptor.update(role=role, seed=0, trial=a.trial, split=a.split,
+    descriptor.update(role=role, seed=0, trial=a.trial, split=a.split, ranking_method=a.ranking_method,
         descriptor_status='PENDING_ANNOTATIONS_AND_INDEX_REBASE', index_ready=False,
         policy_file_sha256=manifest['policy_file_sha256'], selection_plan_sha256=manifest['selection_plan_sha256'],
         selected_mask=manifest['selected_mask'], annotations_required=True,
@@ -407,6 +456,8 @@ def parser():
     p.add_argument('--split', choices=('calibration', 'heldout'), default='calibration')
     p.add_argument('--episode-ids')
     p.add_argument('--mask', type=Path)
+    p.add_argument('--ranking-method', choices=('mass_gate', 'mean_selected_gate'), default='mass_gate',
+                   help='Explicit calibration selection recipe; metadata/validation only, never changes inference configuration')
     p.add_argument('--selection-plan', type=Path)
     p.add_argument('--allow-heldout', action='store_true')
     p.add_argument('--selected-mask', type=Path, help='Frozen candidate identity, including for unmasked heldout baseline')

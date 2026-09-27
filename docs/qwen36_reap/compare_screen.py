@@ -1,11 +1,27 @@
 """Strict offline paired CALIBRATION reducer; no inference, network or model access.
 
 API: compare(baseline, ranked, random, plan_path, ranked_mask, random_mask,
-             output, *, reviews=None, expected_cases=10).
+             output, *, reviews=None, expected_cases=10, ranking_method='mass_gate').
 All arguments are explicit closed artifact paths. reviews maps arm names to review
 JSON paths; omitted arms remain pending. CLI has corresponding --baseline,
 --ranked, --random, --plan, --ranked-mask, --random-mask, --output, --*-review,
---expected-cases {10,50}. Never pass active runs. 50 must be explicitly selected.
+--expected-cases {10,50}, --ranking-method {mass_gate,mean_selected_gate} (mass
+by default). Never pass active runs. 50 must be explicitly selected.
+
+Ranking identity is separate from the unchanged capture-only protocol SHA.
+New plan AND actual masks require all3 fields ranking_method, selection_recipe,
+selection_recipe_sha256; candidate entries require method+recipe SHA binding.
+Recipe must match expected_recipe() EXACTLY, recursively typed (bool!=0, int!=
+float), with UTF-8 ensure_ascii=False sorted compact SHA. Random mask.method
+stays random_matched_pool but references the SAME selected ranking recipe.
+All new outer manifests carry only ranking_method; recipeobjects/digests are
+bound through plan/mask file hashes, not copied into outer metadata. Mean needs
+explicit matching method on ALL3 arms, including unmasked baseline with no plan.
+Historical139/075 with ALL recipe metadata absent remains mass-only, tagged
+legacy_mass_only with null recipe in output; never silently promoted to mean or
+retroactively assigned a recipe. Partial metadata/method/recipe/hash mismatch
+fails. Both newmass and mean recipes are g-only ablations, not full REAP output
+norm ranking. All model/config/control/review gates and approvalfalse stay fixed.
 
 Required closed-run files: manifest.json, shutdown.json, server.pid.json,
 pilot/manifest.json, pilot/summary.json, pilot/transcripts.jsonl. Coordinator
@@ -79,6 +95,45 @@ def match(actual, expected):
 def planning_digest(value):
     # plan_masks.object_digest uses UTF-8 literals, unlike exporter canonical().
     return sha(json.dumps(value,sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False).encode('utf-8'))
+
+
+RANKING_METHODS = ('mass_gate','mean_selected_gate')
+RECIPE_FIELDS = {'ranking_method','selection_recipe','selection_recipe_sha256'}
+
+
+def typed_exact(actual, expected):
+    """JSON equality without Python's True==1 / 0.0==0 equivalence."""
+    if type(actual) is not type(expected): return False
+    if isinstance(expected,dict):
+        return set(actual)==set(expected) and all(typed_exact(actual[k],v) for k,v in expected.items())
+    if isinstance(expected,list):
+        return len(actual)==len(expected) and all(typed_exact(a,b) for a,b in zip(actual,expected))
+    return actual==expected
+
+
+def expected_recipe(ranking_method):
+    require(type(ranking_method) is str and ranking_method in RANKING_METHODS,'unsupported explicit ranking method')
+    return {'schema_version':1,'ranking_method':ranking_method,'scope':'g_only_ablation_not_full_REAP',
+        'includes_expert_output_norm':False,
+        'score_formula':'sum_selected_gate' if ranking_method=='mass_gate' else 'sum_selected_gate / selected_count',
+        'selected_count_definition':'top8 occurrences including zero gate weights','unobserved_score':0,
+        'tie_break':'score_descending_then_expert_id_ascending',
+        'pool_rule':'fixed_keep_else_actual_gate_mass_coverage_in_rank_order',
+        'retained_mass_definition':'actual_sum_selected_gate_not_sum_of_ranking_scores',
+        'pools':[128,96,64,32],'random_seed':20260713}
+
+
+def selection_metadata(value,ranking_method,*,legacy_allowed):
+    present=RECIPE_FIELDS & set(value)
+    if not present:
+        require(legacy_allowed and ranking_method=='mass_gate','missing ranking recipe; legacy supports mass_gate only')
+        return None
+    require(present==RECIPE_FIELDS,'partial ranking/recipe metadata rejected')
+    recipe=expected_recipe(ranking_method)
+    require(typed_exact(value['ranking_method'],ranking_method) and typed_exact(value['selection_recipe'],recipe),
+            'ranking method/typed exact selection recipe mismatch')
+    require(value['selection_recipe_sha256']==planning_digest(value['selection_recipe']), 'selection recipe hash mismatch')
+    return value['selection_recipe_sha256']
 
 
 def hash_value(value):
@@ -220,8 +275,43 @@ def validate_record(r):
     else: require(r.get('error_class') is not None,'failed record missing model-stage error')
 
 
-def validate_plan(snapshot,path,masks,arms):
+def validate_plan(snapshot,path,masks,arms,ranking_method='mass_gate'):
     plan,phash=snapshot.obj(path)
+    recipe_sha=selection_metadata(plan,ranking_method,legacy_allowed=True)
+    candidates={}
+    entries=plan.get('candidates',[])
+    require(isinstance(entries,list),'candidate entries must be a list')
+    if recipe_sha is not None:
+        require(bool(entries),'recipe-bound plan requires candidate entries')
+    for entry in entries:
+        require(isinstance(entry,dict),'candidate entry must be an object')
+        fields={'ranking_method','selection_recipe_sha256'} & set(entry)
+        if recipe_sha is None:
+            require(not fields and 'selection_recipe' not in entry,'legacy plan cannot silently acquire candidate recipe metadata')
+            require(entry.get('method') in ('mass_gate','random_matched_pool'),'legacy candidate cannot declare a new ranking method')
+        else:
+            require(fields=={'ranking_method','selection_recipe_sha256'} and
+                    typed_exact(entry['ranking_method'],ranking_method) and entry['selection_recipe_sha256']==recipe_sha,
+                    'candidate ranking/recipe hash missing or mismatched')
+            if 'selection_recipe' in entry:
+                require(typed_exact(entry['selection_recipe'],plan['selection_recipe']),'candidate recipe content mismatch')
+            require(type(entry.get('keep')) is int and entry['keep'] in plan['selection_recipe']['pools'] and
+                    entry.get('method') in (ranking_method,'random_matched_pool'),'candidate keep/method mismatch')
+        name=entry.get('file')
+        require(isinstance(name,str) and name and Path(name).name==name and PureWindowsPath(name).name==name and name not in candidates,
+                'candidate filenames invalid/duplicate')
+        candidates[name]=entry
+    if recipe_sha is not None:
+        require(set(candidates)==set(plan.get('mask_sha256',{})),'recipe candidate inventory differs from plan mask hashes')
+        for digest in plan['mask_sha256'].values(): hash_value(digest)
+    for arm in arms.values():
+        outer=arm['outer']
+        require(not ({'selection_recipe','selection_recipe_sha256','legacy_selection_recipe'} & set(outer)),
+                'unsupported outer recipe metadata: wrapper contract adds only ranking_method')
+        if 'ranking_method' not in outer:
+            require(ranking_method=='mass_gate' and recipe_sha is None,'recipe-bound experiment requires explicit arm ranking_method')
+        else:
+            require(typed_exact(outer['ranking_method'],ranking_method),'arm ranking_method differs from explicit experiment')
     require(match(plan,dict(gpu_screen_ready=True,quality_approval=False,policy_version='v3')),'plan not GPU-screen-ready V3/unapproved')
     internal=hash_value(plan.get('protocol_sha256')); proof=plan.get('provenance',{})
     require(proof.get('protocol_sha256')==internal and proof.get('gpu_screen_ready') is True,'plan provenance readiness mismatch')
@@ -244,7 +334,13 @@ def validate_plan(snapshot,path,masks,arms):
     result={}
     for role,mask_path in masks.items():
         mask,digest=snapshot.obj(mask_path); selected=gate.validate_mask(mask,gate.PRODUCTION); keep=len(selected['0'])
-        method='mass_gate' if role=='ranked' else 'random_matched_pool'
+        observed_recipe=selection_metadata(mask,ranking_method,legacy_allowed=recipe_sha is None)
+        require(observed_recipe==recipe_sha,'mask recipe status/hash differs from plan; no silent upgrade')
+        method=ranking_method if role=='ranked' else 'random_matched_pool'
+        if recipe_sha is not None:
+            entry=candidates.get(Path(mask_path).name,{})
+            require(typed_exact(entry.get('keep'),keep) and typed_exact(entry.get('method'),method),
+                    'selected mask does not match candidate entry')
         require(mask.get('method')==method and match(mask,dict(gpu_screen_ready=True,quality_approval=False,policy_version='v3',protocol_sha256=internal)),
                 'mask method/planning provenance mismatch')
         require(plan.get('mask_sha256',{}).get(Path(mask_path).name)==digest,'mask exact plan bytes mismatch')
@@ -259,7 +355,9 @@ def validate_plan(snapshot,path,masks,arms):
     require(baseline.get('mask_sha256') is None and baseline.get('mask_file_sha256') is None and
             not any('MASK' in k.upper() for k in baseline['environment']),'baseline must be unmasked')
     require(baseline.get('selection_plan_sha256') in (None,phash),'baseline chosen plan mismatch')
-    return phash,result
+    return phash,result,{'ranking_method':ranking_method,'selection_recipe':plan.get('selection_recipe'),
+        'selection_recipe_sha256':recipe_sha,'ranking_metadata_status':'recipe_bound' if recipe_sha else 'legacy_mass_only',
+        'capture_protocol_sha256':internal}
 
 
 def explicit_review(snapshot,path,arm):
@@ -289,7 +387,8 @@ def event_list(counts):
     return [{'id':case,'category':category,'occurrences':count} for (case,category),count in sorted(counts.items())]
 
 
-def compare(baseline,ranked,random,plan_path,ranked_mask,random_mask,output,*,reviews=None,expected_cases=10):
+def compare(baseline,ranked,random,plan_path,ranked_mask,random_mask,output,*,reviews=None,expected_cases=10,ranking_method='mass_gate'):
+    expected_recipe(ranking_method)  # explicit supported selector, before input reads
     require(type(expected_cases) is int and expected_cases in (10,50),'explicit calibration screen size10 or50 only')
     output=Path(output); require(not output.exists() and output.parent.is_dir(),'output must be NEW with existing parent')
     snap=Snapshot(); arms={role:closed_run(snap,path,expected_cases) for role,path in [('baseline',baseline),('ranked',ranked),('random',random)]}
@@ -299,7 +398,7 @@ def compare(baseline,ranked,random,plan_path,ranked_mask,random_mask,output,*,re
         require(all(arm['outer'].get(k)==base['outer'].get(k) for k in common),'common runtime/source/protocol identity drift')
         env={k:v for k,v in arm['outer']['environment'].items() if k!='QWEN36_REAP_MASK'}
         require(env==base['outer']['environment'],'common numerical environment drift')
-    plan_hash,mask_ids=validate_plan(snap,plan_path,{'ranked':ranked_mask,'random':random_mask},arms)
+    plan_hash,mask_ids,recipe_identity=validate_plan(snap,plan_path,{'ranked':ranked_mask,'random':random_mask},arms,ranking_method)
     review_paths=reviews or {}; require(set(review_paths)<=set(arms),'unknown review role')
     counters={}; review_hashes={}
     for role,path in review_paths.items(): counters[role],review_hashes[role]=explicit_review(snap,path,arms[role])
@@ -327,6 +426,7 @@ def compare(baseline,ranked,random,plan_path,ranked_mask,random_mask,output,*,re
             'Random is a reviewed control, not a substitute for ranked evidence; control failures remain explicit.',
             'This10/50 calibration screen does not satisfy heldout20 gate or approve export/next K.'],
         'input_sha256':{str(path):digest for path,(_,digest) in snap.files.items()}}
+    report.update(recipe_identity)
     snap.verify()
     data=canonical(report)+b'\n'; temp=None
     try:
@@ -343,8 +443,9 @@ def main():
     for key in ('baseline','ranked','random','plan','ranked-mask','random-mask','output'): p.add_argument('--'+key,type=Path,required=True)
     for role in ('baseline','ranked','random'): p.add_argument('--'+role+'-review',type=Path)
     p.add_argument('--expected-cases',type=int,choices=(10,50),default=10)
+    p.add_argument('--ranking-method',choices=RANKING_METHODS,default='mass_gate',help='Explicit calibration ranking experiment; never inferred from scores or files')
     a=p.parse_args(); reviews={role:getattr(a,role+'_review') for role in ('baseline','ranked','random') if getattr(a,role+'_review')}
-    result=compare(a.baseline,a.ranked,a.random,a.plan,a.ranked_mask,a.random_mask,a.output,reviews=reviews,expected_cases=a.expected_cases)
+    result=compare(a.baseline,a.ranked,a.random,a.plan,a.ranked_mask,a.random_mask,a.output,reviews=reviews,expected_cases=a.expected_cases,ranking_method=a.ranking_method)
     print(json.dumps({'decision':result['decision'],'quality_approval':False,'output':str(a.output)}))
 
 

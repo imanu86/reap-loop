@@ -120,6 +120,30 @@ class ScreenTests(unittest.TestCase):
         return c.compare(self.folders['baseline'],self.folders['ranked'],self.folders['random'],self.plan_path,
             self.mask_paths['ranked'],self.mask_paths['random'],self.out,reviews=reviews,**kwargs)
 
+    def refresh_mask_plan_bindings(self):
+        for role,mask in self.masks.items():
+            path=self.mask_paths[role]; self.save(path,mask); digest=c.sha(c.canonical(mask))
+            self.plan['mask_sha256'][path.name]=digest
+            m=self.outer[role]; m['mask_sha256']=m['mask_file_sha256']=digest
+            m['selected_mask'].update(file_sha256=digest,canonical_sha256=digest,method=mask['method'])
+        self.save(self.plan_path,self.plan)
+        phash=c.sha(c.canonical(self.plan))
+        for role in ('ranked','random'): self.outer[role]['selection_plan_sha256']=phash
+        self.sync()
+
+    def recipe_plan(self,method='mean_selected_gate'):
+        recipe=c.expected_recipe(method); digest=c.planning_digest(recipe)
+        meta={'ranking_method':method,'selection_recipe':recipe,'selection_recipe_sha256':digest}
+        self.plan.update(copy.deepcopy(meta)); self.plan['candidates']=[]
+        for role,mask in self.masks.items():
+            mask.update(copy.deepcopy(meta))
+            if role=='ranked': mask['method']=method
+            self.plan['candidates'].append({'file':self.mask_paths[role].name,'keep':128,'method':mask['method'],
+                'ranking_method':method,'selection_recipe_sha256':digest})
+        for role in self.outer: self.outer[role]['ranking_method']=method
+        self.refresh_mask_plan_bindings()
+        return digest
+
     def test_default_pending_no_auto_approval_and_no_private_content(self):
         result=self.run_compare()
         self.assertEqual(result['decision'],'pending_explicit_critical_review')
@@ -261,6 +285,106 @@ class ScreenTests(unittest.TestCase):
         with patch.object(c.Snapshot,'verify',mutate), self.assertRaisesRegex(ValueError,'changed'):
             self.run_compare()
         self.assertFalse(self.out.exists()); self.assertFalse(list(self.root.glob('__screen_*.partial')))
+
+    def test_legacy_default_mass_only_never_upgraded_to_mean(self):
+        with self.assertRaisesRegex(ValueError,'legacy supports mass_gate only'):
+            self.run_compare(ranking_method='mean_selected_gate')
+        result=self.run_compare()
+        self.assertEqual(result['ranking_method'],'mass_gate')
+        self.assertEqual(result['ranking_metadata_status'],'legacy_mass_only')
+        self.assertIsNone(result['selection_recipe_sha256'])
+        self.assertIsNone(result['selection_recipe'])
+
+    def test_new_mean_requires_explicit_selector_and_preserves_capture_protocol(self):
+        before=self.plan['protocol_sha256']; digest=self.recipe_plan()
+        # Independent published recipe digest from parent1557/142 schema.
+        self.assertEqual(digest,'7e404ac0d429abaac9a6dabe1df75348ea7089edc972f1597ddea19de25d9132')
+        with self.assertRaisesRegex(ValueError,'typed exact selection recipe'):
+            self.run_compare()
+        result=self.run_compare(ranking_method='mean_selected_gate')
+        self.assertEqual(result['ranking_method'],'mean_selected_gate')
+        self.assertEqual(result['selection_recipe_sha256'],digest)
+        self.assertEqual(result['capture_protocol_sha256'],before)
+        self.assertEqual(result['ranking_metadata_status'],'recipe_bound')
+        self.assertEqual(result['decision'],'pending_explicit_critical_review')
+        self.assertFalse(result['next_k_approved'])
+        self.assertIsNone(self.outer['baseline']['mask_sha256'])
+        self.assertIsNone(self.outer['baseline']['selection_plan_sha256'])
+
+    def test_new_mass_recipe_supported_without_changing_legacy_default(self):
+        digest=self.recipe_plan('mass_gate')
+        result=self.run_compare()
+        self.assertEqual(result['selection_recipe_sha256'],digest)
+        self.assertEqual(result['ranking_metadata_status'],'recipe_bound')
+        self.assertFalse(result['quality_approval'])
+
+    def test_recipe_strict_types_and_mean_semantics_even_after_rehash(self):
+        changes=[('schema_version',True),('includes_expert_output_norm',0),('unobserved_score',False),
+            ('unobserved_score',0.0),('random_seed',20260713.0),('pools',[128.0,96,64,32]),
+            ('score_formula','sum_selected_gate'),('selected_count_definition','positive selected weights only'),
+            ('scope','full_REAP'),('includes_expert_output_norm',True),('unexpected_field',1)]
+        for key,value in changes:
+            with self.subTest(key=key,value=value):
+                recipe=c.expected_recipe('mean_selected_gate'); recipe[key]=value
+                data={'ranking_method':'mean_selected_gate','selection_recipe':recipe,
+                      'selection_recipe_sha256':c.planning_digest(recipe)}
+                with self.assertRaisesRegex(ValueError,'typed exact'):
+                    c.selection_metadata(data,'mean_selected_gate',legacy_allowed=False)
+
+    def test_partial_recipe_metadata_and_candidate_metadata_rejected(self):
+        for key in c.RECIPE_FIELDS:
+            data={'ranking_method':'mass_gate','selection_recipe':c.expected_recipe('mass_gate'),
+                  'selection_recipe_sha256':c.planning_digest(c.expected_recipe('mass_gate'))}
+            data.pop(key)
+            with self.subTest(key=key), self.assertRaisesRegex(ValueError,'partial'):
+                c.selection_metadata(data,'mass_gate',legacy_allowed=True)
+        self.recipe_plan()
+        self.plan['candidates'][0].pop('selection_recipe_sha256'); self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'candidate ranking/recipe'):
+            self.run_compare(ranking_method='mean_selected_gate')
+
+    def test_mask_recipe_reference_and_hash_cannot_differ_from_plan(self):
+        self.recipe_plan()
+        mask=self.masks['random']
+        mask.update(ranking_method='mass_gate',selection_recipe=c.expected_recipe('mass_gate'),
+                    selection_recipe_sha256=c.planning_digest(c.expected_recipe('mass_gate')))
+        self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'typed exact selection recipe'):
+            self.run_compare(ranking_method='mean_selected_gate')
+        self.recipe_plan()
+        self.masks['ranked']['selection_recipe_sha256']='0'*64; self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'recipe hash mismatch'):
+            self.run_compare(ranking_method='mean_selected_gate')
+
+    def test_outer_method_explicit_for_all_arms_and_no_obsolete_recipe_fields(self):
+        self.recipe_plan()
+        self.outer['baseline'].pop('ranking_method'); self.sync()
+        with self.assertRaisesRegex(ValueError,'explicit arm ranking_method'):
+            self.run_compare(ranking_method='mean_selected_gate')
+        self.outer['baseline']['ranking_method']='mass_gate'; self.sync()
+        with self.assertRaisesRegex(ValueError,'arm ranking_method differs'):
+            self.run_compare(ranking_method='mean_selected_gate')
+        self.outer['baseline']['ranking_method']='mean_selected_gate'
+        self.outer['baseline']['selection_recipe_sha256']=self.plan['selection_recipe_sha256']; self.sync()
+        with self.assertRaisesRegex(ValueError,'only ranking_method'):
+            self.run_compare(ranking_method='mean_selected_gate')
+
+    def test_legacy_cannot_silently_acquire_new_mask_recipe(self):
+        mask=self.masks['ranked']; recipe=c.expected_recipe('mass_gate')
+        mask.update(ranking_method='mass_gate',selection_recipe=recipe,selection_recipe_sha256=c.planning_digest(recipe))
+        self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'no silent upgrade'): self.run_compare()
+
+    def test_new_plan_requires_mask_and_candidate_complete_binding(self):
+        self.recipe_plan()
+        for key in c.RECIPE_FIELDS: self.masks['ranked'].pop(key)
+        self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'missing ranking recipe'):
+            self.run_compare(ranking_method='mean_selected_gate')
+        self.recipe_plan()
+        self.plan['candidates'][0]['keep']=True; self.refresh_mask_plan_bindings()
+        with self.assertRaisesRegex(ValueError,'candidate keep/method'):
+            self.run_compare(ranking_method='mean_selected_gate')
 
     def test_planning_digest_preserves_planner_unicode_encoding(self):
         value={'note':'caffè'}

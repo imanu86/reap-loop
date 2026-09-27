@@ -113,6 +113,19 @@ class QualityServerTests(unittest.TestCase):
         self.addCleanup(check.stop)
         return self.mask_path, self.plan_path
 
+    def recipe_bundle(self, method='mean_selected_gate', random=False):
+        self.bundle(method='random_matched_pool' if random else method)
+        recipe=q.expected_selection_recipe(method)
+        digest=q.object_digest(recipe)
+        self.mask.update(ranking_method=method,selection_recipe=recipe,selection_recipe_sha256=digest)
+        self.put(self.mask_path,self.mask)
+        self.plan.update(ranking_method=method,selection_recipe=deepcopy(recipe),selection_recipe_sha256=digest)
+        self.plan['mask_sha256'][self.mask_path.name]=q.sha(self.mask_path)
+        self.plan['candidates']=[{'file':self.mask_path.name,'keep':128,'method':self.mask['method'],
+                                 'ranking_method':method,'selection_recipe_sha256':digest}]
+        self.put(self.plan_path,self.plan)
+        return self.args('--mask',self.mask_path,'--selection-plan',self.plan_path,'--ranking-method',method)
+
     def heldout_args(self, masked=False):
         self.bundle()
         selected = q.mask_identity(self.mask_path)
@@ -168,6 +181,89 @@ class QualityServerTests(unittest.TestCase):
                          self.args('--split','heldout','--allow-heldout'), self.args('--allow-heldout')]:
                 with self.subTest(args=args), self.assertRaises(ValueError):
                     q.prepare(args)
+
+    def test_ranking_flag_unmasked_control_and_frozen_inference_contract(self):
+        baseline=q.prepare(self.args())
+        mean=q.prepare(self.args('--ranking-method','mean_selected_gate'))
+        self.assertEqual(baseline['args'].ranking_method,'mass_gate')
+        self.assertEqual(mean['args'].ranking_method,'mean_selected_gate')
+        self.assertIsNone(mean['mask']);self.assertIsNone(mean['selected_mask']);self.assertIsNone(mean['plan'])
+        self.assertEqual(baseline['recorded_env'],mean['recorded_env'])
+        self.assertEqual(q.gate.sha(q.gate.canonical(q.command())),
+                         '987ba8a7aafdf6eaa7ebf3ae64ab8076a07eec6bc8e1aaa2828a0beee0e74e5b')
+        self.assertEqual(q.gate.sha(q.gate.canonical(q.FROZEN_CONFIG)),
+                         '03f37bef233ec5ae75ea72c9eecde52657cf155248daa223d2cec223cf51e9e4')
+        with patch('run_quality_server.select_episodes',side_effect=AssertionError('No heldout load')):
+            with self.assertRaises(ValueError):
+                q.prepare(self.args('--split','heldout','--allow-heldout','--ranking-method','mean_selected_gate'))
+
+    def test_new_recipe_ranked_and_random_require_explicit_matching_method(self):
+        for random in (False,True):
+            args=self.recipe_bundle(random=random)
+            spec=q.prepare(args)
+            self.assertEqual(spec['mask']['method'],'random_matched_pool' if random else 'mean_selected_gate')
+            self.assertEqual(set(spec['mask']),{'path','file_sha256','canonical_sha256','keep','method'})
+            self.assertEqual(set(spec['plan']),{'path','file_sha256','value','internal_protocol_sha256'})
+            args.ranking_method='mass_gate'
+            with self.assertRaises(ValueError):q.prepare(args)
+        args=self.recipe_bundle(method='mass_gate')
+        self.assertEqual(q.prepare(args)['mask']['method'],'mass_gate')
+        self.bundle(method='random_matched_pool')
+        with self.assertRaises(ValueError):
+            q.prepare(self.args('--mask',self.mask_path,'--selection-plan',self.plan_path,'--ranking-method','mean_selected_gate'))
+
+    def test_partial_recipe_and_candidate_binding_cannot_fallback_to_legacy(self):
+        self.recipe_bundle()
+        selected=q.mask_identity(self.mask_path)
+        mutations=[lambda p,m:p.pop('selection_recipe_sha256'),lambda p,m:m.pop('selection_recipe'),
+            lambda p,m:p['candidates'][0].pop('ranking_method'),
+            lambda p,m:p['candidates'][0].update(selection_recipe_sha256='0'*64),
+            lambda p,m:p['candidates'][0].update(method='mass_gate'),
+            lambda p,m:p['candidates'].append(deepcopy(p['candidates'][0])),
+            lambda p,m:p['candidates'][0].update(keep=128.0),
+            lambda p,m:m.update(selection_recipe_sha256='0'*64)]
+        for mutate in mutations:
+            plan,mask=deepcopy(self.plan),deepcopy(self.mask);mutate(plan,mask)
+            with self.assertRaises(ValueError):q.verify_ranking_binding(plan,mask,selected,'mean_selected_gate')
+        self.bundle()
+        self.plan['ranking_method']='mass_gate'
+        with self.assertRaises(ValueError):
+            q.verify_ranking_binding(self.plan,self.mask,q.mask_identity(self.mask_path),'mass_gate')
+
+    def test_recipe_exact_types_formula_and_canonical_digest(self):
+        self.recipe_bundle()
+        self.assertEqual(q.object_digest(q.expected_selection_recipe('mean_selected_gate')),
+                         '7e404ac0d429abaac9a6dabe1df75348ea7089edc972f1597ddea19de25d9132')
+        selected=q.mask_identity(self.mask_path)
+        for key,value in [('includes_expert_output_norm',True),('includes_expert_output_norm',0),
+                          ('schema_version',True),('unobserved_score',0.0),('random_seed',20260713.0),
+                          ('score_formula','sum_selected_gate / all_tokens'),('pools',[128,96,64,8])]:
+            plan,mask=deepcopy(self.plan),deepcopy(self.mask)
+            recipe=deepcopy(plan['selection_recipe']);recipe[key]=value
+            digest=q.object_digest(recipe)
+            for obj in (plan,mask):obj.update(selection_recipe=deepcopy(recipe),selection_recipe_sha256=digest)
+            plan['candidates'][0]['selection_recipe_sha256']=digest
+            with self.subTest(key=key,value=value),self.assertRaises(ValueError):
+                q.verify_ranking_binding(plan,mask,selected,'mean_selected_gate')
+        pretty=q.json.dumps(self.mask,indent=2,sort_keys=True).encode('utf-8')
+        self.mask_path.write_bytes(pretty)
+        reformatted=q.mask_identity(self.mask_path)
+        self.assertEqual(selected['canonical_sha256'],reformatted['canonical_sha256'])
+        self.assertNotEqual(selected['file_sha256'],reformatted['file_sha256'])
+        with self.assertRaises(ValueError):q.ready_plan(self.plan_path,reformatted,'mean_selected_gate')
+
+    def test_unmasked_mean_manifest_records_reference_not_fake_active_mask(self):
+        spec=q.prepare(self.args('--ranking-method','mean_selected_gate','--episode-ids','calibration-invented-0'))
+        server=OwnedServer()
+        with patch('run_quality_server.subprocess.Popen',return_value=server),patch('run_quality_server.wait_server',return_value=self.props()), \
+             patch('run_quality_server.subprocess.run',side_effect=lambda *a,**kw:self.results(spec)):
+            manifest=q.execute(spec)
+        descriptor,_=q.read_json(spec['args'].out/'run-descriptor.json')
+        self.assertEqual(manifest['ranking_method'],'mean_selected_gate')
+        self.assertEqual(descriptor['ranking_method'],'mean_selected_gate')
+        self.assertIsNone(manifest['mask_sha256']);self.assertIsNone(manifest['selected_mask'])
+        self.assertIsNone(manifest['selection_plan_sha256'])
+        self.assertFalse(manifest['eligible_quality_evaluation'])
 
     def test_calibration_default_full50_and_ordered_subset_only(self):
         self.assertEqual(len(q.prepare(self.args())['ids']), 50)
