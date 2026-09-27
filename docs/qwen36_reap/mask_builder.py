@@ -2,8 +2,15 @@
 
 Trace files must contain calibration ONLY (exclude startup/warmup/held-out).
 The caller supplies provenance; a split label is not independent proof of dataset isolation.
+Writer contract audited in isolated src/llama-reap.cpp: next_decode()/begin()/finish().
+Counters are positive uint64; one ubatch has one decode_call_id and dense token indices.
+Token/position/sequence IDs are nonnegative int32, but the header has no vocabulary size.
+There is no total-count/end-of-stream marker: whole missing batches or a suffix missing
+from ALL layers cannot be proved absent. Counter gaps are allowed (e.g. skipped warmup).
+No semantic phase or cross-ubatch position ordering is inferred from batch size.
 """
 import argparse
+import copy
 import hashlib
 import json
 import math
@@ -12,15 +19,38 @@ import random
 import re
 
 
-def integer(value, label, minimum=0):
-    if type(value) is not int or value < minimum:
+INT32_MAX = (1 << 31) - 1
+UINT64_MAX = (1 << 64) - 1
+
+
+def integer(value, label, minimum=0, maximum=None):
+    if type(value) is not int or value < minimum or (maximum is not None and value > maximum):
         raise ValueError('Invalid ' + label)
     return value
 
 
-def aggregate(paths, model_sha256):
-    if not re.fullmatch(r'[0-9a-fA-F]{64}', model_sha256):
+def validate_sha(model_sha256):
+    if not isinstance(model_sha256, str) or not re.fullmatch(r'[0-9a-fA-F]{64}', model_sha256):
         raise ValueError('Expected actual model SHA256')
+
+
+def trace_object(raw):
+    def unique(pairs):
+        result = {}
+        for key, value in pairs:
+            if key in result:
+                raise ValueError('Duplicate trace JSON key: ' + key)
+            result[key] = value
+        return result
+
+    value = json.loads(raw, object_pairs_hook=unique)
+    if not isinstance(value, dict):
+        raise ValueError('Expected trace JSON object')
+    return value
+
+
+def aggregate(paths, model_sha256):
+    validate_sha(model_sha256)
     geometry = None
     totals = None
     counts = None
@@ -30,10 +60,11 @@ def aggregate(paths, model_sha256):
         with Path(path).open('rb') as stream:
             first = stream.readline()
             digest.update(first)
-            header = json.loads(first)
-            if header.get('record_type') != 'header' or header.get('schema_version') != 1:
+            header = trace_object(first)
+            if header.get('record_type') != 'header' or integer(header.get('schema_version'), 'schema_version') != 1:
                 raise ValueError('Missing schema1 trace header')
-            if header.get('model_sha256', '').lower() != model_sha256.lower():
+            validate_sha(header.get('model_sha256'))
+            if header['model_sha256'].lower() != model_sha256.lower():
                 raise ValueError('Checkpoint identity mismatch')
             shape = tuple(integer(header.get(k), k, 1) for k in ('layer_count', 'expert_count', 'top_k'))
             if shape != (40, 256, 8) or header.get('architecture') != 'qwen35moe':
@@ -46,6 +77,7 @@ def aggregate(paths, model_sha256):
                 totals = [[0.0] * experts for _ in range(layers)]
                 counts = [0] * layers
             batch = None
+            decode_call = None
             coverage = {}
             tokens = {}
             rows = 0
@@ -56,29 +88,38 @@ def aggregate(paths, model_sha256):
                 reference = coverage[0]
                 if not reference or any(coverage[layer] != reference for layer in range(layers)):
                     raise ValueError('Routing token alignment differs between layers')
+                if reference != set(range(len(reference))):
+                    raise ValueError('Routing token indices must be dense from zero')
 
             for raw in stream:
                 digest.update(raw)
-                row = json.loads(raw)
-                if row.get('record_type') != 'route' or row.get('schema_version') != 1:
+                row = trace_object(raw)
+                if row.get('record_type') != 'route' or integer(row.get('schema_version'), 'schema_version') != 1:
                     raise ValueError('Unexpected record/error in trace')
-                current = integer(row.get('batch_id'), 'batch_id')
-                if batch is not None and current != batch:
-                    if current < batch:
-                        raise ValueError('Non-monotonic batch IDs')
-                    finish_batch()
-                    coverage = {}
-                    tokens = {}
-                batch = current
+                current = integer(row.get('batch_id'), 'batch_id', 1, UINT64_MAX)
+                current_call = integer(row.get('decode_call_id'), 'decode_call_id', 1, UINT64_MAX)
+                if batch is not None:
+                    if current == batch and current_call != decode_call:
+                        raise ValueError('Decode call differs within routing batch')
+                    if current != batch:
+                        if current < batch:
+                            raise ValueError('Non-monotonic batch IDs')
+                        if current_call < decode_call:
+                            raise ValueError('Non-monotonic decode call IDs')
+                        finish_batch()
+                        coverage = {}
+                        tokens = {}
+                batch, decode_call = current, current_call
                 layer = integer(row.get('layer'), 'layer')
-                index = integer(row.get('token_index'), 'token_index')
-                position = integer(row.get('token_position'), 'token_position')
+                index = integer(row.get('token_index'), 'token_index', 0, INT32_MAX)
+                position = integer(row.get('token_position'), 'token_position', 0, INT32_MAX)
+                token_id = integer(row.get('token_id'), 'token_id', 0, INT32_MAX)
                 if layer >= layers or row.get('phase') not in ('prefill', 'decode', 'unknown'):
                     raise ValueError('Invalid layer or phase')
                 seqs = row.get('seq_ids')
-                if not isinstance(seqs, list) or not seqs or any(type(x) is not int or x < 0 for x in seqs) or len(set(seqs)) != len(seqs):
+                if not isinstance(seqs, list) or not seqs or any(type(x) is not int or not 0 <= x <= INT32_MAX for x in seqs) or len(set(seqs)) != len(seqs):
                     raise ValueError('Invalid sequence IDs')
-                identity = (position, row.get('token_id'), tuple(seqs), row['phase'])
+                identity = (position, token_id, tuple(seqs), row['phase'], current_call)
                 if index in tokens and tokens[index] != identity:
                     raise ValueError('Token identity differs across layers')
                 tokens[index] = identity
@@ -108,19 +149,64 @@ def aggregate(paths, model_sha256):
     return totals, counts, provenance
 
 
-def build(paths, model_sha256, *, split, keep=None, coverage=0.95, random_seed=None):
+def validate_selection(split, keep, coverage):
     if split != 'calibration':
         raise ValueError('Held-out/evaluation traces must never select experts')
     if keep is not None and (type(keep) is not int or not 8 <= keep <= 256):
         raise ValueError('Keep must preserve top8 and stay within256')
-    if not math.isfinite(coverage) or not 0 < coverage <= 1:
+    if type(coverage) not in (int, float) or not math.isfinite(coverage) or not 0 < coverage <= 1:
         raise ValueError('Invalid coverage target')
-    scores, counts, provenance = aggregate(paths, model_sha256)
+
+
+def build(paths, model_sha256, *, split, keep=None, coverage=0.95, random_seed=None):
+    """Legacy API; validation and output ordering unchanged for valid inputs."""
+    validate_selection(split, keep, coverage)  # reject held-out before any trace I/O
+    return build_from_aggregate(aggregate(paths, model_sha256), model_sha256,
+        split=split, keep=keep, coverage=coverage, random_seed=random_seed)
+
+
+def build_from_aggregate(validated_aggregate, model_sha256, *, split, keep=None,
+                         coverage=0.95, random_seed=None):
+    """Pure selection from ONE aggregate(paths, model_sha256) result; never opens files.
+
+    Caller must supply the unmodified validated triple with the SAME checkpoint SHA.
+    Structural checks below catch corruption, not provenance fabrication: the legacy
+    triple has no cryptographic binding to its separately supplied model_sha256.
+    It can be reused for K128/K64/dynamic and seeded matched controls without rereading
+    traces. Inputs are not mutated; each returned manifest owns its provenance copy.
+    """
+    validate_sha(model_sha256)
+    validate_selection(split, keep, coverage)
+    if not isinstance(validated_aggregate, (tuple, list)) or len(validated_aggregate) != 3:
+        raise ValueError('Expected validated aggregate triple')
+    scores, counts, provenance = validated_aggregate
+    if not isinstance(scores, (tuple, list)) or len(scores) != 40 or not isinstance(counts, (tuple, list)) or len(counts) != 40:
+        raise ValueError('Invalid aggregate geometry')
+    for layer, mass in enumerate(scores):
+        integer(counts[layer], 'aggregate token count', 1)
+        if not isinstance(mass, (tuple, list)) or len(mass) != 256:
+            raise ValueError('Invalid aggregate expert dimension')
+        if any(type(v) not in (int, float) or not math.isfinite(v) or v < 0 for v in mass):
+            raise ValueError('Invalid aggregate mass')
+        total = math.fsum(mass)
+        if not math.isfinite(total) or total <= 0:
+            raise ValueError('Empty/nonfinite aggregate mass')
+    if len(set(counts)) != 1:
+        raise ValueError('Aggregate token counts differ between layers')
+    if not isinstance(provenance, (tuple, list)) or not provenance:
+        raise ValueError('Missing validated trace provenance')
+    for source in provenance:
+        if not isinstance(source, dict) or not isinstance(source.get('file'), str):
+            raise ValueError('Invalid trace provenance')
+        validate_sha(source.get('sha256'))
+        integer(source.get('rows'), 'provenance row count', 1)
+    if sum(source['rows'] for source in provenance) != sum(counts):
+        raise ValueError('Aggregate/provenance row count mismatch')
     rng = random.Random(random_seed)
     result = {'schema_version': 1, 'model_sha256': model_sha256.lower(), 'architecture': 'qwen35moe',
               'expert_count': 256, 'top_k': 8, 'layer_count': 40, 'layers': {},
               'method': 'mass_gate' if random_seed is None else 'random_matched_pool',
-              'calibration_split': split, 'source_traces': provenance, 'diagnostics': {},
+              'calibration_split': split, 'source_traces': copy.deepcopy(provenance), 'diagnostics': {},
               'random_seed': random_seed, 'requested_keep': keep, 'requested_coverage': coverage}
     for layer, mass in enumerate(scores):
         total = math.fsum(mass)
