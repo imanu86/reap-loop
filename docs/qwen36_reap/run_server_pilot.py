@@ -21,7 +21,8 @@ def main():
     selection = p.add_mutually_exclusive_group()
     selection.add_argument('--limit', type=int)
     selection.add_argument('--episode-ids', help='Explicit comma-separated calibration IDs only')
-    p.add_argument('--policy-version', choices=('v1', 'v2'), default='v1')
+    p.add_argument('--policy-version', choices=('v1', 'v2', 'v3'), default='v1')
+    p.add_argument('--context', type=int, choices=(4096, 6144), default=4096)
     p.add_argument('--runtime', choices=('baseline', 'candidate'), default='candidate')
     p.add_argument('--no-trace', action='store_true', help='Diagnostic uninstrumented control, not a performance promotion')
     p.add_argument('--diagnostic-raw', action='store_true')
@@ -31,6 +32,8 @@ def main():
     p.add_argument('--sampling-profile', choices=('greedy', 'qwen-coding'), default='greedy')
     p.add_argument('--seed', type=int, default=0)
     a = p.parse_args()
+    if not 1 <= a.max_output < a.context:
+        raise ValueError('Require 1 <= max_output < context before loading model')
     if not 0 <= a.seed < 4294967295:
         raise ValueError('Require deterministic seed0..4294967294, never random sentinel')
     if a.limit is None and a.episode_ids is None:
@@ -64,16 +67,19 @@ def main():
     command = [str(binary / 'llama-server.exe'), '-m', str(MODEL), '--alias', 'local-pilot',
                '--host', '127.0.0.1', '--port', '8116', '--offline', '--no-warmup', '--no-mmap',
                '-ngl', '99', '--cpu-moe', '--moe-expert-cache', '32', '--moe-expert-cache-inserts', '8',
-               '-c', '4096', '-np', '1', '-b', '128', '-ub', '128', '-t', '16', '-tb', '16',
+               '-c', str(a.context), '-np', '1', '-b', '128', '-ub', '128', '-t', '16', '-tb', '16',
                '-fa', 'on', '-ctk', 'q8_0', '-ctv', 'q8_0', '-fit', 'off', '--jinja',
                '--reasoning', 'on', '--no-reasoning-preserve', '--no-context-shift', '--cache-ram', '0']
     if a.skip_chat_parsing:
         command.append('--skip-chat-parsing')
-    save(a.out / 'manifest.json', {'scope': 'parser_grammar_bypass_DIAGNOSTIC_ONLY' if a.skip_chat_parsing else 'calibration_integration_not_performance',
-        'skip_chat_parsing': a.skip_chat_parsing, 'eligible_quality_evaluation': not a.skip_chat_parsing,
+    scope = ('parser_grammar_bypass_DIAGNOSTIC_ONLY' if a.skip_chat_parsing else
+             'context_override_DIAGNOSTIC_ONLY' if a.context != 4096 else 'calibration_integration_not_performance')
+    save(a.out / 'manifest.json', {'scope': scope,
+        'skip_chat_parsing': a.skip_chat_parsing,
+        'eligible_quality_evaluation': not a.skip_chat_parsing and a.context == 4096,
         'runtime_arm': a.runtime, 'trace_enabled': not a.no_trace, 'diagnostic_raw': a.diagnostic_raw,
         'limit': a.limit, 'episode_ids': a.episode_ids, 'policy_version': a.policy_version, 'final_mode': a.final_mode,
-        'max_output': a.max_output, 'sampling_profile': a.sampling_profile, 'seed': a.seed,
+        'max_output': a.max_output, 'context': a.context, 'sampling_profile': a.sampling_profile, 'seed': a.seed,
         'model_sha256': MODEL_SHA, 'command': command,
         'environment': {**selected_env, **trace_setting},
         'runtime_sha256': {f.name: sha(f) for f in binary.iterdir() if f.suffix.lower() in ('.dll', '.exe')},
@@ -102,7 +108,8 @@ def main():
                    *selection_args, '--allow-inference', '--url', 'http://127.0.0.1:8116',
                    '--output-dir', str(a.out / 'pilot'), '--protocol', 'native',
                    '--policy-version', a.policy_version, '--max-output', str(a.max_output),
-                   '--sampling-profile', a.sampling_profile, '--seed', str(a.seed), '--final-mode', a.final_mode]
+                   '--sampling-profile', a.sampling_profile, '--seed', str(a.seed), '--final-mode', a.final_mode,
+                   '--budget', str(a.context)]
             if a.diagnostic_raw:
                 cmd.append('--diagnostic-raw')
             save(a.out / 'pilot.command.json', cmd)

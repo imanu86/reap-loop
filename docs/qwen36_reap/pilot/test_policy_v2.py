@@ -99,7 +99,7 @@ class PolicyTests(unittest.TestCase):
 
     def test_policy_unknown_rejected(self):
         with self.assertRaises(RunnerError):
-            Config(policy_version="v3").validate()
+            Config(policy_version="unsupported-policy").validate()
 
     def test_explicit_ids_preserve_requested_order(self):
         ids = [self.episodes[3]["id"], self.episodes[0]["id"]]

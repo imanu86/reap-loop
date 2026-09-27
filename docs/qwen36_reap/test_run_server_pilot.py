@@ -31,6 +31,21 @@ class ServerCoordinatorTests(unittest.TestCase):
                 runner.main()
             process.assert_not_called()
 
+    def test_context6144_and_v3_preflight(self):
+        argv = ['script', '--allow-inference', '--out', 'not-created', '--context', '6144',
+                '--max-output', '2048', '--policy-version', 'v3']
+        with patch('sys.argv', argv), patch.object(runner.subprocess, 'run', side_effect=Validated('validated')) as process:
+            with self.assertRaises(Validated):
+                runner.main()
+            process.assert_called_once()
+
+    def test_invalid_budget_rejected_before_process_check(self):
+        argv = ['script', '--allow-inference', '--out', 'not-created', '--context', '6144', '--max-output', '6144']
+        with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:
+            with self.assertRaisesRegex(ValueError, 'max_output < context'):
+                runner.main()
+            process.assert_not_called()
+
     def test_heldout_ids_rejected_before_process_check(self):
         argv = ['script', '--allow-inference', '--out', 'not-created', '--episode-ids', 'heldout-semantic_selector-0']
         with patch('sys.argv', argv), patch.object(runner.subprocess, 'run') as process:
