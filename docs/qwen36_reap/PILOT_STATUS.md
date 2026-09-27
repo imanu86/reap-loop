@@ -64,13 +64,15 @@ Diagnosi calibrazione, senza rescoring: web_workflow0/5 per una prima osservazio
 
 Job132 CPU: validati2,768,240record disponibili (69,206token/layer cumulativi, NON contesto occupato100k); traceSHA a83c70dae81a244b0b7f9d9a249123ea0a84a250fab1f629201cb110f1371abe.8maschere provvisorie ranked/random K128/96/64/32 in `coordinator/selection_final_tool_01`, nessun peso scritto, nessun testGPU masked. Massa media ranked128=89.02%, ranked64=66.90% (random51.07% e24.51%): proxy di routing, NON qualita o salienza delle attivazioni.
 
-Prima del pruning GPU e richiesta ora anche copertura con almeno1completamento per famiglia;0/5workflow la impedisce. Piano PUBLIC_CONTRACT_AB.md: quattro arm V2/V3 x output1024/2048, stesso contesto6144 diagnostico,3casi fissi. V3 chiarisce solo il contratto pubblico; dati/validator invariati. L'override6144 resta non eleggibile come gate del corpus nominale4096. Protocollo/codice pubblicati58b512c prima dell'inferenza; avviatojob134 con tutti4arm nei percorsi `coordinator/public_contract_{v2|v3}_{1024|2048}_01`. Daily nuovamente sospeso per la matrice, ripristino finally previsto. Nessun risultato finale della matrice ancora disponibile.
+Prima del pruning GPU e richiesta ora anche copertura con almeno1completamento per famiglia;0/5workflow la impedisce. Piano PUBLIC_CONTRACT_AB.md: quattro arm V2/V3 x output1024/2048, stesso contesto6144 diagnostico,3casi fissi. V3 chiarisce solo il contratto pubblico; dati/validator invariati. L'override6144 resta non eleggibile come gate del corpus nominale4096. Protocollo/codice pubblicati58b512c prima dell'inferenza; avviatojob134 con tutti4arm nei percorsi `coordinator/public_contract_{v2|v3}_{1024|2048}_01`. Matrice134 conclusa e daily ripristinatohealthOK: V2/1024=0/3, V3/1024=3/3, V2/2048=1/3, V3/2048=3/3. Tutti12record/24turni verificati; V3 raw/tokenidentici fra caps su8turni, maxcompletion458/maxprompt1877. Le prove restano DIAGNOSTIC_ONLY.
+
+SceltoV3/1024 secondo piano, avviato **job136** `coordinator/calibration_50_v3_final_tool_01`: candidato018c TRACEON, budget4096 originario,50casi,greedyseed0/finaltool/rawON. Nessuna vecchia maschera riutilizzata, nessun GGUF esportato. Daily nuovamente sospeso per questa raccolta con ripristino finally previsto. Prima di pianificare maschere daV3 occorre adattare esplicitamente il planner (ora pinV2), verificare tutti50casi e copertura di tutte10famiglie.
 
 Exporter aggiornato:29test sintetici, oltre ai verdetti per caso ora pretende identico hash del protocollo congelato nei due arm. Parser bypass, seed casuale e confronti content-vs-tool non possono autorizzare export. Nessun GGUF reale esportato.
 
 Occorre ancora:
-1. Eseguire la matrice pubblicata in PUBLIC_CONTRACT_AB.md, con tutti gli arm e senza cambiare il simulatore.
-2. Congelare una baseline che eserciti tutte le famiglie e raccogliere nuova calibrazione separata prima dei confronti masked.
+1. Raccogliere job136, verificare daily e valutare tutti50casi senza assumere che3/3 si estenda.
+2. Validare la nuova traccia e adattare esplicitamente il planner aV3; prima del pruning GPU richiedere baseline>=40/50 e almeno1completamento per ciascuna famiglia.
 3. Solo allora scegliere su calibrazione un candidato conservativo e un controllo casuale a pari pool.
 4. Valutare sul lockbox; se induce tuning serve un nuovo lockbox.
 5. Export reale solo dopo gate qualita. L'exporter preparato e testato su dati sintetici, non sui pesi reali.

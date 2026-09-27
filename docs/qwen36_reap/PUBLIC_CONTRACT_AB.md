@@ -29,3 +29,16 @@ Se V3 completa3/3, preferire il cap piu basso che li completa tutti. Uno smoke3/
 La sola soglia aggregata40/50 non copre una famiglia mai completata. Dopo l'audit130 si aggiunge, in modo dichiarato, almeno un completamento per ciascuna delle10famiglie prima di qualunque confronto GPU masked. Non e una prova di generalizzazione e non sostituisce i gate heldout; serve a evitare di dichiarare preservata una capacita che il baseline non ha neppure esercitato fino alla fine.
 
 Le8maschere da130 sono artefatti CPU provvisori e NONAPPROVATI. Nessun export o benchmark milestone da esse. In caso di nuovo protocollo servono nuova calibrazione e nuove maschere, senza mescolare le tracce. La scelta di escludere o ripesare routing di episodi falliti non deve essere fatta silenziosamente.
+
+## Esito134, mantenuti tutti i controlli
+
+| Policy | Output cap | Completati |
+|---|---:|---:|
+| V2 | 1024 | 0/3 |
+| V3 | 1024 | 3/3 |
+| V2 | 2048 | 1/3 |
+| V3 | 2048 | 3/3 |
+
+Verificati12record/24turni. Tutti6144 diagnostici, stessa identita runtime/modello/env, nessun trace/mask. V3 esegue l'intero workflow select-observe-select-observe, recovery con una sola observe e pending/evidence unknown, currency restante0 senza azioni. Le due V3 hanno promptIDhash, contenuto raw e token generati identici su tutti8turni corrispondenti: cap1024 basta nello smoke. Maxcompletion458, maxprompt1877; massima riserva prompt+cap2901 con1024.
+
+Scelti V3/output1024 secondo piano. Avviatojob136: nuova calibrazione50 `coordinator/calibration_50_v3_final_tool_01`, candidato018c TRACEON, contesto/budget4096, final-tool/greedyseed0/rawON. Non e ancora un risultato di qualita, e non riutilizza le vecchie maschere. Daily sospeso durante la raccolta con ripristino finally previsto.
