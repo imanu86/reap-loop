@@ -220,6 +220,85 @@ class ConditionalReferenceTests(unittest.TestCase):
             self.run_reference(tile_tokens=1)
             self.assertEqual(decoder.call_count, 6)  # three matrices once per observed expert, not once/token
 
+    def test_sparse_routing_batches_selected_rows_not_original_windows(self):
+        tokens, tile = 4097, 128
+        x = np.zeros((tokens, 256), dtype=np.float32)
+        x[:, 0] = 1 + np.arange(tokens, dtype=np.float32) / 4096
+        ids = np.ones((tokens, 1), dtype=np.int32)
+        ids[::32] = 0  # expert0 occurs only4 times per original128-token window
+        gates = np.full((tokens, 1), 0.75, dtype=np.float32)
+        gates[::64] = 0  # zero gates MUST still occupy queue rows and denominator
+        expected_counts = np.array([129, 3968, 0], dtype=np.int64)
+        with patch.object(ref, '_expert_outputs_validated', wraps=ref._expert_outputs_validated) as core:
+            with patch.object(ref.np, 'matmul', wraps=np.matmul) as mm:
+                with patch.object(ref, 'finite', wraps=ref.finite) as check:
+                    result = ref.conditional_norm_scores(x, ids, gates, self.experts,
+                        expert_count=3, top_k=1, tile_tokens=tile)
+        calls = {0: [], 1: []}
+        received_order = {0: [], 1: []}
+        for call in core.call_args_list:
+            xb, gate, _, _ = call.args
+            e = int(round(float(gate[0, 0]) * 256)) - 1
+            calls[e].append(len(xb))
+            received_order[e].extend(float(v) for v in xb[:, 0])
+        self.assertEqual(calls[0], [128, 1])  # NOT33 tiny4-row GEMMs
+        self.assertEqual(calls[1], [128] * 31)
+        self.assertEqual(core.call_count, sum(math.ceil(int(n) / tile) for n in expected_counts))
+        # Actual three matmuls per flushed selected tile, including the one-row tail.
+        self.assertEqual(mm.call_count, 3 * core.call_count)
+        expected_mm_rows = [n for c in core.call_args_list for n in [len(c.args[0])] * 3]
+        self.assertEqual([call.args[0].shape[0] for call in mm.call_args_list], expected_mm_rows)
+        for e in (0, 1):
+            self.assertEqual(received_order[e], [float(v) for v in x[ids[:, 0] == e, 0]])
+        self.assertFalse(any(call.args[1] in ('gate', 'up', 'down') for call in check.call_args_list))
+        np.testing.assert_array_equal(result['selected_counts'], expected_counts)
+        self.assertEqual(result['metadata']['selected_row_queue_bytes'], tile * 12)
+        # Independent scalar uniform-matrix reference, original token order.
+        expected_sums = np.zeros(3, dtype=np.float64)
+        for i in range(tokens):
+            e = int(ids[i, 0])
+            sx = float(x[i, 0])
+            g = sx * (e + 1) / 256
+            y = (g / (1 + math.exp(-g))) * (sx / 512) / 4
+            expected_sums[e] += float(gates[i, 0]) * abs(y) * 16
+        np.testing.assert_allclose(result['weighted_norm_sums'], expected_sums, atol=ATOL, rtol=RTOL)
+        expected_scores = np.divide(expected_sums, expected_counts, out=np.zeros(3), where=expected_counts != 0)
+        np.testing.assert_allclose(result['scores'], expected_scores, atol=ATOL, rtol=RTOL)
+        other_tile = ref.conditional_norm_scores(x, ids, gates, self.experts,
+            expert_count=3, top_k=1, tile_tokens=37)
+        np.testing.assert_allclose(result['weighted_norm_sums'], other_tile['weighted_norm_sums'], atol=ATOL, rtol=RTOL)
+        np.testing.assert_array_equal(result['selected_counts'], other_tile['selected_counts'])
+
+    def test_public_guard_still_validates_weights_and_private_core_checks_intermediates(self):
+        x = np.ones((1, 2), dtype=np.float32)
+        w = np.eye(2, dtype=np.float32)
+        with patch.object(ref, 'finite', wraps=ref.finite) as check:
+            ref.expert_outputs(x, w, w, w)
+        names = [call.args[1] for call in check.call_args_list]
+        for required in ('postnorm_x', 'gate', 'up', 'down', 'gate projection', 'up projection', 'SiLU-times-up', 'expert output'):
+            self.assertIn(required, names)
+        # Public guard still rejects bad matrices BEFORE entering the validated core.
+        invalid = w.copy()
+        invalid[0, 0] = np.nan
+        with patch.object(ref, '_expert_outputs_validated', side_effect=AssertionError('must not execute')):
+            with self.assertRaises(ValueError):
+                ref.expert_outputs(x, invalid, w, w)
+        # Even if a validated input path develops an arithmetic nonfinite, fail closed.
+        for stage in range(3):
+            results = [np.ones((1, 2), dtype=np.float32) for _ in range(3)]
+            results[stage][0, 0] = np.inf
+            with patch.object(ref.np, 'matmul', side_effect=results):
+                with self.assertRaises((ValueError, FloatingPointError)):
+                    ref._expert_outputs_validated(x, w, w, w)
+
+    def test_queue_bytes_are_in_workspace_guard(self):
+        tile, width, hidden = 128, 256, 256
+        previous_without_queue = 12 * width * hidden + max(64 * tile * (width + hidden), 1024 * max(width, hidden))
+        with patch.object(ref, 'MAX_WORK_BYTES', previous_without_queue):
+            with patch.object(ref, 'decode_q4_k_matrix', side_effect=AssertionError('must reject before decode')):
+                with self.assertRaisesRegex(ValueError, 'workspace'):
+                    self.run_reference(tile_tokens=tile)
+
     def test_additive_chunk_merge_not_mean_of_chunk_means(self):
         whole = self.run_reference(tile_tokens=2)
         parts = [ref.conditional_norm_scores(self.x[a:b], self.ids[a:b], self.gates[a:b], self.experts,

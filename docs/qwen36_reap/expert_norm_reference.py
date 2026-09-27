@@ -156,9 +156,18 @@ def expert_outputs(postnorm_x, gate, up, down, *, bias=None, scales=None, clamp=
     for name, array in (('postnorm_x', postnorm_x), ('gate', gate), ('up', up), ('down', down)):
         # Caller supplies bounded weights/one tile here; no whole-capture boolean allocation.
         finite(array, name)
+    return _expert_outputs_validated(postnorm_x, gate, up, down)
+
+
+def _expert_outputs_validated(postnorm_x, gate, up, down):
+    """Private core: caller validated shapes/types/finite X+weights and workspace.
+
+    Decoder verifies every weight row once. Replay must not rescan those unchanged
+    matrices for every selected-row tile. All arithmetic intermediates still checked.
+    """
     with np.errstate(over='raise', invalid='raise', divide='raise', under='ignore'):
-        g = postnorm_x @ gate.T
-        u = postnorm_x @ up.T
+        g = np.matmul(postnorm_x, gate.T)
+        u = np.matmul(postnorm_x, up.T)
         finite(g, 'gate projection')
         finite(u, 'up projection')
         # Stable F32 SiLU: avoid exp(-large_negative) overflow without clamping values.
@@ -169,7 +178,7 @@ def expert_outputs(postnorm_x, gate, up, down, *, bias=None, scales=None, clamp=
         sigmoid[~positive] = exp_negative / (1 + exp_negative)
         z = (g * sigmoid) * u
         finite(z, 'SiLU-times-up')
-        y = z @ down.T
+        y = np.matmul(z, down.T)
     finite(y, 'expert output')
     return y
 
@@ -181,8 +190,10 @@ def conditional_norm_scores(postnorm_x, selected_ids, gates, experts, *, expert_
     Score[e] = sum_selected(g * L2(Y_e(X))) / N_selected; unobserved score=0.
     Count includes selected zero-gate occurrences. Supplied gates are used verbatim,
     never renormalized. All selected experts are replayed, even when their gate is zero.
+    For each expert, bounded original-ID scans fill a <=tile_tokens index/gate queue
+    in original token order; GEMM flushes full SELECTED-row tiles, then one tail.
     One expert's weights and at most tile_tokens gathered rows are live at a time;
-    inputs are caller-owned. No O(N*K) duplicated activation storage or full-model decode.
+    inputs are caller-owned. No global N*K index list, duplicated activations or full-model decode.
     """
     reject_features(bias=bias, scales=scales, clamp=clamp, lora=lora)
     f32_array(postnorm_x, 'postnorm_x')
@@ -210,34 +221,56 @@ def conditional_norm_scores(postnorm_x, selected_ids, gates, experts, *, expert_
         require(np.all(np.diff(np.sort(ids, axis=1), axis=1) != 0), 'Duplicate selected expert in token')
         selected.update(int(e) for e in np.unique(ids))
     require(selected <= experts.keys(), 'Missing selected expert weights')
+    queue_bytes = tile_tokens * (np.dtype('int64').itemsize + np.dtype('float32').itemsize)
     for expert_id, packed in experts.items():
         hidden = packed.validate(width)
-        require(12 * width * hidden + max(64 * tile_tokens * (width + hidden), 1024 * max(width, hidden)) <= MAX_WORK_BYTES,
+        require(12 * width * hidden + max(64 * tile_tokens * (width + hidden), 1024 * max(width, hidden)) + queue_bytes <= MAX_WORK_BYTES,
                 'Expert replay workspace estimate exceeds bound')
     totals = np.zeros(expert_count, dtype=np.float64)
     counts = np.zeros(expert_count, dtype=np.int64)
+    row_queue = np.empty(tile_tokens, dtype=np.int64)
+    gate_queue = np.empty(tile_tokens, dtype=np.float32)
     for expert_id in sorted(selected):
         packed = experts[expert_id]
         gate = decode_q4_k_matrix(packed.gate)
         up = decode_q4_k_matrix(packed.up)
         down = decode_q4_k_matrix(packed.down)
-        for start in range(0, tokens, tile_tokens):
-            stop = min(start + tile_tokens, tokens)
-            rows, slots = np.nonzero(selected_ids[start:stop] == expert_id)
-            if not rows.size:
-                continue
-            x = postnorm_x[start:stop][rows]  # bounded gather; input is already normalized
-            y = expert_outputs(x, gate, up, down)
+        queued = 0
+
+        def flush(size):
+            # X was checked during the initial bounded scan; decoded weights were
+            # checked once by the decoder. No repeated full weight validation here.
+            x = postnorm_x[row_queue[:size]]
+            y = _expert_outputs_validated(x, gate, up, down)
             # F64 squares/sum/sqrt are declared offline metric semantics, not CUDA parity.
             squares = y.astype(np.float64)
             np.square(squares, out=squares)
             norms = np.sqrt(np.sum(squares, axis=1, dtype=np.float64))
-            weighted = gates[start:stop][rows, slots].astype(np.float64) * norms
+            weighted = gate_queue[:size].astype(np.float64) * norms
             finite(weighted, 'weighted expert output norm')
-            # Sequential per-expert token order across tile sizes; no tile-dependent partial sums.
+            # Preserve original per-expert token order, including zero-gate occurrences.
             for value in weighted:
                 totals[expert_id] += value
-            counts[expert_id] += rows.size
+            counts[expert_id] += size
+
+        for start in range(0, tokens, tile_tokens):
+            stop = min(start + tile_tokens, tokens)
+            # At most one match/token because duplicate IDs were rejected above.
+            rows, slots = np.nonzero(selected_ids[start:stop] == expert_id)
+            offset = 0
+            while offset < rows.size:
+                take = min(tile_tokens - queued, rows.size - offset)
+                source = slice(offset, offset + take)
+                destination = slice(queued, queued + take)
+                row_queue[destination] = start + rows[source]
+                gate_queue[destination] = gates[start:stop][rows[source], slots[source]]
+                queued += take
+                offset += take
+                if queued == tile_tokens:
+                    flush(queued)
+                    queued = 0
+        if queued:
+            flush(queued)
         del gate, up, down
     finite(totals, 'conditional numerator')
     scores = np.divide(totals, counts, out=np.zeros(expert_count, dtype=np.float64), where=counts != 0)
@@ -253,6 +286,8 @@ def conditional_norm_scores(postnorm_x, selected_ids, gates, experts, *, expert_
                 'matmul_activation_dtype': 'float32', 'norm_and_accumulator_dtype': 'float64',
                 'quant_type': 'Q4_K', 'endianness': 'little', 'tokens': tokens, 'input_width': width,
                 'expert_count': expert_count, 'top_k': top_k, 'tile_tokens': tile_tokens,
+                'batching': 'per_expert_selected_row_queue_in_original_token_order',
+                'selected_row_queue_bytes': queue_bytes,
                 'max_owned_workspace_estimate_bytes': MAX_WORK_BYTES,
                 'workspace_excludes': 'caller_owned_buffers_and_BLAS_internal_workspaces',
                 'numpy_version': np.__version__, 'gguf_version': GGUF_VERSION,

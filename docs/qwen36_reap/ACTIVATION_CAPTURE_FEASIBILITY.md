@@ -40,6 +40,8 @@ expert_norm_reference.py e test_expert_norm_reference.py aggiunti separatamente,
 
 Output marcato APPROXIMATE_Q4_F32_REPLAY, native_identity=false, quality_approval=false e native_C_dequant_oracle_verified=false. Il test dei blocchi usa un oracle sintetico indipendente di packing, NON una DLL nativa. Somme/norme ridotte in F64; prodotto matriciale e SiLU F32. Tolleranze dei test di tiling/scalare atol1e-7/rtol1e-5, non identita bit-a-bit. Workspace dichiarato come stima delle allocazioni possedute, esclusi buffer caller e workspace opaco BLAS.
 
-Non sono stati letti pesi reali o hidden capture: collegamento a modello671/D2048/H512/E256/top8/L40 e provenienza closed-only rimangono da verificare in un futuro runner. Il capture runtime e il confronto con output CUDA nativi NON sono implementati da questi16test.
+Non sono stati letti pesi reali o hidden capture: collegamento a modello671/D2048/H512/E256/top8/L40 e provenienza closed-only rimangono da verificare in un futuro runner. Il capture runtime e il confronto con output CUDA nativi NON sono implementati da questi test.
+
+Successivo miglioramento verificato:19test CPU PASS. La coda per esperto accumula righe SELEZIONATE fino al tile, anziche lanciare GEMM minuscole per ciascuna finestra sparsa del corpus; al massimo tile_tokens indici int64 e gateF32,12byte/elemento conteggiati nel budget. Pesi dequantizzati controllati una volta, API pubblica ancora rigorosa, intermedi sempre finite. Nel caso sintetico N4097/esperto ogni32token,129righe selezionate producono batch128+1, non33finestre piccole. Test di ordine/somme/count/zero-gate e chiamate GEMM; nessuna accelerazione su dati reali misurata.
 
 Nessun risultato di questa fattibilita/reference approva maschere, export, contesto100k o100/200t/s.
